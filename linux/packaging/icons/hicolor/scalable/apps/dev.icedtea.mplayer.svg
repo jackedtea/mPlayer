@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>MePlayer app icon</title>
+  <desc>Rounded square app icon with a dark teal-to-navy background and a play triangle built from seven vertical bars in a teal-to-violet gradient.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#123044"/>
+      <stop offset="100%" stop-color="#0A1B27"/>
+    </linearGradient>
+    <linearGradient id="bars" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4FD6C6"/>
+      <stop offset="55%" stop-color="#5FA8E0"/>
+      <stop offset="100%" stop-color="#8C7AE8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="25%" r="75%">
+      <stop offset="0%" stop-color="#1C4A63" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#1C4A63" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="512" height="512" rx="114" ry="114"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <rect x="0" y="0" width="512" height="512" fill="url(#bg)"/>
+    <rect x="0" y="0" width="512" height="512" fill="url(#glow)"/>
+
+    <!-- equalizer bars shaped as a play triangle, apex pointing right -->
+    <g>
+      <rect x="164" y="156" width="20" height="200" rx="8" fill="url(#bars)"/>
+      <rect x="204" y="181" width="20" height="150" rx="8" fill="url(#bars)"/>
+      <rect x="244" y="206" width="20" height="100" rx="8" fill="url(#bars)"/>
+      <rect x="284" y="231" width="20" height="50" rx="8" fill="url(#bars)"/>
+      <rect x="324" y="246" width="20" height="20" rx="8" fill="url(#bars)"/>
+    </g>
+  </g>
+
+  <!-- squircle outline for crispness at small sizes -->
+  <rect x="2" y="2" width="508" height="508" rx="113" ry="113" fill="none" stroke="#0A1B27" stroke-width="4"/>
+</svg>

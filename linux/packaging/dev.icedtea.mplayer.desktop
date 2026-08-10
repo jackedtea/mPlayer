@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=mPlayer
+GenericName=Video Player
+Comment=Cross-platform video player and media server client
+Exec=mPlayer %U
+Icon=dev.icedtea.mplayer
+Terminal=false
+Categories=AudioVideo;Video;Player;
+Keywords=video;player;jellyfin;emby;smb;webdav;media;
+StartupNotify=true
+StartupWMClass=dev.icedtea.mplayer
+MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;video/x-msvideo;video/mpeg;video/x-flv;video/3gpp;application/x-mpegURL;
