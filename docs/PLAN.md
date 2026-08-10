@@ -177,6 +177,26 @@ supersedes the ordering guesses in this phase list where the two disagree.
 
 **Dependency note**: `file_picker` is unusable here — 8.3.3–11.x pin `win32 ^5.9.0` while
 `flutter_secure_storage_windows` needs `win32 ^6.0.1`. Use `file_selector` (flutter.dev).
+
+### Design build step 3 — player chrome (done)
+
+- [x] `controls_overlay.dart` — top bar (PiP/cast/overflow), transport, scrubber with
+      chapter ticks, control-row pills (subtitles / audio / quality / speed) and the
+      lock · rotation · chapters · fullscreen icon buttons
+- [x] `gesture_layer.dart` — left third brightness, right third volume, double-tap ±10/30s,
+      horizontal drag scrub, each with its own indicator
+- [x] `track_sheet.dart` — subtitle, audio, speed and chapter pickers
+- [x] `more_menu.dart` — rotation, lock, aspect, sleep timer, stats, player settings
+- [x] `stats_overlay.dart` — monospace key/value card, `—` for anything unreported
+- [x] `player_ui_state.dart` — lock, rotation, aspect, stats, sleep timer as a Notifier
+- [x] Locked state: dim, double-tap-to-unlock, progress bar stays visible
+- [x] Container chapters read from libmpv `chapter-list/*`, so local MKV/MP4 files get
+      ticks and a chapter sheet; source chapters take precedence when a server supplies
+      them, since only those mark intros reliably
+- [ ] Verify the `chapter-list` read against a real chaptered MKV — no sample file or
+      ffmpeg on this machine, so only the precedence logic is unit-tested
+- [ ] Picture-in-picture (needs a platform plugin; button reports not-implemented)
+- [ ] Quality / transcode control — meaningless until a server can transcode (step 5)
 - [ ] `data/db/app_database.dart` — Drift schema v1:
   - [ ] `server_profiles` (type, url, credentials ref, display name, last used)
   - [ ] `media_items` (metadata cache)

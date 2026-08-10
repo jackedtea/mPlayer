@@ -6,7 +6,7 @@ Cross-platform video player and media server client (Jellyfin/Emby) with SMB/Web
 
 ## Current state (2026-08-10)
 
-Design build steps 1 and 2 done; **every screen `1a`–`1n` is now drawn and reachable**,
+Design build steps 1, 2 and 3 done; **every screen `1a`–`1n` is drawn and reachable**,
 but only the local-playback path is backed by real data.
 
 **Step 1 — shell.** `app/tokens.dart` (design tokens as `ThemeExtension`s + `WindowSize`),
@@ -20,6 +20,12 @@ but only the local-playback path is backed by real data.
 screen 1h with the video surface, transport and scrubber. Picking a file from the Storage
 FAB plays it end to end. This path uses **no** sample data.
 
+**Step 3 — player chrome.** `features/player/` is now split the way the design suggests:
+`controls_overlay.dart` (top bar, transport, scrubber with chapter ticks, control-row
+pills, skip-intro), `gesture_layer.dart` (brightness / volume / double-tap seek /
+horizontal scrub), `track_sheet.dart`, `more_menu.dart`, `stats_overlay.dart`, and
+`player_ui_state.dart` for lock, rotation, aspect, stats and sleep timer.
+
 **Screens.** 1b browser, 1d server home, 1e library grid, 1f movie detail, 1g series,
 1i downloads, 1m settings pages (Appearance / Player / Subtitle / About) and the active
 state of 1n all render against `core/sample_library.dart`. General and Audio settings are
@@ -29,7 +35,7 @@ Verified by actually building and running, not assumed:
 
 - Windows debug build links and bundles `libmpv-2.dll`
 - Android debug APK builds and bundles `libmpv.so` for all three ABIs, plus the Roboto asset
-- `flutter analyze` clean; `flutter test` 73/73 passing. `test/screens_test.dart` pumps
+- `flutter analyze` clean; `flutter test` 86/86 passing. `test/screens_test.dart` pumps
   **every route at all three breakpoints** and fails on any overflow — it caught a
   duplicate FAB hero tag and two real overflows, so do not weaken it.
 
@@ -40,10 +46,32 @@ Still open:
    libmpv opens them has not been tested**. If it fails, copy to cache or resolve the fd.
 2. Confirm the Linux build on a machine with `libmpv-dev`
 
-Next is design build step 3: player chrome — gestures (brightness / volume / double-tap
-seek), lock, rotation, track & quality sheets, more menu, chapter ticks, skip-intro and
-the stats overlay. Then steps 4–5, the SMB/WebDAV and Jellyfin backends that replace the
-sample data.
+3. **Verify container chapters against a real chaptered MKV.** The list is read from
+   libmpv's `chapter-list` properties, but this machine has no chaptered sample and no
+   ffmpeg to make one, so only the merge logic is unit-tested — the property read itself
+   has never run against a real file.
+4. **The quality pill is inert.** Choosing a bitrate only means something once a server
+   can transcode (step 5).
+
+## Chapters
+
+Two independent sources, and the distinction matters:
+
+- **Container** — MKV and MP4 routinely embed chapters. `PlaybackController` reads them
+  from libmpv's `chapter-list/*` properties once the duration is known, so **local files
+  do get chapters and ticks**. `getProperty` returns `""` for a missing property, so a
+  file without them yields a count of 0 and stays silent.
+- **Source** — a server supplies its own list *with intro segments marked*.
+  `SourceCapabilities.chapters` refers only to this. False there does **not** mean the
+  media is chapterless.
+
+`PlaybackState.chapters` prefers the source list when it is non-empty, because only it
+carries reliable `isIntro`. Container chapters fall back to a title heuristic
+(`_looksLikeIntro`) — a false positive costs the user one ignorable pill.
+
+Next are design build steps 4–5: the SMB/WebDAV drivers behind the browser (1b), then the
+Jellyfin client that replaces `core/sample_library.dart` and finally fills in chapters,
+watch-state reporting and transcode control.
 
 ## Layout rules learned the hard way
 

@@ -7,6 +7,82 @@ import 'package:flutter/foundation.dart';
 
 import '../../sources/media_source.dart';
 
+/// Which stream a [MediaTrack] belongs to.
+enum TrackKind { video, audio, subtitle }
+
+/// A selectable stream inside the media, flattened out of the backend's own
+/// track type so the sheets and the control row never see `media_kit`.
+@immutable
+class MediaTrack {
+  const MediaTrack({
+    required this.id,
+    required this.kind,
+    required this.label,
+    this.language,
+    this.isDefault = false,
+  });
+
+  final String id;
+  final TrackKind kind;
+
+  /// What the pill and the sheet show — "English SDH", "TrueHD 7.1".
+  final String label;
+
+  final String? language;
+  final bool isDefault;
+
+  /// media_kit exposes "no track" and "auto" as reserved ids.
+  bool get isOff => id == 'no';
+  bool get isAuto => id == 'auto';
+}
+
+/// Everything the stats overlay reports. All fields are optional because a
+/// stream reveals them at different times, and a missing value must render as
+/// "—" rather than a zero that looks real.
+@immutable
+class PlaybackStats {
+  const PlaybackStats({
+    this.width,
+    this.height,
+    this.videoCodec,
+    this.videoDecoder,
+    this.fps,
+    this.videoBitrate,
+    this.audioCodec,
+    this.audioChannels,
+    this.audioSampleRate,
+    this.audioBitrate,
+  });
+
+  final int? width;
+  final int? height;
+  final String? videoCodec;
+
+  /// Includes whether the decoder is hardware or software.
+  final String? videoDecoder;
+
+  final double? fps;
+  final int? videoBitrate;
+  final String? audioCodec;
+  final String? audioChannels;
+  final int? audioSampleRate;
+  final double? audioBitrate;
+
+  /// True when the decoder description mentions a hardware pipeline.
+  bool get isHardwareDecoded {
+    final d = videoDecoder?.toLowerCase();
+    if (d == null) return false;
+    return d.contains('d3d') ||
+        d.contains('dxva') ||
+        d.contains('vaapi') ||
+        d.contains('videotoolbox') ||
+        d.contains('mediacodec') ||
+        d.contains('nvdec') ||
+        d.contains('cuda') ||
+        d.contains('vulkan');
+  }
+}
+
 /// Everything the player UI is allowed to know.
 ///
 /// Hand-written rather than generated: the project keeps `build_runner` off
@@ -26,6 +102,12 @@ class PlaybackState {
     this.volume = 100,
     this.speed = 1.0,
     this.error,
+    this.audioTracks = const <MediaTrack>[],
+    this.subtitleTracks = const <MediaTrack>[],
+    this.activeAudio,
+    this.activeSubtitle,
+    this.stats = const PlaybackStats(),
+    this.containerChapters = const <MediaChapter>[],
   });
 
   /// Null until something has been opened.
@@ -50,7 +132,39 @@ class PlaybackState {
   /// never take the app down with it.
   final String? error;
 
+  final List<MediaTrack> audioTracks;
+  final List<MediaTrack> subtitleTracks;
+  final MediaTrack? activeAudio;
+  final MediaTrack? activeSubtitle;
+
+  final PlaybackStats stats;
+
+  /// Chapters read out of the container by the decoder — MKV and MP4 commonly
+  /// embed them, so a plain local file is not chapterless.
+  final List<MediaChapter> containerChapters;
+
   bool get hasMedia => media != null;
+
+  /// Source chapters win when present: a server marks which chapter is an
+  /// intro, which the container cannot say for certain. Otherwise fall back to
+  /// whatever the file itself carries.
+  List<MediaChapter> get chapters {
+    final fromSource = media?.chapters ?? const <MediaChapter>[];
+    return fromSource.isNotEmpty ? fromSource : containerChapters;
+  }
+
+  MediaChapter? chapterAt(Duration at) {
+    for (final MediaChapter c in chapters) {
+      if (c.contains(at)) return c;
+    }
+    return null;
+  }
+
+  /// The intro chapter currently playing, if any — the skip pill's trigger.
+  MediaChapter? get currentIntro {
+    final chapter = chapterAt(position);
+    return chapter != null && chapter.isIntro ? chapter : null;
+  }
 
   /// Guards against a zero duration while the file is still being probed.
   double get progress {
@@ -74,6 +188,12 @@ class PlaybackState {
     double? volume,
     double? speed,
     String? error,
+    List<MediaTrack>? audioTracks,
+    List<MediaTrack>? subtitleTracks,
+    MediaTrack? activeAudio,
+    MediaTrack? activeSubtitle,
+    PlaybackStats? stats,
+    List<MediaChapter>? containerChapters,
     bool clearError = false,
     bool clearMedia = false,
   }) {
@@ -88,6 +208,12 @@ class PlaybackState {
       volume: volume ?? this.volume,
       speed: speed ?? this.speed,
       error: clearError ? null : (error ?? this.error),
+      audioTracks: audioTracks ?? this.audioTracks,
+      subtitleTracks: subtitleTracks ?? this.subtitleTracks,
+      activeAudio: activeAudio ?? this.activeAudio,
+      activeSubtitle: activeSubtitle ?? this.activeSubtitle,
+      stats: stats ?? this.stats,
+      containerChapters: containerChapters ?? this.containerChapters,
     );
   }
 }

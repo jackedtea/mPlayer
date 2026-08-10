@@ -10,19 +10,24 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../app/tokens.dart';
 import '../../sources/media_source.dart';
+import 'controls_overlay.dart';
+import 'gesture_layer.dart';
+import 'more_menu.dart';
 import 'playback_controller.dart';
 import 'playback_state.dart';
+import 'player_ui_state.dart';
+import 'stats_overlay.dart';
+import 'track_sheet.dart';
 
 /// Screen 1h — the single player, shared by local files, shares and streams.
 ///
-/// Build step 2 scope: the video surface, transport controls and the scrubber,
-/// which is what "a device file playing end to end" needs. The rest of the 1h
-/// chrome — gestures, lock, rotation, track/quality sheets, chapter ticks,
-/// skip-intro and the stats overlay — is build step 3 and is deliberately
-/// absent rather than stubbed.
+/// Composes four layers: the video surface, the gesture zones, the chrome, and
+/// the overlays (stats, lock). Nothing here talks to `media_kit` except the
+/// surface itself.
 class PlayerPage extends ConsumerStatefulWidget {
   const PlayerPage({super.key, required this.media});
 
@@ -36,9 +41,12 @@ class PlayerPage extends ConsumerStatefulWidget {
 
 class _PlayerPageState extends ConsumerState<PlayerPage> {
   static const _chromeTimeout = Duration(seconds: 3);
+  static const _speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
   bool _chromeVisible = true;
+  bool _fullscreen = false;
   Timer? _hideTimer;
+  Timer? _sleepTimer;
 
   /// While the user drags, the scrubber follows the finger rather than the
   /// position stream, which would fight it.
@@ -58,8 +66,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void dispose() {
     _hideTimer?.cancel();
-    // Leaving the screen must not strand a decoder holding the file open.
+    _sleepTimer?.cancel();
+    // Leaving the screen must not strand a decoder holding the file open, nor
+    // a locked orientation on the rest of the app.
     unawaited(ref.read(playbackControllerProvider.notifier).stop());
+    ref.read(playerUiProvider.notifier).reset();
     super.dispose();
   }
 
@@ -78,61 +89,241 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(playbackControllerProvider);
+    final ui = ref.watch(playerUiProvider);
     final controller = ref.read(playbackControllerProvider.notifier);
+
+    _syncSleepTimer(ui.sleepTimer);
 
     return Theme(
       // The player is always dark, whatever the app theme is.
       data: ThemeData.dark(useMaterial3: true).copyWith(
+        colorScheme: ThemeData.dark(useMaterial3: true).colorScheme.copyWith(
+              primaryContainer: const Color(0xFF004C6D),
+              onPrimaryContainer: const Color(0xFFC7E7FF),
+            ),
         extensions: Theme.of(context).extensions.values,
       ),
       child: Scaffold(
         backgroundColor: Colors.black,
         body: Focus(
           autofocus: true,
-          onKeyEvent: (_, event) => _handleKey(event, controller),
-          child: GestureDetector(
-            onTap: _toggleChrome,
-            behavior: HitTestBehavior.opaque,
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                _VideoSurface(controller: controller),
-                if (state.error != null) _ErrorOverlay(message: state.error!),
-                if (state.buffering && state.error == null)
-                  const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  ),
+          onKeyEvent: (_, event) => _handleKey(event, controller, ui),
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              _VideoSurface(controller: controller, fit: ui.aspect.boxFit),
+
+              // Gestures sit above the video and below the chrome, and go
+              // inert entirely while locked.
+              GestureLayer(
+                enabled: !ui.locked,
+                state: state,
+                onTap: _toggleChrome,
+                onSeekBy: controller.skip,
+                onSeekTo: controller.seek,
+                onVolume: controller.setVolume,
+              ),
+
+              if (state.error != null) _ErrorOverlay(message: state.error!),
+              if (state.buffering && state.error == null)
+                const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+
+              if (ui.statsVisible) StatsOverlay(state: state),
+
+              if (!ui.locked)
                 AnimatedOpacity(
                   opacity: _chromeVisible ? 1 : 0,
                   duration: const Duration(milliseconds: 200),
                   child: IgnorePointer(
                     ignoring: !_chromeVisible,
-                    child: _Chrome(
+                    child: ControlsOverlay(
                       media: widget.media,
                       state: state,
-                      controller: controller,
+                      ui: ui,
                       dragProgress: _dragProgress,
                       onInteraction: _restartHideTimer,
-                      onDragStart: (v) => setState(() => _dragProgress = v),
-                      onDragUpdate: (v) => setState(() => _dragProgress = v),
-                      onDragEnd: (v) {
+                      onPlayPause: () {
+                        _restartHideTimer();
+                        controller.playOrPause();
+                      },
+                      onSkip: controller.skip,
+                      onScrubStart: (v) => setState(() => _dragProgress = v),
+                      onScrubUpdate: (v) => setState(() => _dragProgress = v),
+                      onScrubEnd: (v) {
                         setState(() => _dragProgress = null);
                         controller.seek(state.duration * v);
                       },
+                      onSubtitles: () => _pickSubtitle(state, controller),
+                      onAudio: () => _pickAudio(state, controller),
+                      onQuality: () => _notImplemented('Quality selection'),
+                      onSpeed: () => _pickSpeed(state, controller),
+                      onLock: () {
+                        ref.read(playerUiProvider.notifier).toggleLock();
+                        setState(() => _chromeVisible = false);
+                      },
+                      onRotate: ref.read(playerUiProvider.notifier).cycleRotation,
+                      onChapters: () => _showChapters(state, controller),
+                      onFullscreen: _toggleFullscreen,
+                      onMore: () => MoreMenu.show(context),
+                      onSkipIntro: (chapter) => controller.seek(chapter.end),
+                      notImplemented: _notImplemented,
                     ),
                   ),
                 ),
-              ],
-            ),
+
+              if (ui.locked) _LockedOverlay(state: state),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// Desktop keyboard transport. Space/K toggle, arrows seek, Escape leaves.
-  KeyEventResult _handleKey(KeyEvent event, PlaybackController controller) {
+  // ---------------------------------------------------------------- sheets
+
+  Future<void> _pickSubtitle(
+    PlaybackState state,
+    PlaybackController controller,
+  ) async {
+    _restartHideTimer();
+    await TrackSheet.show(
+      context: context,
+      title: 'Subtitles',
+      selectedId: state.activeSubtitle?.id,
+      options: <TrackOption>[
+        for (final MediaTrack t in state.subtitleTracks)
+          TrackOption.fromTrack(t),
+      ],
+      onSelected: (o) => controller.setSubtitleTrack(o.track),
+    );
+  }
+
+  Future<void> _pickAudio(
+    PlaybackState state,
+    PlaybackController controller,
+  ) async {
+    _restartHideTimer();
+    await TrackSheet.show(
+      context: context,
+      title: 'Audio',
+      selectedId: state.activeAudio?.id,
+      options: <TrackOption>[
+        for (final MediaTrack t in state.audioTracks) TrackOption.fromTrack(t),
+      ],
+      onSelected: (o) {
+        if (o.track != null) controller.setAudioTrack(o.track!);
+      },
+    );
+  }
+
+  Future<void> _pickSpeed(
+    PlaybackState state,
+    PlaybackController controller,
+  ) async {
+    _restartHideTimer();
+    await TrackSheet.show(
+      context: context,
+      title: 'Playback speed',
+      selectedId: state.speed.toStringAsFixed(2),
+      options: <TrackOption>[
+        for (final double s in _speeds)
+          TrackOption(
+            id: s.toStringAsFixed(2),
+            label: '${s.toStringAsFixed(2)}×',
+            detail: s == 1.0 ? 'Normal' : null,
+            value: s,
+          ),
+      ],
+      onSelected: (o) {
+        if (o.value != null) controller.setSpeed(o.value!);
+      },
+    );
+  }
+
+  Future<void> _showChapters(
+    PlaybackState state,
+    PlaybackController controller,
+  ) async {
+    _restartHideTimer();
+
+    // Chapters come from the container or the source; plenty of files carry
+    // none at all, and saying so beats opening an empty sheet.
+    if (state.chapters.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This file has no chapters')),
+      );
+      return;
+    }
+
+    await TrackSheet.show(
+      context: context,
+      title: 'Chapters',
+      selectedId: state.chapterAt(state.position)?.title,
+      options: <TrackOption>[
+        for (final MediaChapter c in state.chapters)
+          TrackOption(
+            id: c.title,
+            label: c.title,
+            detail: formatDuration(c.start),
+            value: c.start.inMilliseconds.toDouble(),
+          ),
+      ],
+      onSelected: (o) {
+        if (o.value != null) {
+          controller.seek(Duration(milliseconds: o.value!.round()));
+        }
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------- misc
+
+  /// Desktop toggles the OS window; mobile hides the system bars instead.
+  ///
+  /// `window_manager` throws on Android and iOS, which is the signal to fall
+  /// back rather than an error worth surfacing.
+  Future<void> _toggleFullscreen() async {
+    _restartHideTimer();
+    final next = !_fullscreen;
+
+    try {
+      await windowManager.setFullScreen(next);
+    } catch (_) {
+      await SystemChrome.setEnabledSystemUIMode(
+        next ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+      );
+    }
+
+    if (mounted) setState(() => _fullscreen = next);
+  }
+
+  /// Starts or cancels the countdown whenever the menu changes it.
+  void _syncSleepTimer(Duration? d) {
+    if (d == null) {
+      _sleepTimer?.cancel();
+      _sleepTimer = null;
+      return;
+    }
+    if (_sleepTimer?.isActive ?? false) return;
+
+    _sleepTimer = Timer(d, () {
+      if (!mounted) return;
+      ref.read(playbackControllerProvider.notifier).pause();
+      ref.read(playerUiProvider.notifier).setSleepTimer(null);
+    });
+  }
+
+  KeyEventResult _handleKey(
+    KeyEvent event,
+    PlaybackController controller,
+    PlayerUiState ui,
+  ) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    // Locked means locked, including the keyboard.
+    if (ui.locked) return KeyEventResult.handled;
+
     _restartHideTimer();
     if (!_chromeVisible) setState(() => _chromeVisible = true);
 
@@ -144,6 +335,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         controller.skip(const Duration(seconds: -10));
       case LogicalKeyboardKey.arrowRight:
         controller.skip(const Duration(seconds: 30));
+      case LogicalKeyboardKey.keyF:
+        _toggleFullscreen();
       case LogicalKeyboardKey.escape:
         if (context.canPop()) context.pop();
       default:
@@ -151,12 +344,19 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     }
     return KeyEventResult.handled;
   }
+
+  void _notImplemented(String what) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$what — not implemented yet')),
+    );
+  }
 }
 
 class _VideoSurface extends StatelessWidget {
-  const _VideoSurface({required this.controller});
+  const _VideoSurface({required this.controller, required this.fit});
 
   final PlaybackController controller;
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
@@ -167,167 +367,111 @@ class _VideoSurface extends StatelessWidget {
     return Video(
       controller: videoController,
       controls: NoVideoControls,
+      fit: fit,
       fill: Colors.black,
     );
   }
 }
 
-class _Chrome extends StatelessWidget {
-  const _Chrome({
-    required this.media,
-    required this.state,
-    required this.controller,
-    required this.dragProgress,
-    required this.onInteraction,
-    required this.onDragStart,
-    required this.onDragUpdate,
-    required this.onDragEnd,
-  });
+/// Locked state: everything dims, only the unlock affordance and the progress
+/// bar remain. Double-tapping the lock exits, so a pocket touch cannot.
+class _LockedOverlay extends ConsumerStatefulWidget {
+  const _LockedOverlay({required this.state});
 
-  final PlayableMedia media;
   final PlaybackState state;
-  final PlaybackController controller;
-  final double? dragProgress;
-  final VoidCallback onInteraction;
-  final ValueChanged<double> onDragStart;
-  final ValueChanged<double> onDragUpdate;
-  final ValueChanged<double> onDragEnd;
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        // Top scrim: rgba(0,0,0,.60) to transparent.
-        const _Scrim(alignment: Alignment.topCenter, opacity: 0.60, height: 140),
-        const _Scrim(
-          alignment: Alignment.bottomCenter,
-          opacity: 0.80,
-          height: 190,
-        ),
-        Align(
-          alignment: Alignment.topCenter,
-          child: _TopBar(media: media, onInteraction: onInteraction),
-        ),
-        Center(
-          child: _TransportRow(
-            state: state,
-            controller: controller,
-            onInteraction: onInteraction,
-          ),
-        ),
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: _Scrubber(
-            state: state,
-            dragProgress: dragProgress,
-            onDragStart: onDragStart,
-            onDragUpdate: onDragUpdate,
-            onDragEnd: onDragEnd,
-          ),
-        ),
-      ],
-    );
-  }
+  ConsumerState<_LockedOverlay> createState() => _LockedOverlayState();
 }
 
-class _Scrim extends StatelessWidget {
-  const _Scrim({
-    required this.alignment,
-    required this.opacity,
-    required this.height,
-  });
-
-  final Alignment alignment;
-  final double opacity;
-  final double height;
+class _LockedOverlayState extends ConsumerState<_LockedOverlay> {
+  bool _hintVisible = true;
+  Timer? _hintTimer;
 
   @override
-  Widget build(BuildContext context) {
-    final top = alignment == Alignment.topCenter;
-    return Align(
-      alignment: alignment,
-      child: IgnorePointer(
-        child: Container(
-          height: height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: top ? Alignment.topCenter : Alignment.bottomCenter,
-              end: top ? Alignment.bottomCenter : Alignment.topCenter,
-              colors: <Color>[
-                Colors.black.withValues(alpha: opacity),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    _restartHint();
   }
-}
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.media, required this.onInteraction});
+  @override
+  void dispose() {
+    _hintTimer?.cancel();
+    super.dispose();
+  }
 
-  final PlayableMedia media;
-  final VoidCallback onInteraction;
+  void _restartHint() {
+    setState(() => _hintVisible = true);
+    _hintTimer?.cancel();
+    _hintTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _hintVisible = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: spacing.sm),
-        child: Row(
+    return GestureDetector(
+      // A single tap only re-reveals the hint; it never unlocks.
+      onTap: _restartHint,
+      behavior: HitTestBehavior.opaque,
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.45),
+        child: Stack(
+          fit: StackFit.expand,
           children: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              color: Colors.white,
-              tooltip: 'Back',
-              onPressed: () {
-                onInteraction();
-                if (context.canPop()) context.pop();
-              },
-            ),
-            SizedBox(width: spacing.xs),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    media.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+            AnimatedOpacity(
+              opacity: _hintVisible ? 1 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    GestureDetector(
+                      onDoubleTap:
+                          ref.read(playerUiProvider.notifier).unlock,
+                      child: CircleButton(
+                        icon: Icons.lock_rounded,
+                        size: 56,
+                        iconSize: 26,
+                        background: Colors.white.withValues(alpha: 0.12),
+                        foreground: Colors.white,
+                        tooltip: 'Locked',
+                        // Handled by the double-tap wrapper; a single tap
+                        // must not unlock.
+                        onPressed: _restartHint,
+                      ),
                     ),
-                  ),
-                  Row(
-                    children: <Widget>[
-                      Icon(
-                        media.kind.icon,
-                        size: 13,
-                        color: Colors.white.withValues(alpha: 0.75),
+                    SizedBox(height: spacing.lg),
+                    const Text(
+                      'Screen locked',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          media.sourceLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.75),
-                            fontSize: 12,
-                          ),
-                        ),
+                    ),
+                    SizedBox(height: spacing.xs),
+                    Text(
+                      'Tap the lock twice to unlock',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 13,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // The progress bar stays visible at the very bottom, so a locked
+            // screen still says how far in you are.
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: LinearProgressIndicator(
+                value: widget.state.progress,
+                minHeight: 3,
+                backgroundColor: Colors.white.withValues(alpha: 0.25),
               ),
             ),
           ],
@@ -335,195 +479,6 @@ class _TopBar extends StatelessWidget {
       ),
     );
   }
-}
-
-class _TransportRow extends StatelessWidget {
-  const _TransportRow({
-    required this.state,
-    required this.controller,
-    required this.onInteraction,
-  });
-
-  final PlaybackState state;
-  final PlaybackController controller;
-  final VoidCallback onInteraction;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        _CircleButton(
-          icon: Icons.replay_10_rounded,
-          size: 56,
-          iconSize: 28,
-          background: Colors.white.withValues(alpha: 0.12),
-          foreground: Colors.white,
-          tooltip: 'Back 10 seconds',
-          onPressed: () {
-            onInteraction();
-            controller.skip(const Duration(seconds: -10));
-          },
-        ),
-        const SizedBox(width: 28),
-        _CircleButton(
-          // Fill is reserved for play/pause and the selected nav destination.
-          icon: state.playing
-              ? Icons.pause_rounded
-              : Icons.play_arrow_rounded,
-          size: 80,
-          iconSize: 42,
-          background: scheme.primaryContainer,
-          foreground: scheme.onPrimaryContainer,
-          tooltip: state.playing ? 'Pause' : 'Play',
-          onPressed: () {
-            onInteraction();
-            controller.playOrPause();
-          },
-        ),
-        const SizedBox(width: 28),
-        _CircleButton(
-          icon: Icons.forward_30_rounded,
-          size: 56,
-          iconSize: 28,
-          background: Colors.white.withValues(alpha: 0.12),
-          foreground: Colors.white,
-          tooltip: 'Forward 30 seconds',
-          onPressed: () {
-            onInteraction();
-            controller.skip(const Duration(seconds: 30));
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _CircleButton extends StatelessWidget {
-  const _CircleButton({
-    required this.icon,
-    required this.size,
-    required this.iconSize,
-    required this.background,
-    required this.foreground,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final double size;
-  final double iconSize;
-  final Color background;
-  final Color foreground;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: background,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Icon(icon, size: iconSize, color: foreground),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Scrubber extends StatelessWidget {
-  const _Scrubber({
-    required this.state,
-    required this.dragProgress,
-    required this.onDragStart,
-    required this.onDragUpdate,
-    required this.onDragEnd,
-  });
-
-  final PlaybackState state;
-  final double? dragProgress;
-  final ValueChanged<double> onDragStart;
-  final ValueChanged<double> onDragUpdate;
-  final ValueChanged<double> onDragEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final spacing = context.spacing;
-    final value = dragProgress ?? state.progress;
-
-    // While dragging, the times track the finger so the user can see where
-    // they are about to land.
-    final shown = state.duration * value;
-
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          spacing.lg,
-          0,
-          spacing.lg,
-          spacing.md,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 4,
-                activeTrackColor: scheme.primaryContainer,
-                inactiveTrackColor: Colors.white.withValues(alpha: 0.30),
-                thumbColor: scheme.primaryContainer,
-                overlayColor: scheme.primaryContainer.withValues(alpha: 0.24),
-                thumbShape: const RoundSliderThumbShape(
-                  enabledThumbRadius: 7,
-                ),
-                overlayShape: const RoundSliderOverlayShape(
-                  overlayRadius: 13,
-                ),
-              ),
-              child: Slider(
-                value: value.clamp(0.0, 1.0),
-                // Disabled until the duration is known, or the thumb would
-                // sit at 0 and swallow drags.
-                onChanged: state.duration > Duration.zero ? onDragUpdate : null,
-                onChangeStart: onDragStart,
-                onChangeEnd: onDragEnd,
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: spacing.sm),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Text(formatDuration(shown), style: _timeStyle),
-                  Text(
-                    '-${formatDuration(state.duration - shown)}',
-                    style: _timeStyle,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static const _timeStyle = TextStyle(
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: FontWeight.w500,
-  );
 }
 
 class _ErrorOverlay extends StatelessWidget {
