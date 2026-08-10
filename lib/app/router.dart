@@ -6,11 +6,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/browse/browser_page.dart';
+import '../features/downloads/downloads_page.dart';
 import '../features/playback/smoke_test_page.dart';
 import '../features/player/player_page.dart';
 import '../features/search/search_page.dart';
+import '../features/server/library_grid_page.dart';
+import '../features/server/movie_detail_page.dart';
+import '../features/server/series_page.dart';
 import '../features/server/server_empty_page.dart';
+import '../features/server/server_home_page.dart';
+import '../features/settings/about_page.dart';
+import '../features/settings/appearance_page.dart';
+import '../features/settings/player_settings_page.dart';
 import '../features/settings/settings_index_page.dart';
+import '../features/settings/subtitle_settings_page.dart';
 import '../features/storage/storage_page.dart';
 import '../sources/media_source.dart';
 import 'adaptive_scaffold.dart';
@@ -60,6 +70,60 @@ GoRouter buildRouter() {
         path: '/settings',
         parentNavigatorKey: _rootKey,
         builder: (context, state) => const SettingsIndexPage(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'appearance',
+            builder: (context, state) => const AppearancePage(),
+          ),
+          GoRoute(
+            path: 'player',
+            builder: (context, state) => const PlayerSettingsPage(),
+          ),
+          GoRoute(
+            path: 'subtitle',
+            builder: (context, state) => const SubtitleSettingsPage(),
+          ),
+          GoRoute(
+            path: 'about',
+            builder: (context, state) => const AboutPage(),
+          ),
+        ],
+      ),
+      // Server library screens. They live above the shell rather than inside
+      // the Server branch because they are reached from search and from the
+      // Storage tab too, not only from the server home.
+      GoRoute(
+        path: '/server/home',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const ServerHomePage(),
+      ),
+      GoRoute(
+        path: '/library',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const LibraryGridPage(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'movie',
+            builder: (context, state) => const MovieDetailPage(),
+          ),
+          GoRoute(
+            path: 'series',
+            builder: (context, state) => const SeriesPage(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/browse',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => BrowserPage(
+          sourceName: state.uri.queryParameters['name'] ?? 'NAS',
+          sourceIcon: Icons.lan_rounded,
+        ),
+      ),
+      GoRoute(
+        path: '/downloads',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const DownloadsPage(),
       ),
       // The player is fullscreen and above the shell for every source alike.
       // It takes an already-resolved handle rather than an id, so the title

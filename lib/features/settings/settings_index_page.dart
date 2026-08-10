@@ -16,11 +16,15 @@ import '../../app/tokens.dart';
 class SettingsIndexPage extends StatelessWidget {
   const SettingsIndexPage({super.key});
 
+  /// Order is fixed by the design. `route` is null for the two sections the
+  /// design lists but does not draw — they follow the same section+tile
+  /// pattern and are built when their settings actually exist.
   static const _entries = <_SettingsEntry>[
     _SettingsEntry(
       title: 'Appearance',
       subtitle: 'Theme, accent colour, density',
       icon: Icons.palette_rounded,
+      route: 'appearance',
     ),
     _SettingsEntry(
       title: 'General',
@@ -31,6 +35,7 @@ class SettingsIndexPage extends StatelessWidget {
       title: 'Player',
       subtitle: 'Decoding, gestures, streaming quality',
       icon: Icons.play_circle_rounded,
+      route: 'player',
     ),
     _SettingsEntry(
       title: 'Audio',
@@ -41,11 +46,13 @@ class SettingsIndexPage extends StatelessWidget {
       title: 'Subtitle',
       subtitle: 'Style, language order, sync offset',
       icon: Icons.subtitles_rounded,
+      route: 'subtitle',
     ),
     _SettingsEntry(
       title: 'About',
       subtitle: 'Version, licences, diagnostics',
       icon: Icons.info_rounded,
+      route: 'about',
     ),
   ];
 
@@ -76,9 +83,13 @@ class SettingsIndexPage extends StatelessWidget {
               title: Text(e.title),
               subtitle: Text(e.subtitle),
               trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${e.title} — not implemented yet')),
-              ),
+              onTap: e.route == null
+                  ? () => ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${e.title} — not implemented yet'),
+                        ),
+                      )
+                  : () => context.push('/settings/${e.route}'),
             ),
           Padding(
             padding: EdgeInsets.symmetric(
@@ -110,9 +121,13 @@ class _SettingsEntry {
     required this.title,
     required this.subtitle,
     required this.icon,
+    this.route,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
+
+  /// Relative to `/settings`; null means the page does not exist yet.
+  final String? route;
 }

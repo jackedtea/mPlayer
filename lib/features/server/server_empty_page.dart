@@ -77,6 +77,13 @@ class ServerEmptyPage extends StatelessWidget {
                       label: const Text('Add Jellyfin server'),
                     ),
                     SizedBox(height: spacing.sm),
+                    // Until a real connection exists, this is how the
+                    // connected home (1d) is reachable for review.
+                    TextButton(
+                      onPressed: () => context.push('/server/home'),
+                      child: const Text('Preview a connected server'),
+                    ),
+                    SizedBox(height: spacing.sm),
                     TextButton.icon(
                       onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

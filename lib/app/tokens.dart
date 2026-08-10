@@ -145,6 +145,7 @@ class AppRadii extends ThemeExtension<AppRadii> {
     this.action = 16,
     this.card = 12,
     this.chip = 8,
+    this.thumb = 6,
     this.field = 4,
   });
 
@@ -160,6 +161,9 @@ class AppRadii extends ThemeExtension<AppRadii> {
 
   /// Chips and posters.
   final double chip;
+
+  /// Small inline thumbnails — the 64x40 file-row and 108x62 episode stills.
+  final double thumb;
 
   /// Outlined text fields, subtitle preview pill.
   final double field;
@@ -177,6 +181,7 @@ class AppRadii extends ThemeExtension<AppRadii> {
     double? action,
     double? card,
     double? chip,
+    double? thumb,
     double? field,
   }) {
     return AppRadii(
@@ -185,6 +190,7 @@ class AppRadii extends ThemeExtension<AppRadii> {
       action: action ?? this.action,
       card: card ?? this.card,
       chip: chip ?? this.chip,
+      thumb: thumb ?? this.thumb,
       field: field ?? this.field,
     );
   }
@@ -198,6 +204,7 @@ class AppRadii extends ThemeExtension<AppRadii> {
       action: lerpDouble(action, other.action, t),
       card: lerpDouble(card, other.card, t),
       chip: lerpDouble(chip, other.chip, t),
+      thumb: lerpDouble(thumb, other.thumb, t),
       field: lerpDouble(field, other.field, t),
     );
   }

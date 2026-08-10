@@ -47,11 +47,16 @@ class StoragePage extends ConsumerWidget {
           const _NetworkSection(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => openLocalVideo(context, ref),
-        tooltip: 'Open a file or folder',
-        child: const Icon(Icons.folder_open_rounded),
-      ),
+      // At medium width the navigation rail already carries this action as its
+      // leading button (design 1j), so a page FAB would duplicate it.
+      floatingActionButton: context.windowSize.isMedium
+          ? null
+          : FloatingActionButton(
+              heroTag: 'storage-open-file',
+              onPressed: () => openLocalVideo(context, ref),
+              tooltip: 'Open a file or folder',
+              child: const Icon(Icons.folder_open_rounded),
+            ),
     );
   }
 }
@@ -118,7 +123,9 @@ class _ThisDeviceSection extends StatelessWidget {
             title: Text(row.title),
             subtitle: Text(row.subtitle),
             trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
-            onTap: () => _notYet(context, row.title),
+            onTap: () => row.icon == Icons.download_for_offline_rounded
+                ? context.push('/downloads')
+                : context.push('/browse?name=This%20device'),
           ),
       ],
     );
@@ -149,7 +156,11 @@ class _NetworkSection extends StatelessWidget {
               for (final MediaSourceRef source in SampleData.networkSources) ...<Widget>[
                 SourceTile(
                   source: source,
-                  onTap: () => _notYet(context, 'Browse ${source.name}'),
+                  // An offline share cannot be browsed; the tile stays visible
+                  // but inert rather than disappearing from the list.
+                  onTap: source.online
+                      ? () => context.push('/browse?name=${source.name}')
+                      : null,
                 ),
                 SizedBox(height: spacing.sm),
               ],

@@ -126,6 +126,9 @@ class _RailShell extends ConsumerWidget {
             leading: Padding(
               padding: EdgeInsets.symmetric(vertical: spacing.md),
               child: FloatingActionButton(
+                // Explicit tag: this FAB outlives page transitions, so it
+                // would collide with any page-level FAB's default hero tag.
+                heroTag: 'rail-open-file',
                 onPressed: () => openLocalVideo(context, ref),
                 elevation: 0,
                 tooltip: 'Open a file or folder',

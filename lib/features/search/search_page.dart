@@ -8,8 +8,10 @@ import 'package:flutter/material.dart';
 import '../../app/tokens.dart';
 import '../../core/models/media_models.dart';
 import '../../core/sample_data.dart';
+import '../../core/sample_library.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/source_tile.dart';
+import 'search_results.dart';
 
 /// Screen 1n, idle state — scoped search across device, shares and server.
 ///
@@ -27,8 +29,20 @@ class _SearchPageState extends State<SearchPage> {
   List<SearchScope> _scopes = List<SearchScope>.of(SampleData.searchScopes);
   final List<RecentSearch> _recents =
       List<RecentSearch>.of(SampleData.recentSearches);
+  final TextEditingController _query = TextEditingController();
+
+  /// Empty means the idle state; anything else shows grouped results.
+  String _submitted = '';
+
+  bool get _isActive => _submitted.isNotEmpty;
 
   bool get _allSelected => _scopes.every((s) => s.enabled || !s.source.online);
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,16 +62,29 @@ class _SearchPageState extends State<SearchPage> {
                 spacing.md,
               ),
               child: SearchBar(
+                controller: _query,
                 hintText: 'Search everything',
-                leading: Icon(
-                  Icons.search_rounded,
+                // Back replaces the magnifier once a query is active, so
+                // there is always a way out of the results.
+                leading: IconButton(
+                  icon: Icon(
+                    _isActive
+                        ? Icons.arrow_back_rounded
+                        : Icons.search_rounded,
+                  ),
                   color: context.colors.onSurfaceVariant,
+                  tooltip: _isActive ? 'Back to sources' : 'Search',
+                  onPressed: _isActive ? _clearQuery : null,
                 ),
                 trailing: <Widget>[
                   IconButton(
-                    icon: const Icon(Icons.mic_rounded),
-                    tooltip: 'Voice search',
-                    onPressed: () => _notYet(context, 'Voice search'),
+                    icon: Icon(
+                      _isActive ? Icons.close_rounded : Icons.mic_rounded,
+                    ),
+                    tooltip: _isActive ? 'Clear' : 'Voice search',
+                    onPressed: _isActive
+                        ? _clearQuery
+                        : () => _notYet(context, 'Voice search'),
                   ),
                 ],
                 onSubmitted: _runQuery,
@@ -69,6 +96,11 @@ class _SearchPageState extends State<SearchPage> {
               onToggleAll: _selectAll,
               onToggle: _toggleScope,
             ),
+            if (_isActive)
+              const Expanded(
+                child: SearchResultsView(groups: SampleLibrary.resultGroups),
+              )
+            else
             Expanded(
               child: ListView(
                 padding: EdgeInsets.only(bottom: spacing.xl),
@@ -156,8 +188,23 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _runQuery(String query) {
-    if (query.trim().isEmpty) return;
-    _notYet(context, 'Search for "$query"');
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+
+    setState(() {
+      _submitted = trimmed;
+      _query.text = trimmed;
+      // Most-recent-first, without duplicating an existing entry.
+      _recents.removeWhere((r) => r.query == trimmed);
+      _recents.insert(0, RecentSearch(trimmed));
+    });
+  }
+
+  void _clearQuery() {
+    setState(() {
+      _submitted = '';
+      _query.clear();
+    });
   }
 }
 

@@ -6,7 +6,8 @@ Cross-platform video player and media server client (Jellyfin/Emby) with SMB/Web
 
 ## Current state (2026-08-10)
 
-Design build steps 1 and 2 done.
+Design build steps 1 and 2 done; **every screen `1a`–`1n` is now drawn and reachable**,
+but only the local-playback path is backed by real data.
 
 **Step 1 — shell.** `app/tokens.dart` (design tokens as `ThemeExtension`s + `WindowSize`),
 `app/theme.dart`, `app/router.dart`, `app/adaptive_scaffold.dart`, and screens 1a Storage,
@@ -19,11 +20,18 @@ Design build steps 1 and 2 done.
 screen 1h with the video surface, transport and scrubber. Picking a file from the Storage
 FAB plays it end to end. This path uses **no** sample data.
 
+**Screens.** 1b browser, 1d server home, 1e library grid, 1f movie detail, 1g series,
+1i downloads, 1m settings pages (Appearance / Player / Subtitle / About) and the active
+state of 1n all render against `core/sample_library.dart`. General and Audio settings are
+listed in the index but have no page yet — the design does not draw them either.
+
 Verified by actually building and running, not assumed:
 
 - Windows debug build links and bundles `libmpv-2.dll`
-- Android debug APK builds and bundles `libmpv.so` for all three ABIs
-- `flutter analyze` clean; `flutter test` 27/27 passing
+- Android debug APK builds and bundles `libmpv.so` for all three ABIs, plus the Roboto asset
+- `flutter analyze` clean; `flutter test` 73/73 passing. `test/screens_test.dart` pumps
+  **every route at all three breakpoints** and fails on any overflow — it caught a
+  duplicate FAB hero tag and two real overflows, so do not weaken it.
 
 Still open:
 
@@ -32,9 +40,25 @@ Still open:
    libmpv opens them has not been tested**. If it fails, copy to cache or resolve the fd.
 2. Confirm the Linux build on a machine with `libmpv-dev`
 
-Next is design build step 3: player chrome — controls overlay, gestures (brightness /
-volume / double-tap seek), lock, rotation, track & quality sheets, more menu, stats
-overlay.
+Next is design build step 3: player chrome — gestures (brightness / volume / double-tap
+seek), lock, rotation, track & quality sheets, more menu, chapter ticks, skip-intro and
+the stats overlay. Then steps 4–5, the SMB/WebDAV and Jellyfin backends that replace the
+sample data.
+
+## Layout rules learned the hard way
+
+- **Ink rings sit outside content.** `ContinueWatchingCard` and `PosterTile` inset their
+  tappable surface by `spacing.hitInset`, so callers subtract `2 * hitInset` from gaps and
+  padding to keep artwork on the design's grid. Both expose `outerWidth` / `outerHeight`;
+  use those rather than re-deriving the arithmetic.
+- **Never size a grid cell with `childAspectRatio`** when the child has fixed-height
+  content — cell width varies with the window, dragging height with it. Pass
+  `mainAxisExtent` and let the artwork flex.
+- **Derive text heights from the theme and `MediaQuery.textScalerOf`, then `ceilToDouble()`
+  per line.** The engine lays line boxes out on whole pixels, so `fontSize * height` can
+  land a fraction short and overflow a fixed-height shelf.
+- **Give every persistent FAB an explicit `heroTag`.** The rail's action outlives page
+  transitions and collides with page-level FABs otherwise.
 
 ## Design source of truth
 
