@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Signing material. Keystores and their passwords live in repository secrets
+# (KEYSTORE / KEYSTORE_DEV and friends) and are decoded at build time — a
+# committed keystore cannot be un-published.
+*.jks
+*.keystore
+key.properties
+**/android/key.properties

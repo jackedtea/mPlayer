@@ -1,0 +1,344 @@
+name: Build & Release
+
+# Every push to main or dev ships a build; anything else is manual.
+# A manual run on any other branch is treated as a dev build.
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.44.0'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Derive every name and flag once, so the three build jobs cannot disagree
+  # about what they are producing.
+  # ---------------------------------------------------------------------------
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      is_dev: ${{ steps.meta.outputs.is_dev }}
+      version: ${{ steps.meta.outputs.version }}
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+      tag: ${{ steps.meta.outputs.tag }}
+      release_name: ${{ steps.meta.outputs.release_name }}
+      artifact_base: ${{ steps.meta.outputs.artifact_base }}
+      app_id_suffix: ${{ steps.meta.outputs.app_id_suffix }}
+      version_name_suffix: ${{ steps.meta.outputs.version_name_suffix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive build metadata
+        id: meta
+        run: |
+          set -euo pipefail
+
+          # main is the only production branch; everything else is dev.
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            IS_DEV=false
+          else
+            IS_DEV=true
+          fi
+
+          # "1.0.0+1" -> "1.0.0"
+          VERSION="$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)"
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+
+          if [ "$IS_DEV" = "true" ]; then
+            TAG="dev-${SHORT_SHA}"
+            RELEASE_NAME="mPlayer ${VERSION}-dev.${SHORT_SHA}"
+            ARTIFACT_BASE="mPlayer-${VERSION}-dev-${SHORT_SHA}"
+            APP_ID_SUFFIX=".dev"
+            VERSION_NAME_SUFFIX="-dev-${SHORT_SHA}"
+          else
+            TAG="v${VERSION}"
+            RELEASE_NAME="mPlayer ${VERSION}"
+            ARTIFACT_BASE="mPlayer-${VERSION}"
+            APP_ID_SUFFIX=""
+            VERSION_NAME_SUFFIX=""
+          fi
+
+          {
+            echo "is_dev=$IS_DEV"
+            echo "version=$VERSION"
+            echo "short_sha=$SHORT_SHA"
+            echo "tag=$TAG"
+            echo "release_name=$RELEASE_NAME"
+            echo "artifact_base=$ARTIFACT_BASE"
+            echo "app_id_suffix=$APP_ID_SUFFIX"
+            echo "version_name_suffix=$VERSION_NAME_SUFFIX"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Building $RELEASE_NAME (tag $TAG, dev=$IS_DEV)" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Android
+  # ---------------------------------------------------------------------------
+  android:
+    name: Android APK
+    needs: prepare
+    runs-on: ubuntu-latest
+    outputs:
+      signed: ${{ steps.keystore.outputs.signed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # The suite pumps every route at all three breakpoints; a layout
+      # regression should stop the release, not ship in it.
+      - run: flutter analyze
+      - run: flutter test
+
+      # Both secret sets are passed in and chosen in shell rather than with a
+      # `cond && A || B` expression: that operator falls through to B whenever
+      # A is empty, which would sign a main build with the dev key in silence.
+      - name: Select signing material
+        id: keystore
+        env:
+          MAIN_KEYSTORE: ${{ secrets.KEYSTORE }}
+          MAIN_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          MAIN_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          MAIN_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          DEV_KEYSTORE: ${{ secrets.KEYSTORE_DEV }}
+          DEV_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD_DEV }}
+          DEV_KEY_ALIAS: ${{ secrets.KEY_ALIAS_DEV }}
+          DEV_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD_DEV }}
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            B64="${MAIN_KEYSTORE:-}"
+            STORE_PASSWORD="${MAIN_KEYSTORE_PASSWORD:-}"
+            ALIAS="${MAIN_KEY_ALIAS:-}"
+            KEY_PASSWORD="${MAIN_KEY_PASSWORD:-}"
+          else
+            B64="${DEV_KEYSTORE:-}"
+            STORE_PASSWORD="${DEV_KEYSTORE_PASSWORD:-}"
+            ALIAS="${DEV_KEY_ALIAS:-}"
+            KEY_PASSWORD="${DEV_KEY_PASSWORD:-}"
+          fi
+
+          if [ -z "$B64" ]; then
+            # Configuring secrets is a separate chore from getting the
+            # pipeline green, so fall back rather than hard-failing — the
+            # release notes and the Telegram message both say so loudly.
+            echo "::warning::No keystore secret for '${GITHUB_REF_NAME}'; the APK will be debug-signed."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          KEYSTORE_FILE="${GITHUB_WORKSPACE}/android/app/ci-keystore.jks"
+          echo "$B64" | base64 -d > "$KEYSTORE_FILE"
+
+          # Gradle reads these from the environment; they stay masked in logs.
+          {
+            echo "KEYSTORE_PATH=$KEYSTORE_FILE"
+            echo "KEYSTORE_PASSWORD=$STORE_PASSWORD"
+            echo "KEY_ALIAS=$ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        env:
+          APP_ID_SUFFIX: ${{ needs.prepare.outputs.app_id_suffix }}
+          VERSION_NAME_SUFFIX: ${{ needs.prepare.outputs.version_name_suffix }}
+        run: flutter build apk --release
+
+      - name: Name the artifact
+        run: |
+          set -euo pipefail
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             "${{ needs.prepare.outputs.artifact_base }}.apk"
+
+      - name: Always remove the keystore
+        if: always()
+        run: rm -f "${{ github.workspace }}/android/app/ci-keystore.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: ${{ needs.prepare.outputs.artifact_base }}.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Windows
+  # ---------------------------------------------------------------------------
+  windows:
+    name: Windows EXE
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build windows --release
+
+      # The exe alone will not run: media_kit ships libmpv-2.dll and Flutter
+      # ships its own runtime beside it, so the whole Release folder is the
+      # deliverable.
+      - name: Package the Release folder
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path build\windows\x64\runner\Release\* `
+            -DestinationPath "${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: ${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Release
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish release
+    needs: [prepare, android, windows]
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.publish.outputs.url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Compose release notes
+        id: notes
+        run: |
+          set -euo pipefail
+          {
+            echo "notes<<RELEASE_NOTES_EOF"
+            echo "**Commit** \`${{ needs.prepare.outputs.short_sha }}\` on \`${GITHUB_REF_NAME}\`"
+            echo ""
+            if [ "${{ needs.prepare.outputs.is_dev }}" = "true" ]; then
+              echo "Dev build — application id ends in \`.dev\`, so it installs alongside a release build."
+            fi
+            if [ "${{ needs.android.outputs.signed }}" != "true" ]; then
+              echo ""
+              echo "> **Warning**"
+              echo "> No keystore secret was set for this branch, so the APK is **debug-signed**. Do not distribute it."
+            fi
+            echo ""
+            echo "| Artifact | Platform |"
+            echo "|---|---|"
+            echo "| \`${{ needs.prepare.outputs.artifact_base }}.apk\` | Android |"
+            echo "| \`${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip\` | Windows x64 |"
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish
+        id: publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.release_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          # Dev builds are prereleases and never become "latest".
+          prerelease: ${{ needs.prepare.outputs.is_dev == 'true' }}
+          make_latest: ${{ needs.prepare.outputs.is_dev == 'false' }}
+          target_commitish: ${{ github.sha }}
+          files: artifacts/*
+          fail_on_unmatched_files: true
+
+  # ---------------------------------------------------------------------------
+  # Telegram
+  # ---------------------------------------------------------------------------
+  notify:
+    name: Notify Telegram
+    needs: [prepare, android, release]
+    runs-on: ubuntu-latest
+    # Reports failures too — a silent pipeline is worse than a noisy one.
+    if: always() && needs.prepare.result == 'success'
+    steps:
+      - name: Send message
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BOT_TOKEN:-}" ] || [ -z "${CHAT_ID:-}" ]; then
+            echo "::warning::TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set; skipping."
+            exit 0
+          fi
+
+          REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          RUN_URL="${REPO_URL}/actions/runs/${GITHUB_RUN_ID}"
+
+          if [ "${{ needs.release.result }}" = "success" ]; then
+            STATUS="✅ Release published"
+            LINK="${REPO_URL}/releases/tag/${{ needs.prepare.outputs.tag }}"
+            LINK_LINE="<a href=\"${LINK}\">Download</a> · <a href=\"${RUN_URL}\">Logs</a>"
+          else
+            STATUS="❌ Build failed"
+            LINK_LINE="<a href=\"${RUN_URL}\">Logs</a>"
+          fi
+
+          if [ "${{ needs.prepare.outputs.is_dev }}" = "true" ]; then
+            CHANNEL="dev"
+          else
+            CHANNEL="release"
+          fi
+
+          WARN=""
+          if [ "${{ needs.android.outputs.signed }}" != "true" ]; then
+            WARN="⚠️ APK is debug-signed (no keystore secret)"
+          fi
+
+          # jq builds both the text and the JSON, so a branch name or release
+          # title containing quotes cannot break the request — and every line
+          # here stays indented, which a multi-line shell string would not.
+          jq -n \
+            --arg chat_id "$CHAT_ID" \
+            --arg status "$STATUS" \
+            --arg name "${{ needs.prepare.outputs.release_name }}" \
+            --arg channel "$CHANNEL" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg sha "${{ needs.prepare.outputs.short_sha }}" \
+            --arg warn "$WARN" \
+            --arg link "$LINK_LINE" \
+            '{
+               chat_id: $chat_id,
+               parse_mode: "HTML",
+               disable_web_page_preview: true,
+               text: ("<b>" + $status + "</b>\n"
+                 + "<b>mPlayer</b> " + $name + "\n"
+                 + "Channel: <code>" + $channel + "</code>\n"
+                 + "Branch: <code>" + $branch + "</code> · Commit: <code>" + $sha + "</code>"
+                 + (if $warn == "" then "" else "\n" + $warn end)
+                 + "\n\n" + $link)
+             }' \
+          | curl -sS -f -X POST \
+              "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+              -H 'Content-Type: application/json' \
+              -d @- > /dev/null
+
+          echo "Telegram notification sent."

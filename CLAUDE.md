@@ -162,6 +162,27 @@ dart run flutter_launcher_icons          # Android, iOS, Windows, macOS
 
 Linux is not covered by that tool — its icons live in `linux/packaging/icons/hicolor/` alongside the `.desktop` file, regenerated from `icon.svg` by hand when the artwork changes.
 
+## CI / release
+
+`.github/workflows/release.yml` builds an Android APK and a Windows zip, publishes a
+GitHub release and posts to Telegram. Runs on push to `main` or `dev`, or manually on any
+branch.
+
+- **`main` is the only production branch**; every other ref builds as a dev channel —
+  application id gets `.dev` (so both installs coexist), version name and artifact name
+  get `-dev-<short-sha>`, and the release is marked prerelease.
+- Signing comes from repository secrets: `KEYSTORE` / `KEYSTORE_PASSWORD` / `KEY_ALIAS` /
+  `KEY_PASSWORD` on main, the `*_DEV` set elsewhere. The keystore is base64 in the secret,
+  decoded to `android/app/ci-keystore.jks` and deleted afterwards.
+- `android/app/build.gradle.kts` reads `KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`,
+  `KEY_PASSWORD`, `APP_ID_SUFFIX` and `VERSION_NAME_SUFFIX` **from the environment**. With
+  none set it falls back to debug signing, so local release builds still work.
+- Never select secrets with `cond && secrets.A || secrets.B` — that operator falls through
+  to `B` when `A` is empty, which would sign a main build with the dev key silently. The
+  workflow passes both sets and chooses in shell.
+- Missing keystore secrets do not fail the build; the APK is debug-signed and both the
+  release notes and the Telegram message say so.
+
 ## Reference material
 
 `../refs/NipaPlay-Reload` (MIT) — a working Flutter media client. Its `lib/services/` contains Emby (1712 lines), Jellyfin (1655), WebDAV (1617) and SMB implementations with **zero danmaku coupling**, sharing `media_server_service_base.dart`. Adapt these; do not fork the whole app (its `lib/` is ~270k lines and heavily anime-oriented).
