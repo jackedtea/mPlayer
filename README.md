@@ -43,6 +43,7 @@ The full text is in [LICENSE](LICENSE).
 | libmpv / FFmpeg binaries bundled by `media_kit_libs_*` | LGPL-2.1-or-later (upstream) | Dynamically linked; GPLv3-compatible |
 | Service-layer code adapted from [NipaPlay-Reload](https://github.com/MCDFsteve/NipaPlay-Reload) | MIT | GPLv3-compatible; MIT notice retained in adapted files |
 | Material Icons | Apache-2.0 | Bundled via `uses-material-design` |
+| Roboto (`assets/fonts/Roboto-Variable.ttf`) | SIL OFL 1.1 | Bundled, not fetched at runtime; notice in `assets/fonts/OFL.txt` and registered with `LicenseRegistry` |
 
 Because the app links libmpv, distributing binaries obliges you to also make this
 project's source available under the GPL — which the license above already does.

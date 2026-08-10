@@ -4,8 +4,10 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/player/open_local_video.dart';
 import 'tokens.dart';
 
 /// One of the three top-level destinations.
@@ -102,14 +104,14 @@ class _CompactShell extends StatelessWidget {
   }
 }
 
-class _RailShell extends StatelessWidget {
+class _RailShell extends ConsumerWidget {
   const _RailShell({required this.shell, required this.onGo});
 
   final StatefulNavigationShell shell;
   final void Function(int) onGo;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
     final scheme = context.colors;
 
@@ -124,11 +126,7 @@ class _RailShell extends StatelessWidget {
             leading: Padding(
               padding: EdgeInsets.symmetric(vertical: spacing.md),
               child: FloatingActionButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Local folder picker — not implemented yet'),
-                  ),
-                ),
+                onPressed: () => openLocalVideo(context, ref),
                 elevation: 0,
                 tooltip: 'Open a file or folder',
                 child: const Icon(Icons.folder_open_rounded),

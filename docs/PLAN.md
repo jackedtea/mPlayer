@@ -160,8 +160,23 @@ supersedes the ordering guesses in this phase list where the two disagree.
       spacing/radii/semantic colours as `ThemeExtension`s
 - [x] Screens 1a (Storage), 1c (Server empty + add-server sheet), 1n (Search idle),
       1l (Settings index) against placeholder data
+- [x] Bundle Roboto (variable, OFL) — `google_fonts` rejected, it fetches at runtime
 - [ ] Theme mode + accent persisted via `shared_preferences` (Appearance page, 1m)
 - [ ] Replace `core/sample_data.dart` with repository-backed Riverpod providers
+
+### Design build step 2 — playback core (done)
+
+- [x] `sources/media_source.dart` — `MediaSource`, `MediaRef`, `PlayableMedia`,
+      `SourceCapabilities`, `MediaSourceException`
+- [x] `sources/local_source.dart` — device files + `file_selector` picker
+- [x] `features/player/playback_controller.dart` — Riverpod `Notifier` over `media_kit`;
+      `media_kit` types stay out of the UI apart from the `Video` surface itself
+- [x] `features/player/player_page.dart` — screen 1h: video surface, transport, scrubber,
+      auto-hiding chrome, keyboard transport, inline error
+- [ ] Verify a `content://` handle from the Android picker actually opens in libmpv
+
+**Dependency note**: `file_picker` is unusable here — 8.3.3–11.x pin `win32 ^5.9.0` while
+`flutter_secure_storage_windows` needs `win32 ^6.0.1`. Use `file_selector` (flutter.dev).
 - [ ] `data/db/app_database.dart` — Drift schema v1:
   - [ ] `server_profiles` (type, url, credentials ref, display name, last used)
   - [ ] `media_items` (metadata cache)

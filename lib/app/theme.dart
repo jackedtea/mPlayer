@@ -61,6 +61,10 @@ ThemeData buildTheme(Brightness brightness) {
 
   return ThemeData(
     colorScheme: scheme,
+    // Bundled variable Roboto — see pubspec. Without this, only Android would
+    // render the design's typeface; the other platforms fall back to Segoe UI
+    // / SF / Cantarell and the whole type scale drifts.
+    fontFamily: 'Roboto',
     // Stock M3 TextTheme — the size/leading/tracking values in the spec are
     // the M3 defaults, so overriding them would only introduce drift.
     extensions: <ThemeExtension<dynamic>>[spacing, radii, semantic],
@@ -76,10 +80,8 @@ ThemeData buildTheme(Brightness brightness) {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: ThemeData(brightness: brightness)
-          .textTheme
-          .titleLarge
-          ?.copyWith(color: scheme.onSurface),
+      // titleTextStyle is left to M3: it already resolves to titleLarge in
+      // onSurface, and setting it here would bypass the themed font family.
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: scheme.surfaceContainer,

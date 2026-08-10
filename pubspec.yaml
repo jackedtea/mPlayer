@@ -49,7 +49,7 @@ dependencies:
   collection: ^1.19.1
   intl: ^0.20.3
   freezed: 3.2.5
-
+  file_selector: ^1.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -82,6 +82,22 @@ flutter:
     # `dart run flutter_launcher_icons` and are not bundled from here.
     - assets/icon/icon.png
     - assets/icon/icon_256.png
+    # Surfaced through LicenseRegistry so the font's OFL notice appears in the
+    # About page's licences list. See main.dart.
+    - assets/fonts/OFL.txt
+
+  fonts:
+    # Roboto is bundled rather than fetched at runtime (as `google_fonts`
+    # would): the app must look right on first launch with no network, and
+    # only Android supplies Roboto as a system font.
+    #
+    # This is the canonical variable font from google/fonts (OFL-1.1). It is
+    # declared once with no `weight:` — since Flutter's font-weight-variation
+    # change, a TextStyle's FontWeight drives the `wght` axis directly, so
+    # every weight the design uses comes out of this one file.
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Variable.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

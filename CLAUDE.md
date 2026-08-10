@@ -6,30 +6,35 @@ Cross-platform video player and media server client (Jellyfin/Emby) with SMB/Web
 
 ## Current state (2026-08-10)
 
-Phase 0 done; Phase 1 in progress — the app shell is navigable.
+Design build steps 1 and 2 done.
 
-Built: `app/tokens.dart` (design tokens as `ThemeExtension`s + `WindowSize`), `app/theme.dart`,
-`app/router.dart`, `app/adaptive_scaffold.dart`, and screens 1a Storage, 1c Server-empty +
-add-server sheet, 1n Search-idle, 1l Settings-index. All render against
-`core/sample_data.dart` placeholders — **no real data source exists yet.**
+**Step 1 — shell.** `app/tokens.dart` (design tokens as `ThemeExtension`s + `WindowSize`),
+`app/theme.dart`, `app/router.dart`, `app/adaptive_scaffold.dart`, and screens 1a Storage,
+1c Server-empty + add-server sheet, 1n Search-idle, 1l Settings-index. These render against
+`core/sample_data.dart` placeholders — **the browse/library UI has no real data yet.**
+
+**Step 2 — playback.** `sources/media_source.dart` (the `MediaSource` interface,
+`MediaRef`, `PlayableMedia`, `SourceCapabilities`), `sources/local_source.dart`, and
+`features/player/` — `PlaybackController` (Riverpod, hand-written) over `media_kit`, plus
+screen 1h with the video surface, transport and scrubber. Picking a file from the Storage
+FAB plays it end to end. This path uses **no** sample data.
 
 Verified by actually building and running, not assumed:
 
 - Windows debug build links and bundles `libmpv-2.dll`
 - Android debug APK builds and bundles `libmpv.so` for all three ABIs
-- `flutter analyze` clean; `flutter test` 12/12 passing, covering the three
-  breakpoints, the no-server-gate startup rule and search scoping
+- `flutter analyze` clean; `flutter test` 27/27 passing
 
 Still open:
 
-1. Run the smoke test (`/smoke` route) on a real Android device and confirm video
-   actually renders (a successful build does not prove playback works)
+1. Play a real file on a real Android device. `file_selector_android` may hand back a
+   `content://` URI; `LocalSource.resolve` passes those through untouched, but **whether
+   libmpv opens them has not been tested**. If it fails, copy to cache or resolve the fd.
 2. Confirm the Linux build on a machine with `libmpv-dev`
-3. Bundle Roboto / Roboto Flex TTFs — the design specifies them, but only Android
-   supplies Roboto as a system font; Windows and Linux currently fall back
 
-Next real work is design build step 2: `MediaSource` interface, local source, and the
-player screen — one device file playing end to end.
+Next is design build step 3: player chrome — controls overlay, gestures (brightness /
+volume / double-tap seek), lock, rotation, track & quality sheets, more menu, stats
+overlay.
 
 ## Design source of truth
 
@@ -75,6 +80,24 @@ Generated files (`*.g.dart`, `*.freezed.dart`) are exempt — build_runner overw
 
 When adapting code from `refs/NipaPlay-Reload` (MIT), keep its MIT copyright notice in the
 adapted file alongside the GPL header. MIT is GPLv3-compatible; the combined work is GPLv3.
+
+## Typography
+
+Roboto is **bundled**, not fetched: `assets/fonts/Roboto-Variable.ttf`, the canonical
+variable font from google/fonts (OFL-1.1). Do not add `google_fonts` — it downloads at
+runtime, so a first launch without network would fall back to the system face on the very
+first screen.
+
+Declared once in `pubspec.yaml` with **no `weight:`**. Since Flutter's
+[font-weight-variation change](https://docs.flutter.dev/release/breaking-changes/font-weight-variation),
+a `TextStyle`'s `FontWeight` drives the `wght` axis directly, so one file covers every
+weight the design uses. Adding per-weight entries would pin the axis and break this.
+
+The OFL notice is bundled as an asset and registered with `LicenseRegistry` in
+`main.dart`, so it appears in the About page's licences list.
+
+Never set `titleTextStyle` (or any text style) from a freshly constructed `ThemeData` —
+that instance has no font family, so the style silently loses Roboto. Let M3 resolve it.
 
 ## UI icons
 

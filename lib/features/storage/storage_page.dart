@@ -4,11 +4,13 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/media_models.dart';
 import '../../core/sample_data.dart';
+import '../player/open_local_video.dart';
 import '../../widgets/continue_watching_card.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/source_tile.dart';
@@ -16,11 +18,11 @@ import '../../widgets/source_tile.dart';
 /// Screen 1a — the launch destination.
 ///
 /// Deliberately server-free: everything here works with nothing configured.
-class StoragePage extends StatelessWidget {
+class StoragePage extends ConsumerWidget {
   const StoragePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
 
     return Scaffold(
@@ -46,7 +48,7 @@ class StoragePage extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _notYet(context, 'Local folder picker'),
+        onPressed: () => openLocalVideo(context, ref),
         tooltip: 'Open a file or folder',
         child: const Icon(Icons.folder_open_rounded),
       ),
