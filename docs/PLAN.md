@@ -136,8 +136,9 @@ lib/
 - [x] Linux `.desktop` + hicolor icon set in `linux/packaging/`
 - [x] Display name `mPlayer` on every platform
 - [x] Smoke-test page + passing widget/unit tests
-- [ ] Move workspace to `D:\Work\Projects\mPlayer-app`
-- [ ] `git init`, first commit, `.gitignore` review
+- [x] Move workspace to `D:\Work\Projects\mPlayer-app`
+- [x] `git init`, first commit, `.gitignore` review
+- [x] GPL-3.0-or-later `LICENSE` + per-file SPDX headers
 - [ ] Run the smoke test on a real Android device and confirm video actually renders (build success ≠ playback success)
 - [ ] Set up a Linux VM/WSL with `libmpv-dev` and confirm the Linux build
 
@@ -147,9 +148,20 @@ lib/
 
 ## Phase 1 — App shell
 
-- [ ] `app/router.dart` — go_router with shell route (bottom nav on mobile, `NavigationRail` on desktop)
-- [ ] Responsive breakpoint helper (`compact` / `medium` / `expanded`)
-- [ ] Material 3 theme: seed color, light/dark/system, persisted via `shared_preferences`
+The UI from here on follows the design bundle in `../design/` — `README.md` there is
+the authoritative spec (tokens, screens `1a`–`1n`, adaptive table), and its build order
+supersedes the ordering guesses in this phase list where the two disagree.
+
+- [x] `app/router.dart` — go_router `StatefulShellRoute.indexedStack`, 3 branches
+      (Storage / Server / Search), Settings above the shell
+- [x] Responsive breakpoint helper — `WindowSize` in `app/tokens.dart` (600 / 1240)
+- [x] `app/adaptive_scaffold.dart` — `NavigationBar` / `NavigationRail` / `NavigationDrawer`
+- [x] Material 3 theme: seeded `0xFF0A6E9E`, role values pinned to the design table,
+      spacing/radii/semantic colours as `ThemeExtension`s
+- [x] Screens 1a (Storage), 1c (Server empty + add-server sheet), 1n (Search idle),
+      1l (Settings index) against placeholder data
+- [ ] Theme mode + accent persisted via `shared_preferences` (Appearance page, 1m)
+- [ ] Replace `core/sample_data.dart` with repository-backed Riverpod providers
 - [ ] `data/db/app_database.dart` — Drift schema v1:
   - [ ] `server_profiles` (type, url, credentials ref, display name, last used)
   - [ ] `media_items` (metadata cache)

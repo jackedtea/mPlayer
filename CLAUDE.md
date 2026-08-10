@@ -6,21 +6,51 @@ Cross-platform video player and media server client (Jellyfin/Emby) with SMB/Web
 
 ## Current state (2026-08-10)
 
-Phase 0, nearly complete. The app is a scaffold: `lib/` contains only `main.dart`, `app/app.dart`, `app/theme.dart` and a temporary `features/playback/smoke_test_page.dart`. There is no real feature code yet.
+Phase 0 done; Phase 1 in progress — the app shell is navigable.
 
-Verified by actually building, not assumed:
+Built: `app/tokens.dart` (design tokens as `ThemeExtension`s + `WindowSize`), `app/theme.dart`,
+`app/router.dart`, `app/adaptive_scaffold.dart`, and screens 1a Storage, 1c Server-empty +
+add-server sheet, 1n Search-idle, 1l Settings-index. All render against
+`core/sample_data.dart` placeholders — **no real data source exists yet.**
+
+Verified by actually building and running, not assumed:
 
 - Windows debug build links and bundles `libmpv-2.dll`
 - Android debug APK builds and bundles `libmpv.so` for all three ABIs
-- `flutter analyze` clean, `flutter test` passing
+- `flutter analyze` clean; `flutter test` 12/12 passing, covering the three
+  breakpoints, the no-server-gate startup rule and search scoping
 
-Still open in Phase 0:
+Still open:
 
-1. `git init` and a first commit — the project is **not** under version control yet
-2. Run the smoke test on a real Android device and confirm video actually renders (a successful build does not prove playback works)
-3. Confirm the Linux build on a machine with `libmpv-dev`
+1. Run the smoke test (`/smoke` route) on a real Android device and confirm video
+   actually renders (a successful build does not prove playback works)
+2. Confirm the Linux build on a machine with `libmpv-dev`
+3. Bundle Roboto / Roboto Flex TTFs — the design specifies them, but only Android
+   supplies Roboto as a system font; Windows and Linux currently fall back
 
-Next real work is Phase 1 (app shell: router, theme persistence, Drift schema).
+Next real work is design build step 2: `MediaSource` interface, local source, and the
+player screen — one device file playing end to end.
+
+## Design source of truth
+
+`../design/` holds the exported design bundle. **`../design/README.md` is the spec** —
+colour/type/shape tokens, the adaptive-layout table, and screens `1a`–`1n` described in
+prose. `Jellyfin Client.dc.html` is the visual reference; open it in a browser, do not
+port its markup. `../design/CLAUDE.md` carries the non-negotiables and the build order.
+
+Read-only, like `refs/`.
+
+Four rules from that bundle that are easy to violate by accident:
+
+1. The app must be fully usable with **no server configured**. Never gate startup on a
+   login or a reachable server; a dead server shows an inline retry, never a modal.
+2. Stock Material 3 widgets first — do not hand-roll what `NavigationBar`, `FilterChip`,
+   `ListTile`, `Slider` or `SearchBar` already provide.
+3. One player screen serves local files, SMB/WebDAV/NFS shares and Jellyfin streams.
+   Do not fork it per source.
+4. No magic numbers in widgets — spacing and radii come from `context.spacing` /
+   `context.radii`, colours from `context.colors`, and the few M3 has no slot for
+   (success green, rating star, divider) from `context.semantic`.
 
 ## Identity
 
@@ -46,12 +76,20 @@ Generated files (`*.g.dart`, `*.freezed.dart`) are exempt — build_runner overw
 When adapting code from `refs/NipaPlay-Reload` (MIT), keep its MIT copyright notice in the
 adapted file alongside the GPL header. MIT is GPLv3-compatible; the combined work is GPLv3.
 
-## Icons
+## UI icons
 
-**Material Icons only** (`Icons.*`, already enabled via `uses-material-design: true`). No
-FontAwesome — Flutter's built-in widgets draw Material glyphs internally, so mixing sets
-splits the visual language, and FA Free's CC BY 4.0 attribution is needless friction.
+**Material only** (`Icons.*`, enabled via `uses-material-design: true`). No FontAwesome —
+Flutter's built-in widgets draw Material glyphs internally, so mixing sets splits the
+visual language, and FA Free's CC BY 4.0 attribution is needless friction.
 `cupertino_icons` was removed as unused.
+
+The design specifies **Material Symbols Rounded**, so use the `_rounded` suffix
+(`Icons.folder_rounded`, `Icons.dns_rounded`). Its glyph names map 1:1 onto the names
+listed in `../design/README.md`.
+
+Filled vs outlined carries meaning — use the filled variant **only** for the selected
+navigation destination and the play/pause glyph; everything else is `_outlined` or the
+plain rounded form.
 
 Brand marks Material lacks (Jellyfin, Emby, Google Drive, OneDrive) go in `assets/brands/`
 as SVGs from [simple-icons](https://simpleicons.org) (CC0), rendered with `flutter_svg`.
@@ -67,7 +105,7 @@ Flutter 3.44 · Riverpod 3 (**hand-written providers, no codegen**) · Drift · 
 - **`kotlin.incremental=false`** in `android/gradle.properties` — this host intermittently fails with "Could not close incremental caches" otherwise.
 - Linux builds need system libmpv: `sudo apt install libmpv-dev mpv`.
 
-## Icons
+## Launcher icons
 
 `icon.svg` at the app root is the design source. Regenerate with:
 

@@ -8,10 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'app/app.dart';
-import 'features/playback/smoke_test_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
-  runApp(const ProviderScope(child: MPlayerApp(home: SmokeTestPage())));
+  runApp(const ProviderScope(child: MPlayerApp()));
 }
