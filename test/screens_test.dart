@@ -10,6 +10,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/router.dart';
+import 'package:mplayer/core/models/library_models.dart';
+import 'package:mplayer/features/browse/browse_controller.dart';
 
 /// The three widths the design fixes behaviour at. Every screen is checked at
 /// all three, because a layout that only works on a phone is not done.
@@ -34,9 +36,33 @@ const _routes = <String>[
   '/library',
   '/library/movie',
   '/library/series',
-  '/browse?name=NAS',
+  '/browse?source=device',
   '/downloads',
 ];
+
+/// Stand-in directory listing.
+///
+/// Without this the browser walks the real filesystem: the spinner animates
+/// forever, `pumpAndSettle` times out, and the test reads the machine it runs
+/// on. Drivers are covered by their own tests instead.
+const _stubListing = BrowseListing(
+  path: '/media',
+  entries: <BrowseEntry>[
+    BrowseEntry(
+      name: 'Short films',
+      kind: BrowseEntryKind.folder,
+      path: '/media/Short films',
+      detail: 'Folder',
+    ),
+    BrowseEntry(
+      name: 'The Harbour Line.mkv',
+      kind: BrowseEntryKind.video,
+      path: '/media/The Harbour Line.mkv',
+      sizeBytes: 19783286784,
+      detail: '18.4 GB',
+    ),
+  ],
+);
 
 Future<GoRouter> pumpRouterAt(WidgetTester tester, Size size) async {
   tester.view.devicePixelRatio = 1.0;
@@ -44,7 +70,14 @@ Future<GoRouter> pumpRouterAt(WidgetTester tester, Size size) async {
   addTearDown(tester.view.reset);
 
   final router = buildRouter();
-  await tester.pumpWidget(ProviderScope(child: MPlayerApp(router: router)));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        directoryListingProvider.overrideWith((ref, arg) async => _stubListing),
+      ],
+      child: MPlayerApp(router: router),
+    ),
+  );
   await tester.pumpAndSettle();
   return router;
 }

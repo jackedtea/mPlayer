@@ -7,7 +7,9 @@ import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
+import '../core/models/library_models.dart';
 import '../core/models/media_models.dart';
 import 'media_source.dart';
 
@@ -15,7 +17,7 @@ import 'media_source.dart';
 ///
 /// The one source that always exists and can never be offline — it is why the
 /// app opens straight onto Storage with nothing configured.
-class LocalSource implements MediaSource {
+class LocalSource implements BrowsableSource {
   const LocalSource();
 
   /// Fixed: there is exactly one device.
@@ -68,6 +70,69 @@ class LocalSource implements MediaSource {
       sourceLine: 'Device · ${p.extension(path).replaceFirst('.', '').toUpperCase()}'
           ' · ${formatBytes(size)}',
     );
+  }
+
+  @override
+  String get rootLabel => 'This device';
+
+  @override
+  Future<BrowseListing> listDirectory(String path) async {
+    final target = path.isEmpty ? await _defaultRoot() : path;
+    final directory = Directory(target);
+
+    if (!await directory.exists()) {
+      throw MediaSourceException('Folder no longer exists:\n$target');
+    }
+
+    final entries = <BrowseEntry>[];
+    try {
+      await for (final FileSystemEntity item in directory.list()) {
+        final name = p.basename(item.path);
+        // Dot-files are noise in a media browser.
+        if (name.startsWith('.')) continue;
+
+        final stat = await item.stat();
+        final isDir = stat.type == FileSystemEntityType.directory;
+
+        entries.add(
+          BrowseEntry(
+            name: name,
+            kind: isDir ? BrowseEntryKind.folder : classifyFile(name),
+            path: item.path,
+            sizeBytes: isDir ? null : stat.size,
+            modified: stat.modified,
+            detail: isDir ? 'Folder' : formatBytes(stat.size),
+          ),
+        );
+      }
+    } on FileSystemException catch (e) {
+      // Android scoped storage and Unix permissions both land here.
+      throw MediaSourceException(
+        'Cannot read $target — permission denied.',
+        cause: e,
+      );
+    }
+
+    entries.sort((a, b) {
+      if (a.isFolder != b.isFolder) return a.isFolder ? -1 : 1;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+
+    return BrowseListing(path: target, entries: entries);
+  }
+
+  /// Where browsing starts when no path is given.
+  ///
+  /// Android hands back its external-storage root; desktops use the user's
+  /// home directory, which is the only place a file manager should open by
+  /// default.
+  Future<String> _defaultRoot() async {
+    if (Platform.isAndroid) {
+      final dir = await getExternalStorageDirectory();
+      if (dir != null) return dir.path;
+    }
+    final env = Platform.environment;
+    return env['USERPROFILE'] ?? env['HOME'] ?? Directory.current.path;
   }
 
   /// Opens the platform picker and returns a reference, or null if cancelled.

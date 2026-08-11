@@ -6,8 +6,9 @@ Cross-platform video player and media server client (Jellyfin/Emby) with SMB/Web
 
 ## Current state (2026-08-10)
 
-Design build steps 1, 2 and 3 done; **every screen `1a`–`1n` is drawn and reachable**,
-but only the local-playback path is backed by real data.
+Design build steps 1–3 done, step 4 partly. **Every screen `1a`–`1n` is drawn and
+reachable.** Device and WebDAV browsing and playback are real; the server screens
+(1d–1g) still render `core/sample_library.dart`.
 
 **Step 1 — shell.** `app/tokens.dart` (design tokens as `ThemeExtension`s + `WindowSize`),
 `app/theme.dart`, `app/router.dart`, `app/adaptive_scaffold.dart`, and screens 1a Storage,
@@ -35,7 +36,7 @@ Verified by actually building and running, not assumed:
 
 - Windows debug build links and bundles `libmpv-2.dll`
 - Android debug APK builds and bundles `libmpv.so` for all three ABIs, plus the Roboto asset
-- `flutter analyze` clean; `flutter test` 86/86 passing. `test/screens_test.dart` pumps
+- `flutter analyze` clean; `flutter test` 114/114 passing. `test/screens_test.dart` pumps
   **every route at all three breakpoints** and fails on any overflow — it caught a
   duplicate FAB hero tag and two real overflows, so do not weaken it.
 
@@ -52,6 +53,50 @@ Still open:
    has never run against a real file.
 4. **The quality pill is inert.** Choosing a bitrate only means something once a server
    can transcode (step 5).
+
+## Sources
+
+`sources/` holds the drivers. `MediaSource` resolves an item for playback;
+`BrowsableSource` adds `listDirectory` and is what screen 1b talks to — a Jellyfin
+library is browsed by collection, not by path, so it will never implement it.
+
+| Kind | Driver | State |
+|---|---|---|
+| Device | `LocalSource` | Browsing + playback |
+| WebDAV | `WebDavSource` | Browsing + direct-play streaming |
+| SMB | — | **No driver.** See below |
+| NFS | — | No driver |
+
+Configured shares live in `SourceRegistry`. **Passwords never touch
+`shared_preferences`** — `SourceConfig.toJson` has no password field (there is a test
+asserting this), and credentials go to `flutter_secure_storage` under
+`SourceConfig.credentialKey`, which is derived from the immutable id so renaming a share
+does not orphan its password.
+
+A configured share whose kind has no driver is still listed, greyed and un-browsable,
+rather than being dropped — silently discarding a user's setup is worse than admitting
+the driver is missing.
+
+### WebDAV
+
+`PROPFIND` is hand-written over `dio` rather than using a client package: listing is the
+only operation needed, and playback bypasses any client library entirely — libmpv opens
+the `https://` URL itself with the `Authorization` header `WebDavSource` supplies. That
+also keeps the parser testable against captured server responses with no live share.
+`parsePropfind` matches on **local** element names because prefixes differ between
+servers (`d:`, `D:`, none).
+
+### SMB — why there is no driver yet
+
+libmpv cannot consume a Dart stream; it needs a URL or a path. `smb_connect`'s
+`openRead` returns `Stream<Uint8List>`, so SMB playback needs a **local HTTP bridge**: a
+`dart:io` `HttpServer` on `127.0.0.1` translating Range requests into
+`openRead(start, end)`, with libmpv pointed at `http://127.0.0.1:port/...`. That is the
+missing piece, and it is pure Dart — no native build.
+
+The reference app reached the same conclusion the hard way: `refs/NipaPlay-Reload` pins
+`smb_connect` to a **vendored, patched copy** in `third_party/` via `dependency_overrides`
+*and* ships its own FFI package `nipaplay_smb2`. Budget accordingly.
 
 ## Chapters
 

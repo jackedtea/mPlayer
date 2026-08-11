@@ -51,6 +51,7 @@ dependencies:
   freezed: 3.2.5
   file_selector: ^1.1.0
   screen_brightness: ^2.1.11
+  xml: ^7.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

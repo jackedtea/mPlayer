@@ -22,6 +22,7 @@ import '../features/settings/player_settings_page.dart';
 import '../features/settings/settings_index_page.dart';
 import '../features/settings/subtitle_settings_page.dart';
 import '../features/storage/storage_page.dart';
+import '../sources/local_source.dart';
 import '../sources/media_source.dart';
 import 'adaptive_scaffold.dart';
 
@@ -112,12 +113,14 @@ GoRouter buildRouter() {
           ),
         ],
       ),
+      // `source` is a configured share's id, `path` a directory within it.
+      // Both are query parameters so a folder can be linked to directly.
       GoRoute(
         path: '/browse',
         parentNavigatorKey: _rootKey,
         builder: (context, state) => BrowserPage(
-          sourceName: state.uri.queryParameters['name'] ?? 'NAS',
-          sourceIcon: Icons.lan_rounded,
+          sourceId: state.uri.queryParameters['source'] ?? LocalSource.sourceId,
+          path: state.uri.queryParameters['path'] ?? '',
         ),
       ),
       GoRoute(

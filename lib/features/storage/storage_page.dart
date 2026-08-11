@@ -10,7 +10,11 @@ import 'package:go_router/go_router.dart';
 import '../../app/tokens.dart';
 import '../../core/models/media_models.dart';
 import '../../core/sample_data.dart';
+import '../../sources/media_source.dart';
+import '../../sources/source_config.dart';
+import '../../sources/source_registry.dart';
 import '../player/open_local_video.dart';
+import 'add_source_sheet.dart';
 import '../../widgets/continue_watching_card.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/source_tile.dart';
@@ -132,13 +136,14 @@ class _ThisDeviceSection extends StatelessWidget {
   }
 }
 
-class _NetworkSection extends StatelessWidget {
+class _NetworkSection extends ConsumerWidget {
   const _NetworkSection();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
     final padding = spacing.screenPadding(context.windowSize);
+    final registry = ref.watch(sourceRegistryProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,32 +152,86 @@ class _NetworkSection extends StatelessWidget {
           title: 'Network',
           actionLabel: 'Add',
           bottomPadding: spacing.xs + 2,
-          onAction: () => _notYet(context, 'Add a network share'),
+          onAction: () => AddSourceSheet.show(context),
         ),
         Padding(
           padding: padding,
           child: Column(
             children: <Widget>[
-              for (final MediaSourceRef source in SampleData.networkSources) ...<Widget>[
-                SourceTile(
-                  source: source,
-                  // An offline share cannot be browsed; the tile stays visible
-                  // but inert rather than disappearing from the list.
-                  onTap: source.online
-                      ? () => context.push('/browse?name=${source.name}')
-                      : null,
+              for (final SourceConfig config in registry.configs) ...<Widget>[
+                _ConfiguredSourceTile(
+                  config: config,
+                  // A kind with no driver yet is listed but cannot be opened.
+                  browsable: registry.drivers[config.id] is BrowsableSource,
                 ),
                 SizedBox(height: spacing.sm),
               ],
               AddSourceTile(
                 title: 'Add SMB, WebDAV or NFS',
                 subtitle: 'Or scan the local network',
-                onTap: () => _notYet(context, 'Add a network share'),
+                onTap: () => AddSourceSheet.show(context),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ConfiguredSourceTile extends ConsumerWidget {
+  const _ConfiguredSourceTile({
+    required this.config,
+    required this.browsable,
+  });
+
+  final SourceConfig config;
+  final bool browsable;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SourceTile(
+      source: MediaSourceRef(
+        id: config.id,
+        kind: config.kind,
+        name: config.name,
+        detail: browsable
+            ? config.uri
+            : '${config.kind.label} — driver not available yet',
+        online: browsable,
+      ),
+      onTap: browsable
+          ? () => context.push(
+                '/browse?source=${Uri.encodeComponent(config.id)}',
+              )
+          : null,
+      trailing: IconButton(
+        icon: const Icon(Icons.more_vert_rounded),
+        tooltip: 'Share options',
+        onPressed: () => _showOptions(context, ref),
+      ),
+    );
+  }
+
+  void _showOptions(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.delete_rounded),
+              title: const Text('Remove share'),
+              subtitle: const Text('Its saved password is deleted too'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                ref.read(sourceRegistryProvider.notifier).remove(config.id);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

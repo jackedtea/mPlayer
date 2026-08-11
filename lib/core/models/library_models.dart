@@ -16,21 +16,54 @@ class BrowseEntry {
   const BrowseEntry({
     required this.name,
     required this.kind,
+    this.path = '',
     this.detail = '',
+    this.sizeBytes,
+    this.modified,
     this.needsTranscode = false,
   });
 
   final String name;
   final BrowseEntryKind kind;
 
+  /// Path within the source, used to descend or to resolve for playback.
+  /// Empty only for placeholder data.
+  final String path;
+
   /// "18.4 GB · HEVC · 2h 16m" for a video, "12 items" for a folder.
   final String detail;
+
+  final int? sizeBytes;
+  final DateTime? modified;
 
   /// Flagged in the subtitle so the user knows before opening that the file
   /// will not direct-play.
   final bool needsTranscode;
 
   bool get isPlayable => kind == BrowseEntryKind.video;
+  bool get isFolder => kind == BrowseEntryKind.folder;
+}
+
+/// One directory's worth of rows, plus where they came from.
+@immutable
+class BrowseListing {
+  const BrowseListing({
+    required this.path,
+    required this.entries,
+  });
+
+  /// Path that was listed, normalised by the driver.
+  final String path;
+
+  final List<BrowseEntry> entries;
+
+  int get folderCount => entries.where((e) => e.isFolder).length;
+  int get fileCount => entries.length - folderCount;
+
+  int get totalBytes => entries.fold<int>(
+        0,
+        (sum, e) => sum + (e.sizeBytes ?? 0),
+      );
 }
 
 /// A poster-shaped item in a library grid or a "recently added" shelf.

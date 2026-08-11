@@ -197,6 +197,26 @@ supersedes the ordering guesses in this phase list where the two disagree.
       ffmpeg on this machine, so only the precedence logic is unit-tested
 - [ ] Picture-in-picture (needs a platform plugin; button reports not-implemented)
 - [ ] Quality / transcode control — meaningless until a server can transcode (step 5)
+
+### Design build step 4 — filesystem sources (partly done)
+
+- [x] `BrowsableSource` interface — `listDirectory` split out of `MediaSource`
+- [x] `LocalSource` browsing: device folders, dot-files skipped, folders-first sort
+- [x] `WebDavSource` — hand-written PROPFIND over dio, tested against captured
+      Nextcloud and Apache mod_dav responses; playback streams straight from the server
+      with a Basic auth header, so it is direct-play
+- [x] `SourceRegistry` + `SourceRepository` — configs in `shared_preferences`,
+      passwords in `flutter_secure_storage`, never together
+- [x] Add-share sheet with a real connection test before saving
+- [x] Screen 1b wired to live listings: loading, inline retry on failure, empty state
+- [ ] **SMB driver.** Blocked on a design decision, not on effort: libmpv cannot read a
+      Dart stream, so `smb_connect.openRead` needs a local `HttpServer` bridge on
+      `127.0.0.1` that maps Range requests onto `openRead(start, end)`. Pure Dart, no
+      native build. `refs/NipaPlay-Reload` needed a patched vendored `smb_connect` plus
+      its own FFI package, so budget accordingly.
+- [ ] NFS driver
+- [ ] Network scan ("Or scan the local network" on the add tile)
+- [ ] Resume points for network sources — needs the Drift schema from Phase 1
 - [ ] `data/db/app_database.dart` — Drift schema v1:
   - [ ] `server_profiles` (type, url, credentials ref, display name, last used)
   - [ ] `media_items` (metadata cache)

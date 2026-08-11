@@ -11,6 +11,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../sources/local_source.dart';
 import '../../sources/media_source.dart';
+import '../../sources/source_registry.dart';
 import 'playback_state.dart';
 
 /// Hand-written, per the project's no-codegen rule for Riverpod.
@@ -19,16 +20,10 @@ final playbackControllerProvider =
   PlaybackController.new,
 );
 
-/// The registry of configured sources.
+/// The device source, which always exists and needs no configuration.
 ///
-/// Only the device exists today; SMB, WebDAV and Jellyfin register here as
-/// they land, and nothing downstream changes.
-final mediaSourcesProvider = Provider<Map<String, MediaSource>>((ref) {
-  return const <String, MediaSource>{
-    LocalSource.sourceId: LocalSource(),
-  };
-});
-
+/// Every other source comes from `sourceRegistryProvider`; see
+/// `sources/source_registry.dart` for the map this controller resolves against.
 final localSourceProvider = Provider<LocalSource>((ref) => const LocalSource());
 
 /// Owns the `media_kit` player and translates it into [PlaybackState].

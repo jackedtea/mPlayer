@@ -4,40 +4,49 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/library_models.dart';
-import '../../core/sample_library.dart';
+import '../../sources/local_source.dart' show formatBytes;
+import '../../sources/media_source.dart';
+import '../../sources/source_registry.dart';
 import '../../widgets/gradient_art.dart';
+import 'browse_controller.dart';
 
 /// Screen 1b — browsing a share or a local folder.
 ///
 /// One screen for every filesystem-shaped source (SMB, WebDAV, NFS, device
 /// storage): they differ only in the breadcrumb root and the icon, never in
-/// layout. The listing is placeholder data until the drivers land.
-class BrowserPage extends StatefulWidget {
-  const BrowserPage({
-    super.key,
-    required this.sourceName,
-    required this.sourceIcon,
-  });
+/// layout.
+class BrowserPage extends ConsumerStatefulWidget {
+  const BrowserPage({super.key, required this.sourceId, this.path = ''});
 
-  final String sourceName;
-  final IconData sourceIcon;
+  final String sourceId;
+  final String path;
 
   @override
-  State<BrowserPage> createState() => _BrowserPageState();
+  ConsumerState<BrowserPage> createState() => _BrowserPageState();
 }
 
-class _BrowserPageState extends State<BrowserPage> {
+class _BrowserPageState extends ConsumerState<BrowserPage> {
   bool _gridView = false;
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
-    final entries = SampleLibrary.shareListing;
+
+    final location =
+        BrowseLocation(sourceId: widget.sourceId, path: widget.path);
+    final listing = ref.watch(directoryListingProvider(location));
+    final registry = ref.watch(sourceRegistryProvider);
+    final source = registry.drivers[widget.sourceId];
+
+    final rootLabel =
+        source is BrowsableSource ? source.rootLabel : widget.sourceId;
+    final segments = breadcrumbSegments(widget.path);
 
     return Scaffold(
       appBar: AppBar(
@@ -46,7 +55,7 @@ class _BrowserPageState extends State<BrowserPage> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
-        title: Text(SampleLibrary.breadcrumb.last),
+        title: Text(segments.isEmpty ? rootLabel : segments.last),
         actions: <Widget>[
           IconButton(
             icon: Icon(
@@ -56,18 +65,14 @@ class _BrowserPageState extends State<BrowserPage> {
             onPressed: () => setState(() => _gridView = !_gridView),
           ),
           IconButton(
-            icon: const Icon(Icons.sort_rounded),
-            tooltip: 'Sort',
-            onPressed: () => _notYet(context, 'Sort'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
-            tooltip: 'More',
-            onPressed: () => _notYet(context, 'Folder actions'),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: () =>
+                ref.invalidate(directoryListingProvider(location)),
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(64),
+          preferredSize: const Size.fromHeight(60),
           child: Container(
             color: scheme.surfaceContainerHigh,
             padding: EdgeInsets.fromLTRB(
@@ -81,42 +86,77 @@ class _BrowserPageState extends State<BrowserPage> {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 _Breadcrumb(
-                  icon: widget.sourceIcon,
-                  root: widget.sourceName,
-                  path: SampleLibrary.breadcrumb,
+                  icon: source?.kind.icon ?? Icons.folder_rounded,
+                  root: rootLabel,
+                  segments: segments,
                 ),
-                SizedBox(height: spacing.sm),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        SampleLibrary.shareMeta,
-                        style: context.texts.bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                    ),
-                    Icon(Icons.bolt_rounded, size: 15, color: scheme.primary),
-                    Text(
-                      'Direct play',
-                      style: context.texts.bodySmall?.copyWith(
-                        color: scheme.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+                SizedBox(height: spacing.xs),
+                _MetaStrip(listing: listing.value),
               ],
             ),
           ),
         ),
       ),
-      body: _gridView
-          ? _EntryGrid(entries: entries)
-          : ListView.builder(
-              itemCount: entries.length,
-              itemBuilder: (context, i) => _EntryRow(entry: entries[i]),
-            ),
+      body: listing.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => _ErrorState(
+          message: error is MediaSourceException
+              ? error.message
+              : 'Could not read this folder.\n$error',
+          onRetry: () => ref.invalidate(directoryListingProvider(location)),
+        ),
+        data: (data) {
+          if (data.entries.isEmpty) return const _EmptyState();
+          return _gridView
+              ? _EntryGrid(entries: data.entries, onOpen: _open)
+              : ListView.builder(
+                  itemCount: data.entries.length,
+                  itemBuilder: (context, i) =>
+                      _EntryRow(entry: data.entries[i], onOpen: _open),
+                );
+        },
+      ),
     );
+  }
+
+  void _open(BrowseEntry entry) {
+    if (entry.isFolder) {
+      context.push(
+        '/browse?source=${Uri.encodeComponent(widget.sourceId)}'
+        '&path=${Uri.encodeComponent(entry.path)}',
+      );
+      return;
+    }
+
+    if (!entry.isPlayable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${entry.name} is not a video file')),
+      );
+      return;
+    }
+
+    _play(entry);
+  }
+
+  Future<void> _play(BrowseEntry entry) async {
+    final source = ref.read(sourceRegistryProvider).drivers[widget.sourceId];
+    if (source == null) return;
+
+    try {
+      final media = await source.resolve(
+        MediaRef(
+          sourceId: widget.sourceId,
+          itemId: entry.path,
+          title: entry.name,
+        ),
+      );
+      if (!mounted) return;
+      await context.push('/player', extra: media);
+    } on MediaSourceException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 }
 
@@ -126,12 +166,12 @@ class _Breadcrumb extends StatelessWidget {
   const _Breadcrumb({
     required this.icon,
     required this.root,
-    required this.path,
+    required this.segments,
   });
 
   final IconData icon;
   final String root;
-  final List<String> path;
+  final List<String> segments;
 
   @override
   Widget build(BuildContext context) {
@@ -143,17 +183,15 @@ class _Breadcrumb extends StatelessWidget {
       height: 20,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        reverse: true, // keep the current folder visible when the path is long
+        // Keeps the current folder visible when the path is long.
+        reverse: true,
         children: <Widget>[
           Row(
             children: <Widget>[
               Icon(icon, size: 15, color: scheme.primary),
               SizedBox(width: spacing.xs + 2),
-              Text(
-                root,
-                style: TextStyle(fontSize: size, color: scheme.primary),
-              ),
-              for (final (int i, String segment) in path.indexed) ...<Widget>[
+              Text(root, style: TextStyle(fontSize: size, color: scheme.primary)),
+              for (final (int i, String segment) in segments.indexed) ...<Widget>[
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: spacing.xs + 1),
                   child: Text(
@@ -165,11 +203,12 @@ class _Breadcrumb extends StatelessWidget {
                   segment,
                   style: TextStyle(
                     fontSize: size,
-                    color: i == path.length - 1
+                    color: i == segments.length - 1
                         ? scheme.onSurface
                         : scheme.onSurfaceVariant,
-                    fontWeight:
-                        i == path.length - 1 ? FontWeight.w500 : FontWeight.w400,
+                    fontWeight: i == segments.length - 1
+                        ? FontWeight.w500
+                        : FontWeight.w400,
                   ),
                 ),
               ],
@@ -181,10 +220,48 @@ class _Breadcrumb extends StatelessWidget {
   }
 }
 
+class _MetaStrip extends StatelessWidget {
+  const _MetaStrip({required this.listing});
+
+  final BrowseListing? listing;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    final data = listing;
+
+    final left = data == null
+        ? 'Reading…'
+        : '${data.folderCount} folders · ${data.fileCount} files'
+            '${data.totalBytes > 0 ? ' · ${formatBytes(data.totalBytes)}' : ''}';
+
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            left,
+            style: context.texts.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+        Icon(Icons.bolt_rounded, size: 15, color: scheme.primary),
+        Text(
+          'Direct play',
+          style: context.texts.bodySmall?.copyWith(
+            color: scheme.primary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry});
+  const _EntryRow({required this.entry, required this.onOpen});
 
   final BrowseEntry entry;
+  final void Function(BrowseEntry) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +269,7 @@ class _EntryRow extends StatelessWidget {
     final scheme = context.colors;
 
     return InkWell(
-      onTap: () => _notYet(context, entry.name),
+      onTap: () => onOpen(entry),
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: spacing.rowMinHeight),
         child: Padding(
@@ -222,8 +299,6 @@ class _EntryRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: context.texts.bodySmall?.copyWith(
-                          // A file that will not direct-play is worth
-                          // spotting before opening it.
                           color: entry.needsTranscode
                               ? scheme.error
                               : scheme.onSurfaceVariant,
@@ -232,11 +307,8 @@ class _EntryRow extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.more_vert_rounded),
-                tooltip: 'More',
-                onPressed: () => _notYet(context, 'Actions for ${entry.name}'),
-              ),
+              if (entry.isFolder)
+                Icon(Icons.chevron_right_rounded, color: scheme.outline),
             ],
           ),
         ),
@@ -302,9 +374,10 @@ class _EntryLeading extends StatelessWidget {
 }
 
 class _EntryGrid extends StatelessWidget {
-  const _EntryGrid({required this.entries});
+  const _EntryGrid({required this.entries, required this.onOpen});
 
   final List<BrowseEntry> entries;
+  final void Function(BrowseEntry) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -317,13 +390,13 @@ class _EntryGrid extends StatelessWidget {
         maxCrossAxisExtent: 180,
         mainAxisSpacing: spacing.md,
         crossAxisSpacing: spacing.md,
-        childAspectRatio: 16 / 11,
+        mainAxisExtent: 140,
       ),
       itemCount: entries.length,
       itemBuilder: (context, i) {
         final entry = entries[i];
         return InkWell(
-          onTap: () => _notYet(context, entry.name),
+          onTap: () => onOpen(entry),
           borderRadius: radii.cardAll,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,9 +410,9 @@ class _EntryGrid extends StatelessWidget {
                           color: context.colors.surfaceContainerLow,
                           child: Center(
                             child: Icon(
-                              entry.kind == BrowseEntryKind.folder
+                              entry.isFolder
                                   ? Icons.folder_rounded
-                                  : Icons.subtitles_rounded,
+                                  : Icons.insert_drive_file_rounded,
                               size: 32,
                               color: context.colors.primary,
                             ),
@@ -363,8 +436,59 @@ class _EntryGrid extends StatelessWidget {
   }
 }
 
-void _notYet(BuildContext context, String what) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$what — not implemented yet')),
-  );
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(spacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 44,
+              color: context.colors.onSurfaceVariant,
+            ),
+            SizedBox(height: spacing.lg),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.texts.bodyMedium,
+            ),
+            SizedBox(height: spacing.lg),
+            // Inline retry, never a modal — a dead share must not block the
+            // rest of the app.
+            FilledButton.tonalIcon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.restart_alt_rounded),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        'This folder is empty',
+        style: context.texts.bodyMedium
+            ?.copyWith(color: context.colors.onSurfaceVariant),
+      ),
+    );
+  }
 }

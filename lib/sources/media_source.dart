@@ -5,6 +5,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../core/models/library_models.dart';
 import '../core/models/media_models.dart';
 
 /// What a given source can do beyond handing over bytes.
@@ -181,4 +182,44 @@ abstract interface class MediaSource {
   ///
   /// Throws [MediaSourceException] when the item cannot be resolved.
   Future<PlayableMedia> resolve(MediaRef ref);
+}
+
+/// A source that is a filesystem: device storage, SMB, WebDAV, NFS.
+///
+/// Kept separate from [MediaSource] because a Jellyfin library is browsed by
+/// collection and id, not by path — the browser screen (1b) only ever talks to
+/// this interface.
+abstract interface class BrowsableSource implements MediaSource {
+  /// Path shown as the breadcrumb root, e.g. `smb://nas/media`.
+  String get rootLabel;
+
+  /// Lists one directory. Pass an empty path for the share root.
+  ///
+  /// Throws [MediaSourceException] when the directory cannot be read — an
+  /// unreachable share must surface inline, never as a crash.
+  Future<BrowseListing> listDirectory(String path);
+}
+
+/// Extensions the browser treats as playable video.
+///
+/// Not a whitelist for playback: [MediaSource.resolve] hands anything to the
+/// backend and lets it decide. This only drives which icon a row gets.
+const videoFileExtensions = <String>{
+  'mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v', 'ts', 'm2ts', 'mpg', 'mpeg',
+  'wmv', 'flv', '3gp', 'ogv', 'rmvb', 'vob', 'mts', 'divx',
+};
+
+const subtitleFileExtensions = <String>{
+  'srt', 'ass', 'ssa', 'sub', 'vtt', 'idx', 'sup',
+};
+
+/// Classifies a filename for the browser listing.
+BrowseEntryKind classifyFile(String name) {
+  final dot = name.lastIndexOf('.');
+  if (dot < 0 || dot == name.length - 1) return BrowseEntryKind.other;
+  final ext = name.substring(dot + 1).toLowerCase();
+
+  if (videoFileExtensions.contains(ext)) return BrowseEntryKind.video;
+  if (subtitleFileExtensions.contains(ext)) return BrowseEntryKind.subtitle;
+  return BrowseEntryKind.other;
 }
