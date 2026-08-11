@@ -146,7 +146,11 @@ class TrackOption {
   factory TrackOption.fromTrack(MediaTrack track) => TrackOption(
         id: track.id,
         label: track.label,
-        detail: track.isDefault ? 'Default' : null,
+        // An image-based track can be selected but will not appear, so say
+        // so here rather than letting the user wonder what broke.
+        detail: track.isImageBased
+            ? 'Image-based (${track.codec}) — cannot be displayed yet'
+            : (track.isDefault ? 'Default' : null),
         track: track,
       );
 

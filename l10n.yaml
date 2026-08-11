@@ -1,0 +1,14 @@
+# Localisation codegen. Run implicitly by `flutter run`/`build`, or manually
+# with `flutter gen-l10n`.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+
+# Non-nullable getter: `AppLocalizations.of(context)` is only ever called
+# under MaterialApp, where the delegate is always installed.
+nullable-getter: false
+
+# Fail the build on a key that exists in the template but not a translation,
+# so a half-translated release cannot ship silently.
+untranslated-messages-file: l10n_untranslated.json

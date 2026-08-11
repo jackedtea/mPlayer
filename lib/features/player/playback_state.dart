@@ -20,6 +20,7 @@ class MediaTrack {
     required this.label,
     this.language,
     this.isDefault = false,
+    this.codec,
   });
 
   final String id;
@@ -31,9 +32,31 @@ class MediaTrack {
   final String? language;
   final bool isDefault;
 
+  /// Demuxer codec name, e.g. `hdmv_pgs_subtitle`, `ass`, `subrip`.
+  final String? codec;
+
   /// media_kit exposes "no track" and "auto" as reserved ids.
   bool get isOff => id == 'no';
   bool get isAuto => id == 'auto';
+
+  /// Bitmap subtitles — PGS (Blu-ray), VobSub (DVD), DVB and XSUB.
+  ///
+  /// These are pictures, not text, so libass never touches them: mpv has to
+  /// composite them into the video frame. media_kit's render path does not,
+  /// so selecting one currently shows nothing at all
+  /// (media-kit/media-kit#1371). The picker uses this to say so rather than
+  /// letting the choice fail in silence.
+  bool get isImageBased {
+    final c = codec?.toLowerCase();
+    if (c == null) return false;
+    return c.contains('pgs') ||
+        c.contains('hdmv') ||
+        c == 'dvd_subtitle' ||
+        c == 'dvb_subtitle' ||
+        c == 'dvbsub' ||
+        c == 'xsub' ||
+        c == 'vobsub';
+  }
 }
 
 /// Everything the stats overlay reports. All fields are optional because a

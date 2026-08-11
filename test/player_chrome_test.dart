@@ -147,6 +147,34 @@ void main() {
     });
   });
 
+  group('MediaTrack.isImageBased', () {
+    MediaTrack sub(String? codec) => MediaTrack(
+          id: '2',
+          kind: TrackKind.subtitle,
+          label: 'English',
+          codec: codec,
+        );
+
+    test('recognises the bitmap subtitle codecs', () {
+      for (final String codec in <String>[
+        'hdmv_pgs_subtitle',
+        'PGS',
+        'dvd_subtitle',
+        'dvb_subtitle',
+        'xsub',
+      ]) {
+        expect(sub(codec).isImageBased, isTrue, reason: codec);
+      }
+    });
+
+    test('text subtitle codecs are not image-based', () {
+      for (final String codec in <String>['ass', 'subrip', 'webvtt', 'mov_text']) {
+        expect(sub(codec).isImageBased, isFalse, reason: codec);
+      }
+      expect(sub(null).isImageBased, isFalse);
+    });
+  });
+
   group('MediaTrack', () {
     test('reserved ids are recognised rather than shown as track names', () {
       const off = MediaTrack(id: 'no', kind: TrackKind.subtitle, label: 'Off');

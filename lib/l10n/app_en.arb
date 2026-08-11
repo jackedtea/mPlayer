@@ -1,0 +1,266 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "mPlayer",
+
+  "navStorage": "Storage",
+  "navServer": "Server",
+  "navSearch": "Search",
+  "settings": "Settings",
+
+  "actionCancel": "Cancel",
+  "actionSave": "Save",
+  "actionTest": "Test",
+  "actionConnect": "Connect",
+  "actionRetry": "Retry",
+  "actionAdd": "Add",
+  "actionClear": "Clear",
+  "actionBack": "Back",
+  "actionMore": "More",
+  "actionSort": "Sort",
+  "actionRefresh": "Refresh",
+  "actionRemove": "Remove",
+  "viewList": "List view",
+  "viewGrid": "Grid view",
+
+  "notImplemented": "{feature} — not implemented yet",
+  "@notImplemented": {
+    "placeholders": { "feature": { "type": "String" } }
+  },
+
+  "continueWatching": "Continue watching",
+  "thisDevice": "This device",
+  "network": "Network",
+  "openFileOrFolder": "Open a file or folder",
+  "addShareTitle": "Add SMB, WebDAV or NFS",
+  "addShareSubtitle": "Or scan the local network",
+  "driverUnavailable": "{kind} — driver not available yet",
+  "@driverUnavailable": {
+    "placeholders": { "kind": { "type": "String" } }
+  },
+  "shareOptions": "Share options",
+  "removeShare": "Remove share",
+  "removeShareSubtitle": "Its saved password is deleted too",
+
+  "addShareHeading": "Add a share",
+  "fieldName": "Name",
+  "fieldAddress": "Address",
+  "fieldUsername": "Username",
+  "fieldPassword": "Password",
+  "anonymousHint": "Leave empty for an anonymous share",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "noDriverNotice": "{kind} has no driver yet. The share will be saved and listed, but cannot be browsed until it lands.",
+  "@noDriverNotice": {
+    "placeholders": { "kind": { "type": "String" } }
+  },
+  "connectionOk": "Connected — {folders} folders, {files} files",
+  "@connectionOk": {
+    "placeholders": {
+      "folders": { "type": "int" },
+      "files": { "type": "int" }
+    }
+  },
+
+  "folderCounts": "{folders} folders · {files} files",
+  "@folderCounts": {
+    "placeholders": {
+      "folders": { "type": "int" },
+      "files": { "type": "int" }
+    }
+  },
+  "reading": "Reading…",
+  "directPlay": "Direct play",
+  "folder": "Folder",
+  "emptyFolder": "This folder is empty",
+  "couldNotReadFolder": "Could not read this folder.",
+  "notAVideo": "{name} is not a video file",
+  "@notAVideo": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+
+  "noServerTitle": "No media server yet",
+  "noServerBody": "Everything on this device and your network shares already works without one. Add a Jellyfin server to sync watch state, metadata and remote access.",
+  "addJellyfinServer": "Add Jellyfin server",
+  "scanNetwork": "Scan this network",
+  "otherServersNotice": "Emby and Plex servers can be added here too — the tab is not Jellyfin-only.",
+  "previewConnectedServer": "Preview a connected server",
+  "addServerHeading": "Add a server",
+  "serverAddress": "Server address",
+  "detectHint": "Enter an address to detect the server",
+  "detectPending": "Detection runs once the Jellyfin client lands",
+  "quickConnect": "Quick connect instead",
+  "quickConnectSubtitle": "Approve from another signed-in device",
+
+  "nextUp": "Next up",
+  "recentlyAdded": "Recently added",
+  "libraries": "Libraries",
+  "itemCount": "{count} items",
+  "@itemCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "unwatched": "Unwatched",
+  "unwatchedCount": "{count} unwatched",
+  "@unwatchedCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "genre": "Genre",
+  "filters": "Filters",
+  "cast": "Cast",
+  "more": "More",
+  "less": "Less",
+  "play": "Play",
+  "pause": "Pause",
+  "download": "Download",
+  "bookmark": "Bookmark",
+
+  "searchEverything": "Search everything",
+  "voiceSearch": "Voice search",
+  "recentSearches": "Recent searches",
+  "whereToLook": "Where to look",
+  "allSources": "All sources",
+  "backToSources": "Back to sources",
+  "showMoreFrom": "Show {count} more from {source}",
+  "@showMoreFrom": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "source": { "type": "String" }
+    }
+  },
+
+  "downloads": "Downloads",
+  "nothingDownloaded": "Nothing downloaded",
+  "downloadsBody": "Downloads are queued on Wi-Fi by default and expire per the server's policy.",
+  "pauseDownload": "Pause",
+  "cancelDownload": "Cancel",
+  "availableOffline": "Available offline",
+
+  "settingsAppearance": "Appearance",
+  "settingsAppearanceSub": "Theme, accent colour, density",
+  "settingsGeneral": "General",
+  "settingsGeneralSub": "Language, startup tab, cache",
+  "settingsPlayer": "Player",
+  "settingsPlayerSub": "Decoding, gestures, streaming quality",
+  "settingsAudio": "Audio",
+  "settingsAudioSub": "Passthrough, track language, boost",
+  "settingsSubtitle": "Subtitle",
+  "settingsSubtitleSub": "Style, language order, sync offset",
+  "settingsAbout": "About",
+  "settingsAboutSub": "Version, licences, diagnostics",
+
+  "language": "Language",
+  "languageSystem": "System default",
+  "languageEnglish": "English",
+  "languageVietnamese": "Tiếng Việt",
+
+  "theme": "Theme",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeSystem": "System",
+  "accent": "Accent",
+  "dynamicColour": "Material You dynamic colour",
+  "dynamicColourSub": "Follow the system wallpaper palette",
+  "pureBlack": "Pure black in dark mode",
+  "pureBlackSub": "Saves power on OLED screens",
+  "layout": "Layout",
+  "defaultLibraryView": "Default library view",
+  "density": "Density",
+
+  "playback": "Playback",
+  "hardwareDecoding": "Hardware decoding",
+  "hardwareDecodingValue": "Auto (safe)",
+  "hardwareDecodingSub": "Falls back to software when a codec is unsupported",
+  "resumeBehaviour": "Resume behaviour",
+  "skipBack": "Skip back",
+  "skipForward": "Skip forward",
+  "autoPlayNext": "Auto-play next episode",
+  "autoSkipIntro": "Auto skip intro",
+  "autoSkipIntroSub": "Only where the server marks an intro chapter",
+  "screenAndGestures": "Screen & gestures",
+  "rotation": "Rotation",
+  "rotationFollowVideo": "Follow video",
+  "swipeGestures": "Swipe gestures",
+  "swipeGesturesSub": "Brightness on the left, volume on the right",
+  "backgroundPip": "Background & picture-in-picture",
+  "streamingQuality": "Streaming quality",
+  "onWifi": "On Wi-Fi",
+  "onCellular": "On cellular",
+  "original": "Original",
+  "megabitsPerSecond": "{value} Mbps",
+  "@megabitsPerSecond": {
+    "placeholders": { "value": { "type": "int" } }
+  },
+
+  "style": "Style",
+  "font": "Font",
+  "textSize": "Text size",
+  "backgroundOpacity": "Background opacity",
+  "behaviour": "Behaviour",
+  "preferredLanguages": "Preferred languages",
+  "burnInWhenTranscoding": "Burn in when transcoding",
+  "burnInSub": "Image-based subtitles only",
+  "syncOffset": "Sync offset",
+  "subtitlePreview": "The tide turns at midnight.",
+  "percent": "{value}%",
+  "@percent": {
+    "placeholders": { "value": { "type": "int" } }
+  },
+
+  "versionAndBuild": "Version {version} · build {build}",
+  "@versionAndBuild": {
+    "placeholders": {
+      "version": { "type": "String" },
+      "build": { "type": "String" }
+    }
+  },
+  "upToDate": "Up to date",
+  "checkForUpdates": "Check for updates",
+  "releaseNotes": "Release notes",
+  "diagnostics": "Diagnostics",
+  "openSourceLicences": "Open-source licences",
+  "privacy": "Privacy",
+  "sourceCode": "Source code",
+  "thisDeviceInfo": "This device",
+  "notAffiliated": "mPlayer is not affiliated with, endorsed by, or sponsored by the Jellyfin, Emby or Plex projects.",
+
+  "subtitles": "Subtitles",
+  "audio": "Audio",
+  "quality": "Quality",
+  "playbackSpeed": "Playback speed",
+  "chapters": "Chapters",
+  "noChapters": "This file has no chapters",
+  "off": "Off",
+  "auto": "Auto",
+  "normal": "Normal",
+  "defaultLabel": "Default",
+  "skipIntro": "Skip intro",
+  "lockPlayer": "Lock player",
+  "screenLocked": "Screen locked",
+  "unlockHint": "Tap the lock twice to unlock",
+  "fullscreen": "Fullscreen",
+  "pictureInPicture": "Picture in picture",
+  "castTo": "Cast",
+  "aspectRatio": "Aspect ratio",
+  "aspectFit": "Fit",
+  "aspectFill": "Fill",
+  "aspectStretch": "Stretch",
+  "sleepTimer": "Sleep timer",
+  "minutes": "{count} min",
+  "@minutes": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "statsForNerds": "Stats for nerds",
+  "playerSettings": "Player settings",
+  "on": "On",
+  "back10": "Back 10 seconds",
+  "forward30": "Forward 30 seconds",
+  "nothingToPlay": "Nothing to play — pick a file from Storage.",
+
+  "rotationAuto": "Auto",
+  "rotationLandscape": "Landscape",
+  "rotationPortrait": "Portrait",
+
+  "connected": "Connected",
+  "offline": "Offline",
+  "offlineSkipped": "Offline — will be skipped"
+}

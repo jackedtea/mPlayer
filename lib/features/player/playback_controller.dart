@@ -4,6 +4,7 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
@@ -151,7 +152,19 @@ class PlaybackController extends Notifier<PlaybackState> {
     final existing = _player;
     if (existing != null) return existing;
 
-    final player = Player();
+    final player = Player(
+      configuration: PlayerConfiguration(
+        // Without this libmpv sets `sub-ass: no` and renders ASS/SSA as plain
+        // text, discarding every style, position and karaoke tag.
+        libass: true,
+        // Android's fontconfig cannot see system fonts, so libass silently
+        // fails to render there unless it is handed a font itself. The app
+        // already bundles Roboto for its own UI; reuse it.
+        libassAndroidFont:
+            Platform.isAndroid ? 'assets/fonts/Roboto-Variable.ttf' : null,
+        libassAndroidFontName: Platform.isAndroid ? 'Roboto' : null,
+      ),
+    );
     _player = player;
     _videoController = VideoController(player);
     _listen(player);
@@ -299,6 +312,7 @@ class PlaybackController extends Notifier<PlaybackState> {
       label: _labelFor(id, title, language, t),
       language: language,
       isDefault: (t.isDefault as bool?) ?? false,
+      codec: t.codec as String?,
     );
   }
 
@@ -353,6 +367,24 @@ class PlaybackController extends Notifier<PlaybackState> {
     final player = _player;
     _player = null;
     _videoController = null;
-    await player?.dispose();
+    _chaptersLoaded = false;
+
+    if (player == null) return;
+
+    // Stop before disposing. `dispose()` alone can leave the audio thread
+    // running long enough to be heard after the screen is gone, and each step
+    // is guarded so a failure in one still lets the next run — a leaked
+    // decoder keeps playing forever.
+    try {
+      await player.stop();
+    } catch (_) {
+      // Already gone; disposing is still worth attempting.
+    }
+    try {
+      await player.dispose();
+    } catch (_) {
+      // Nothing further we can do, and throwing out of teardown would take
+      // the navigation pop down with it.
+    }
   }
 }

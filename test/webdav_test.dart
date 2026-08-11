@@ -181,6 +181,87 @@ void main() {
     });
   });
 
+  group('safeDecodePath', () {
+    test('decodes ordinary percent escapes', () {
+      expect(safeDecodePath('/dav/Short%20films'), '/dav/Short films');
+      expect(safeDecodePath('/dav/%E4%B8%AD%E6%96%87'), '/dav/中文');
+    });
+
+    test('survives a name containing a literal percent sign', () {
+      // Regression: this is what "Illegal percent encoding in URI" was.
+      // %25 decodes to '%', and the result still holds non-ASCII, which
+      // Uri.decodeFull refuses to look at.
+      expect(safeDecodePath('/dav/%E4%B8%AD%2050%25.mkv'), '/dav/中 50%.mkv');
+    });
+
+    test('survives a partially encoded href', () {
+      // Some servers leave non-ASCII raw but still encode spaces.
+      expect(safeDecodePath('/dav/中文%20film.mkv'), '/dav/中文 film.mkv');
+    });
+
+    test('passes invalid or truncated escapes through untouched', () {
+      expect(safeDecodePath('/dav/100% raw.mkv'), '/dav/100% raw.mkv');
+      expect(safeDecodePath('/dav/a%zz.mkv'), '/dav/a%zz.mkv');
+      expect(safeDecodePath('/dav/trailing%'), '/dav/trailing%');
+      expect(safeDecodePath('/dav/cut%2'), '/dav/cut%2');
+    });
+
+    test('never throws, whatever the server sends', () {
+      const nasty = <String>[
+        '%',
+        '%%%',
+        '/a%C3%28b',
+        '中%',
+        '%E4%B8%AD%',
+      ];
+      for (final String input in nasty) {
+        expect(() => safeDecodePath(input), returnsNormally, reason: input);
+      }
+    });
+  });
+
+  group('parsePropfind — awkward names', () {
+    test('lists CJK names and names containing a percent sign', () {
+      const body = '''
+<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:">
+  <d:response>
+    <d:href>/dav/media/</d:href>
+    <d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/dav/media/%E4%B8%AD%2050%25.mkv</d:href>
+    <d:propstat>
+      <d:prop><d:resourcetype/><d:getcontentlength>1024</d:getcontentlength></d:prop>
+    </d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/dav/media/中文%20film.mkv</d:href>
+    <d:propstat>
+      <d:prop><d:resourcetype/><d:getcontentlength>2048</d:getcontentlength></d:prop>
+    </d:propstat>
+  </d:response>
+</d:multistatus>
+''';
+
+      final entries = parsePropfind(body, requestPath: '/dav/media');
+
+      expect(entries, hasLength(2));
+      expect(
+        entries.map((e) => e.name),
+        containsAll(<String>['中 50%.mkv', '中文 film.mkv']),
+      );
+      // The decoded path is what a later resolve() re-encodes for playback.
+      expect(
+        entries.map((e) => e.path),
+        containsAll(<String>[
+          '/dav/media/中 50%.mkv',
+          '/dav/media/中文 film.mkv',
+        ]),
+      );
+    });
+  });
+
   group('WebDavSource', () {
     const config = SourceConfig(
       id: 'nc',
@@ -214,15 +295,37 @@ void main() {
       );
     });
 
-    test('builds stream URLs that keep the base path and encode segments', () {
+    test('a relative path is appended to the configured base', () {
       final source = WebDavSource(config: config, password: 'x');
-      final url = source.urlFor('/Media/Short films/Clip 1.mkv');
+      final url = source.urlFor('Media/Short films/Clip 1.mkv');
 
       expect(url.host, 'dav.home.lan');
       expect(
         url.path,
         '/remote.php/dav/files/minh/Media/Short%20films/Clip%201.mkv',
       );
+    });
+
+    test('an href path is used as-is, not appended to the base again', () {
+      // Regression: entry.path comes from an href and already contains the
+      // base's own prefix. Appending produced /remote.php/dav/files/minh
+      // twice, so every subfolder 404'd.
+      final source = WebDavSource(config: config, password: 'x');
+      final url = source.urlFor(
+        '/remote.php/dav/files/minh/Media/Clip 1.mkv',
+      );
+
+      expect(url.path, '/remote.php/dav/files/minh/Media/Clip%201.mkv');
+    });
+
+    test('re-encodes awkward names on the way back out', () {
+      final source = WebDavSource(config: config, password: 'x');
+      final url = source.urlFor('/remote.php/dav/files/minh/中 50%.mkv');
+
+      // The listing decoded these; playback has to encode them again.
+      expect(url.path, endsWith('/%E4%B8%AD%2050%25.mkv'));
+      // And the round trip must land back on the original name.
+      expect(safeDecodePath(url.path), endsWith('/中 50%.mkv'));
     });
 
     test('resolve hands libmpv the URL plus the auth header', () async {

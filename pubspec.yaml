@@ -47,11 +47,14 @@ dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
   collection: ^1.19.1
-  intl: ^0.20.3
+  # Pinned by flutter_localizations, which depends on exactly 0.20.2.
+  intl: ^0.20.2
   freezed: 3.2.5
   file_selector: ^1.1.0
   screen_brightness: ^2.1.11
   xml: ^7.0.1
+  flutter_localizations:
+    sdk: flutter
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -77,6 +80,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Generates AppLocalizations from lib/l10n/*.arb; see l10n.yaml.
+  generate: true
 
   assets:
     # App mark, for in-app use (about screen, empty states, window icon).

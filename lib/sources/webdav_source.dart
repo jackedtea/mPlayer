@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:io' show HttpDate;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:xml/xml.dart';
 
 import '../core/models/library_models.dart';
@@ -66,9 +67,21 @@ class WebDavSource implements BrowsableSource {
 
   /// Joins a source-relative path onto the base, encoding each segment.
   Uri urlFor(String path) {
-    final clean = path.split('/').where((s) => s.isNotEmpty).toList();
+    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+
+    // A leading slash means the path came from an href, which is always
+    // server-absolute and already includes the base's own path. Appending it
+    // to the base again would double that prefix — `/dav/dav/media/...`.
+    if (path.startsWith('/')) {
+      return _base.replace(pathSegments: segments);
+    }
+
+    // Anything else is relative to the configured base.
     return _base.replace(
-      pathSegments: <String>[..._base.pathSegments.where((s) => s.isNotEmpty), ...clean],
+      pathSegments: <String>[
+        ..._base.pathSegments.where((s) => s.isNotEmpty),
+        ...segments,
+      ],
     );
   }
 
@@ -103,10 +116,21 @@ class WebDavSource implements BrowsableSource {
       throw MediaSourceException('$url returned an empty listing.');
     }
 
-    return BrowseListing(
-      path: path,
-      entries: parsePropfind(body, requestPath: url.path),
-    );
+    try {
+      return BrowseListing(
+        path: path,
+        entries: parsePropfind(body, requestPath: url.path),
+      );
+    } on MediaSourceException {
+      rethrow;
+    } catch (e) {
+      // Anything the parser did not anticipate still has to read as a
+      // sentence, not as a raw Dart exception in the middle of the screen.
+      throw MediaSourceException(
+        'Could not understand the listing from ${url.host}.',
+        cause: e,
+      );
+    }
   }
 
   @override
@@ -167,7 +191,9 @@ List<BrowseEntry> parsePropfind(String xmlBody, {required String requestPath}) {
     final href = _textOf(response, 'href');
     if (href == null) continue;
 
-    final path = _normalise(Uri.decodeFull(href));
+    // _normalise decodes; decoding here as well would double-decode and blow
+    // up on any name containing a literal '%'.
+    final path = _normalise(href);
     // Depth 1 includes the directory being listed; it is not one of its rows.
     if (path == self) continue;
 
@@ -226,15 +252,70 @@ String? _textOf(XmlElement root, String name) {
 
 /// Trailing slashes and percent-encoding differ between the request and the
 /// response, so both sides are normalised before comparing.
-String _normalise(String path) {
-  var p = Uri.decodeFull(path);
+///
+/// Order matters: parse first (while the string is still encoded), then
+/// decode. Decoding first can turn a `%2F` into a `/` and invent a path
+/// segment that was never there.
+String _normalise(String rawPath) {
+  var p = rawPath;
+
   // An href may be a full URL rather than a path.
   final parsed = Uri.tryParse(p);
   if (parsed != null && parsed.hasScheme) p = parsed.path;
+
+  p = safeDecodePath(p);
+
   while (p.endsWith('/') && p.length > 1) {
     p = p.substring(0, p.length - 1);
   }
   return p.isEmpty ? '/' : p;
+}
+
+/// Percent-decodes as much of [input] as is actually valid.
+///
+/// `Uri.decodeFull` is all-or-nothing: it throws
+/// "Illegal percent encoding in URI" whenever a string contains both a `%`
+/// and a non-ASCII character. Real servers hit that constantly — some return
+/// partially encoded hrefs (non-ASCII left raw, spaces as `%20`), and any file
+/// whose name contains a literal `%` produces the same shape once decoded.
+///
+/// A listing must never fail because one filename is awkward, so invalid
+/// escapes are passed through untouched instead of throwing.
+@visibleForTesting
+String safeDecodePath(String input) {
+  try {
+    return Uri.decodeFull(input);
+  } catch (_) {
+    // Fall through to the tolerant path below.
+  }
+
+  final out = StringBuffer();
+  final bytes = <int>[];
+
+  void flush() {
+    if (bytes.isEmpty) return;
+    // Malformed UTF-8 becomes U+FFFD rather than an exception.
+    out.write(utf8.decode(bytes, allowMalformed: true));
+    bytes.clear();
+  }
+
+  for (var i = 0; i < input.length;) {
+    if (input.codeUnitAt(i) == 0x25 /* % */ && i + 3 <= input.length) {
+      final value = int.tryParse(input.substring(i + 1, i + 3), radix: 16);
+      if (value != null) {
+        // Consecutive triplets are one UTF-8 sequence and decode together.
+        bytes.add(value);
+        i += 3;
+        continue;
+      }
+    }
+    flush();
+    out.writeCharCode(input.codeUnitAt(i));
+    i++;
+  }
+  flush();
+
+  return out.toString();
 }
 
 DateTime? _parseHttpDate(String? raw) {

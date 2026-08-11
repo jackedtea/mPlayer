@@ -48,6 +48,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   Timer? _hideTimer;
   Timer? _sleepTimer;
 
+  /// Captured in [initState] rather than read in [dispose].
+  ///
+  /// Touching `ref` while the element is being torn down is not guaranteed to
+  /// work, and if it throws, teardown never runs and the decoder keeps
+  /// playing behind the popped route.
+  late final PlaybackController _playback;
+  late final PlayerUiController _playerUi;
+
   /// While the user drags, the scrubber follows the finger rather than the
   /// position stream, which would fight it.
   double? _dragProgress;
@@ -55,10 +63,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void initState() {
     super.initState();
+    _playback = ref.read(playbackControllerProvider.notifier);
+    _playerUi = ref.read(playerUiProvider.notifier);
+
     // The notifier outlives this page, so opening happens after the first
     // frame — mutating a provider during build is not allowed.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(playbackControllerProvider.notifier).openResolved(widget.media);
+      _playback.openResolved(widget.media);
     });
     _restartHideTimer();
   }
@@ -69,8 +80,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _sleepTimer?.cancel();
     // Leaving the screen must not strand a decoder holding the file open, nor
     // a locked orientation on the rest of the app.
-    unawaited(ref.read(playbackControllerProvider.notifier).stop());
-    ref.read(playerUiProvider.notifier).reset();
+    unawaited(_playback.stop());
+    _playerUi.reset();
     super.dispose();
   }
 
@@ -369,6 +380,13 @@ class _VideoSurface extends StatelessWidget {
       controls: NoVideoControls,
       fit: fit,
       fill: Colors.black,
+      // libass draws subtitles into the video frame itself, with the styling,
+      // positioning and karaoke tags the ASS/SSA file asks for. media_kit's
+      // Flutter overlay would paint the same lines again as unstyled text on
+      // top, so it has to be off.
+      subtitleViewConfiguration: const SubtitleViewConfiguration(
+        visible: false,
+      ),
     );
   }
 }

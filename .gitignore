@@ -44,6 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Report written by the l10n generator listing keys missing a translation.
+# It is a build artifact; the generator recreates it every run.
+/l10n_untranslated.json
+
 # Signing material. Keystores and their passwords live in repository secrets
 # (KEYSTORE / KEYSTORE_DEV and friends) and are decoded at build time — a
 # committed keystore cannot be un-published.

@@ -18,6 +18,7 @@ import '../features/server/server_empty_page.dart';
 import '../features/server/server_home_page.dart';
 import '../features/settings/about_page.dart';
 import '../features/settings/appearance_page.dart';
+import '../features/settings/general_settings_page.dart';
 import '../features/settings/player_settings_page.dart';
 import '../features/settings/settings_index_page.dart';
 import '../features/settings/subtitle_settings_page.dart';
@@ -75,6 +76,10 @@ GoRouter buildRouter() {
           GoRoute(
             path: 'appearance',
             builder: (context, state) => const AppearancePage(),
+          ),
+          GoRoute(
+            path: 'general',
+            builder: (context, state) => const GeneralSettingsPage(),
           ),
           GoRoute(
             path: 'player',

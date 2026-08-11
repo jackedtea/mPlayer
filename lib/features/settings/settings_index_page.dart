@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Screen 1l — the settings index.
 ///
@@ -16,62 +17,67 @@ import '../../app/tokens.dart';
 class SettingsIndexPage extends StatelessWidget {
   const SettingsIndexPage({super.key});
 
-  /// Order is fixed by the design. `route` is null for the two sections the
-  /// design lists but does not draw — they follow the same section+tile
-  /// pattern and are built when their settings actually exist.
-  static const _entries = <_SettingsEntry>[
-    _SettingsEntry(
-      title: 'Appearance',
-      subtitle: 'Theme, accent colour, density',
-      icon: Icons.palette_rounded,
-      route: 'appearance',
-    ),
-    _SettingsEntry(
-      title: 'General',
-      subtitle: 'Language, startup tab, cache',
-      icon: Icons.tune_rounded,
-    ),
-    _SettingsEntry(
-      title: 'Player',
-      subtitle: 'Decoding, gestures, streaming quality',
-      icon: Icons.play_circle_rounded,
-      route: 'player',
-    ),
-    _SettingsEntry(
-      title: 'Audio',
-      subtitle: 'Passthrough, track language, boost',
-      icon: Icons.graphic_eq_rounded,
-    ),
-    _SettingsEntry(
-      title: 'Subtitle',
-      subtitle: 'Style, language order, sync offset',
-      icon: Icons.subtitles_rounded,
-      route: 'subtitle',
-    ),
-    _SettingsEntry(
-      title: 'About',
-      subtitle: 'Version, licences, diagnostics',
-      icon: Icons.info_rounded,
-      route: 'about',
-    ),
-  ];
+  /// Order is fixed by the design. `route` is null for the one section that
+  /// has no page yet; it follows the same section+tile pattern and is built
+  /// when its settings actually exist.
+  static List<_SettingsEntry> _entriesFor(AppLocalizations l10n) {
+    return <_SettingsEntry>[
+      _SettingsEntry(
+        title: l10n.settingsAppearance,
+        subtitle: l10n.settingsAppearanceSub,
+        icon: Icons.palette_rounded,
+        route: 'appearance',
+      ),
+      _SettingsEntry(
+        title: l10n.settingsGeneral,
+        subtitle: l10n.settingsGeneralSub,
+        icon: Icons.tune_rounded,
+        route: 'general',
+      ),
+      _SettingsEntry(
+        title: l10n.settingsPlayer,
+        subtitle: l10n.settingsPlayerSub,
+        icon: Icons.play_circle_rounded,
+        route: 'player',
+      ),
+      _SettingsEntry(
+        title: l10n.settingsAudio,
+        subtitle: l10n.settingsAudioSub,
+        icon: Icons.graphic_eq_rounded,
+      ),
+      _SettingsEntry(
+        title: l10n.settingsSubtitle,
+        subtitle: l10n.settingsSubtitleSub,
+        icon: Icons.subtitles_rounded,
+        route: 'subtitle',
+      ),
+      _SettingsEntry(
+        title: l10n.settingsAbout,
+        subtitle: l10n.settingsAboutSub,
+        icon: Icons.info_rounded,
+        route: 'about',
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: l10n.actionBack,
           onPressed: () => context.pop(),
         ),
-        title: const Text('Settings'),
+        title: Text(l10n.settings),
       ),
       body: ListView(
         children: <Widget>[
-          for (final _SettingsEntry e in _entries)
+          for (final _SettingsEntry e in _entriesFor(l10n))
             ListTile(
               contentPadding: spacing.screenPadding(context.windowSize),
               minVerticalPadding: spacing.lg,
@@ -86,7 +92,7 @@ class SettingsIndexPage extends StatelessWidget {
               onTap: e.route == null
                   ? () => ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('${e.title} — not implemented yet'),
+                          content: Text(l10n.notImplemented(e.title)),
                         ),
                       )
                   : () => context.push('/settings/${e.route}'),

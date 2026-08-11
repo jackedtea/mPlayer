@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/player/open_local_video.dart';
+import '../l10n/app_localizations.dart';
 import 'tokens.dart';
 
 /// One of the three top-level destinations.
@@ -27,23 +28,27 @@ class NavDestination {
   final IconData selectedIcon;
 }
 
-const navDestinations = <NavDestination>[
-  NavDestination(
-    label: 'Storage',
-    icon: Icons.folder_outlined,
-    selectedIcon: Icons.folder_rounded,
-  ),
-  NavDestination(
-    label: 'Server',
-    icon: Icons.dns_outlined,
-    selectedIcon: Icons.dns_rounded,
-  ),
-  NavDestination(
-    label: 'Search',
-    icon: Icons.search_rounded,
-    selectedIcon: Icons.search_rounded,
-  ),
-];
+/// Built per-frame rather than as a const list: the labels are translated, so
+/// they have to be resolved against the current locale.
+List<NavDestination> navDestinationsFor(AppLocalizations l10n) {
+  return <NavDestination>[
+    NavDestination(
+      label: l10n.navStorage,
+      icon: Icons.folder_outlined,
+      selectedIcon: Icons.folder_rounded,
+    ),
+    NavDestination(
+      label: l10n.navServer,
+      icon: Icons.dns_outlined,
+      selectedIcon: Icons.dns_rounded,
+    ),
+    NavDestination(
+      label: l10n.navSearch,
+      icon: Icons.search_rounded,
+      selectedIcon: Icons.search_rounded,
+    ),
+  ];
+}
 
 /// Swaps navigation affordance by window size while keeping the same routes
 /// and the same branch state:
@@ -92,7 +97,7 @@ class _CompactShell extends StatelessWidget {
         selectedIndex: shell.currentIndex,
         onDestinationSelected: onGo,
         destinations: <Widget>[
-          for (final NavDestination d in navDestinations)
+          for (final NavDestination d in navDestinationsFor(AppLocalizations.of(context)))
             NavigationDestination(
               icon: Icon(d.icon),
               selectedIcon: Icon(d.selectedIcon),
@@ -131,7 +136,7 @@ class _RailShell extends ConsumerWidget {
                 heroTag: 'rail-open-file',
                 onPressed: () => openLocalVideo(context, ref),
                 elevation: 0,
-                tooltip: 'Open a file or folder',
+                tooltip: AppLocalizations.of(context).openFileOrFolder,
                 child: const Icon(Icons.folder_open_rounded),
               ),
             ),
@@ -142,14 +147,14 @@ class _RailShell extends ConsumerWidget {
                   padding: EdgeInsets.only(bottom: spacing.lg),
                   child: IconButton(
                     icon: const Icon(Icons.settings_rounded),
-                    tooltip: 'Settings',
+                    tooltip: AppLocalizations.of(context).settings,
                     onPressed: () => context.push('/settings'),
                   ),
                 ),
               ),
             ),
             destinations: <NavigationRailDestination>[
-              for (final NavDestination d in navDestinations)
+              for (final NavDestination d in navDestinationsFor(AppLocalizations.of(context)))
                 NavigationRailDestination(
                   icon: Icon(d.icon),
                   selectedIcon: Icon(d.selectedIcon),
@@ -186,7 +191,7 @@ class _DrawerShell extends StatelessWidget {
               onDestinationSelected: onGo,
               children: <Widget>[
                 SizedBox(height: spacing.md),
-                for (final NavDestination d in navDestinations)
+                for (final NavDestination d in navDestinationsFor(AppLocalizations.of(context)))
                   NavigationDrawerDestination(
                     icon: Icon(d.icon),
                     selectedIcon: Icon(d.selectedIcon),
@@ -205,7 +210,7 @@ class _DrawerShell extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: spacing.md),
                   child: ListTile(
                     leading: const Icon(Icons.settings_rounded),
-                    title: const Text('Settings'),
+                    title: Text(AppLocalizations.of(context).settings),
                     shape: const StadiumBorder(),
                     onTap: () => context.push('/settings'),
                   ),
