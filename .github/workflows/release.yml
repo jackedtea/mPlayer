@@ -217,11 +217,62 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------------------
+  # Linux
+  #
+  # Built on CI rather than locally because Flutter cannot cross-compile Linux
+  # from a Windows host.
+  #
+  # Unlike every other platform, libmpv is *not* bundled here: media_kit_video
+  # links it through pkg-config, so the build needs libmpv-dev and the running
+  # machine needs libmpv itself. That is also why Linux never had the PGS
+  # problem — a distro's libmpv is a complete build.
+  # ---------------------------------------------------------------------------
+  linux:
+    name: Linux bundle
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build and runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev \
+            libmpv-dev mpv \
+            libsecret-1-dev libjsoncpp-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build linux --release
+
+      # Tar rather than zip: it preserves the executable bit, which a zip
+      # extracted on Linux does not.
+      - name: Package the bundle
+        run: |
+          set -euo pipefail
+          tar -czf "${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz" \
+            -C build/linux/x64/release/bundle .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-bundle
+          path: ${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
   # Release
   # ---------------------------------------------------------------------------
   release:
     name: Publish release
-    needs: [prepare, android, windows]
+    needs: [prepare, android, windows, linux]
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.publish.outputs.url }}
@@ -252,6 +303,10 @@ jobs:
             echo "|---|---|"
             echo "| \`${{ needs.prepare.outputs.artifact_base }}.apk\` | Android |"
             echo "| \`${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip\` | Windows x64 |"
+            echo "| \`${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz\` | Linux x64 |"
+            echo ""
+            echo "The Linux bundle links libmpv from the system: install \`libmpv2\` (or"
+            echo "\`mpv\`) before running it."
             echo "RELEASE_NOTES_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -293,13 +348,16 @@ jobs:
           REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
           RUN_URL="${REPO_URL}/actions/runs/${GITHUB_RUN_ID}"
 
+          BASE="${{ needs.prepare.outputs.artifact_base }}"
+          DL="${REPO_URL}/releases/download/${{ needs.prepare.outputs.tag }}"
+          NOTES_URL="${REPO_URL}/releases/tag/${{ needs.prepare.outputs.tag }}"
+
           if [ "${{ needs.release.result }}" = "success" ]; then
             STATUS="✅ Release published"
-            LINK="${REPO_URL}/releases/tag/${{ needs.prepare.outputs.tag }}"
-            LINK_LINE="<a href=\"${LINK}\">Download</a> · <a href=\"${RUN_URL}\">Logs</a>"
+            OK=true
           else
             STATUS="❌ Build failed"
-            LINK_LINE="<a href=\"${RUN_URL}\">Logs</a>"
+            OK=false
           fi
 
           if [ "${{ needs.prepare.outputs.is_dev }}" = "true" ]; then
@@ -324,8 +382,25 @@ jobs:
             --arg branch "$GITHUB_REF_NAME" \
             --arg sha "${{ needs.prepare.outputs.short_sha }}" \
             --arg warn "$WARN" \
-            --arg link "$LINK_LINE" \
-            '{
+            --arg ok "$OK" \
+            --arg apk "$DL/$BASE.apk" \
+            --arg win "$DL/$BASE-windows-x64.zip" \
+            --arg linux "$DL/$BASE-linux-x64.tar.gz" \
+            --arg notes "$NOTES_URL" \
+            --arg run "$RUN_URL" \
+            '
+             def link($url; $label): "<a href=\"" + $url + "\">" + $label + "</a>";
+
+             # One direct link per artefact. Tapping a platform in Telegram
+             # should start that download, not open a release page to hunt
+             # through on a phone.
+             def downloads:
+               "📱 " + link($apk; "Android APK") + "\n"
+               + "🪟 " + link($win; "Windows x64") + "\n"
+               + "🐧 " + link($linux; "Linux x64") + "\n\n"
+               + link($notes; "Release notes") + " · " + link($run; "Logs");
+
+             {
                chat_id: $chat_id,
                parse_mode: "HTML",
                disable_web_page_preview: true,
@@ -334,7 +409,8 @@ jobs:
                  + "Channel: <code>" + $channel + "</code>\n"
                  + "Branch: <code>" + $branch + "</code> · Commit: <code>" + $sha + "</code>"
                  + (if $warn == "" then "" else "\n" + $warn end)
-                 + "\n\n" + $link)
+                 + "\n\n"
+                 + (if $ok == "true" then downloads else link($run; "Logs") end))
              }' \
           | curl -sS -f -X POST \
               "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \

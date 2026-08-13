@@ -4,5 +4,15 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!--
+	  Outbound connections. Without this a sandboxed release build cannot
+	  reach any WebDAV, SMB or Jellyfin server, while the debug build works —
+	  the same trap as Android's missing INTERNET permission.
+	-->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Reading media the user picked from outside the sandbox. -->
+	<key>com.apple.security.files.user-selected.read-only</key>
+	<true/>
 </dict>
 </plist>

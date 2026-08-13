@@ -22,7 +22,10 @@ enum RotationMode {
   RotationMode get next =>
       RotationMode.values[(index + 1) % RotationMode.values.length];
 
-  /// What `SystemChrome` should allow in this mode. Empty means "all".
+  /// What `SystemChrome` should allow in this mode.
+  ///
+  /// `auto` is deliberately absent: it does not mean "allow everything", it
+  /// means *follow the video* — see [PlayerUiController.followVideoAspect].
   List<DeviceOrientation> get orientations => switch (this) {
         RotationMode.auto => const <DeviceOrientation>[],
         RotationMode.landscape => const <DeviceOrientation>[
@@ -33,6 +36,22 @@ enum RotationMode {
             DeviceOrientation.portraitUp,
           ],
       };
+}
+
+/// Orientations that suit a video of the given shape.
+///
+/// Both landscape directions are offered so the device still flips end for
+/// end; only the axis is pinned.
+List<DeviceOrientation> orientationsForVideo(int width, int height) {
+  return width >= height
+      ? const <DeviceOrientation>[
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]
+      : const <DeviceOrientation>[
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+        ];
 }
 
 /// How the video fills the surface.
@@ -113,6 +132,11 @@ class PlayerUiController extends Notifier<PlayerUiState> {
     return const PlayerUiState();
   }
 
+  /// Last frame size reported by the decoder, so `auto` can be re-applied when
+  /// the user cycles back to it without waiting for a new video.
+  int? _videoWidth;
+  int? _videoHeight;
+
   void toggleLock() => state = state.copyWith(locked: !state.locked);
 
   void unlock() => state = state.copyWith(locked: false);
@@ -120,7 +144,39 @@ class PlayerUiController extends Notifier<PlayerUiState> {
   void cycleRotation() {
     final next = state.rotation.next;
     state = state.copyWith(rotation: next);
-    SystemChrome.setPreferredOrientations(next.orientations);
+
+    if (next == RotationMode.auto) {
+      _applyAuto();
+    } else {
+      SystemChrome.setPreferredOrientations(next.orientations);
+    }
+  }
+
+  /// Points the device at whichever axis suits the video.
+  ///
+  /// This is what "Auto" means in the design — the rotation default is
+  /// "follow video", not "let the sensor decide". A 16:9 film opened from a
+  /// portrait home screen should turn the phone landscape by itself.
+  ///
+  /// No-op on desktop, where `setPreferredOrientations` does nothing.
+  void followVideoAspect(int? width, int? height) {
+    if (width == null || height == null || width <= 0 || height <= 0) return;
+
+    _videoWidth = width;
+    _videoHeight = height;
+
+    if (state.rotation == RotationMode.auto) _applyAuto();
+  }
+
+  void _applyAuto() {
+    final w = _videoWidth;
+    final h = _videoHeight;
+    if (w == null || h == null) {
+      // Nothing decoded yet: leave the device alone rather than guessing.
+      SystemChrome.setPreferredOrientations(const <DeviceOrientation>[]);
+      return;
+    }
+    SystemChrome.setPreferredOrientations(orientationsForVideo(w, h));
   }
 
   void cycleAspect() => state = state.copyWith(aspect: state.aspect.next);
@@ -138,6 +194,10 @@ class PlayerUiController extends Notifier<PlayerUiState> {
   /// the previous one's lock or rotation.
   void reset() {
     SystemChrome.setPreferredOrientations(const <DeviceOrientation>[]);
+    // Otherwise the next file inherits the previous one's shape before its
+    // own dimensions arrive.
+    _videoWidth = null;
+    _videoHeight = null;
     state = const PlayerUiState();
   }
 }

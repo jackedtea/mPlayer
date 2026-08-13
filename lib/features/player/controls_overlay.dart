@@ -458,69 +458,103 @@ class _ChapterTicks extends CustomPainter {
       old.duration != duration || old.chapters != chapters;
 }
 
+/// Track pills on the left, the four icon buttons on the right.
+///
+/// The design draws these as one row, which it can: its player frames are
+/// landscape. In portrait on a phone the four 44pt buttons leave the pills
+/// almost no width and the two groups collide, so below [_twoRowBelow] they
+/// stack instead — pills first, buttons under them.
 class _ControlRow extends StatelessWidget {
   const _ControlRow({required this.this_});
 
   final ControlsOverlay this_;
 
+  /// Four icon buttons (176) plus enough room for two readable pills.
+  static const _twoRowBelow = 480.0;
+
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= _twoRowBelow) {
+          return Row(
+            children: <Widget>[
+              Expanded(child: _pills(context)),
+              ..._icons(),
+            ],
+          );
+        }
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            _pills(context),
+            SizedBox(height: context.spacing.xs),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: _icons()),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _pills(BuildContext context) {
     final state = this_.state;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: <Widget>[
+          _Pill(
+            icon: Icons.subtitles_rounded,
+            label: state.activeSubtitle?.label ?? 'Off',
+            onTap: this_.onSubtitles,
+          ),
+          _Pill(
+            icon: Icons.graphic_eq_rounded,
+            label: state.activeAudio?.label ?? 'Default',
+            onTap: this_.onAudio,
+          ),
+          _Pill(
+            icon: Icons.hd_rounded,
+            label: 'Original',
+            onTap: this_.onQuality,
+          ),
+          _Pill(
+            icon: Icons.speed_rounded,
+            label: '${state.speed.toStringAsFixed(1)}×',
+            onTap: this_.onSpeed,
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _icons() {
     final ui = this_.ui;
 
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: <Widget>[
-                _Pill(
-                  icon: Icons.subtitles_rounded,
-                  label: state.activeSubtitle?.label ?? 'Off',
-                  onTap: this_.onSubtitles,
-                ),
-                _Pill(
-                  icon: Icons.graphic_eq_rounded,
-                  label: state.activeAudio?.label ?? 'Default',
-                  onTap: this_.onAudio,
-                ),
-                _Pill(
-                  icon: Icons.hd_rounded,
-                  label: 'Original',
-                  onTap: this_.onQuality,
-                ),
-                _Pill(
-                  icon: Icons.speed_rounded,
-                  label: '${state.speed.toStringAsFixed(1)}×',
-                  onTap: this_.onSpeed,
-                ),
-              ],
-            ),
-          ),
-        ),
-        _SmallIcon(
-          icon: ui.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
-          tooltip: 'Lock player',
-          onTap: this_.onLock,
-        ),
-        _SmallIcon(
-          icon: ui.rotation.icon,
-          tooltip: 'Rotation: ${ui.rotation.label}',
-          onTap: this_.onRotate,
-        ),
-        _SmallIcon(
-          icon: Icons.segment_rounded,
-          tooltip: 'Chapters',
-          onTap: this_.onChapters,
-        ),
-        _SmallIcon(
-          icon: Icons.fullscreen_rounded,
-          tooltip: 'Fullscreen',
-          onTap: this_.onFullscreen,
-        ),
-      ],
-    );
+    return <Widget>[
+      _SmallIcon(
+        icon: ui.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
+        tooltip: 'Lock player',
+        onTap: this_.onLock,
+      ),
+      _SmallIcon(
+        icon: ui.rotation.icon,
+        tooltip: 'Rotation: ${ui.rotation.label}',
+        onTap: this_.onRotate,
+      ),
+      _SmallIcon(
+        icon: Icons.segment_rounded,
+        tooltip: 'Chapters',
+        onTap: this_.onChapters,
+      ),
+      _SmallIcon(
+        icon: Icons.fullscreen_rounded,
+        tooltip: 'Fullscreen',
+        onTap: this_.onFullscreen,
+      ),
+    ];
   }
 }
 

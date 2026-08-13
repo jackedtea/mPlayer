@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The chooser ("Open with") shows an intent-filter's android:label, so this
+  has to exist as a resource rather than only as the application's label.
+-->
+<resources>
+    <string name="app_name">mPlayer</string>
+</resources>

@@ -195,7 +195,9 @@ void main() {
       expect(RotationMode.portrait.next, RotationMode.auto);
     });
 
-    test('auto imposes no orientation lock', () {
+    test('auto pins no axis of its own — the video decides', () {
+      // Auto is "follow video", not "let the sensor decide", so the enum
+      // carries no orientation list; orientationsForVideo supplies it.
       expect(RotationMode.auto.orientations, isEmpty);
       expect(
         RotationMode.landscape.orientations,
@@ -206,6 +208,36 @@ void main() {
       );
       expect(RotationMode.portrait.orientations,
           <DeviceOrientation>[DeviceOrientation.portraitUp]);
+    });
+  });
+
+  group('orientationsForVideo', () {
+    test('a wide video asks for landscape, both ways up', () {
+      expect(
+        orientationsForVideo(1920, 1080),
+        <DeviceOrientation>[
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ],
+      );
+    });
+
+    test('a tall video asks for portrait', () {
+      // Phone-shot clips are common enough that this is not a corner case.
+      expect(
+        orientationsForVideo(1080, 1920),
+        <DeviceOrientation>[
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+        ],
+      );
+    });
+
+    test('a square video is treated as landscape rather than left undecided', () {
+      expect(
+        orientationsForVideo(1000, 1000),
+        contains(DeviceOrientation.landscapeLeft),
+      );
     });
   });
 

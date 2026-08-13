@@ -55,6 +55,20 @@ dependencies:
   xml: ^7.0.1
   flutter_localizations:
     sdk: flutter
+  receive_sharing_intent: ^1.9.0
+# media_kit_libs_android_video is a *transitive* dependency: media_kit_libs_video
+# pulls it in. It is overridden here because the version on pub downloads a
+# libmpv whose FFmpeg has no `pgssub` decoder, so PGS/HDMV subtitles fail with
+# "Could not find subtitle decoder for format 'hdmv_pgs_subtitle'"
+# (media-kit/media-kit#1269).
+#
+# The local copy is upstream 1.3.8 with four URLs changed to the `full` flavour
+# from the same build pipeline — see the comment in its android/build.gradle.
+# Re-sync it when media_kit bumps the package.
+dependency_overrides:
+  media_kit_libs_android_video:
+    path: packages/media_kit_libs_android_video
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

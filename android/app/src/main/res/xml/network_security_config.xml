@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 9 (API 28) blocks cleartext HTTP by default. That default is right
+  for most apps and wrong for this one: mPlayer exists to reach media on the
+  local network, and home NAS boxes, WebDAV shares and self-hosted Jellyfin
+  servers overwhelmingly speak plain HTTP over the LAN. The design's own
+  add-server hint is `http://192.168.1.20:8096`.
+
+  Without this, adding an http:// share fails with an opaque connection error
+  that looks like a wrong address rather than a policy decision.
+
+  This is deliberately a blanket permission. Android's network security config
+  can name individual domains, but it cannot express "any RFC1918 address",
+  and the whole point is that the user's server address is not known ahead of
+  time. Every mainstream media client makes the same call.
+
+  HTTPS is still used whenever the server offers it — nothing here downgrades
+  a secure connection, it only stops the platform refusing an insecure one the
+  user explicitly configured.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <!-- Lets a user trust their own self-signed server certificate
+                 through the system settings, which self-hosters commonly do. -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

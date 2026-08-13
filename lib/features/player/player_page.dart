@@ -103,6 +103,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final ui = ref.watch(playerUiProvider);
     final controller = ref.read(playbackControllerProvider.notifier);
 
+    // The decoder reports the frame size a moment after opening, which is when
+    // "Auto" rotation can finally decide which way up the video wants to be.
+    ref.listen(
+      playbackControllerProvider.select(
+        (s) => (s.stats.width, s.stats.height),
+      ),
+      (_, size) => _playerUi.followVideoAspect(size.$1, size.$2),
+    );
+
     _syncSleepTimer(ui.sleepTimer);
 
     return Theme(
