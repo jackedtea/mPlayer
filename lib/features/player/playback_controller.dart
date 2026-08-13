@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../../core/resume_repository.dart';
 import '../../sources/local_source.dart';
 import '../../sources/media_source.dart';
 import '../../sources/source_registry.dart';
@@ -46,6 +47,11 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Mirrors the Player settings switch, which defaults to on. Not persisted
   /// yet — that arrives with the settings wiring.
   bool autoPlayNext = true;
+
+  /// Throttles resume writes. The position stream fires several times a
+  /// second; persisting that often would hammer storage for no benefit.
+  DateTime _lastResumeWrite = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _resumeInterval = Duration(seconds: 5);
 
   /// Completes once the mpv properties media_kit leaves unset have been
   /// applied. [openResolved] waits on it so the first file already benefits.
@@ -216,8 +222,15 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Releases the backend but keeps the notifier alive, so leaving the player
   /// screen does not strand a decoder.
   Future<void> stop() async {
+    // Force a final write: the throttle would otherwise drop the last few
+    // seconds, which is exactly the position the user will resume from.
+    _recordProgress(force: true);
+
     await _teardownAsync();
     state = const PlaybackState();
+
+    // The Continue-watching shelf is built from what was just written.
+    ref.invalidate(resumePointsProvider);
   }
 
   Player _ensurePlayer() {
@@ -272,7 +285,10 @@ class PlaybackController extends Notifier<PlaybackState> {
   void _listen(Player player) {
     final s = player.stream;
     _subs.addAll(<StreamSubscription<void>>[
-      s.position.listen((v) => state = state.copyWith(position: v)),
+      s.position.listen((v) {
+        state = state.copyWith(position: v);
+        _recordProgress();
+      }),
       s.duration.listen((v) {
         state = state.copyWith(duration: v);
         // A known duration means the file is demuxed, which is the earliest
@@ -328,6 +344,34 @@ class PlaybackController extends Notifier<PlaybackState> {
         );
       }),
     ]);
+  }
+
+  /// Writes where playback got to, at most once every [_resumeInterval].
+  ///
+  /// Throttled because the position stream fires several times a second and
+  /// each write touches storage. The repository decides what is worth keeping
+  /// — barely-started and finished files are dropped there, not here.
+  void _recordProgress({bool force = false}) {
+    final media = state.media;
+    if (media == null || state.duration <= Duration.zero) return;
+
+    final now = DateTime.now();
+    if (!force && now.difference(_lastResumeWrite) < _resumeInterval) return;
+    _lastResumeWrite = now;
+
+    unawaited(
+      ref.read(resumeRepositoryProvider).save(
+            ResumePoint(
+              sourceId: media.ref.sourceId,
+              itemId: media.ref.itemId,
+              title: media.title,
+              kind: media.kind,
+              position: state.position,
+              duration: state.duration,
+              updatedAt: now,
+            ),
+          ),
+    );
   }
 
   /// Applies mpv options media_kit never sets.

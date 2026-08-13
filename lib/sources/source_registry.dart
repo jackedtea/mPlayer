@@ -13,6 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/models/media_models.dart';
 import 'local_source.dart';
 import 'media_source.dart';
+import 'media_store_source.dart';
+import 'saf_source.dart';
 import 'source_config.dart';
 import 'webdav_source.dart';
 
@@ -143,8 +145,17 @@ class SourceRegistry extends Notifier<SourceRegistryState> {
     // instantly with the device source, shares filling in behind it.
     Future<void>.microtask(reload);
 
-    return const SourceRegistryState(
-      drivers: <String, MediaSource>{LocalSource.sourceId: LocalSource()},
+    return SourceRegistryState(
+      drivers: <String, MediaSource>{
+        LocalSource.sourceId: const LocalSource(),
+        // Android reads its videos through the system media index; scoped
+        // storage forbids listing shared storage directly.
+        if (MediaStoreSource.isSupported)
+          MediaStoreSource.sourceId: const MediaStoreSource(),
+        // Folders the user granted explicitly, for what the media index
+        // cannot see.
+        if (SafSource.isSupported) SafSource.sourceId: const SafSource(),
+      },
     );
   }
 
@@ -154,6 +165,9 @@ class SourceRegistry extends Notifier<SourceRegistryState> {
 
     final drivers = <String, MediaSource>{
       LocalSource.sourceId: const LocalSource(),
+      if (MediaStoreSource.isSupported)
+        MediaStoreSource.sourceId: const MediaStoreSource(),
+      if (SafSource.isSupported) SafSource.sourceId: const SafSource(),
     };
     for (final SourceConfig config in configs) {
       final driver = await _buildDriver(repo, config);

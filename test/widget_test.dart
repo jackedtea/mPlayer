@@ -3,20 +3,51 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/theme.dart';
 import 'package:mplayer/app/tokens.dart';
+import 'package:mplayer/core/models/media_models.dart';
+import 'package:mplayer/core/resume_repository.dart';
 import 'package:mplayer/widgets/gradient_art.dart';
+
+/// Seeds the Continue-watching shelf.
+///
+/// It is built from real resume points now, so a test that asserts about the
+/// shelf has to put something in it — an empty shelf renders nothing at all,
+/// which is the correct behaviour and would silently pass a geometry test.
+void seedResumePoints(int count) {
+  final now = DateTime(2026, 2, 10);
+  SharedPreferences.setMockInitialValues(<String, Object>{
+    'resume_points_v1': <String>[
+      for (var i = 0; i < count; i++)
+        jsonEncode(
+          ResumePoint(
+            sourceId: 'device',
+            itemId: '/media/clip$i.mkv',
+            title: 'Clip $i',
+            kind: SourceKind.device,
+            position: const Duration(minutes: 10),
+            duration: const Duration(minutes: 100),
+            updatedAt: now.subtract(Duration(minutes: i)),
+          ).toJson(),
+        ),
+    ],
+  });
+}
 
 /// Pumps the real app at a specific logical window size.
 ///
 /// The design fixes behaviour at three widths, so every shell test states the
 /// width it is asserting about rather than relying on the default 800x600.
 Future<void> pumpAppAt(WidgetTester tester, Size size) async {
+  TestWidgetsFlutterBinding.ensureInitialized();
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
@@ -101,6 +132,7 @@ void main() {
 
   group('startup', () {
     testWidgets('opens on Files with no server gate', (tester) async {
+      seedResumePoints(2);
       await pumpAppAt(tester, const Size(400, 800));
 
       // The Files app bar title, not a login screen.
@@ -154,6 +186,7 @@ void main() {
     testWidgets('artwork lands on the 16pt margin and 12pt card gap', (
       tester,
     ) async {
+      seedResumePoints(2);
       await pumpAppAt(tester, const Size(400, 800));
 
       // The ink ring around each card is drawn outside the artwork, so the
@@ -177,6 +210,7 @@ void main() {
     testWidgets('press highlight is inset from the artwork and caption', (
       tester,
     ) async {
+      seedResumePoints(2);
       await pumpAppAt(tester, const Size(400, 800));
 
       final inkWell = find
@@ -200,6 +234,8 @@ void main() {
     testWidgets('shelf grows with the text scale instead of overflowing', (
       tester,
     ) async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      seedResumePoints(2);
       tester.view.devicePixelRatio = 1.0;
       tester.view.physicalSize = const Size(400, 800);
       addTearDown(tester.view.reset);

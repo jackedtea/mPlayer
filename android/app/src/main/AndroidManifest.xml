@@ -10,6 +10,19 @@
     <!-- Reading the current network state before attempting a share. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!--
+      Reading the user's videos. Scoped storage forbids listing shared
+      storage directly, so the Files tab is built from MediaStore instead.
+
+      Two permissions because the model changed in Android 13: READ_MEDIA_VIDEO
+      is the granular replacement, and READ_EXTERNAL_STORAGE is capped at API
+      32 so it is not requested on newer releases where it no longer applies.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
     <application
         android:label="mPlayer"
         android:name="${applicationName}"

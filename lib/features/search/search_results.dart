@@ -223,13 +223,17 @@ class _HitLeading extends StatelessWidget {
 
     switch (hit.kind) {
       case SearchHitKind.file:
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(radii.thumb),
-          child: SizedBox(
-            width: 64,
-            height: 40,
-            child: GradientArt(seed: hit.title),
+        // A file hit comes from a filesystem source, which has no artwork —
+        // an icon rather than a gradient standing in for a thumbnail that
+        // does not exist. Poster hits below come from a server and keep it.
+        return Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: radii.chipAll,
           ),
+          child: Icon(Icons.movie_rounded, size: 22, color: scheme.primary),
         );
       case SearchHitKind.folder:
         return Container(

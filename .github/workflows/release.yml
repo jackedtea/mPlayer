@@ -31,7 +31,7 @@ jobs:
       app_id_suffix: ${{ steps.meta.outputs.app_id_suffix }}
       version_name_suffix: ${{ steps.meta.outputs.version_name_suffix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Derive build metadata
         id: meta
@@ -86,9 +86,9 @@ jobs:
     outputs:
       signed: ${{ steps.keystore.outputs.signed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -173,7 +173,7 @@ jobs:
         if: always()
         run: rm -f "${{ github.workspace }}/android/app/ci-keystore.jks"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android-apk
           path: ${{ needs.prepare.outputs.artifact_base }}.apk
@@ -188,7 +188,7 @@ jobs:
     needs: prepare
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -209,7 +209,7 @@ jobs:
             -Path build\windows\x64\runner\Release\* `
             -DestinationPath "${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-zip
           path: ${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip
@@ -232,7 +232,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install build and runtime dependencies
         run: |
@@ -260,7 +260,7 @@ jobs:
           tar -czf "${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz" \
             -C build/linux/x64/release/bundle .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-bundle
           path: ${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz
@@ -277,7 +277,7 @@ jobs:
     outputs:
       url: ${{ steps.publish.outputs.url }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -312,7 +312,7 @@ jobs:
 
       - name: Publish
         id: publish
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: ${{ needs.prepare.outputs.release_name }}

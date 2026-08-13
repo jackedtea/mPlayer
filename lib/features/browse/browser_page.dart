@@ -12,7 +12,6 @@ import '../../core/models/library_models.dart';
 import '../../sources/local_source.dart' show formatBytes;
 import '../../sources/media_source.dart';
 import '../../sources/source_registry.dart';
-import '../../widgets/gradient_art.dart';
 import 'browse_controller.dart';
 
 /// Screen 1b — browsing a share or a local folder.
@@ -343,12 +342,25 @@ class _EntryLeading extends StatelessWidget {
           ),
         );
       case BrowseEntryKind.video:
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(radii.thumb),
-          child: SizedBox(
-            width: 64,
-            height: 40,
-            child: GradientArt(seed: entry.name),
+        // No thumbnail. A filesystem source has no artwork to show, and the
+        // gradient placeholder reads as a real still — it makes every file
+        // look like it has a preview that simply failed to load, and makes
+        // two different files look meaningfully different when the colour is
+        // only a hash of the name.
+        //
+        // Server sources keep their artwork: there the image is real. Local
+        // thumbnails would need frame extraction, which is a separate job.
+        return Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: radii.chipAll,
+          ),
+          child: Icon(
+            Icons.movie_rounded,
+            size: 24,
+            color: scheme.primary,
           ),
         );
       case BrowseEntryKind.subtitle:
@@ -404,20 +416,25 @@ class _EntryGrid extends StatelessWidget {
               Expanded(
                 child: ClipRRect(
                   borderRadius: radii.cardAll,
-                  child: entry.kind == BrowseEntryKind.video
-                      ? GradientArt(seed: entry.name)
-                      : ColoredBox(
-                          color: context.colors.surfaceContainerLow,
-                          child: Center(
-                            child: Icon(
-                              entry.isFolder
-                                  ? Icons.folder_rounded
-                                  : Icons.insert_drive_file_rounded,
-                              size: 32,
-                              color: context.colors.primary,
-                            ),
-                          ),
-                        ),
+                  // Icons here too, for the same reason as the list rows: a
+                  // filesystem source has no artwork, and a gradient would
+                  // pretend otherwise.
+                  child: ColoredBox(
+                    color: context.colors.surfaceContainerLow,
+                    child: Center(
+                      child: Icon(
+                        switch (entry.kind) {
+                          BrowseEntryKind.folder => Icons.folder_rounded,
+                          BrowseEntryKind.video => Icons.movie_rounded,
+                          BrowseEntryKind.subtitle => Icons.subtitles_rounded,
+                          BrowseEntryKind.other =>
+                            Icons.insert_drive_file_rounded,
+                        },
+                        size: 32,
+                        color: context.colors.primary,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               SizedBox(height: spacing.xs + 2),
