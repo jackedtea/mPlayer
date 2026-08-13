@@ -36,7 +36,7 @@ Verified by actually building and running, not assumed:
 
 - Windows debug build links and bundles `libmpv-2.dll`
 - Android debug APK builds and bundles `libmpv.so` for all three ABIs, plus the Roboto asset
-- `flutter analyze` clean; `flutter test` 114/114 passing. `test/screens_test.dart` pumps
+- `flutter analyze` clean; `flutter test` 140/140 passing. `test/screens_test.dart` pumps
   **every route at all three breakpoints** and fails on any overflow — it caught a
   duplicate FAB hero tag and two real overflows, so do not weaken it.
 
