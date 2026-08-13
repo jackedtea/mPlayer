@@ -11,6 +11,8 @@ import '../../core/models/media_models.dart';
 import '../../sources/media_source.dart';
 import '../../sources/source_config.dart';
 import '../../sources/source_registry.dart';
+import '../../sources/media_proxy_server.dart';
+import '../../sources/smb_source.dart';
 import '../../sources/webdav_source.dart';
 
 /// Adds or edits an SMB, WebDAV or NFS share.
@@ -99,8 +101,9 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
     _password.text = stored;
   }
 
-  /// Only WebDAV has a driver; the others save but cannot be browsed yet.
-  bool get _supported => _kind == SourceKind.webdav;
+  /// NFS still has no driver; it saves but cannot be browsed yet.
+  bool get _supported =>
+      _kind == SourceKind.webdav || _kind == SourceKind.smb;
 
   bool get _canSubmit =>
       _uri.text.trim().isNotEmpty && _name.text.trim().isNotEmpty && !_testing;
@@ -270,10 +273,18 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
     });
 
     final config = _buildConfig();
-    final source = WebDavSource(
-      config: config,
-      password: _password.text.isEmpty ? null : _password.text,
-    );
+    final password = _password.text.isEmpty ? null : _password.text;
+
+    // Built directly rather than through the registry: the share is not saved
+    // yet, and testing must not register a half-configured source.
+    final BrowsableSource source = switch (config.kind) {
+      SourceKind.smb => SmbSource(
+          config: config,
+          password: password,
+          proxy: ref.read(mediaProxyServerProvider),
+        ),
+      _ => WebDavSource(config: config, password: password),
+    };
 
     try {
       final listing = await source.listDirectory('');
@@ -290,6 +301,8 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
         _status = e.message;
       });
     } finally {
+      // A test connection must not outlive the test; SMB opens a worker pool.
+      if (source is SmbSource) await source.dispose();
       if (mounted) setState(() => _testing = false);
     }
   }

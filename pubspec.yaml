@@ -56,6 +56,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   receive_sharing_intent: ^1.9.0
+  dart_smb2: ^0.1.1
 # media_kit_libs_android_video is a *transitive* dependency: media_kit_libs_video
 # pulls it in. It is overridden here because the version on pub downloads a
 # libmpv whose FFmpeg has no `pgssub` decoder, so PGS/HDMV subtitles fail with
@@ -83,6 +84,7 @@ dev_dependencies:
   drift_dev: ^2.34.0
   json_serializable: ^6.14.1
   flutter_launcher_icons: ^0.14.4
+  http: ^1.6.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -14,7 +14,9 @@ import '../core/models/media_models.dart';
 import 'local_source.dart';
 import 'media_source.dart';
 import 'media_store_source.dart';
+import 'media_proxy_server.dart';
 import 'saf_source.dart';
+import 'smb_source.dart';
 import 'source_config.dart';
 import 'webdav_source.dart';
 
@@ -238,8 +240,16 @@ class SourceRegistry extends Notifier<SourceRegistryState> {
           config: config,
           password: await repo.readPassword(config),
         ),
-      // SMB and NFS have no driver yet. The config is still kept and listed so
-      // the user's setup is not silently discarded — the tile simply cannot be
+      // SMB reads through the loopback proxy: libmpv cannot consume a Dart
+      // stream, and the proxy turns Range requests into offset reads so the
+      // file stays seekable.
+      SourceKind.smb => SmbSource(
+          config: config,
+          password: await repo.readPassword(config),
+          proxy: ref.read(mediaProxyServerProvider),
+        ),
+      // NFS has no driver yet. The config is still kept and listed so the
+      // user's setup is not silently discarded — the tile simply cannot be
       // browsed until the driver lands.
       _ => null,
     };
