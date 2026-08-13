@@ -13,8 +13,8 @@ import 'add_server_sheet.dart';
 ///
 /// This is an opt-in empty state, never a login wall: the copy exists to say
 /// local playback already works without a server.
-class ServerEmptyPage extends StatelessWidget {
-  const ServerEmptyPage({super.key});
+class ServersEmptyPage extends StatelessWidget {
+  const ServersEmptyPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +80,7 @@ class ServerEmptyPage extends StatelessWidget {
                     // Until a real connection exists, this is how the
                     // connected home (1d) is reachable for review.
                     TextButton(
-                      onPressed: () => context.push('/server/home'),
+                      onPressed: () => context.push('/servers/home'),
                       child: const Text('Preview a connected server'),
                     ),
                     SizedBox(height: spacing.sm),

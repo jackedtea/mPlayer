@@ -12,10 +12,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'mPlayer';
 
   @override
-  String get navStorage => 'Storage';
+  String get navStorage => 'Files';
 
   @override
-  String get navServer => 'Server';
+  String get navServer => 'Servers';
 
   @override
   String get navSearch => 'Search';
@@ -595,7 +595,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forward30 => 'Forward 30 seconds';
 
   @override
-  String get nothingToPlay => 'Nothing to play — pick a file from Storage.';
+  String get nothingToPlay => 'Nothing to play — pick a file from Files.';
 
   @override
   String get rotationAuto => 'Auto';

@@ -11,30 +11,30 @@ import '../features/downloads/downloads_page.dart';
 import '../features/playback/smoke_test_page.dart';
 import '../features/player/player_page.dart';
 import '../features/search/search_page.dart';
-import '../features/server/library_grid_page.dart';
-import '../features/server/movie_detail_page.dart';
-import '../features/server/series_page.dart';
-import '../features/server/server_empty_page.dart';
-import '../features/server/server_home_page.dart';
+import '../features/servers/library_grid_page.dart';
+import '../features/servers/movie_detail_page.dart';
+import '../features/servers/series_page.dart';
+import '../features/servers/servers_empty_page.dart';
+import '../features/servers/servers_home_page.dart';
 import '../features/settings/about_page.dart';
 import '../features/settings/appearance_page.dart';
 import '../features/settings/general_settings_page.dart';
 import '../features/settings/player_settings_page.dart';
 import '../features/settings/settings_index_page.dart';
 import '../features/settings/subtitle_settings_page.dart';
-import '../features/storage/storage_page.dart';
+import '../features/files/files_page.dart';
 import '../sources/local_source.dart';
 import '../sources/media_source.dart';
 import 'adaptive_scaffold.dart';
 
 final _rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
-/// Storage is the initial location — the app must never open on a login or a
+/// Files is the initial location — the app must never open on a login or a
 /// server check.
 GoRouter buildRouter() {
   return GoRouter(
     navigatorKey: _rootKey,
-    initialLocation: '/storage',
+    initialLocation: '/files',
     routes: <RouteBase>[
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -43,16 +43,16 @@ GoRouter buildRouter() {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: '/storage',
-                builder: (context, state) => const StoragePage(),
+                path: '/files',
+                builder: (context, state) => const FilesPage(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: '/server',
-                builder: (context, state) => const ServerEmptyPage(),
+                path: '/servers',
+                builder: (context, state) => const ServersEmptyPage(),
               ),
             ],
           ),
@@ -97,11 +97,11 @@ GoRouter buildRouter() {
       ),
       // Server library screens. They live above the shell rather than inside
       // the Server branch because they are reached from search and from the
-      // Storage tab too, not only from the server home.
+      // Files tab too, not only from the servers home.
       GoRoute(
-        path: '/server/home',
+        path: '/servers/home',
         parentNavigatorKey: _rootKey,
-        builder: (context, state) => const ServerHomePage(),
+        builder: (context, state) => const ServersHomePage(),
       ),
       GoRoute(
         path: '/library',
@@ -170,7 +170,7 @@ class _MissingMediaPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(),
       body: const Center(
-        child: Text('Nothing to play — pick a file from Storage.'),
+        child: Text('Nothing to play — pick a file from Files.'),
       ),
     );
   }

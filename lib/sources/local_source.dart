@@ -76,6 +76,9 @@ class LocalSource implements BrowsableSource {
   String get rootLabel => 'This device';
 
   @override
+  String parentOf(String path) => p.dirname(path);
+
+  @override
   Future<BrowseListing> listDirectory(String path) async {
     final target = path.isEmpty ? await _defaultRoot() : path;
     final directory = Directory(target);

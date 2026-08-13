@@ -7,6 +7,37 @@ import 'package:flutter/foundation.dart';
 
 import '../../sources/media_source.dart';
 
+/// The folder a file was opened from, as a playlist.
+///
+/// Opening one video from a file manager should let the user step through the
+/// rest of that folder, which is what every other video player does.
+@immutable
+class PlaybackQueue {
+  const PlaybackQueue({this.items = const <MediaRef>[], this.index = 0});
+
+  final List<MediaRef> items;
+  final int index;
+
+  bool get isEmpty => items.isEmpty;
+
+  /// A folder holding one video is not a playlist worth showing controls for.
+  bool get hasSiblings => items.length > 1;
+
+  bool get hasPrevious => index > 0;
+  bool get hasNext => index >= 0 && index < items.length - 1;
+
+  MediaRef? get current =>
+      (index >= 0 && index < items.length) ? items[index] : null;
+
+  PlaybackQueue? stepTo(int next) {
+    if (next < 0 || next >= items.length) return null;
+    return PlaybackQueue(items: items, index: next);
+  }
+
+  /// Human position, e.g. "3 of 10".
+  String get position => '${index + 1} of ${items.length}';
+}
+
 /// Which stream a [MediaTrack] belongs to.
 enum TrackKind { video, audio, subtitle }
 
@@ -132,6 +163,7 @@ class PlaybackState {
     this.stats = const PlaybackStats(),
     this.containerChapters = const <MediaChapter>[],
     this.logLines = const <String>[],
+    this.queue = const PlaybackQueue(),
   });
 
   /// Null until something has been opened.
@@ -177,6 +209,9 @@ class PlaybackState {
   final List<String> logLines;
 
   static const logLimit = 20;
+
+  /// The folder the current file came from; empty when opened standalone.
+  final PlaybackQueue queue;
 
   bool get hasMedia => media != null;
 
@@ -230,6 +265,7 @@ class PlaybackState {
     PlaybackStats? stats,
     List<MediaChapter>? containerChapters,
     List<String>? logLines,
+    PlaybackQueue? queue,
     bool clearError = false,
     bool clearMedia = false,
   }) {
@@ -251,6 +287,7 @@ class PlaybackState {
       stats: stats ?? this.stats,
       containerChapters: containerChapters ?? this.containerChapters,
       logLines: logLines ?? this.logLines,
+      queue: queue ?? this.queue,
     );
   }
 }

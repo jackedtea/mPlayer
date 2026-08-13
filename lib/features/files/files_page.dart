@@ -22,8 +22,8 @@ import '../../widgets/source_tile.dart';
 /// Screen 1a — the launch destination.
 ///
 /// Deliberately server-free: everything here works with nothing configured.
-class StoragePage extends ConsumerWidget {
-  const StoragePage({super.key});
+class FilesPage extends ConsumerWidget {
+  const FilesPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,7 +31,7 @@ class StoragePage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Storage'),
+        title: const Text('Files'),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.settings_rounded),

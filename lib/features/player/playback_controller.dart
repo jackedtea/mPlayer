@@ -43,6 +43,10 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Guards against re-reading the chapter list on every duration tick.
   bool _chaptersLoaded = false;
 
+  /// Mirrors the Player settings switch, which defaults to on. Not persisted
+  /// yet — that arrives with the settings wiring.
+  bool autoPlayNext = true;
+
   /// Completes once the mpv properties media_kit leaves unset have been
   /// applied. [openResolved] waits on it so the first file already benefits.
   Future<void>? _nativeReady;
@@ -85,7 +89,7 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   /// Plays an already-resolved handle. Used when a caller resolved ahead of
   /// time (the picker does, so the player opens with a title already known).
-  Future<void> openResolved(PlayableMedia media) async {
+  Future<void> openResolved(PlayableMedia media, {PlaybackQueue? queue}) async {
     final player = _ensurePlayer();
 
     // Applied before the first open so the very first file gets the cache
@@ -103,6 +107,7 @@ class PlaybackController extends Notifier<PlaybackState> {
       completed: false,
       buffering: true,
       containerChapters: const <MediaChapter>[],
+      queue: queue,
       clearError: true,
     );
 
@@ -118,6 +123,62 @@ class PlaybackController extends Notifier<PlaybackState> {
       );
     } catch (e) {
       state = state.copyWith(buffering: false, error: 'Playback failed: $e');
+    }
+  }
+
+  /// Reads the folder [mediaRef] came from and turns it into the playlist.
+  ///
+  /// Runs *after* playback has started, deliberately: the file the user asked
+  /// for should begin immediately rather than waiting on a directory listing
+  /// that may cross a network. Prev/next simply appear a moment later.
+  ///
+  /// Failure is silent by design — a folder that cannot be listed costs the
+  /// user the step buttons, not their video.
+  Future<void> loadSiblingQueue(MediaRef mediaRef) async {
+    final source = ref.read(mediaSourcesProvider)[mediaRef.sourceId];
+    if (source is! BrowsableSource) return;
+
+    try {
+      final siblings = await siblingVideosOf(source, mediaRef);
+      if (siblings.items.length <= 1) return;
+
+      state = state.copyWith(
+        queue: PlaybackQueue(items: siblings.items, index: siblings.index),
+      );
+    } catch (e) {
+      debugPrint('Could not read the folder for a playlist: $e');
+    }
+  }
+
+  /// Steps to the previous file in the folder.
+  Future<void> playPrevious() => _step(-1);
+
+  /// Steps to the next file in the folder.
+  Future<void> playNext() => _step(1);
+
+  Future<void> _step(int delta) async {
+    final next = state.queue.stepTo(state.queue.index + delta);
+    if (next == null) return;
+
+    final source = ref.read(mediaSourcesProvider)[next.current!.sourceId];
+    if (source == null) return;
+
+    await _openAt(next, source);
+  }
+
+  Future<void> _openAt(PlaybackQueue queue, MediaSource source) async {
+    final mediaRef = queue.current;
+    if (mediaRef == null) return;
+
+    state = state.copyWith(queue: queue, buffering: true, clearError: true);
+
+    try {
+      final media = await source.resolve(mediaRef);
+      await openResolved(media, queue: queue);
+    } on MediaSourceException catch (e) {
+      state = state.copyWith(buffering: false, error: e.message);
+    } catch (e) {
+      state = state.copyWith(buffering: false, error: 'Could not open: $e');
     }
   }
 
@@ -224,7 +285,15 @@ class PlaybackController extends Notifier<PlaybackState> {
       s.buffer.listen((v) => state = state.copyWith(buffered: v)),
       s.playing.listen((v) => state = state.copyWith(playing: v)),
       s.buffering.listen((v) => state = state.copyWith(buffering: v)),
-      s.completed.listen((v) => state = state.copyWith(completed: v)),
+      s.completed.listen((v) {
+        state = state.copyWith(completed: v);
+        // Roll on to the next file in the folder, which is what the Player
+        // settings page already calls "Auto-play next episode". Guarded on
+        // hasNext so the last file simply stops.
+        if (v && autoPlayNext && state.queue.hasNext) {
+          unawaited(playNext());
+        }
+      }),
       s.volume.listen((v) => state = state.copyWith(volume: v)),
       s.rate.listen((v) => state = state.copyWith(speed: v)),
       s.tracks.listen((t) {

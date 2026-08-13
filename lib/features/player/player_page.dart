@@ -69,7 +69,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     // The notifier outlives this page, so opening happens after the first
     // frame — mutating a provider during build is not allowed.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Play what the caller resolved, then fill in the rest of its folder so
+      // prev/next work — without making the first frame wait on a directory
+      // listing that may cross the network.
       _playback.openResolved(widget.media);
+      _playback.loadSiblingQueue(widget.media.ref);
     });
     _restartHideTimer();
   }
@@ -169,6 +173,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         controller.playOrPause();
                       },
                       onSkip: controller.skip,
+                      onPrevious: () {
+                        _restartHideTimer();
+                        controller.playPrevious();
+                      },
+                      onNext: () {
+                        _restartHideTimer();
+                        controller.playNext();
+                      },
                       onScrubStart: (v) => setState(() => _dragProgress = v),
                       onScrubUpdate: (v) => setState(() => _dragProgress = v),
                       onScrubEnd: (v) {

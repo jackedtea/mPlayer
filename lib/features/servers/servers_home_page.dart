@@ -18,14 +18,14 @@ import '../../widgets/section_header.dart';
 /// Reached from the empty state (1c) after a successful connection. Kept as a
 /// separate page rather than a branch inside 1c so the empty state stays the
 /// simple thing it is.
-class ServerHomePage extends StatefulWidget {
-  const ServerHomePage({super.key});
+class ServersHomePage extends StatefulWidget {
+  const ServersHomePage({super.key});
 
   @override
-  State<ServerHomePage> createState() => _ServerHomePageState();
+  State<ServersHomePage> createState() => _ServersHomePageState();
 }
 
-class _ServerHomePageState extends State<ServerHomePage> {
+class _ServersHomePageState extends State<ServersHomePage> {
   int _filter = 0;
 
   @override

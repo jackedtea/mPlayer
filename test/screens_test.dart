@@ -32,15 +32,15 @@ const _sizes = <String, Size>{
 /// Every reachable destination. `/player` is excluded — it needs a resolved
 /// handle passed as `extra`, and its no-handle fallback is covered separately.
 const _routes = <String>[
-  '/storage',
-  '/server',
+  '/files',
+  '/servers',
   '/search',
   '/settings',
   '/settings/appearance',
   '/settings/player',
   '/settings/subtitle',
   '/settings/about',
-  '/server/home',
+  '/servers/home',
   '/library',
   '/library/movie',
   '/library/series',
@@ -200,7 +200,7 @@ void main() {
         (tester) async {
       // Tall enough that the Network section needs no scrolling.
       final router = await pumpRouterAt(tester, const Size(420, 1600));
-      router.go('/storage');
+      router.go('/files');
       await tester.pumpAndSettle();
 
       // Scoped to the tile: the Continue-watching card carries a "NAS" badge

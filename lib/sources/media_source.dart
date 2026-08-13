@@ -198,6 +198,44 @@ abstract interface class BrowsableSource implements MediaSource {
   /// Throws [MediaSourceException] when the directory cannot be read — an
   /// unreachable share must surface inline, never as a crash.
   Future<BrowseListing> listDirectory(String path);
+
+  /// The directory holding [path].
+  ///
+  /// Each driver answers for its own path style: local paths use the
+  /// platform separator, a WebDAV href is always POSIX. Getting this wrong
+  /// silently produces an empty playlist rather than an error.
+  String parentOf(String path);
+}
+
+/// The videos beside [mediaRef], in the order a file manager would show them,
+/// with the index of [mediaRef] itself.
+///
+/// This is what makes prev/next work after opening a single file: the folder
+/// it came from *is* the playlist.
+Future<({List<MediaRef> items, int index})> siblingVideosOf(
+  BrowsableSource source,
+  MediaRef mediaRef,
+) async {
+  final parent = source.parentOf(mediaRef.itemId);
+  final listing = await source.listDirectory(parent);
+
+  final videos = listing.entries.where((e) => e.isPlayable).toList();
+
+  final items = <MediaRef>[
+    for (final BrowseEntry e in videos)
+      MediaRef(sourceId: source.id, itemId: e.path, title: e.name),
+  ];
+
+  // The opened file may not be in the listing — a picker can hand over a file
+  // from a directory the driver cannot list, and on Android it hands over a
+  // copy in the cache. Falling back to a single-item queue keeps playback
+  // working instead of failing to find an index.
+  final index = items.indexWhere((m) => m.itemId == mediaRef.itemId);
+  if (index < 0) {
+    return (items: <MediaRef>[mediaRef], index: 0);
+  }
+
+  return (items: items, index: index);
 }
 
 /// Extensions the browser treats as playable video.

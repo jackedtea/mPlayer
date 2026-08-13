@@ -3,7 +3,7 @@
 
   "appTitle": "mPlayer",
 
-  "navStorage": "Bộ nhớ",
+  "navStorage": "Tệp",
   "navServer": "Máy chủ",
   "navSearch": "Tìm kiếm",
   "settings": "Cài đặt",
@@ -203,7 +203,7 @@
   "on": "Bật",
   "back10": "Lùi 10 giây",
   "forward30": "Tiến 30 giây",
-  "nothingToPlay": "Chưa có gì để phát — hãy chọn tệp từ tab Bộ nhớ.",
+  "nothingToPlay": "Chưa có gì để phát — hãy chọn tệp từ tab Tệp.",
 
   "rotationAuto": "Tự động",
   "rotationLandscape": "Ngang",

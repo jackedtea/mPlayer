@@ -8,6 +8,7 @@ import 'dart:io' show HttpDate;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:path/path.dart' as p;
 import 'package:xml/xml.dart';
 
 import '../core/models/library_models.dart';
@@ -50,6 +51,10 @@ class WebDavSource implements BrowsableSource {
 
   @override
   String get rootLabel => config.name;
+
+  /// Hrefs are URL paths, so always POSIX — never the host's separator.
+  @override
+  String parentOf(String path) => p.posix.dirname(path);
 
   /// Basic auth, reused for both PROPFIND and the stream libmpv opens.
   Map<String, String> get authHeaders {

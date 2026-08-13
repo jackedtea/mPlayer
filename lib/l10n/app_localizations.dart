@@ -107,13 +107,13 @@ abstract class AppLocalizations {
   /// No description provided for @navStorage.
   ///
   /// In en, this message translates to:
-  /// **'Storage'**
+  /// **'Files'**
   String get navStorage;
 
   /// No description provided for @navServer.
   ///
   /// In en, this message translates to:
-  /// **'Server'**
+  /// **'Servers'**
   String get navServer;
 
   /// No description provided for @navSearch.
@@ -1211,7 +1211,7 @@ abstract class AppLocalizations {
   /// No description provided for @nothingToPlay.
   ///
   /// In en, this message translates to:
-  /// **'Nothing to play — pick a file from Storage.'**
+  /// **'Nothing to play — pick a file from Files.'**
   String get nothingToPlay;
 
   /// No description provided for @rotationAuto.

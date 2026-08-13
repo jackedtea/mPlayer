@@ -16,7 +16,7 @@ import 'playback_controller.dart';
 /// unreadable file reports as a snackbar on the screen the user is already
 /// looking at, instead of pushing a black player that then shows an error.
 ///
-/// Shared by the Storage FAB and the navigation rail's leading action.
+/// Shared by the Files FAB and the navigation rail's leading action.
 Future<void> openLocalVideo(BuildContext context, WidgetRef ref) async {
   final source = ref.read(localSourceProvider);
 

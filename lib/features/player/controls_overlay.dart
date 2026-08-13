@@ -26,6 +26,8 @@ class ControlsOverlay extends StatelessWidget {
     required this.onInteraction,
     required this.onPlayPause,
     required this.onSkip,
+    required this.onPrevious,
+    required this.onNext,
     required this.onScrubStart,
     required this.onScrubUpdate,
     required this.onScrubEnd,
@@ -52,6 +54,11 @@ class ControlsOverlay extends StatelessWidget {
   final VoidCallback onInteraction;
   final VoidCallback onPlayPause;
   final ValueChanged<Duration> onSkip;
+
+  /// Step to the neighbouring file in the folder.
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
   final ValueChanged<double> onScrubStart;
   final ValueChanged<double> onScrubUpdate;
   final ValueChanged<double> onScrubEnd;
@@ -231,9 +238,29 @@ class _Transport extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = context.colors;
 
+    final queue = this_.state.queue;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
+        // Only when the file came from a folder holding others — a lone video
+        // should not show dead controls. The design's centre row is three
+        // buttons because its frames show a single item; stepping through a
+        // folder is what `skip_next` in its icon inventory is for.
+        if (queue.hasSiblings) ...<Widget>[
+          CircleButton(
+            icon: Icons.skip_previous_rounded,
+            size: 48,
+            iconSize: 26,
+            background: Colors.white.withValues(alpha: 0.12),
+            foreground: queue.hasPrevious
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.3),
+            tooltip: 'Previous',
+            onPressed: queue.hasPrevious ? this_.onPrevious : null,
+          ),
+          const SizedBox(width: 16),
+        ],
         CircleButton(
           icon: Icons.replay_10_rounded,
           size: 56,
@@ -272,6 +299,20 @@ class _Transport extends StatelessWidget {
             this_.onSkip(const Duration(seconds: 30));
           },
         ),
+        if (queue.hasSiblings) ...<Widget>[
+          const SizedBox(width: 16),
+          CircleButton(
+            icon: Icons.skip_next_rounded,
+            size: 48,
+            iconSize: 26,
+            background: Colors.white.withValues(alpha: 0.12),
+            foreground: queue.hasNext
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.3),
+            tooltip: 'Next',
+            onPressed: queue.hasNext ? this_.onNext : null,
+          ),
+        ],
       ],
     );
   }
@@ -650,7 +691,10 @@ class CircleButton extends StatelessWidget {
   final Color background;
   final Color foreground;
   final String tooltip;
-  final VoidCallback onPressed;
+
+  /// Null renders the button inert rather than removing it, so the transport
+  /// row keeps its shape at the ends of a playlist.
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

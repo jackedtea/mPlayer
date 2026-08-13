@@ -3,8 +3,8 @@
 
   "appTitle": "mPlayer",
 
-  "navStorage": "Storage",
-  "navServer": "Server",
+  "navStorage": "Files",
+  "navServer": "Servers",
   "navSearch": "Search",
   "settings": "Settings",
 
@@ -254,7 +254,7 @@
   "on": "On",
   "back10": "Back 10 seconds",
   "forward30": "Forward 30 seconds",
-  "nothingToPlay": "Nothing to play — pick a file from Storage.",
+  "nothingToPlay": "Nothing to play — pick a file from Files.",
 
   "rotationAuto": "Auto",
   "rotationLandscape": "Landscape",

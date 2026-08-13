@@ -48,7 +48,7 @@ void main() {
       final en = await load(const Locale('en'));
       final vi = await load(const Locale('vi'));
 
-      expect(en.navStorage, 'Storage');
+      expect(en.navStorage, 'Files');
       expect(vi.navStorage, isNot(en.navStorage));
       expect(vi.settings, isNot(en.settings));
       expect(vi.noServerTitle, isNot(en.noServerTitle));

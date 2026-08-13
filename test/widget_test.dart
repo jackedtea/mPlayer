@@ -100,11 +100,11 @@ void main() {
   });
 
   group('startup', () {
-    testWidgets('opens on Storage with no server gate', (tester) async {
+    testWidgets('opens on Files with no server gate', (tester) async {
       await pumpAppAt(tester, const Size(400, 800));
 
-      // The Storage app bar title, not a login screen.
-      expect(find.widgetWithText(AppBar, 'Storage'), findsOneWidget);
+      // The Files app bar title, not a login screen.
+      expect(find.widgetWithText(AppBar, 'Files'), findsOneWidget);
       expect(find.text('Continue watching'), findsOneWidget);
       expect(find.text('This device'), findsOneWidget);
     });
@@ -114,7 +114,7 @@ void main() {
     ) async {
       await pumpAppAt(tester, const Size(400, 800));
 
-      await tester.tap(find.text('Server'));
+      await tester.tap(find.text('Servers'));
       await tester.pumpAndSettle();
 
       expect(find.text('No media server yet'), findsOneWidget);
@@ -127,7 +127,7 @@ void main() {
     ) async {
       await pumpAppAt(tester, const Size(400, 900));
 
-      await tester.tap(find.text('Server'));
+      await tester.tap(find.text('Servers'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Add Jellyfin server'));
       await tester.pumpAndSettle();

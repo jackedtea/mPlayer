@@ -12,7 +12,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get appTitle => 'mPlayer';
 
   @override
-  String get navStorage => 'Bộ nhớ';
+  String get navStorage => 'Tệp';
 
   @override
   String get navServer => 'Máy chủ';
@@ -596,8 +596,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get forward30 => 'Tiến 30 giây';
 
   @override
-  String get nothingToPlay =>
-      'Chưa có gì để phát — hãy chọn tệp từ tab Bộ nhớ.';
+  String get nothingToPlay => 'Chưa có gì để phát — hãy chọn tệp từ tab Tệp.';
 
   @override
   String get rotationAuto => 'Tự động';
