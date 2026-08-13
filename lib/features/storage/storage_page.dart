@@ -14,7 +14,7 @@ import '../../sources/media_source.dart';
 import '../../sources/source_config.dart';
 import '../../sources/source_registry.dart';
 import '../player/open_local_video.dart';
-import 'add_source_sheet.dart';
+import 'source_sheet.dart';
 import '../../widgets/continue_watching_card.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/source_tile.dart';
@@ -152,7 +152,7 @@ class _NetworkSection extends ConsumerWidget {
           title: 'Network',
           actionLabel: 'Add',
           bottomPadding: spacing.xs + 2,
-          onAction: () => AddSourceSheet.show(context),
+          onAction: () => SourceSheet.showAdd(context),
         ),
         Padding(
           padding: padding,
@@ -169,7 +169,7 @@ class _NetworkSection extends ConsumerWidget {
               AddSourceTile(
                 title: 'Add SMB, WebDAV or NFS',
                 subtitle: 'Or scan the local network',
-                onTap: () => AddSourceSheet.show(context),
+                onTap: () => SourceSheet.showAdd(context),
               ),
             ],
           ),
@@ -220,6 +220,15 @@ class _ConfiguredSourceTile extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.edit_rounded),
+              title: const Text('Edit share'),
+              subtitle: const Text('Change its name, address or credentials'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                SourceSheet.showEdit(context, config);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.delete_rounded),
               title: const Text('Remove share'),

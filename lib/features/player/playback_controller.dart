@@ -4,9 +4,12 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, Platform;
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -39,6 +42,10 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   /// Guards against re-reading the chapter list on every duration tick.
   bool _chaptersLoaded = false;
+
+  /// Completes once the mpv properties media_kit leaves unset have been
+  /// applied. [openResolved] waits on it so the first file already benefits.
+  Future<void>? _nativeReady;
 
   @override
   PlaybackState build() {
@@ -80,6 +87,10 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// time (the picker does, so the player opens with a title already known).
   Future<void> openResolved(PlayableMedia media) async {
     final player = _ensurePlayer();
+
+    // Applied before the first open so the very first file gets the cache
+    // directory and decoder settings too.
+    await _nativeReady;
 
     // Otherwise a second file inherits the first one's chapter list.
     _chaptersLoaded = false;
@@ -163,11 +174,16 @@ class PlaybackController extends Notifier<PlaybackState> {
         libassAndroidFont:
             Platform.isAndroid ? 'assets/fonts/Roboto-Variable.ttf' : null,
         libassAndroidFontName: Platform.isAndroid ? 'Roboto' : null,
+        // Warnings as well as errors: a subtitle codec that cannot be found
+        // is reported at warn level, and that line is the only place the
+        // failure is visible. Surfaced in the stats overlay.
+        logLevel: MPVLogLevel.warn,
       ),
     );
     _player = player;
     _videoController = VideoController(player);
     _listen(player);
+    _nativeReady = _configureNative(player);
     return player;
   }
 
@@ -229,7 +245,51 @@ class PlaybackController extends Notifier<PlaybackState> {
       s.error.listen(
         (e) => state = state.copyWith(buffering: false, error: e),
       ),
+      s.log.listen((entry) {
+        final line = '[${entry.level}] ${entry.prefix}: ${entry.text.trim()}';
+        state = state.copyWith(
+          logLines: <String>[
+            // Oldest first, capped — an unbounded list on a long film would
+            // grow without limit.
+            ...state.logLines.length >= PlaybackState.logLimit
+                ? state.logLines.skip(1)
+                : state.logLines,
+            line,
+          ],
+        );
+      }),
     ]);
+  }
+
+  /// Applies mpv options media_kit never sets.
+  ///
+  /// Both of these show up as errors in the mpv log and nowhere else, which is
+  /// why they went unnoticed until the log was surfaced in the stats overlay.
+  Future<void> _configureNative(Player player) async {
+    final platform = player.platform;
+    if (platform is! NativePlayer) return;
+
+    try {
+      // media_kit turns on `cache-on-disk` but never says *where*, so mpv
+      // fails with "Failed to create file cache". Point it at the app's own
+      // temporary directory, which is writable on every platform and is
+      // cleaned up by the OS.
+      final cacheDir = await getTemporaryDirectory();
+      final mpvCache = Directory(p.join(cacheDir.path, 'mpv-cache'));
+      await mpvCache.create(recursive: true);
+      await platform.setProperty('cache-dir', mpvCache.path);
+
+      // Unset by media_kit, so mpv falls back to its own default and can end
+      // up attempting an interop that fails — on Windows the log shows
+      // "dxva2-egl: Failed to create EGL surface". `auto-safe` is mpv's own
+      // conservative pick and is exactly what the design's Player settings
+      // page calls "Auto (safe)".
+      await platform.setProperty('hwdec', 'auto-safe');
+    } catch (e) {
+      // Tuning is best-effort: playback works without it, and a failure here
+      // must not stop a file from opening.
+      debugPrint('Could not apply mpv tuning: $e');
+    }
   }
 
   /// Reads the container's own chapter list out of libmpv.

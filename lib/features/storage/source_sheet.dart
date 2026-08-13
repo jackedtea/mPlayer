@@ -13,27 +13,36 @@ import '../../sources/source_config.dart';
 import '../../sources/source_registry.dart';
 import '../../sources/webdav_source.dart';
 
-/// Adds an SMB, WebDAV or NFS share.
+/// Adds or edits an SMB, WebDAV or NFS share.
 ///
 /// Connection is tested before saving, so a typo surfaces here rather than as
-/// an empty folder later.
-class AddSourceSheet extends ConsumerStatefulWidget {
-  const AddSourceSheet({super.key});
+/// an empty folder later. Editing reuses the same form: a share is usually
+/// wrong in one field, and retyping the other four to fix it is busywork.
+class SourceSheet extends ConsumerStatefulWidget {
+  const SourceSheet({super.key, this.existing});
 
-  static Future<void> show(BuildContext context) {
+  /// The share being edited, or null when adding a new one.
+  final SourceConfig? existing;
+
+  static Future<void> showAdd(BuildContext context) => _show(context, null);
+
+  static Future<void> showEdit(BuildContext context, SourceConfig config) =>
+      _show(context, config);
+
+  static Future<void> _show(BuildContext context, SourceConfig? existing) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => const AddSourceSheet(),
+      builder: (_) => SourceSheet(existing: existing),
     );
   }
 
   @override
-  ConsumerState<AddSourceSheet> createState() => _AddSourceSheetState();
+  ConsumerState<SourceSheet> createState() => _SourceSheetState();
 }
 
-class _AddSourceSheetState extends ConsumerState<AddSourceSheet> {
+class _SourceSheetState extends ConsumerState<SourceSheet> {
   static const _kinds = <SourceKind>[
     SourceKind.webdav,
     SourceKind.smb,
@@ -45,11 +54,32 @@ class _AddSourceSheetState extends ConsumerState<AddSourceSheet> {
   final _username = TextEditingController();
   final _password = TextEditingController();
 
-  SourceKind _kind = SourceKind.webdav;
+  late SourceKind _kind;
   bool _obscure = true;
   bool _testing = false;
   String? _status;
   bool _statusIsError = false;
+
+  /// Set once the user types in the password field. Until then the field only
+  /// mirrors what is in the keychain, and saving leaves that credential alone —
+  /// an unreadable keychain must not erase a working password.
+  bool _passwordTouched = false;
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final existing = widget.existing;
+    _kind = existing?.kind ?? SourceKind.webdav;
+    if (existing != null) {
+      _name.text = existing.name;
+      _uri.text = existing.uri;
+      _username.text = existing.username;
+      _loadPassword(existing);
+    }
+  }
 
   @override
   void dispose() {
@@ -58,6 +88,15 @@ class _AddSourceSheetState extends ConsumerState<AddSourceSheet> {
     _username.dispose();
     _password.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPassword(SourceConfig config) async {
+    final stored =
+        await ref.read(sourceRegistryProvider.notifier).passwordFor(config);
+    // The read is slow enough that the user may already be typing; their input
+    // wins.
+    if (!mounted || stored == null || _passwordTouched) return;
+    _password.text = stored;
   }
 
   /// Only WebDAV has a driver; the others save but cannot be browsed yet.
@@ -88,7 +127,10 @@ class _AddSourceSheetState extends ConsumerState<AddSourceSheet> {
             children: <Widget>[
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Add a share', style: context.texts.headlineSmall),
+                child: Text(
+                  _isEditing ? 'Edit share' : 'Add a share',
+                  style: context.texts.headlineSmall,
+                ),
               ),
               SizedBox(height: spacing.lg),
               SegmentedButton<SourceKind>(
@@ -148,6 +190,7 @@ class _AddSourceSheetState extends ConsumerState<AddSourceSheet> {
               TextField(
                 controller: _password,
                 obscureText: _obscure,
+                onChanged: (_) => _passwordTouched = true,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   suffixIcon: IconButton(
@@ -208,9 +251,11 @@ class _AddSourceSheetState extends ConsumerState<AddSourceSheet> {
 
   SourceConfig _buildConfig() {
     return SourceConfig(
-      // Timestamp-based so editing an existing share keeps its credentials
-      // while a new one never collides.
-      id: '${_kind.name}_${DateTime.now().millisecondsSinceEpoch}',
+      // The id is what credentials are stored under, so an edit keeps the one
+      // the share already has; a new share gets a timestamp, which never
+      // collides.
+      id: widget.existing?.id ??
+          '${_kind.name}_${DateTime.now().millisecondsSinceEpoch}',
       kind: _kind,
       name: _name.text.trim(),
       uri: _uri.text.trim(),
@@ -251,10 +296,20 @@ class _AddSourceSheetState extends ConsumerState<AddSourceSheet> {
 
   Future<void> _save() async {
     final config = _buildConfig();
-    await ref.read(sourceRegistryProvider.notifier).add(
-          config,
-          _password.text.isEmpty ? null : _password.text,
-        );
+    final registry = ref.read(sourceRegistryProvider.notifier);
+
+    if (_isEditing) {
+      await registry.update(
+        config,
+        // Untouched means "whatever is already in the keychain".
+        _passwordTouched ? _password.text : null,
+      );
+    } else {
+      await registry.add(
+        config,
+        _password.text.isEmpty ? null : _password.text,
+      );
+    }
 
     if (!mounted) return;
     Navigator.of(context).pop();

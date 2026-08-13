@@ -91,6 +91,10 @@ class StatsOverlay extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                if (state.logLines.isNotEmpty) ...<Widget>[
+                  _LogSection(lines: state.logLines),
+                  SizedBox(height: spacing.sm),
+                ],
                 for (final (String key, String value) in rows)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 1),
@@ -140,4 +144,55 @@ class StatsOverlay extends StatelessWidget {
     height: 17 / 10.5,
     color: Colors.white,
   );
+}
+
+/// The last few libmpv warnings, newest at the bottom.
+///
+/// Placed above the key/value rows on purpose: when something has gone wrong
+/// this is the line that explains it, and it should not be the part the reader
+/// has to hunt for. A missing subtitle decoder, an unsupported codec and a
+/// failed hardware context all announce themselves here and nowhere else.
+class _LogSection extends StatelessWidget {
+  const _LogSection({required this.lines});
+
+  final List<String> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    final recent = lines.length > 6
+        ? lines.sublist(lines.length - 6)
+        : lines;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(context.spacing.sm),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(context.radii.thumb),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            'mpv log',
+            style: StatsOverlay._style.copyWith(
+              color: Colors.white.withValues(alpha: 0.55),
+            ),
+          ),
+          for (final String line in recent)
+            Text(
+              line,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: StatsOverlay._style.copyWith(
+                color: line.contains('[error]')
+                    ? const Color(0xFFFFB4AB)
+                    : Colors.white,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

@@ -179,6 +179,29 @@ class SourceRegistry extends Notifier<SourceRegistryState> {
     await reload();
   }
 
+  /// Replaces a configured share, keeping its position in the list.
+  ///
+  /// [password] `null` leaves the stored credential untouched — a keychain
+  /// that could not be read must not silently wipe a working password. Pass an
+  /// empty string to clear it.
+  Future<void> update(SourceConfig config, String? password) async {
+    if (!state.configs.any((c) => c.id == config.id)) {
+      return add(config, password);
+    }
+
+    final repo = ref.read(sourceRepositoryProvider);
+    if (password != null) await repo.writePassword(config, password);
+
+    await repo.saveConfigs(
+      state.configs.map((c) => c.id == config.id ? config : c).toList(),
+    );
+    await reload();
+  }
+
+  /// The stored password, so the edit sheet can show what is actually saved.
+  Future<String?> passwordFor(SourceConfig config) =>
+      ref.read(sourceRepositoryProvider).readPassword(config);
+
   Future<void> remove(String id) async {
     final repo = ref.read(sourceRepositoryProvider);
     final removed = state.configs.where((c) => c.id == id);

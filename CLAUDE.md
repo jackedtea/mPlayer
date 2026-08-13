@@ -136,11 +136,21 @@ Two kinds, and they take completely different paths:
   own Flutter overlay paints unstyled text instead. media_kit's `SubtitleView` is
   therefore disabled in `player_page.dart`, or it would double-draw over libass.
   Android needs a font handed to fontconfig — the bundled Roboto is used.
-- **Image** (PGS/HDMV, VobSub, DVB, XSUB) — pictures, not text. libass never touches
-  them; mpv has to composite them into the frame, and **media_kit's render path does
-  not** ([media-kit#1371](https://github.com/media-kit/media-kit/issues/1371), closed
-  with no fix). They are detected and selectable but display nothing.
-  `libass: true` does not help — the issue reporter tried exactly that.
+- **Image** (PGS/HDMV, VobSub, DVB, XSUB) — pictures, not text, so libass never touches
+  them. Two separate upstream problems exist here; do not confuse them:
+  - [media-kit#1269](https://github.com/media-kit/media-kit/issues/1269) — the bundled
+    libmpv is built **without the subtitle decoders**. mpv logs
+    `Could not find subtitle decoder for format 'hdmv_pgs_subtitle'`. **This is the one
+    that bit us**, and `windows/CMakeLists.txt` fixes it by installing a complete
+    libmpv over the plugin's trimmed copy. Android is still affected.
+  - [media-kit#1371](https://github.com/media-kit/media-kit/issues/1371) — even with a
+    decoder, the render path may not composite bitmap subs. Not confirmed here.
+
+  **Diagnosing:** the decoder is named `pgssub`. The string `hdmv_pgs_subtitle` is only
+  the codec *descriptor* and is present in a trimmed build too, so grepping for it
+  proves nothing — a mistake made once already. Grep for `pgssub`, or better, read the
+  mpv log in the stats overlay (`logLevel: MPVLogLevel.warn` feeds
+  `PlaybackState.logLines`).
 
 `MediaTrack.isImageBased` detects them from the demuxer codec so the picker labels them
 instead of failing silently. That is a mitigation, not a fix. Real options, in rising

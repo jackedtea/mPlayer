@@ -87,6 +87,57 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     COMPONENT Runtime)
 endif()
 
+# --- Full libmpv ------------------------------------------------------------
+#
+# media_kit_libs_windows_video bundles a deliberately trimmed libmpv (its
+# repository is literally named libmpv-win32-*video*-build) whose FFmpeg is
+# built without subtitle decoders. Image-based subtitles therefore fail with
+#
+#   [error] sub: Could not find subtitle decoder for format 'hdmv_pgs_subtitle'
+#
+# which is media-kit/media-kit#1269. The decoder is named `pgssub`; the string
+# `hdmv_pgs_subtitle` is only the codec descriptor and is present either way,
+# so do not use it to check whether a build is complete.
+#
+# This fetches a complete upstream build and installs it *after* the plugin's
+# copy, overwriting it. Downloaded rather than vendored so the repository does
+# not carry a ~120 MB binary; the guard makes it a one-time cost per build dir.
+#
+# LICENCE: these builds are GPL, not LGPL like the trimmed one. That is fine
+# precisely because mPlayer is GPL-3.0-or-later — see README's third-party
+# table. It would not be fine for a permissively licensed app.
+set(FULL_LIBMPV_ARCHIVE "mpv-dev-x86_64-20260812-git-f4d13e1c2c.7z")
+set(FULL_LIBMPV_URL
+  "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260812/${FULL_LIBMPV_ARCHIVE}")
+set(FULL_LIBMPV_SHA256
+  "f3cbd91e8f275a119e95ce4b458dd62768b5b571b3c1ad12aff430a4a85290da")
+set(FULL_LIBMPV_DIR "${CMAKE_BINARY_DIR}/libmpv-full")
+
+if(NOT EXISTS "${FULL_LIBMPV_DIR}/libmpv-2.dll")
+  message(STATUS "Downloading full libmpv (subtitle decoders): ${FULL_LIBMPV_URL}")
+  file(DOWNLOAD
+    "${FULL_LIBMPV_URL}"
+    "${FULL_LIBMPV_DIR}/${FULL_LIBMPV_ARCHIVE}"
+    EXPECTED_HASH "SHA256=${FULL_LIBMPV_SHA256}"
+    TLS_VERIFY ON
+    SHOW_PROGRESS)
+  file(ARCHIVE_EXTRACT
+    INPUT "${FULL_LIBMPV_DIR}/${FULL_LIBMPV_ARCHIVE}"
+    DESTINATION "${FULL_LIBMPV_DIR}")
+endif()
+
+if(NOT EXISTS "${FULL_LIBMPV_DIR}/libmpv-2.dll")
+  message(FATAL_ERROR
+    "Full libmpv was not extracted to ${FULL_LIBMPV_DIR}. Image-based "
+    "subtitles would silently fail, so this is a hard error rather than a "
+    "fallback to the trimmed build.")
+endif()
+
+# Ordered after the block above so it replaces the plugin's trimmed copy.
+install(FILES "${FULL_LIBMPV_DIR}/libmpv-2.dll"
+  DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"

@@ -131,6 +131,7 @@ class PlaybackState {
     this.activeSubtitle,
     this.stats = const PlaybackStats(),
     this.containerChapters = const <MediaChapter>[],
+    this.logLines = const <String>[],
   });
 
   /// Null until something has been opened.
@@ -165,6 +166,17 @@ class PlaybackState {
   /// Chapters read out of the container by the decoder — MKV and MP4 commonly
   /// embed them, so a plain local file is not chapterless.
   final List<MediaChapter> containerChapters;
+
+  /// Recent warnings and errors straight from libmpv, newest last and capped
+  /// at [logLimit].
+  ///
+  /// Surfaced in the stats overlay because a subtitle or codec that fails to
+  /// load says so here and nowhere else — "Could not find subtitle decoder
+  /// for format 'hdmv_pgs_subtitle'" is a very different problem from a
+  /// decoder that loads and then renders nothing.
+  final List<String> logLines;
+
+  static const logLimit = 20;
 
   bool get hasMedia => media != null;
 
@@ -217,6 +229,7 @@ class PlaybackState {
     MediaTrack? activeSubtitle,
     PlaybackStats? stats,
     List<MediaChapter>? containerChapters,
+    List<String>? logLines,
     bool clearError = false,
     bool clearMedia = false,
   }) {
@@ -237,6 +250,7 @@ class PlaybackState {
       activeSubtitle: activeSubtitle ?? this.activeSubtitle,
       stats: stats ?? this.stats,
       containerChapters: containerChapters ?? this.containerChapters,
+      logLines: logLines ?? this.logLines,
     );
   }
 }

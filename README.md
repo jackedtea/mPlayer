@@ -40,7 +40,8 @@ The full text is in [LICENSE](LICENSE).
 | Component | License | Note |
 |---|---|---|
 | Flutter, Dart packages (`media_kit`, `drift`, `go_router`, `dio`, …) | BSD-3-Clause / MIT / Apache-2.0 | Permissive; GPLv3-compatible |
-| libmpv / FFmpeg binaries bundled by `media_kit_libs_*` | LGPL-2.1-or-later (upstream) | Dynamically linked; GPLv3-compatible |
+| libmpv / FFmpeg on Android, iOS, macOS, Linux (`media_kit_libs_*`) | LGPL-2.1-or-later (upstream) | Dynamically linked; GPLv3-compatible |
+| libmpv / FFmpeg on **Windows** ([shinchiro build](https://github.com/shinchiro/mpv-winbuild-cmake)) | **GPL-2.0-or-later** | Replaces the trimmed build so image-based subtitles decode; GPL is fine here only because this app is GPL |
 | Service-layer code adapted from [NipaPlay-Reload](https://github.com/MCDFsteve/NipaPlay-Reload) | MIT | GPLv3-compatible; MIT notice retained in adapted files |
 | Material Icons | Apache-2.0 | Bundled via `uses-material-design` |
 | Roboto (`assets/fonts/Roboto-Variable.ttf`) | SIL OFL 1.1 | Bundled, not fetched at runtime; notice in `assets/fonts/OFL.txt` and registered with `LicenseRegistry` |

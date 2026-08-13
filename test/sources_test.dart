@@ -6,15 +6,22 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/core/models/library_models.dart';
 import 'package:mplayer/core/models/media_models.dart';
 import 'package:mplayer/sources/local_source.dart';
 import 'package:mplayer/sources/media_source.dart';
 import 'package:mplayer/sources/source_config.dart';
+import 'package:mplayer/sources/source_registry.dart';
+
+import 'fake_keychain.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('SourceConfig', () {
     const config = SourceConfig(
       id: 'nc_1',
@@ -68,6 +75,105 @@ void main() {
     test('a share without a username needs no auth', () {
       expect(config.needsAuth, isTrue);
       expect(config.copyWith(username: '').needsAuth, isFalse);
+    });
+  });
+
+  group('SourceRegistry editing a configured share', () {
+    late Map<String, String> keychain;
+    late ProviderContainer container;
+
+    const first = SourceConfig(
+      id: 'webdav_1',
+      kind: SourceKind.webdav,
+      name: 'NAS',
+      uri: 'https://old.home.lan/dav',
+      username: 'minh',
+    );
+    const second = SourceConfig(
+      id: 'webdav_2',
+      kind: SourceKind.webdav,
+      name: 'Backup',
+      uri: 'https://backup.home.lan/dav',
+    );
+
+    SourceRegistry registry() =>
+        container.read(sourceRegistryProvider.notifier);
+
+    List<SourceConfig> configs() =>
+        container.read(sourceRegistryProvider).configs;
+
+    setUp(() async {
+      keychain = installFakeKeychain();
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+
+      container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await registry().add(first, 'hunter2');
+      await registry().add(second, null);
+    });
+
+    test('rewrites the share in place instead of moving it to the end', () async {
+      await registry().update(
+        first.copyWith(name: 'Nextcloud', uri: 'https://new.home.lan/dav'),
+        null,
+      );
+
+      expect(configs().map((c) => c.id), <String>['webdav_1', 'webdav_2']);
+      expect(configs().first.name, 'Nextcloud');
+      expect(configs().first.uri, 'https://new.home.lan/dav');
+      // Untouched fields survive the edit.
+      expect(configs().first.username, 'minh');
+    });
+
+    test('an untouched password field leaves the credential alone', () async {
+      await registry().update(first.copyWith(name: 'Renamed'), null);
+
+      expect(keychain[first.credentialKey], 'hunter2');
+      expect(await registry().passwordFor(first), 'hunter2');
+    });
+
+    test('a new password replaces the stored one', () async {
+      await registry().update(first, 'correcthorse');
+
+      expect(keychain[first.credentialKey], 'correcthorse');
+    });
+
+    test('clearing the password field deletes the credential', () async {
+      await registry().update(first, '');
+
+      expect(keychain.containsKey(first.credentialKey), isFalse);
+    });
+
+    test('the edited share keeps a working driver', () async {
+      await registry().update(first.copyWith(name: 'Nextcloud'), null);
+
+      final driver = container.read(sourceRegistryProvider).drivers['webdav_1'];
+      expect(driver, isA<BrowsableSource>());
+      // The tile reads its label off the driver, so a rename must reach it.
+      expect((driver! as BrowsableSource).rootLabel, 'Nextcloud');
+    });
+
+    test('editing never leaks a password into preferences', () async {
+      await registry().update(first.copyWith(name: 'Nextcloud'), 'correcthorse');
+
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList('configured_sources_v1')!.join();
+      expect(raw, isNot(contains('correcthorse')));
+    });
+
+    test('an id that is no longer configured is added rather than lost', () async {
+      const stray = SourceConfig(
+        id: 'webdav_gone',
+        kind: SourceKind.webdav,
+        name: 'Stray',
+        uri: 'https://stray.home.lan/dav',
+      );
+
+      await registry().update(stray, 'pw');
+
+      expect(configs().map((c) => c.id), contains('webdav_gone'));
+      expect(keychain[stray.credentialKey], 'pw');
     });
   });
 
