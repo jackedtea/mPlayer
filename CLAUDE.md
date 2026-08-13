@@ -95,6 +95,14 @@ library is browsed by collection, not by path, so it will never implement it.
 | SMB | — | **No driver.** See below |
 | NFS | — | No driver |
 
+`features/storage/source_sheet.dart` both adds and edits a share — the same form, opened
+from the Network section's *Add* or from a tile's overflow menu. `SourceRegistry.update`
+rewrites the config **in place** (position preserved) and takes a nullable password where
+**`null` means "leave the keychain alone"** and `''` clears it; the sheet passes `null`
+unless the user actually typed in the password field, so a keychain that could not be read
+never wipes a working credential. `test/fake_keychain.dart` stands in for the platform
+keychain in tests.
+
 Configured shares live in `SourceRegistry`. **Passwords never touch
 `shared_preferences`** — `SourceConfig.toJson` has no password field (there is a test
 asserting this), and credentials go to `flutter_secure_storage` under
