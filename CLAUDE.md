@@ -295,11 +295,26 @@ Flutter 3.44 · Riverpod 3 (**hand-written providers, no codegen**) · Drift · 
 
 ## Launcher icons
 
-`icon.svg` at the app root is the design source. Regenerate with:
+`icon.svg` at the app root is the design source — the blue squircle with the white play
+triangle and the cast waves, kept in sync with `../logo/mplayer-logo/`. Regenerate with:
 
 ```bash
 dart run flutter_launcher_icons          # Android, iOS, Windows, macOS
 ```
+
+Four PNGs under `assets/icon/` feed it, and each exists for a reason:
+
+- `icon.png` — the rounded squircle, used for Windows, macOS and the legacy Android mipmaps.
+- `icon_background.png` / `icon_foreground.png` — the Android adaptive layers. The
+  background is a **full-bleed gradient with no rounding** (the launcher applies the mask);
+  the foreground is the marks alone on transparent, scaled to **66%** so nothing lands
+  outside the 72/108dp safe zone. The foreground doubles as the monochrome layer.
+- `icon_ios.png` — a **square, un-rounded, already-opaque** copy. iOS applies its own
+  continuous-curvature squircle, which reaches slightly further into the corners than the
+  artwork's circular one; feeding it the rounded source leaves white slivers there.
+
+Only `icon.png` and `icon_256.png` are bundled as Flutter assets — the rest are build-time
+sources.
 
 Linux is not covered by that tool — its icons live in `linux/packaging/icons/hicolor/` alongside the `.desktop` file, regenerated from `icon.svg` by hand when the artwork changes.
 
