@@ -20,6 +20,7 @@ import 'more_menu.dart';
 import 'playback_controller.dart';
 import 'playback_state.dart';
 import 'player_ui_state.dart';
+import '../settings/player_settings.dart';
 import 'stats_overlay.dart';
 import 'track_sheet.dart';
 
@@ -105,6 +106,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(playbackControllerProvider);
     final ui = ref.watch(playerUiProvider);
+    final settings = ref.watch(playerSettingsProvider);
     final controller = ref.read(playbackControllerProvider.notifier);
 
     // The decoder reports the frame size a moment after opening, which is when
@@ -117,6 +119,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
 
     _syncSleepTimer(ui.sleepTimer);
+
+    // Auto skip intro, opt-in per the design. Driven off the position stream
+    // so it fires the moment playback enters the chapter, and only once —
+    // seeking back into the intro deliberately should not fight the user.
+    ref.listen(
+      playbackControllerProvider.select((s) => s.currentIntro?.title),
+      (previous, intro) {
+        if (intro == null || previous == intro) return;
+        if (!ref.read(playerSettingsProvider).autoSkipIntro) return;
+
+        final chapter = ref.read(playbackControllerProvider).currentIntro;
+        if (chapter != null) controller.seek(chapter.end);
+      },
+    );
 
     return Theme(
       // The player is always dark, whatever the app theme is.
@@ -140,12 +156,17 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               // Gestures sit above the video and below the chrome, and go
               // inert entirely while locked.
               GestureLayer(
+                // Locked ignores everything; the settings switch turns off the
+                // brightness and volume drags without locking the screen.
                 enabled: !ui.locked,
+                gesturesEnabled: settings.swipeGestures,
                 state: state,
                 onTap: _toggleChrome,
                 onSeekBy: controller.skip,
                 onSeekTo: controller.seek,
                 onVolume: controller.setVolume,
+                skipBack: settings.skipBack,
+                skipForward: settings.skipForward,
               ),
 
               if (state.error != null) _ErrorOverlay(message: state.error!),
@@ -364,9 +385,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       case LogicalKeyboardKey.keyK:
         controller.playOrPause();
       case LogicalKeyboardKey.arrowLeft:
-        controller.skip(const Duration(seconds: -10));
+        controller.skip(-ref.read(playerSettingsProvider).skipBack);
       case LogicalKeyboardKey.arrowRight:
-        controller.skip(const Duration(seconds: 30));
+        controller.skip(ref.read(playerSettingsProvider).skipForward);
       case LogicalKeyboardKey.keyF:
         _toggleFullscreen();
       case LogicalKeyboardKey.escape:

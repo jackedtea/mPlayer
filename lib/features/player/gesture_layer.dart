@@ -23,6 +23,7 @@ class GestureLayer extends StatefulWidget {
   const GestureLayer({
     super.key,
     required this.enabled,
+    this.gesturesEnabled = true,
     required this.state,
     required this.onTap,
     required this.onSeekBy,
@@ -34,6 +35,11 @@ class GestureLayer extends StatefulWidget {
 
   /// False while the player is locked — every gesture is ignored then.
   final bool enabled;
+
+  /// The Player settings switch. Tap-to-toggle and double-tap seek survive;
+  /// only the brightness and volume drags are turned off, because those are
+  /// the ones people trigger by accident.
+  final bool gesturesEnabled;
 
   final PlaybackState state;
   final VoidCallback onTap;
@@ -187,6 +193,8 @@ class _GestureLayerState extends State<GestureLayer> {
     // A full-height swipe covers the whole range; dy is inverted because
     // dragging up should increase.
     final delta = -details.delta.dy / height;
+
+    if (!widget.gesturesEnabled) return;
 
     if (_isLeftThird(details.localPosition, width) &&
         _dragStartBrightness != null) {

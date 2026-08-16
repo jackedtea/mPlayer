@@ -4,8 +4,11 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
+import '../player/playback_controller.dart';
+import 'player_settings.dart';
 import 'settings_widgets.dart';
 
 /// Screen 1m, Subtitle.
@@ -13,14 +16,15 @@ import 'settings_widgets.dart';
 /// The preview is the point of this page: every control above the fold
 /// changes it live, so the user never has to start playback to judge a
 /// setting.
-class SubtitleSettingsPage extends StatefulWidget {
+class SubtitleSettingsPage extends ConsumerStatefulWidget {
   const SubtitleSettingsPage({super.key});
 
   @override
-  State<SubtitleSettingsPage> createState() => _SubtitleSettingsPageState();
+  ConsumerState<SubtitleSettingsPage> createState() =>
+      _SubtitleSettingsPageState();
 }
 
-class _SubtitleSettingsPageState extends State<SubtitleSettingsPage> {
+class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
   static const _colours = <Color>[
     Colors.white,
     Color(0xFFFFE082),
@@ -29,40 +33,77 @@ class _SubtitleSettingsPageState extends State<SubtitleSettingsPage> {
     Color(0xFFFFAB91),
   ];
 
-  double _textScale = 1.0;
-  double _backgroundOpacity = 0.55;
-  int _colour = 0;
   bool _burnIn = true;
+
+  /// Writes through and applies to libmpv straight away, so the live preview
+  /// and the actual subtitles cannot disagree.
+  Future<void> _save(PlayerSettings next) async {
+    await ref.read(playerSettingsProvider.notifier).update(next);
+    await ref.read(playbackControllerProvider.notifier).applySettings(next);
+  }
+
+  Future<void> _pickDelay(PlayerSettings settings) async {
+    final chosen = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (final int ms in _delayChoices)
+              ListTile(
+                title: Text('$ms ms'),
+                trailing: ms == settings.subtitleDelay.inMilliseconds
+                    ? const Icon(Icons.check_rounded)
+                    : null,
+                onTap: () => Navigator.of(sheetContext).pop(ms),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (chosen == null) return;
+    await _save(
+      settings.copyWith(subtitleDelay: Duration(milliseconds: chosen)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
+    final settings = ref.watch(playerSettingsProvider);
+    final colourIndex = _colours.indexWhere(
+      (c) => c.toARGB32() == settings.subtitleColour.toARGB32(),
+    );
 
     return SettingsScaffold(
       title: 'Subtitle',
       children: <Widget>[
         _Preview(
-          textScale: _textScale,
-          backgroundOpacity: _backgroundOpacity,
-          colour: _colours[_colour],
+          textScale: settings.subtitleTextScale,
+          backgroundOpacity: settings.subtitleBackgroundOpacity,
+          colour: settings.subtitleColour,
         ),
         const SettingsSection(title: 'Style'),
         const SettingsValueRow(title: 'Font', value: 'Roboto'),
         SettingsSliderRow(
           title: 'Text size',
-          valueLabel: '${(_textScale * 100).round()}%',
-          value: _textScale,
+          valueLabel: '${(settings.subtitleTextScale * 100).round()}%',
+          value: settings.subtitleTextScale,
           min: 0.5,
           max: 2.0,
           divisions: 15,
-          onChanged: (v) => setState(() => _textScale = v),
+          onChanged: (v) => _save(settings.copyWith(subtitleTextScale: v)),
         ),
         SettingsSliderRow(
           title: 'Background opacity',
-          valueLabel: '${(_backgroundOpacity * 100).round()}%',
-          value: _backgroundOpacity,
+          valueLabel:
+              '${(settings.subtitleBackgroundOpacity * 100).round()}%',
+          value: settings.subtitleBackgroundOpacity,
           divisions: 20,
-          onChanged: (v) => setState(() => _backgroundOpacity = v),
+          onChanged: (v) =>
+              _save(settings.copyWith(subtitleBackgroundOpacity: v)),
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(
@@ -76,7 +117,7 @@ class _SubtitleSettingsPageState extends State<SubtitleSettingsPage> {
             children: <Widget>[
               for (final (int i, Color c) in _colours.indexed)
                 InkWell(
-                  onTap: () => setState(() => _colour = i),
+                  onTap: () => _save(settings.copyWith(subtitleColour: c)),
                   customBorder: const CircleBorder(),
                   child: Container(
                     width: 40,
@@ -86,7 +127,7 @@ class _SubtitleSettingsPageState extends State<SubtitleSettingsPage> {
                       shape: BoxShape.circle,
                       border: Border.all(color: context.colors.outline),
                     ),
-                    child: i == _colour
+                    child: i == colourIndex
                         ? const Icon(Icons.check_rounded,
                             size: 20, color: Colors.black)
                         : null,
@@ -106,11 +147,20 @@ class _SubtitleSettingsPageState extends State<SubtitleSettingsPage> {
           value: _burnIn,
           onChanged: (v) => setState(() => _burnIn = v),
         ),
-        const SettingsValueRow(title: 'Sync offset', value: '0 ms'),
+        SettingsValueRow(
+          title: 'Sync offset',
+          value: '${settings.subtitleDelay.inMilliseconds} ms',
+          subtitle: 'Positive delays the subtitles',
+          onTap: () => _pickDelay(settings),
+        ),
       ],
     );
   }
 }
+
+/// A short list rather than free text: the useful range is small, and a
+/// numeric keyboard for milliseconds is a poor way to nudge timing.
+const _delayChoices = <int>[-2000, -1000, -500, 0, 500, 1000, 2000];
 
 class _Preview extends StatelessWidget {
   const _Preview({

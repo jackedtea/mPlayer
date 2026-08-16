@@ -29,6 +29,15 @@ class MediaStoreChannel(
         const val CHANNEL = "dev.icedtea.mplayer/mediastore"
         private const val PERMISSION_REQUEST = 0x6D64 // 'md'
 
+        private const val READ_MEDIA_VIDEO = "android.permission.READ_MEDIA_VIDEO"
+        private const val READ_EXTERNAL_STORAGE =
+            "android.permission.READ_EXTERNAL_STORAGE"
+
+        // Android 14's partial media access. Named as a literal because the
+        // constant needs a compileSdk this project pins ahead of anyway.
+        private const val READ_MEDIA_VISUAL_USER_SELECTED =
+            "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+
         /** Containers worth listing. Kept in step with videoFileExtensions in Dart. */
         private val VIDEO_EXTENSIONS = listOf(
             "mp4", "mkv", "mov", "avi", "webm", "m4v", "ts", "m2ts", "mts",
@@ -41,6 +50,7 @@ class MediaStoreChannel(
     fun handle(method: String, result: MethodChannel.Result) {
         when (method) {
             "hasPermission" -> result.success(hasPermission())
+            "accessLevel" -> result.success(accessLevel())
             "requestPermission" -> requestPermission(result)
             "videoFolders" -> guarded(result) { result.success(queryFolders()) }
             else -> result.notImplemented()
@@ -60,19 +70,49 @@ class MediaStoreChannel(
         body()
     }
 
-    private fun permissionName(): String =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            "android.permission.READ_MEDIA_VIDEO"
-        } else {
-            "android.permission.READ_EXTERNAL_STORAGE"
-        }
-
-    private fun hasPermission(): Boolean =
-        ContextCompat.checkSelfPermission(activity, permissionName()) ==
+    private fun granted(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(activity, permission) ==
             PackageManager.PERMISSION_GRANTED
 
+    /**
+     * Which permissions to ask for.
+     *
+     * On Android 14+ the visual-user-selected permission has to be requested
+     * *alongside* the full one — that pairing is what makes the system offer
+     * the three-way dialog with "Select photos and videos" in it.
+     */
+    private fun requestedPermissions(): Array<String> = when {
+        Build.VERSION.SDK_INT >= 34 -> arrayOf(
+            READ_MEDIA_VIDEO,
+            READ_MEDIA_VISUAL_USER_SELECTED,
+        )
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+            arrayOf(READ_MEDIA_VIDEO)
+        else -> arrayOf(READ_EXTERNAL_STORAGE)
+    }
+
+    /** "full", "partial" or "none". */
+    private fun accessLevel(): String = when {
+        Build.VERSION.SDK_INT >= 34 -> when {
+            granted(READ_MEDIA_VIDEO) -> "full"
+            // "Select photos and videos" grants only this one. Treating it as
+            // denied is why the prompt kept reappearing after the user had
+            // already said yes.
+            granted(READ_MEDIA_VISUAL_USER_SELECTED) -> "partial"
+            else -> "none"
+        }
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+            if (granted(READ_MEDIA_VIDEO)) "full" else "none"
+        else -> if (granted(READ_EXTERNAL_STORAGE)) "full" else "none"
+    }
+
+    /** Partial access still lets MediaStore return the chosen items. */
+    private fun hasPermission(): Boolean = accessLevel() != "none"
+
     private fun requestPermission(result: MethodChannel.Result) {
-        if (hasPermission()) {
+        // Partial access can be widened, so a request is still worth making
+        // even when something is already granted.
+        if (accessLevel() == "full") {
             result.success(true)
             return
         }
@@ -84,7 +124,7 @@ class MediaStoreChannel(
         pendingPermission = result
         ActivityCompat.requestPermissions(
             activity,
-            arrayOf(permissionName()),
+            requestedPermissions(),
             PERMISSION_REQUEST,
         )
     }
@@ -96,9 +136,10 @@ class MediaStoreChannel(
     ): Boolean {
         if (requestCode != PERMISSION_REQUEST) return false
 
-        val granted = grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        pendingPermission?.success(granted)
+        // Two permissions may have been asked for, and "Select photos and
+        // videos" grants the second while denying the first. Re-reading the
+        // real state beats inspecting grantResults[0].
+        pendingPermission?.success(hasPermission())
         pendingPermission = null
         return true
     }

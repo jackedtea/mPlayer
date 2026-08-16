@@ -14,6 +14,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/resume_repository.dart';
+import '../settings/player_settings.dart';
 import '../../sources/local_source.dart';
 import '../../sources/media_source.dart';
 import '../../sources/source_registry.dart';
@@ -44,9 +45,7 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Guards against re-reading the chapter list on every duration tick.
   bool _chaptersLoaded = false;
 
-  /// Mirrors the Player settings switch, which defaults to on. Not persisted
-  /// yet — that arrives with the settings wiring.
-  bool autoPlayNext = true;
+  bool get autoPlayNext => ref.read(playerSettingsProvider).autoPlayNext;
 
   /// Throttles resume writes. The position stream fires several times a
   /// second; persisting that often would hammer storage for no benefit.
@@ -394,14 +393,62 @@ class PlaybackController extends Notifier<PlaybackState> {
 
       // Unset by media_kit, so mpv falls back to its own default and can end
       // up attempting an interop that fails — on Windows the log shows
-      // "dxva2-egl: Failed to create EGL surface". `auto-safe` is mpv's own
-      // conservative pick and is exactly what the design's Player settings
-      // page calls "Auto (safe)".
-      await platform.setProperty('hwdec', 'auto-safe');
+      // "dxva2-egl: Failed to create EGL surface".
+      await applySettings(ref.read(playerSettingsProvider));
     } catch (e) {
       // Tuning is best-effort: playback works without it, and a failure here
       // must not stop a file from opening.
       debugPrint('Could not apply mpv tuning: $e');
+    }
+  }
+
+  /// Pushes the user's preferences into libmpv.
+  ///
+  /// Called on open and again whenever the settings change, so a slider moved
+  /// mid-playback takes effect without restarting the file.
+  ///
+  /// Subtitle styling reaches plain-text formats (SRT, WebVTT). ASS/SSA carry
+  /// their own styling and libmpv honours that instead — deliberately, since
+  /// overriding it would throw away the positioning and karaoke the file asks
+  /// for.
+  Future<void> applySettings(PlayerSettings settings) async {
+    final platform = _player?.platform;
+    if (platform is! NativePlayer) return;
+
+    try {
+      await platform.setProperty('hwdec', settings.hardwareDecoding.mpvValue);
+      await platform.setProperty(
+        'sub-font-size',
+        '${settings.mpvSubtitleFontSize}',
+      );
+      await platform.setProperty('sub-color', settings.mpvSubtitleColour);
+      await platform.setProperty(
+        'sub-back-color',
+        settings.mpvSubtitleBackColour,
+      );
+      await platform.setProperty(
+        'sub-delay',
+        '${settings.subtitleDelay.inMilliseconds / 1000}',
+      );
+    } catch (e) {
+      // Best-effort: a property mpv does not know must not stop playback.
+      debugPrint('Could not apply player settings: $e');
+    }
+  }
+
+  /// Loads a subtitle file sitting next to the video.
+  ///
+  /// Sidecar `.srt`/`.ass` files are how most downloaded video ships its
+  /// subtitles, and nothing in the container points at them.
+  Future<void> addExternalSubtitle(Uri uri, {String? title}) async {
+    final platform = _player?.platform;
+    if (platform is! NativePlayer) return;
+
+    try {
+      await platform.setProperty('sub-files-append', uri.toString());
+    } catch (e) {
+      state = state.copyWith(error: 'Could not load that subtitle file.');
+      debugPrint('sub-files-append failed: $e');
     }
   }
 

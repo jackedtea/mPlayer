@@ -14,6 +14,19 @@ import '../core/models/media_models.dart';
 import 'local_source.dart' show formatBytes;
 import 'media_source.dart';
 
+/// How much of the media index the app may read.
+enum MediaAccess {
+  none,
+
+  /// Android 14+ "Select photos and videos": the index answers, but only for
+  /// the items the user chose.
+  partial,
+
+  full;
+
+  bool get canRead => this != MediaAccess.none;
+}
+
 /// A folder in the system media index.
 @immutable
 class MediaFolder {
@@ -70,6 +83,21 @@ class MediaStoreSource implements BrowsableSource {
   Future<bool> hasPermission() async {
     if (!isSupported) return false;
     return await _channel.invokeMethod<bool>('hasPermission') ?? false;
+  }
+
+  /// `full`, `partial` or `none`.
+  ///
+  /// Android 14's "Select photos and videos" is [MediaAccess.partial]: the
+  /// index answers, but only for the items the user picked. Treating that as
+  /// denied is why the prompt used to reappear after they had already agreed.
+  Future<MediaAccess> accessLevel() async {
+    if (!isSupported) return MediaAccess.none;
+    final raw = await _channel.invokeMethod<String>('accessLevel');
+    return switch (raw) {
+      'full' => MediaAccess.full,
+      'partial' => MediaAccess.partial,
+      _ => MediaAccess.none,
+    };
   }
 
   /// Shows the system prompt. Returns whether it was granted.
@@ -169,15 +197,15 @@ class MediaStoreSource implements BrowsableSource {
 final mediaStoreSourceProvider =
     Provider<MediaStoreSource>((ref) => const MediaStoreSource());
 
-/// Whether the media permission has been granted, so the UI can offer the
-/// prompt rather than showing an unexplained empty list.
-final mediaPermissionProvider = FutureProvider<bool>(
-  (ref) => ref.watch(mediaStoreSourceProvider).hasPermission(),
+/// How much of the media index the app may read, so the UI can offer the right
+/// affordance: a prompt when denied, "select more" when only some was shared.
+final mediaAccessProvider = FutureProvider<MediaAccess>(
+  (ref) => ref.watch(mediaStoreSourceProvider).accessLevel(),
 );
 
 /// Folders for the "This device" section.
 final mediaFoldersProvider = FutureProvider<List<MediaFolder>>((ref) async {
-  final granted = await ref.watch(mediaPermissionProvider.future);
-  if (!granted) return const <MediaFolder>[];
+  final access = await ref.watch(mediaAccessProvider.future);
+  if (access == MediaAccess.none) return const <MediaFolder>[];
   return ref.watch(mediaStoreSourceProvider).folders();
 });

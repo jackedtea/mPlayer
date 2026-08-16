@@ -22,6 +22,14 @@
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"/>
+    <!--
+      Android 14 added partial media access: choosing "Select photos and
+      videos" grants *only* this permission and denies READ_MEDIA_VIDEO. It
+      must be declared, or the system will not offer that option at all — and
+      an app that checks only READ_MEDIA_VIDEO keeps asking after the user has
+      already agreed.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
 
     <application
         android:label="mPlayer"

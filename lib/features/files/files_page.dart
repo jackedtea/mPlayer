@@ -141,13 +141,10 @@ class _ThisDeviceSection extends ConsumerWidget {
       return const _DesktopDeviceSection();
     }
 
-    final granted = ref.watch(mediaPermissionProvider).value ?? false;
-    if (!granted) {
+    final access = ref.watch(mediaAccessProvider).value ?? MediaAccess.none;
+    if (access == MediaAccess.none) {
       return _PermissionPrompt(
-        onGrant: () async {
-          await ref.read(mediaStoreSourceProvider).requestPermission();
-          ref.invalidate(mediaPermissionProvider);
-        },
+        onGrant: () => _requestAccess(ref),
       );
     }
 
@@ -156,7 +153,18 @@ class _ThisDeviceSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SectionHeader(title: 'This device', bottomPadding: spacing.xs + 2),
+        SectionHeader(
+          title: 'This device',
+          // Partial access can be widened; full access has nothing to add.
+          actionLabel: access == MediaAccess.partial ? 'Select more' : null,
+          bottomPadding: spacing.xs + 2,
+          onAction: () => _requestAccess(ref),
+        ),
+        if (access == MediaAccess.partial)
+          _Message(
+            text: 'Showing only the videos you selected. '
+                'Tap "Select more" to share others.',
+          ),
         ...switch (folders) {
           AsyncError(:final error) => <Widget>[
               _Message(text: '$error'),
@@ -205,6 +213,14 @@ class _ThisDeviceSection extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Shows the system dialog, then re-reads what was actually granted.
+Future<void> _requestAccess(WidgetRef ref) async {
+  await ref.read(mediaStoreSourceProvider).requestPermission();
+  ref
+    ..invalidate(mediaAccessProvider)
+    ..invalidate(mediaFoldersProvider);
 }
 
 /// Folders the user granted through the system picker.
