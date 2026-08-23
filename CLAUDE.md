@@ -294,6 +294,7 @@ Flutter 3.44 · Riverpod 3 (**hand-written providers, no codegen**) · Drift · 
 - **No `riverpod_generator`, no `riverpod_lint`, no `custom_lint`.** They conflict irreconcilably with `freezed` + `drift_dev` over `analyzer` versions. Riverpod providers are written by hand.
 - **`compileSdk = 37`** is pinned in `android/app/build.gradle.kts` (required by `flutter_secure_storage 11.x`; Flutter's default is 36).
 - **`kotlin.incremental=false`** in `android/gradle.properties` — this host intermittently fails with "Could not close incremental caches" otherwise.
+- **`dynamic_color` is held at `^1.7.0`** (Material You on the Appearance page). 2.x builds against the separate `material_ui` package, whose `ColorScheme` is a different type from Flutter's, so `DynamicColorBuilder` stops handing back anything `MaterialApp.theme` accepts. 1.7.0 in turn pins its own module to `compileSdkVersion 31`, older than the androidx artifacts it pulls in, so `android/build.gradle.kts` raises that one subproject to 36 — without it every Android build fails at `checkReleaseAarMetadata` with 24 issues. Register the `afterEvaluate` **inside** a name check, not around one: `:app` is already evaluated by the block above and Gradle rejects a late registration.
 - Linux builds need system libmpv: `sudo apt install libmpv-dev mpv`.
 
 ## Launcher icons
