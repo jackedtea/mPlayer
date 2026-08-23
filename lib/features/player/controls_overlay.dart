@@ -41,6 +41,7 @@ class ControlsOverlay extends StatelessWidget {
     required this.onFullscreen,
     required this.onMore,
     this.onPip,
+    this.onCast,
     required this.onSkipIntro,
     required this.notImplemented,
   });
@@ -77,6 +78,10 @@ class ControlsOverlay extends StatelessWidget {
   /// Android devices whose manufacturer left it out. The button is hidden
   /// rather than shown reporting that it does nothing.
   final VoidCallback? onPip;
+
+  /// Null while nothing can be cast to — the button would otherwise open a
+  /// picker that can never fill.
+  final VoidCallback? onCast;
   final ValueChanged<MediaChapter> onSkipIntro;
   final void Function(String) notImplemented;
 
@@ -217,12 +222,13 @@ class _TopBar extends StatelessWidget {
                 tooltip: 'Picture in picture',
                 onPressed: this_.onPip,
               ),
-            IconButton(
-              icon: const Icon(Icons.cast_rounded),
-              color: Colors.white,
-              tooltip: 'Cast',
-              onPressed: () => this_.notImplemented('Cast'),
-            ),
+            if (this_.onCast != null)
+              IconButton(
+                icon: const Icon(Icons.cast_rounded),
+                color: Colors.white,
+                tooltip: 'Cast',
+                onPressed: this_.onCast,
+              ),
             IconButton(
               icon: const Icon(Icons.more_vert_rounded),
               color: Colors.white,
@@ -243,8 +249,6 @@ class _Transport extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = context.colors;
-
     final queue = this_.state.queue;
 
     return Row(
@@ -281,18 +285,24 @@ class _Transport extends StatelessWidget {
           },
         ),
         const SizedBox(width: 28),
-        CircleButton(
-          // Fill is reserved for play/pause and the selected destination.
-          icon: this_.state.playing
-              ? Icons.pause_rounded
-              : Icons.play_arrow_rounded,
-          size: 80,
-          iconSize: 42,
-          background: scheme.primaryContainer,
-          foreground: scheme.onPrimaryContainer,
-          tooltip: this_.state.playing ? 'Pause' : 'Play',
-          onPressed: this_.onPlayPause,
-        ),
+        if (this_.state.buffering && this_.state.error == null)
+          const _TransportSpinner(size: 80)
+        else
+          CircleButton(
+            icon: this_.state.playing
+                ? Icons.pause_rounded
+                : Icons.play_arrow_rounded,
+            size: 80,
+            iconSize: 42,
+            // No fill: the glyph carries the control on its own, and at 42pt
+            // over a scrimmed frame it reads without a disc behind it. The
+            // ink ripple still lands, since the Material is only transparent,
+            // not absent.
+            background: Colors.transparent,
+            foreground: Colors.white,
+            tooltip: this_.state.playing ? 'Pause' : 'Play',
+            onPressed: this_.onPlayPause,
+          ),
         const SizedBox(width: 28),
         CircleButton(
           icon: Icons.forward_30_rounded,
@@ -321,6 +331,44 @@ class _Transport extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Stands in for play/pause while the file is still loading.
+///
+/// The transport sits dead centre, which is also where the page draws its
+/// buffering indicator — so with the chrome up the 80pt button covered the
+/// spinner completely and loading looked like a dead button. Showing the
+/// progress *in* the slot is what the page then defers to.
+///
+/// Same footprint as the button it replaces, so the row does not jump when
+/// playback starts.
+class _TransportSpinner extends StatelessWidget {
+  const _TransportSpinner({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Loading',
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Center(
+          child: SizedBox(
+            // Smaller than the slot it stands in: a ring at the button's full
+            // width would read as a border rather than as progress.
+            width: size * 0.45,
+            height: size * 0.45,
+            child: const CircularProgressIndicator(
+              strokeWidth: 3,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

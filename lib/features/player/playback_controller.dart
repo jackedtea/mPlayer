@@ -6,7 +6,7 @@
 import 'dart:async';
 import 'dart:io' show Directory, Platform;
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show Uint8List, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -56,6 +56,13 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// second; persisting that often would hammer storage for no benefit.
   DateTime _lastResumeWrite = DateTime.fromMillisecondsSinceEpoch(0);
   static const _resumeInterval = Duration(seconds: 5);
+
+  /// Throttles the frame grab behind the resume write. Decoding and encoding
+  /// a still is far heavier than writing a position, so the shelf's artwork
+  /// only follows playback every so often — and always on the final write,
+  /// which is the frame the user actually left off on.
+  DateTime _lastThumbnail = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _thumbnailInterval = Duration(seconds: 30);
 
   /// Completes once the mpv properties media_kit leaves unset have been
   /// applied. [openResolved] waits on it so the first file already benefits.
@@ -109,6 +116,9 @@ class PlaybackController extends Notifier<PlaybackState> {
     // Otherwise a second file inherits the first one's chapter list.
     _chaptersLoaded = false;
     _smartSubtitlesApplied = false;
+    // A new file gets its own still straight away rather than waiting out
+    // the previous one's interval.
+    _lastThumbnail = DateTime.fromMillisecondsSinceEpoch(0);
 
     state = state.copyWith(
       media: media,
@@ -229,7 +239,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   Future<void> stop() async {
     // Force a final write: the throttle would otherwise drop the last few
     // seconds, which is exactly the position the user will resume from.
-    _recordProgress(force: true);
+    // Awaited, unlike the periodic writes — it grabs a frame off the player,
+    // and tearing the player down underneath that would lose the still.
+    await _recordProgress(force: true);
 
     await _teardownAsync();
     state = const PlaybackState();
@@ -292,7 +304,7 @@ class PlaybackController extends Notifier<PlaybackState> {
     _subs.addAll(<StreamSubscription<void>>[
       s.position.listen((v) {
         state = state.copyWith(position: v);
-        _recordProgress();
+        unawaited(_recordProgress());
       }),
       s.duration.listen((v) {
         state = state.copyWith(duration: v);
@@ -365,7 +377,7 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Throttled because the position stream fires several times a second and
   /// each write touches storage. The repository decides what is worth keeping
   /// — barely-started and finished files are dropped there, not here.
-  void _recordProgress({bool force = false}) {
+  Future<void> _recordProgress({bool force = false}) async {
     final media = state.media;
     if (media == null || state.duration <= Duration.zero) return;
 
@@ -373,19 +385,47 @@ class PlaybackController extends Notifier<PlaybackState> {
     if (!force && now.difference(_lastResumeWrite) < _resumeInterval) return;
     _lastResumeWrite = now;
 
-    unawaited(
-      ref.read(resumeRepositoryProvider).save(
-            ResumePoint(
-              sourceId: media.ref.sourceId,
-              itemId: media.ref.itemId,
-              title: media.title,
-              kind: media.kind,
-              position: state.position,
-              duration: state.duration,
-              updatedAt: now,
-            ),
+    // Grabbed before the write so the still and the position it is shelved
+    // with come from the same moment.
+    final thumbnail = await _captureThumbnail(force: force, now: now);
+
+    await ref.read(resumeRepositoryProvider).save(
+          ResumePoint(
+            sourceId: media.ref.sourceId,
+            itemId: media.ref.itemId,
+            title: media.title,
+            kind: media.kind,
+            position: state.position,
+            duration: state.duration,
+            updatedAt: now,
           ),
-    );
+          thumbnail: thumbnail,
+        );
+  }
+
+  /// The current video frame as JPEG, for the Continue-watching card.
+  ///
+  /// Null whenever there is nothing worth shelving — an audio-only file, a
+  /// frame that is not decoded yet, or a backend that cannot screenshot. The
+  /// card falls back to its gradient in every one of those cases, so a
+  /// failure here is never worth surfacing.
+  Future<Uint8List?> _captureThumbnail({
+    required bool force,
+    required DateTime now,
+  }) async {
+    final player = _player;
+    if (player == null) return null;
+    if (!force && now.difference(_lastThumbnail) < _thumbnailInterval) {
+      return null;
+    }
+    _lastThumbnail = now;
+
+    try {
+      return await player.screenshot();
+    } catch (e) {
+      debugPrint('Could not grab a thumbnail: $e');
+      return null;
+    }
   }
 
   /// Applies mpv options media_kit never sets.
@@ -444,6 +484,12 @@ class PlaybackController extends Notifier<PlaybackState> {
       await platform.setProperty(
         'sub-delay',
         '${settings.subtitleDelay.inMilliseconds / 1000}',
+      );
+      // mpv takes both delays in seconds, and both accept a negative value —
+      // audio ahead of the picture is as common as behind it.
+      await platform.setProperty(
+        'audio-delay',
+        '${settings.audioDelay.inMilliseconds / 1000}',
       );
     } catch (e) {
       // Best-effort: a property mpv does not know must not stop playback.

@@ -76,6 +76,7 @@ class ResumeItem {
     required this.remaining,
     required this.quality,
     required this.progress,
+    this.thumbnailPath,
   }) : assert(progress >= 0 && progress <= 1);
 
   final String id;
@@ -93,6 +94,10 @@ class ResumeItem {
 
   /// 0..1, drawn as the 4px bar pinned to the bottom of the thumbnail.
   final double progress;
+
+  /// Local file holding the frame this item was left on. Null means no still
+  /// was captured, and the card draws its gradient placeholder instead.
+  final String? thumbnailPath;
 
   String get subtitle => '$remaining · $quality';
 }

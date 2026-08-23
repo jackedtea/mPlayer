@@ -138,6 +138,54 @@ void main() {
     });
   });
 
+  group('loading', () {
+    testWidgets('the play button becomes a spinner while buffering', (
+      tester,
+    ) async {
+      await pumpControls(
+        tester,
+        const Size(400, 900),
+        state: const PlaybackState(buffering: true, playing: true),
+      );
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byIcon(Icons.pause_rounded), findsNothing);
+      expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+
+      // The rest of the transport stays usable — only the centre slot swaps.
+      expect(find.byIcon(Icons.replay_10_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.forward_30_rounded), findsOneWidget);
+    });
+
+    testWidgets('the spinner keeps the play button footprint', (tester) async {
+      await pumpControls(tester, const Size(400, 900));
+      final playing = tester.getRect(find.byIcon(Icons.play_arrow_rounded));
+
+      await pumpControls(
+        tester,
+        const Size(400, 900),
+        state: const PlaybackState(buffering: true),
+      );
+
+      // Same centre: the row must not shuffle sideways when loading ends.
+      expect(
+        tester.getRect(find.byType(CircularProgressIndicator)).center,
+        playing.center,
+      );
+    });
+
+    testWidgets('a failed file shows its error, not a spinner', (tester) async {
+      await pumpControls(
+        tester,
+        const Size(400, 900),
+        state: const PlaybackState(buffering: true, error: 'nope'),
+      );
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+    });
+  });
+
   group('quality', () {
     testWidgets('is hidden for a source that cannot transcode', (tester) async {
       await pumpControls(tester, const Size(400, 900));

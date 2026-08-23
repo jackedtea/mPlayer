@@ -190,6 +190,40 @@ before it is compared. **`und` reduces to null and never matches** — a rip who
 unlabelled must not be assumed to be in the user's language, or the subtitles they need
 get switched off.
 
+## Casting
+
+`lib/cast/` speaks **DLNA/UPnP** and speaks it by hand, for the same reasons the WebDAV
+client is hand-written: five AVTransport commands are the whole of what a player needs,
+and every UPnP package on pub brings a content-directory browser along with them. It also
+means casting works on Android, Windows and Linux from one implementation — the Google
+Cast SDK is Android-only and drags in Play Services.
+
+- `ssdp.dart` — M-SEARCH over multicast. The datagram is sent **three times**: UDP
+  multicast drops packets as a matter of course, and a dropped one silently costs the
+  user a device. Replies arrive as unicast, so no Android `MulticastLock` is needed.
+  A `NOTIFY` is not an answer and is ignored, or the list fills with devices that never
+  replied.
+- `upnp.dart` — element lookups match on **local names**, the same rule `parsePropfind`
+  follows: vendors namespace their descriptions differently and some prefix nothing.
+  SOAP arguments are positional despite looking named, so argument order is part of the
+  contract. `DIDL-Lite` metadata is optional by specification and required in practice —
+  many televisions show "Unknown" or refuse the stream without it.
+- `dlna_renderer.dart` — `CastRenderer` over SOAP. `Stop` before every `SetAVTransportURI`
+  because a renderer already showing something rejects a new URI often enough to lose the
+  second file; `Seek` only after `Play`, because a stream that is not open yet cannot be
+  seeked.
+- **The proxy is the part to understand.** libmpv plays from `127.0.0.1`, which means
+  nothing to a television, so a cast starts a *second* `MediaProxyServer` bound to every
+  interface and hands the device a LAN URL. Separate instance, lifetime tied to the cast:
+  while it runs, anything on the network can read what is published. A share the playback
+  proxy already opened is republished over the **same reader** rather than opening a
+  second connection to the NAS.
+- A `content://` URI cannot be cast — only Android's content resolver can read one, not a
+  Dart `File`. The picker says so rather than failing silently.
+
+`CastRenderer` is the seam Chromecast will plug into; nothing above it knows which
+protocol a device speaks.
+
 ## Background playback & picture in picture
 
 Both are Android-only, both are Kotlin, and both follow the same rule: **the platform

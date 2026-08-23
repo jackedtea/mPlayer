@@ -8,6 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../settings/player_settings.dart';
+import '../settings/player_settings_page.dart';
+import 'playback_controller.dart';
 import 'player_ui_state.dart';
 
 /// The player's overflow sheet: rotation, lock, aspect, sleep timer, then
@@ -59,6 +62,15 @@ class MoreMenu extends ConsumerWidget {
             value: ui.sleepLabel,
             onTap: () => _pickSleepTimer(context, ref),
           ),
+          // Here as well as in settings: lips out of step with the dialogue
+          // is noticed mid-film, and leaving the player to fix it loses the
+          // moment you were judging it by.
+          _Row(
+            icon: Icons.av_timer_rounded,
+            label: 'Audio delay',
+            value: formatDelay(ref.watch(playerSettingsProvider).audioDelay),
+            onTap: () => _pickAudioDelay(context, ref),
+          ),
           const Divider(height: 1, color: Colors.white24),
           _Row(
             icon: Icons.analytics_rounded,
@@ -80,6 +92,18 @@ class MoreMenu extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _pickAudioDelay(BuildContext context, WidgetRef ref) async {
+    final settings = ref.read(playerSettingsProvider);
+
+    await pickAudioDelay(context, settings.audioDelay, (delay) async {
+      final next = settings.copyWith(audioDelay: delay);
+      await ref.read(playerSettingsProvider.notifier).update(next);
+      // Straight into libmpv: the point of adjusting this here is hearing the
+      // difference on the frame you are looking at.
+      await ref.read(playbackControllerProvider.notifier).applySettings(next);
+    });
   }
 
   Future<void> _pickSleepTimer(BuildContext context, WidgetRef ref) async {

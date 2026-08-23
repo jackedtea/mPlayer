@@ -5,11 +5,13 @@
 
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/media_models.dart';
+import 'thumbnail_store.dart';
 
 /// Where playback got to in one file.
 @immutable
@@ -22,6 +24,7 @@ class ResumePoint {
     required this.position,
     required this.duration,
     required this.updatedAt,
+    this.thumbnailPath,
   });
 
   factory ResumePoint.fromJson(Map<String, dynamic> json) {
@@ -38,6 +41,7 @@ class ResumePoint {
       updatedAt: DateTime.fromMillisecondsSinceEpoch(
         json['updatedAt'] as int? ?? 0,
       ),
+      thumbnailPath: json['thumbnailPath'] as String?,
     );
   }
 
@@ -48,6 +52,12 @@ class ResumePoint {
   final Duration position;
   final Duration duration;
   final DateTime updatedAt;
+
+  /// Absolute path to the frame grabbed while this file was playing, drawn as
+  /// the card's artwork. Null until one has been captured — a file resumed
+  /// from a build that predates stills, or one whose capture failed, falls
+  /// back to the gradient placeholder.
+  final String? thumbnailPath;
 
   /// Identity across restarts: the same file in the same source.
   String get key => '$sourceId::$itemId';
@@ -63,6 +73,17 @@ class ResumePoint {
     return left.isNegative ? Duration.zero : left;
   }
 
+  ResumePoint copyWith({String? thumbnailPath}) => ResumePoint(
+        sourceId: sourceId,
+        itemId: itemId,
+        title: title,
+        kind: kind,
+        position: position,
+        duration: duration,
+        updatedAt: updatedAt,
+        thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+      );
+
   Map<String, dynamic> toJson() => <String, dynamic>{
         'sourceId': sourceId,
         'itemId': itemId,
@@ -71,6 +92,7 @@ class ResumePoint {
         'positionMs': position.inMilliseconds,
         'durationMs': duration.inMilliseconds,
         'updatedAt': updatedAt.millisecondsSinceEpoch,
+        if (thumbnailPath != null) 'thumbnailPath': thumbnailPath,
       };
 }
 
@@ -80,12 +102,14 @@ class ResumePoint {
 /// us, and a bounded list of resume points does not need a database. Moving it
 /// later is a migration of one key.
 class ResumeRepository {
-  /// [prefs] is injectable so tests need no platform channel.
-  ResumeRepository({SharedPreferences? prefs})
+  /// [prefs] and [thumbnails] are injectable so tests need no platform
+  /// channel.
+  ResumeRepository({SharedPreferences? prefs, ThumbnailStore? thumbnails})
       // A private field cannot be an initializing formal: Dart forbids named
       // parameters starting with an underscore.
       // ignore: prefer_initializing_formals
-      : _prefs = prefs;
+      : _prefs = prefs,
+        _thumbnails = thumbnails ?? ThumbnailStore();
 
   static const _prefsKey = 'resume_points_v1';
 
@@ -102,6 +126,7 @@ class ResumeRepository {
   static const finishedProgress = 0.95;
 
   SharedPreferences? _prefs;
+  final ThumbnailStore _thumbnails;
 
   Future<SharedPreferences> get _store async =>
       _prefs ??= await SharedPreferences.getInstance();
@@ -128,7 +153,12 @@ class ResumeRepository {
   }
 
   /// Records progress, or clears the entry once the file counts as watched.
-  Future<void> save(ResumePoint point) async {
+  ///
+  /// [thumbnail] is an encoded frame grabbed off the player. It is only
+  /// written when supplied — the position is saved every few seconds and
+  /// capturing a frame that often would be wasteful — and an entry that gets
+  /// none keeps whichever still it already had.
+  Future<void> save(ResumePoint point, {Uint8List? thumbnail}) async {
     if (point.duration <= Duration.zero) return;
 
     if (point.progress >= finishedProgress) {
@@ -137,11 +167,30 @@ class ResumeRepository {
     }
     if (point.progress < minProgress) return;
 
-    final points = await load()
-      ..removeWhere((p) => p.key == point.key);
-    points.insert(0, point);
+    final points = await load();
+    final previous =
+        points.where((p) => p.key == point.key).firstOrNull?.thumbnailPath;
+    points.removeWhere((p) => p.key == point.key);
 
-    await _write(points.take(maxEntries).toList());
+    final written = thumbnail == null
+        ? null
+        : await _thumbnails.write(point.key, thumbnail);
+
+    points.insert(
+      0,
+      point.copyWith(
+        thumbnailPath: written ?? point.thumbnailPath ?? previous,
+      ),
+    );
+
+    final kept = points.take(maxEntries).toList();
+    await _write(kept);
+
+    // Entries pushed past the cap are dropped without going through
+    // [remove], so their frames are swept here instead.
+    if (points.length > kept.length) {
+      await _thumbnails.retainOnly(kept.map((p) => p.key));
+    }
   }
 
   Future<ResumePoint?> find(String sourceId, String itemId) async {
@@ -156,9 +205,13 @@ class ResumeRepository {
     final points = await load()
       ..removeWhere((p) => p.sourceId == sourceId && p.itemId == itemId);
     await _write(points);
+    await _thumbnails.delete('$sourceId::$itemId');
   }
 
-  Future<void> clear() async => _write(const <ResumePoint>[]);
+  Future<void> clear() async {
+    await _write(const <ResumePoint>[]);
+    await _thumbnails.retainOnly(const <String>[]);
+  }
 
   Future<void> _write(List<ResumePoint> points) async {
     final store = await _store;
@@ -169,8 +222,9 @@ class ResumeRepository {
   }
 }
 
-final resumeRepositoryProvider =
-    Provider<ResumeRepository>((ref) => ResumeRepository());
+final resumeRepositoryProvider = Provider<ResumeRepository>(
+  (ref) => ResumeRepository(thumbnails: ref.watch(thumbnailStoreProvider)),
+);
 
 /// The Continue-watching shelf.
 ///

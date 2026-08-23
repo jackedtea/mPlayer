@@ -21,12 +21,18 @@ class ProxiedMedia {
     required this.size,
     required this.read,
     required this.close,
+    this.contentType = 'application/octet-stream',
   });
 
   final String id;
   final String name;
   final int size;
   final RangeReader read;
+
+  /// libmpv ignores this and sniffs the container itself, but a television
+  /// does not: a DLNA renderer handed `application/octet-stream` often
+  /// refuses the stream outright.
+  final String contentType;
 
   /// Releases the backend handle once nothing is playing it.
   final Future<void> Function() close;
@@ -39,9 +45,21 @@ class ProxiedMedia {
 /// server on 127.0.0.1 that turns `Range` requests into offset reads. libmpv
 /// then treats the file as an ordinary seekable HTTP resource.
 ///
-/// Bound to loopback on an ephemeral port: this is an implementation detail of
-/// playback, never something reachable from the network.
+/// Bound to loopback on an ephemeral port by default: for playback this is an
+/// implementation detail, never something reachable from the network.
+///
+/// Casting is the exception and has to be asked for explicitly. A television
+/// cannot fetch `127.0.0.1`, so the cast proxy binds every interface — which
+/// means anything on the same network can read what is published while a cast
+/// is running. That is why it is a separate instance with its own lifetime,
+/// started when a cast starts and shut down when it ends, rather than a flag
+/// on the one playback uses.
 class MediaProxyServer {
+  MediaProxyServer({this.bindAddress});
+
+  /// Null is loopback. Pass [InternetAddress.anyIPv4] for casting.
+  final InternetAddress? bindAddress;
+
   HttpServer? _server;
   final Map<String, ProxiedMedia> _entries = <String, ProxiedMedia>{};
 
@@ -51,19 +69,56 @@ class MediaProxyServer {
   Future<void> start() async {
     if (_server != null) return;
 
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final server = await HttpServer.bind(
+      bindAddress ?? InternetAddress.loopbackIPv4,
+      0,
+    );
     _server = server;
     server.listen(_handle, onError: (Object e) {
       debugPrint('Media proxy error: $e');
     });
   }
 
-  /// Registers [media] and returns the URL libmpv should open.
-  Future<Uri> publish(ProxiedMedia media) async {
+  /// Registers [media] and returns the URL to open it with.
+  ///
+  /// [host] overrides the address in that URL. Playback leaves it alone and
+  /// gets loopback; a cast passes the machine's own LAN address, because the
+  /// URL has to mean something on the television.
+  Future<Uri> publish(ProxiedMedia media, {String? host}) async {
     await start();
     _entries[media.id] = media;
-    return Uri.parse('http://127.0.0.1:$port/media/${media.id}');
+    return Uri.parse('http://${host ?? '127.0.0.1'}:$port/media/${media.id}');
   }
+
+  /// This machine's address on the local network, or null when it has none.
+  ///
+  /// Loopback and link-local are skipped: neither is an address a television
+  /// can fetch from.
+  static Future<String?> localAddress() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+        includeLinkLocal: false,
+      );
+
+      for (final NetworkInterface interface in interfaces) {
+        for (final InternetAddress address in interface.addresses) {
+          if (!address.isLoopback) return address.address;
+        }
+      }
+    } catch (e) {
+      debugPrint('Could not read the local address: $e');
+    }
+    return null;
+  }
+
+  /// The entry behind an id, or null once it has been withdrawn.
+  ///
+  /// Casting reads this to republish a share that playback already opened,
+  /// so the television gets a LAN URL over the same reader rather than a
+  /// second connection to the same NAS.
+  ProxiedMedia? entryFor(String id) => _entries[id];
 
   /// Drops one entry and releases its backend handle.
   Future<void> withdraw(String id) async {
@@ -160,7 +215,15 @@ class MediaProxyServer {
   ) {
     response.headers
       ..set(HttpHeaders.acceptRangesHeader, 'bytes')
-      ..set(HttpHeaders.contentTypeHeader, 'application/octet-stream');
+      ..set(HttpHeaders.contentTypeHeader, media.contentType)
+      // Both are read by DLNA renderers deciding whether the stream may be
+      // seeked. Harmless to libmpv, which has already decided from Accept-
+      // Ranges by the time it looks.
+      ..set('transferMode.dlna.org', 'Streaming')
+      ..set(
+        'contentFeatures.dlna.org',
+        'DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000',
+      );
 
     if (range == null) {
       response

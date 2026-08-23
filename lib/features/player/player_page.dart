@@ -13,7 +13,11 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/tokens.dart';
+import '../../cast/cast_device.dart';
 import '../../sources/media_source.dart';
+import '../cast/cast_controller.dart';
+import '../cast/cast_sheet.dart';
+import '../cast/casting_overlay.dart';
 import 'controls_overlay.dart';
 import 'gesture_layer.dart';
 import 'more_menu.dart';
@@ -206,6 +210,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     // controller drops the ones that would only move the position along.
     ref.listen(playbackControllerProvider, (_, next) => _syncNowPlaying(next));
 
+    // The television is playing it now; this screen becomes its remote.
+    final cast = ref.watch(castControllerProvider);
+    if (cast.isCasting) {
+      return CastingOverlay(
+        device: cast.device!,
+        title: state.media?.ref.title ?? widget.media.ref.title,
+        status: cast.status,
+        onPlayPause: ref.read(castControllerProvider.notifier).playOrPause,
+        onSeek: ref.read(castControllerProvider.notifier).seek,
+        onStop: () => ref.read(castControllerProvider.notifier).disconnect(),
+        onBack: () => context.pop(),
+      );
+    }
+
     // A PiP window is a few hundred pixels wide: controls, gestures and
     // overlays would cover the video they are meant to serve.
     if (pip.active) {
@@ -251,7 +269,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               ),
 
               if (state.error != null) _ErrorOverlay(message: state.error!),
-              if (state.buffering && state.error == null)
+              // Only where the transport is not already showing one: the
+              // controls sit dead centre, and with the chrome up its
+              // play/pause slot becomes the spinner instead. Two would
+              // overlap, which is what made loading look like a stuck button.
+              if (state.buffering &&
+                  state.error == null &&
+                  (!_chromeVisible || ui.locked))
                 const Center(
                   child: CircularProgressIndicator(color: Colors.white),
                 ),
@@ -302,6 +326,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       onFullscreen: _toggleFullscreen,
                       onMore: () => MoreMenu.show(context),
                       onPip: pip.supported ? _enterPip : null,
+                      onCast: _pickCastDevice,
                       onSkipIntro: (chapter) => controller.seek(chapter.end),
                       notImplemented: _notImplemented,
                     ),
@@ -435,6 +460,36 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   // ---------------------------------------------------------------- misc
+
+  /// Hands the file to a device on the network.
+  ///
+  /// Local playback is paused rather than stopped: coming back from the
+  /// television should carry on where the room left off.
+  Future<void> _pickCastDevice() async {
+    _restartHideTimer();
+
+    await CastSheet.show(
+      context,
+      onSelected: (CastDevice device) async {
+        final playback = ref.read(playbackControllerProvider);
+        final media = playback.media ?? widget.media;
+        final from = playback.position;
+
+        await _playback.pause();
+
+        final started = await ref
+            .read(castControllerProvider.notifier)
+            .castTo(device, media, from: from);
+
+        if (started || !mounted) return;
+
+        final error = ref.read(castControllerProvider).error;
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(content: Text(error ?? 'Could not cast to that device.')),
+        );
+      },
+    );
+  }
 
   /// Shrinks the app into the picture-in-picture window.
   Future<void> _enterPip() async {

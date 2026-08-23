@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 
 import '../app/tokens.dart';
@@ -92,7 +94,12 @@ class ContinueWatchingCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
+                    // The gradient stays underneath the still: it shows while
+                    // the file is decoded, and remains the artwork for an
+                    // item that never got one.
                     GradientArt(seed: item.title),
+                    if (item.thumbnailPath != null)
+                      _Thumbnail(path: item.thumbnailPath!, width: width),
                     Center(
                       child: Container(
                         width: 40,
@@ -153,6 +160,38 @@ class ContinueWatchingCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The frame grabbed while the file was playing.
+///
+/// Decoded at the card's own size rather than the file's — these are stills
+/// off a 4K frame, and a shelf of them at full resolution costs tens of
+/// megabytes of image cache for artwork drawn 200pt wide.
+///
+/// A still can go missing between being written and being drawn: the OS may
+/// clear application support, or the entry may predate its file being
+/// removed. That is not an error worth showing, so the builder falls through
+/// to the gradient already painted underneath.
+class _Thumbnail extends StatelessWidget {
+  const _Thumbnail({required this.path, required this.width});
+
+  final String path;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = MediaQuery.devicePixelRatioOf(context);
+
+    return Image.file(
+      File(path),
+      fit: BoxFit.cover,
+      cacheWidth: (width * ratio).round(),
+      // Without this the image blinks back to the gradient on every rebuild
+      // that re-resolves the file.
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
     );
   }
 }

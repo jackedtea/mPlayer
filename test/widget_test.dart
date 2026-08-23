@@ -4,8 +4,10 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,12 +19,17 @@ import 'package:mplayer/core/models/media_models.dart';
 import 'package:mplayer/core/resume_repository.dart';
 import 'package:mplayer/widgets/gradient_art.dart';
 
+/// Smallest image the card can actually decode, for the still it draws.
+const onePixelPng =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAE'
+    'hQGAhKmMIQAAAABJRU5ErkJggg==';
+
 /// Seeds the Continue-watching shelf.
 ///
 /// It is built from real resume points now, so a test that asserts about the
 /// shelf has to put something in it — an empty shelf renders nothing at all,
 /// which is the correct behaviour and would silently pass a geometry test.
-void seedResumePoints(int count) {
+void seedResumePoints(int count, {String? thumbnailPath}) {
   final now = DateTime(2026, 2, 10);
   SharedPreferences.setMockInitialValues(<String, Object>{
     'resume_points_v1': <String>[
@@ -36,6 +43,7 @@ void seedResumePoints(int count) {
             position: const Duration(minutes: 10),
             duration: const Duration(minutes: 100),
             updatedAt: now.subtract(Duration(minutes: i)),
+            thumbnailPath: thumbnailPath,
           ).toJson(),
         ),
     ],
@@ -229,6 +237,48 @@ void main() {
         reason: 'ink must not sit flush against the content',
       );
       expect(artRect.top - inkRect.top, artRect.left - inkRect.left);
+    });
+
+    testWidgets('a captured frame is drawn over the gradient', (tester) async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+
+      // A real 1x1 PNG: the card decodes the file, so bytes that are not an
+      // image would land in the error builder and pass for the wrong reason.
+      final dir = Directory.systemTemp.createTempSync('mplayer_shelf');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final still = File(p.join(dir.path, 'frame.png'))
+        ..writeAsBytesSync(base64Decode(onePixelPng));
+
+      seedResumePoints(1, thumbnailPath: still.path);
+      await pumpAppAt(tester, const Size(400, 800));
+
+      final images = tester
+          .widgetList<Image>(find.byType(Image))
+          .map((i) => i.image)
+          .whereType<ResizeImage>()
+          .map((i) => i.imageProvider)
+          .whereType<FileImage>()
+          .toList();
+
+      expect(
+        images.map((i) => i.file.path),
+        contains(still.path),
+        reason: 'the shelf must draw the frame that was captured',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('an entry with no frame draws no image at all', (tester) async {
+      seedResumePoints(1);
+      await pumpAppAt(tester, const Size(400, 800));
+
+      expect(
+        tester
+            .widgetList<Image>(find.byType(Image))
+            .where((i) => i.image is ResizeImage || i.image is FileImage),
+        isEmpty,
+      );
+      expect(find.byType(GradientArt), findsWidgets);
     });
 
     testWidgets('shelf grows with the text scale instead of overflowing', (

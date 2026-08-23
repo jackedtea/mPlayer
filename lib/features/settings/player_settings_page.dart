@@ -23,6 +23,12 @@ class PlayerSettingsPage extends ConsumerWidget {
   /// The amounts the transport buttons and double-tap gestures offer.
   static const _skipChoices = <int>[5, 10, 15, 30, 60];
 
+  /// A/V sync offsets, in milliseconds. Negative plays the audio earlier,
+  /// which is as common a fault as the other way round.
+  static const audioDelayChoices = <int>[
+    -1000, -500, -250, -100, 0, 100, 250, 500, 1000,
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(playerSettingsProvider);
@@ -59,6 +65,16 @@ class PlayerSettingsPage extends ConsumerWidget {
             context,
             settings.skipForward,
             (d) => save(settings.copyWith(skipForward: d)),
+          ),
+        ),
+        SettingsValueRow(
+          title: 'Audio delay',
+          value: formatDelay(settings.audioDelay),
+          subtitle: 'Shifts the sound against the picture',
+          onTap: () => pickAudioDelay(
+            context,
+            settings.audioDelay,
+            (d) => save(settings.copyWith(audioDelay: d)),
           ),
         ),
         SettingsSwitchRow(
@@ -165,4 +181,44 @@ class PlayerSettingsPage extends ConsumerWidget {
     if (chosen == null) return;
     await save(Duration(seconds: chosen));
   }
+}
+
+/// "+250 ms", "0 ms". The sign is always shown for a non-zero value: which
+/// direction the offset goes is the whole point of the number.
+String formatDelay(Duration delay) {
+  final ms = delay.inMilliseconds;
+  if (ms == 0) return '0 ms';
+  return '${ms > 0 ? '+' : ''}$ms ms';
+}
+
+/// Shared by the settings page and the player's overflow menu — A/V sync is
+/// something you fix while watching, not before.
+Future<void> pickAudioDelay(
+  BuildContext context,
+  Duration current,
+  Future<void> Function(Duration) save,
+) async {
+  final chosen = await showModalBottomSheet<int>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    builder: (sheetContext) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: <Widget>[
+          for (final int ms in PlayerSettingsPage.audioDelayChoices)
+            ListTile(
+              title: Text(formatDelay(Duration(milliseconds: ms))),
+              trailing: ms == current.inMilliseconds
+                  ? const Icon(Icons.check_rounded)
+                  : null,
+              onTap: () => Navigator.of(sheetContext).pop(ms),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  if (chosen == null) return;
+  await save(Duration(milliseconds: chosen));
 }

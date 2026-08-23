@@ -197,6 +197,14 @@ supersedes the ordering guesses in this phase list where the two disagree.
       them, since only those mark intros reliably
 - [ ] Verify the `chapter-list` read against a real chaptered MKV — no sample file or
       ffmpeg on this machine, so only the precedence logic is unit-tested
+- [x] Casting over **DLNA/UPnP**, hand-written in Dart (`lib/cast/`): SSDP discovery, the
+      device description, and AVTransport over SOAP. Works on Android, Windows and Linux
+      alike, and a second `MediaProxyServer` bound to the LAN serves the file — a
+      television cannot fetch the loopback address libmpv plays from
+- [ ] Casting to **Chromecast** — needs `play-services-cast-framework` and a Kotlin
+      channel behind the same `CastRenderer` interface. Android only
+- [x] Audio delay (A/V sync) — in Player settings and in the player's overflow menu,
+      since it is a fault you notice mid-film
 - [x] Picture-in-picture — `PipChannel.kt` + `features/player/pip_controller.dart`.
       Auto-enters when the user leaves mid-play (API 31+ from the params, 26-30 from
       `onUserLeaveHint`), and the window's own transport buttons run the player's own

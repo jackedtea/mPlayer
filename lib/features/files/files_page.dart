@@ -94,6 +94,7 @@ class _ContinueWatchingSection extends ConsumerWidget {
           remaining: '${formatDuration(p.remaining)} left',
           quality: '',
           progress: p.progress,
+          thumbnailPath: p.thumbnailPath,
         ),
     ];
 

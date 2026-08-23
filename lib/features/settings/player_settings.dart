@@ -46,6 +46,7 @@ class PlayerSettings {
     this.subtitleBackgroundOpacity = 0.55,
     this.subtitleColour = const Color(0xFFFFFFFF),
     this.subtitleDelay = Duration.zero,
+    this.audioDelay = Duration.zero,
   });
 
   factory PlayerSettings.fromJson(Map<String, dynamic> json) {
@@ -70,6 +71,7 @@ class PlayerSettings {
       subtitleColour: Color(json['subtitleColour'] as int? ?? 0xFFFFFFFF),
       subtitleDelay:
           Duration(milliseconds: json['subtitleDelayMs'] as int? ?? 0),
+      audioDelay: Duration(milliseconds: json['audioDelayMs'] as int? ?? 0),
     );
   }
 
@@ -104,6 +106,10 @@ class PlayerSettings {
   final double subtitleBackgroundOpacity;
   final Color subtitleColour;
   final Duration subtitleDelay;
+
+  /// Shifts the audio against the video, for a file whose streams were muxed
+  /// out of step. Positive plays the audio later.
+  final Duration audioDelay;
 
   /// mpv's default subtitle size, which the scale multiplies.
   static const _baseSubtitleSize = 55;
@@ -141,6 +147,7 @@ class PlayerSettings {
         'subtitleBackgroundOpacity': subtitleBackgroundOpacity,
         'subtitleColour': subtitleColour.toARGB32(),
         'subtitleDelayMs': subtitleDelay.inMilliseconds,
+        'audioDelayMs': audioDelay.inMilliseconds,
       };
 
   PlayerSettings copyWith({
@@ -159,6 +166,7 @@ class PlayerSettings {
     double? subtitleBackgroundOpacity,
     Color? subtitleColour,
     Duration? subtitleDelay,
+    Duration? audioDelay,
   }) {
     return PlayerSettings(
       hardwareDecoding: hardwareDecoding ?? this.hardwareDecoding,
@@ -180,6 +188,7 @@ class PlayerSettings {
           subtitleBackgroundOpacity ?? this.subtitleBackgroundOpacity,
       subtitleColour: subtitleColour ?? this.subtitleColour,
       subtitleDelay: subtitleDelay ?? this.subtitleDelay,
+      audioDelay: audioDelay ?? this.audioDelay,
     );
   }
 }
