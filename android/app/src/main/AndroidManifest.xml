@@ -11,6 +11,21 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <!--
+      Playing on with the app in the background. Android stops a process with
+      nothing visible, so the decoder only survives inside a foreground
+      service; the typed permission is required from Android 14.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+
+    <!--
+      The media notification, from Android 13. A denial hides the
+      notification but does not stop the service, so playback continues
+      either way — it just loses its controls.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!--
       Reading the user's videos. Scoped storage forbids listing shared
       storage directly, so the Files tab is built from MediaStore instead.
 
@@ -51,11 +66,18 @@
           with a stack of players. singleTask routes it to the running instance
           through onNewIntent, which is where receive_sharing_intent picks it up.
         -->
+        <!--
+          supportsPictureInPicture needs resizeableActivity beside it: a
+          non-resizeable activity is never offered PiP, and the system also
+          resizes the window on the way in and out.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:taskAffinity=""
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -230,6 +252,19 @@
                 <data android:mimeType="application/x-matroska"/>
             </intent-filter>
         </activity>
+        <!--
+          Not exported: every start comes from this app's own channel, and the
+          service takes no action a foreign app has any business triggering.
+        -->
+        <service
+            android:name=".PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON"/>
+            </intent-filter>
+        </service>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

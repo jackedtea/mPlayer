@@ -197,7 +197,10 @@ supersedes the ordering guesses in this phase list where the two disagree.
       them, since only those mark intros reliably
 - [ ] Verify the `chapter-list` read against a real chaptered MKV — no sample file or
       ffmpeg on this machine, so only the precedence logic is unit-tested
-- [ ] Picture-in-picture (needs a platform plugin; button reports not-implemented)
+- [x] Picture-in-picture — `PipChannel.kt` + `features/player/pip_controller.dart`.
+      Auto-enters when the user leaves mid-play (API 31+ from the params, 26-30 from
+      `onUserLeaveHint`), and the window's own transport buttons run the player's own
+      methods
 - [ ] Quality / transcode control — meaningless until a server can transcode (step 5)
 
 ### Design build step 4 — filesystem sources (partly done)
@@ -329,10 +332,13 @@ Deliberately **without** metadata scraping. Jellyfin and Emby already supply met
 
 ## Phase 8 — Mobile polish
 
-- [ ] Picture-in-picture (Android)
-- [ ] Background audio + media notification
-- [ ] Screen orientation control per-context
-- [ ] Handle audio focus / interruptions
+- [x] Picture-in-picture (Android)
+- [x] Background audio + media notification — `PlaybackService.kt`, a foreground service
+      owning the notification, a `MediaSession` for the lock screen and headset buttons,
+      and audio focus. Every button is forwarded to Dart rather than acted on natively
+- [x] Screen orientation control per-context
+- [x] Handle audio focus / interruptions — pauses on focus loss and on
+      `ACTION_AUDIO_BECOMING_NOISY`; ducking is deliberately not offered
 - [ ] Android storage permissions (scoped storage, `MANAGE_EXTERNAL_STORAGE` only if truly needed)
 - [ ] Battery-aware behaviour on mobile data
 

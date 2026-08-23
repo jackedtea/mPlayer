@@ -122,6 +122,10 @@ void main() {
         swipeGestures: false,
         subtitleColour: Color(0xFFFFE082),
         subtitleDelay: Duration(milliseconds: -500),
+        pipOnLeave: false,
+        backgroundAudio: false,
+        preferredLanguage: 'vi',
+        smartSubtitles: false,
       );
 
       final restored = PlayerSettings.fromJson(original.toJson());
@@ -131,6 +135,39 @@ void main() {
       expect(restored.swipeGestures, isFalse);
       expect(restored.subtitleColour.toARGB32(), 0xFFFFE082);
       expect(restored.subtitleDelay, const Duration(milliseconds: -500));
+      expect(restored.pipOnLeave, isFalse);
+      expect(restored.backgroundAudio, isFalse);
+      expect(restored.preferredLanguage, 'vi');
+      expect(restored.smartSubtitles, isFalse);
+    });
+
+    test('settings stored before these fields existed keep their defaults', () {
+      // What an upgrade actually reads: a JSON blob written by the build
+      // before picture in picture and smart subtitles were added.
+      final restored = PlayerSettings.fromJson(<String, dynamic>{
+        'skipBackSeconds': 5,
+      });
+
+      expect(restored.skipBack, const Duration(seconds: 5));
+      expect(restored.pipOnLeave, isTrue);
+      expect(restored.backgroundAudio, isTrue);
+      expect(restored.preferredLanguage, isNull);
+      expect(restored.smartSubtitles, isTrue);
+    });
+  });
+
+  group('preferred language', () {
+    test('is clearable, which a null argument alone cannot express', () {
+      const chosen = PlayerSettings(preferredLanguage: 'vi');
+
+      // A plain null means "leave it alone" for every other field here, so
+      // "no preference" needs a flag of its own.
+      expect(chosen.copyWith().preferredLanguage, 'vi');
+      expect(chosen.copyWith(preferredLanguage: 'en').preferredLanguage, 'en');
+      expect(
+        chosen.copyWith(clearPreferredLanguage: true).preferredLanguage,
+        isNull,
+      );
     });
   });
 }

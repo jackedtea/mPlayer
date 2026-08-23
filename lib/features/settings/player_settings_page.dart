@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -72,6 +74,22 @@ class PlayerSettingsPage extends ConsumerWidget {
           onChanged: (v) => save(settings.copyWith(autoSkipIntro: v)),
         ),
         const SettingsSection(title: 'Screen & gestures'),
+        // Both are Android behaviours with no desktop equivalent, so the rows
+        // are absent rather than present and inert.
+        if (Platform.isAndroid) ...<Widget>[
+          SettingsSwitchRow(
+            title: 'Picture in picture',
+            subtitle: 'Shrink into a floating window when you leave the app',
+            value: settings.pipOnLeave,
+            onChanged: (v) => save(settings.copyWith(pipOnLeave: v)),
+          ),
+          SettingsSwitchRow(
+            title: 'Play audio in background',
+            subtitle: 'Keeps playing with the screen off, with a notification',
+            value: settings.backgroundAudio,
+            onChanged: (v) => save(settings.copyWith(backgroundAudio: v)),
+          ),
+        ],
         SettingsSwitchRow(
           title: 'Swipe gestures',
           subtitle: 'Brightness on the left, volume on the right',

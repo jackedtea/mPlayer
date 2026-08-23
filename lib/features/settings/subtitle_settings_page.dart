@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
+import '../../core/languages.dart';
 import '../player/playback_controller.dart';
 import 'player_settings.dart';
 import 'settings_widgets.dart';
@@ -40,6 +41,55 @@ class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
   Future<void> _save(PlayerSettings next) async {
     await ref.read(playerSettingsProvider.notifier).update(next);
     await ref.read(playbackControllerProvider.notifier).applySettings(next);
+  }
+
+  /// The language the user reads in, which drives both track choices.
+  ///
+  /// Applied to the running file straight away rather than at the next open:
+  /// someone changing this mid-film is changing it *because* of that film.
+  Future<void> _pickLanguage(PlayerSettings settings) async {
+    final chosen = await showModalBottomSheet<_LanguageChoice>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: <Widget>[
+            ListTile(
+              title: const Text('No preference'),
+              subtitle: const Text('Leave the tracks the file chose'),
+              trailing: settings.preferredLanguage == null
+                  ? const Icon(Icons.check_rounded)
+                  : null,
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(const _LanguageChoice(null)),
+            ),
+            for (final LanguageOption option in languageOptions)
+              ListTile(
+                title: Text(option.label),
+                trailing: option.code == settings.preferredLanguage
+                    ? const Icon(Icons.check_rounded)
+                    : null,
+                onTap: () => Navigator.of(sheetContext)
+                    .pop(_LanguageChoice(option.code)),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    // Null means the sheet was dismissed; a choice of "no preference" is a
+    // wrapper holding null, which is a different thing entirely.
+    if (chosen == null) return;
+
+    await _save(
+      settings.copyWith(
+        preferredLanguage: chosen.code,
+        clearPreferredLanguage: chosen.code == null,
+      ),
+    );
+    await ref.read(playbackControllerProvider.notifier).applySmartSubtitles();
   }
 
   Future<void> _pickDelay(PlayerSettings settings) async {
@@ -137,9 +187,17 @@ class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
           ),
         ),
         const SettingsSection(title: 'Behaviour'),
-        const SettingsValueRow(
-          title: 'Preferred languages',
-          value: 'English, Vietnamese',
+        SettingsValueRow(
+          title: 'Preferred language',
+          value: languageLabel(settings.preferredLanguage),
+          subtitle: 'The language you would rather hear and read',
+          onTap: () => _pickLanguage(settings),
+        ),
+        SettingsSwitchRow(
+          title: 'Smart subtitles',
+          subtitle: 'Subtitles only when the audio is in another language',
+          value: settings.smartSubtitles,
+          onChanged: (v) => _save(settings.copyWith(smartSubtitles: v)),
         ),
         SettingsSwitchRow(
           title: 'Burn in when transcoding',
@@ -208,4 +266,14 @@ class _Preview extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A chosen language, or a chosen *absence* of one.
+///
+/// The sheet returns null when it is dismissed, so "no preference" needs a
+/// value of its own to be distinguishable from not answering.
+class _LanguageChoice {
+  const _LanguageChoice(this.code);
+
+  final String? code;
 }

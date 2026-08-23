@@ -38,6 +38,10 @@ class PlayerSettings {
     this.autoPlayNext = true,
     this.autoSkipIntro = false,
     this.swipeGestures = true,
+    this.pipOnLeave = true,
+    this.backgroundAudio = true,
+    this.preferredLanguage,
+    this.smartSubtitles = true,
     this.subtitleTextScale = 1.0,
     this.subtitleBackgroundOpacity = 0.55,
     this.subtitleColour = const Color(0xFFFFFFFF),
@@ -55,6 +59,10 @@ class PlayerSettings {
       autoPlayNext: json['autoPlayNext'] as bool? ?? true,
       autoSkipIntro: json['autoSkipIntro'] as bool? ?? false,
       swipeGestures: json['swipeGestures'] as bool? ?? true,
+      pipOnLeave: json['pipOnLeave'] as bool? ?? true,
+      backgroundAudio: json['backgroundAudio'] as bool? ?? true,
+      preferredLanguage: json['preferredLanguage'] as String?,
+      smartSubtitles: json['smartSubtitles'] as bool? ?? true,
       subtitleTextScale:
           (json['subtitleTextScale'] as num?)?.toDouble() ?? 1.0,
       subtitleBackgroundOpacity:
@@ -73,6 +81,24 @@ class PlayerSettings {
 
   /// Brightness and volume drags. Off makes the player ignore them entirely.
   final bool swipeGestures;
+
+  /// Shrink into a picture-in-picture window when the user leaves mid-play.
+  /// Android only; inert everywhere else.
+  final bool pipOnLeave;
+
+  /// Keep playing with the screen off or the app in the background, with a
+  /// media notification to control it.
+  final bool backgroundAudio;
+
+  /// Canonical language code the user reads in — see `core/languages.dart`.
+  /// Null means no preference, which turns [smartSubtitles] off with it.
+  final String? preferredLanguage;
+
+  /// Subtitles on only when the audio is *not* in [preferredLanguage].
+  ///
+  /// The point of the pairing: a film in your own language should play
+  /// without subtitles, and a foreign one should turn them on by itself.
+  final bool smartSubtitles;
 
   final double subtitleTextScale;
   final double subtitleBackgroundOpacity;
@@ -107,6 +133,10 @@ class PlayerSettings {
         'autoPlayNext': autoPlayNext,
         'autoSkipIntro': autoSkipIntro,
         'swipeGestures': swipeGestures,
+        'pipOnLeave': pipOnLeave,
+        'backgroundAudio': backgroundAudio,
+        'preferredLanguage': preferredLanguage,
+        'smartSubtitles': smartSubtitles,
         'subtitleTextScale': subtitleTextScale,
         'subtitleBackgroundOpacity': subtitleBackgroundOpacity,
         'subtitleColour': subtitleColour.toARGB32(),
@@ -120,6 +150,11 @@ class PlayerSettings {
     bool? autoPlayNext,
     bool? autoSkipIntro,
     bool? swipeGestures,
+    bool? pipOnLeave,
+    bool? backgroundAudio,
+    String? preferredLanguage,
+    bool? clearPreferredLanguage,
+    bool? smartSubtitles,
     double? subtitleTextScale,
     double? subtitleBackgroundOpacity,
     Color? subtitleColour,
@@ -132,6 +167,14 @@ class PlayerSettings {
       autoPlayNext: autoPlayNext ?? this.autoPlayNext,
       autoSkipIntro: autoSkipIntro ?? this.autoSkipIntro,
       swipeGestures: swipeGestures ?? this.swipeGestures,
+      pipOnLeave: pipOnLeave ?? this.pipOnLeave,
+      backgroundAudio: backgroundAudio ?? this.backgroundAudio,
+      // "No preference" has to be expressible, and a null argument already
+      // means "leave it alone" for every other field here.
+      preferredLanguage: clearPreferredLanguage ?? false
+          ? null
+          : preferredLanguage ?? this.preferredLanguage,
+      smartSubtitles: smartSubtitles ?? this.smartSubtitles,
       subtitleTextScale: subtitleTextScale ?? this.subtitleTextScale,
       subtitleBackgroundOpacity:
           subtitleBackgroundOpacity ?? this.subtitleBackgroundOpacity,

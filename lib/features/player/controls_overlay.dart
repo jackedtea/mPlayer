@@ -40,6 +40,7 @@ class ControlsOverlay extends StatelessWidget {
     required this.onChapters,
     required this.onFullscreen,
     required this.onMore,
+    this.onPip,
     required this.onSkipIntro,
     required this.notImplemented,
   });
@@ -71,6 +72,11 @@ class ControlsOverlay extends StatelessWidget {
   final VoidCallback onChapters;
   final VoidCallback onFullscreen;
   final VoidCallback onMore;
+
+  /// Null where the platform has no picture in picture — desktop, and the
+  /// Android devices whose manufacturer left it out. The button is hidden
+  /// rather than shown reporting that it does nothing.
+  final VoidCallback? onPip;
   final ValueChanged<MediaChapter> onSkipIntro;
   final void Function(String) notImplemented;
 
@@ -204,12 +210,13 @@ class _TopBar extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.picture_in_picture_alt_rounded),
-              color: Colors.white,
-              tooltip: 'Picture in picture',
-              onPressed: () => this_.notImplemented('Picture in picture'),
-            ),
+            if (this_.onPip != null)
+              IconButton(
+                icon: const Icon(Icons.picture_in_picture_alt_rounded),
+                color: Colors.white,
+                tooltip: 'Picture in picture',
+                onPressed: this_.onPip,
+              ),
             IconButton(
               icon: const Icon(Icons.cast_rounded),
               color: Colors.white,

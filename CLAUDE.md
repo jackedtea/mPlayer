@@ -169,6 +169,50 @@ order of cost: server-side burn-in when transcoding (the Subtitle settings switc
 exists for this, and only helps server sources); patching media_kit's render path;
 swapping the backend to `fvp`/libmdk, which `refs/NipaPlay-Reload` vendors.
 
+## Smart subtitles
+
+`features/player/smart_subtitles.dart` holds the rule as a **pure function** —
+`smartSelection` takes the track lists and returns what to select, so it is unit-tested
+without a decoder. `PlaybackController` applies it once per file, on the first track list
+that contains a real track (mpv publishes a list of nothing but its `auto`/`no`
+placeholders before a file is demuxed), and again on demand when the preference changes
+mid-film.
+
+The rule: play the audio in `PlayerSettings.preferredLanguage` if the file has it, and
+turn subtitles on **only** when that was not possible. Audio the user understands means
+subtitles off *explicitly*, since a file may have flagged one of its subtitle tracks as
+default.
+
+`core/languages.dart` is what makes the comparison work. A muxer writes `vie`, `vi`,
+`Vietnamese`, `vi-VN` or `VIE` for the same thing, and both ISO 639-2 forms are legal
+(`ger`/`deu`, `chi`/`zho`, `fre`/`fra`), so every label is reduced to a two-letter code
+before it is compared. **`und` reduces to null and never matches** — a rip whose audio is
+unlabelled must not be assumed to be in the user's language, or the subtitles they need
+get switched off.
+
+## Background playback & picture in picture
+
+Both are Android-only, both are Kotlin, and both follow the same rule: **the platform
+side decides nothing.** Every button, every focus change and every window event is
+forwarded to Dart, which owns the player. Two sides both acting on one event is how a
+notification ends up claiming "playing" over silence.
+
+- `PipChannel.kt` — `supportsPictureInPicture` + `resizeableActivity` in the manifest.
+  Auto-enter is armed through the params *before* the user leaves (API 31+); 26-30 do it
+  by hand from `onUserLeaveHint`. The aspect ratio is clamped to roughly 1:2.39…2.39:1
+  because anything outside that throws. The window's buttons arrive as broadcasts, not
+  method calls, since the system draws them.
+- `PlaybackService.kt` — a `mediaPlayback` foreground service holding the notification, a
+  framework `MediaSession` (lock screen, headset buttons) and audio focus. No androidx
+  media dependency: `android.media.session.MediaSession` and `Notification.MediaStyle`
+  cover it from API 21, and minSdk is 24. Focus loss pauses — ducking is not offered,
+  because a film quietened for a chime is a line of dialogue missed either way.
+- `PlayerSettings.backgroundAudio` off means the player pauses when the app is
+  backgrounded, and no service or notification exists at all. **The lifecycle check is
+  deferred ~400 ms**: entering PiP reports the same lifecycle change, and which arrives
+  first is not guaranteed, so pausing immediately would stop the video the user just
+  floated onto their home screen.
+
 ## Chapters
 
 Two independent sources, and the distinction matters:

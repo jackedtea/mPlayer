@@ -19,6 +19,7 @@ import '../../sources/local_source.dart';
 import '../../sources/media_source.dart';
 import '../../sources/source_registry.dart';
 import 'playback_state.dart';
+import 'smart_subtitles.dart';
 
 /// Hand-written, per the project's no-codegen rule for Riverpod.
 final playbackControllerProvider =
@@ -44,6 +45,10 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   /// Guards against re-reading the chapter list on every duration tick.
   bool _chaptersLoaded = false;
+
+  /// Smart subtitles run once per file, on the first real track list. Rerunning
+  /// on every later one would undo a track the user picked by hand.
+  bool _smartSubtitlesApplied = false;
 
   bool get autoPlayNext => ref.read(playerSettingsProvider).autoPlayNext;
 
@@ -103,6 +108,7 @@ class PlaybackController extends Notifier<PlaybackState> {
 
     // Otherwise a second file inherits the first one's chapter list.
     _chaptersLoaded = false;
+    _smartSubtitlesApplied = false;
 
     state = state.copyWith(
       media: media,
@@ -316,6 +322,15 @@ class PlaybackController extends Notifier<PlaybackState> {
           audioTracks: t.audio.map(_toTrack).toList(),
           subtitleTracks: t.subtitle.map(_toTrack).toList(),
         );
+
+        // mpv publishes a list holding only its "auto" and "no" placeholders
+        // before a file is demuxed; waiting for a real track keeps the rule
+        // from running against nothing.
+        final real = state.audioTracks.where((x) => !x.isAuto && !x.isOff);
+        if (!_smartSubtitlesApplied && real.isNotEmpty) {
+          _smartSubtitlesApplied = true;
+          unawaited(applySmartSubtitles());
+        }
       }),
       s.track.listen((t) {
         state = state.copyWith(
@@ -433,6 +448,33 @@ class PlaybackController extends Notifier<PlaybackState> {
     } catch (e) {
       // Best-effort: a property mpv does not know must not stop playback.
       debugPrint('Could not apply player settings: $e');
+    }
+  }
+
+  /// Picks the audio and subtitle tracks the user's language preference asks
+  /// for, once per file.
+  ///
+  /// Public so the settings page can re-run it when the preference changes
+  /// mid-film — the alternative is telling the user to reopen the file.
+  Future<void> applySmartSubtitles() async {
+    final settings = ref.read(playerSettingsProvider);
+    if (!settings.smartSubtitles) return;
+
+    final selection = smartSelection(
+      audioTracks: state.audioTracks,
+      subtitleTracks: state.subtitleTracks,
+      activeAudio: state.activeAudio,
+      preferred: settings.preferredLanguage,
+    );
+    if (selection.isEmpty) return;
+
+    final audio = selection.audio;
+    if (audio != null) await setAudioTrack(audio);
+
+    if (selection.subtitlesOff) {
+      await setSubtitleTrack(null);
+    } else if (selection.subtitle != null) {
+      await setSubtitleTrack(selection.subtitle);
     }
   }
 
@@ -631,6 +673,7 @@ class PlaybackController extends Notifier<PlaybackState> {
     _player = null;
     _videoController = null;
     _chaptersLoaded = false;
+    _smartSubtitlesApplied = false;
 
     if (player == null) return;
 

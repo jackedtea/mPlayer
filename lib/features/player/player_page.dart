@@ -17,6 +17,8 @@ import '../../sources/media_source.dart';
 import 'controls_overlay.dart';
 import 'gesture_layer.dart';
 import 'more_menu.dart';
+import 'now_playing.dart';
+import 'pip_controller.dart';
 import 'playback_controller.dart';
 import 'playback_state.dart';
 import 'player_ui_state.dart';
@@ -61,6 +63,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   /// position stream, which would fight it.
   double? _dragProgress;
 
+  StreamSubscription<PipControl>? _pipControls;
+  StreamSubscription<NowPlayingEvent>? _notificationCommands;
+  AppLifecycleListener? _lifecycle;
+
+  /// Deferred so picture in picture has a chance to report itself first.
+  /// Entering the window pauses the activity too, and pausing playback for
+  /// that would stop the video the user just floated onto their home screen.
+  Timer? _leftForegroundTimer;
+
   @override
   void initState() {
     super.initState();
@@ -76,13 +87,58 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       _playback.openResolved(widget.media);
       _playback.loadSiblingQueue(widget.media.ref);
     });
+    // The picture-in-picture window's own buttons. They run the same methods
+    // the on-screen controls do, so the two cannot drift apart.
+    _pipControls = ref.read(pipProvider.notifier).controls.listen((control) {
+      final settings = ref.read(playerSettingsProvider);
+      switch (control) {
+        case PipControl.toggle:
+          _playback.playOrPause();
+        case PipControl.back:
+          _playback.skip(-settings.skipBack);
+        case PipControl.forward:
+          _playback.skip(settings.skipForward);
+      }
+    });
+
+    // The notification, the lock screen, a headset button, headphones pulled
+    // out, a phone call taking audio focus. All of them end up here.
+    _notificationCommands =
+        ref.read(nowPlayingProvider.notifier).commands.listen((event) {
+      switch (event.command) {
+        case NowPlayingCommand.play:
+          _playback.play();
+        case NowPlayingCommand.pause:
+          _playback.pause();
+        case NowPlayingCommand.next:
+          _playback.playNext();
+        case NowPlayingCommand.previous:
+          _playback.playPrevious();
+        case NowPlayingCommand.seek:
+          final to = event.position;
+          if (to != null) _playback.seek(to);
+        case NowPlayingCommand.stop:
+          _playback.pause();
+          unawaited(ref.read(nowPlayingProvider.notifier).stop());
+      }
+    });
+
+    _lifecycle = AppLifecycleListener(
+      onStateChange: _onLifecycleChanged,
+    );
+
     _restartHideTimer();
   }
 
   @override
   void dispose() {
+    _leftForegroundTimer?.cancel();
+    _lifecycle?.dispose();
+    unawaited(_notificationCommands?.cancel());
+    unawaited(ref.read(nowPlayingProvider.notifier).stop());
     _hideTimer?.cancel();
     _sleepTimer?.cancel();
+    unawaited(_pipControls?.cancel());
     // Leaving the screen must not strand a decoder holding the file open, nor
     // a locked orientation on the rest of the app.
     unawaited(_playback.stop());
@@ -133,6 +189,31 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         if (chapter != null) controller.seek(chapter.end);
       },
     );
+
+    final pip = ref.watch(pipProvider);
+
+    // Shape, buttons and — on Android 12+ — whether leaving the app should
+    // open the window at all. Sent on every change rather than on the way
+    // out, because by then the system has already decided.
+    ref.listen(
+      playbackControllerProvider.select(
+        (s) => (s.playing, s.stats.width, s.stats.height),
+      ),
+      (_, next) => _syncPip(next.$1, next.$2, next.$3),
+    );
+
+    // The notification and the lock screen. Sent on every change; the
+    // controller drops the ones that would only move the position along.
+    ref.listen(playbackControllerProvider, (_, next) => _syncNowPlaying(next));
+
+    // A PiP window is a few hundred pixels wide: controls, gestures and
+    // overlays would cover the video they are meant to serve.
+    if (pip.active) {
+      return ColoredBox(
+        color: Colors.black,
+        child: _VideoSurface(controller: controller, fit: ui.aspect.boxFit),
+      );
+    }
 
     return Theme(
       // The player is always dark, whatever the app theme is.
@@ -220,6 +301,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       onChapters: () => _showChapters(state, controller),
                       onFullscreen: _toggleFullscreen,
                       onMore: () => MoreMenu.show(context),
+                      onPip: pip.supported ? _enterPip : null,
                       onSkipIntro: (chapter) => controller.seek(chapter.end),
                       notImplemented: _notImplemented,
                     ),
@@ -353,6 +435,75 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   }
 
   // ---------------------------------------------------------------- misc
+
+  /// Shrinks the app into the picture-in-picture window.
+  Future<void> _enterPip() async {
+    final state = ref.read(playbackControllerProvider);
+    await ref.read(pipProvider.notifier).enter(
+          width: state.stats.width,
+          height: state.stats.height,
+          playing: state.playing,
+        );
+  }
+
+  /// Keeps the window in step, and arms auto-enter while playing.
+  ///
+  /// Only while playing: a paused video that shrinks itself when the user
+  /// leaves is a window they did not ask for.
+  void _syncPip(bool playing, int? width, int? height) {
+    unawaited(
+      ref.read(pipProvider.notifier).update(
+            width: width,
+            height: height,
+            playing: playing,
+            autoEnter: playing && ref.read(playerSettingsProvider).pipOnLeave,
+          ),
+    );
+  }
+
+  /// Publishes what is playing, or takes the notification down when the user
+  /// has turned background playback off.
+  void _syncNowPlaying(PlaybackState state) {
+    final notification = ref.read(nowPlayingProvider.notifier);
+
+    if (!ref.read(playerSettingsProvider).backgroundAudio) {
+      if (ref.read(nowPlayingProvider)) unawaited(notification.stop());
+      return;
+    }
+
+    unawaited(
+      notification.update(
+        title: state.media?.ref.title ?? widget.media.ref.title,
+        subtitle: state.media?.sourceLine ?? widget.media.sourceLine,
+        playing: state.playing,
+        position: state.position,
+        duration: state.duration,
+        speed: state.speed,
+        hasNext: state.queue.hasNext,
+        hasPrevious: state.queue.hasPrevious,
+      ),
+    );
+  }
+
+  /// Pauses when the user leaves, unless they asked for background playback
+  /// or the video went into a picture-in-picture window.
+  void _onLifecycleChanged(AppLifecycleState lifecycle) {
+    _leftForegroundTimer?.cancel();
+
+    if (lifecycle != AppLifecycleState.paused &&
+        lifecycle != AppLifecycleState.hidden) {
+      return;
+    }
+    if (ref.read(playerSettingsProvider).backgroundAudio) return;
+
+    // Entering picture in picture reports the same lifecycle change, and
+    // which of the two arrives first is not guaranteed — so the decision
+    // waits a moment for the window to announce itself.
+    _leftForegroundTimer = Timer(const Duration(milliseconds: 400), () {
+      if (ref.read(pipProvider).active) return;
+      _playback.pause();
+    });
+  }
 
   /// Desktop toggles the OS window; mobile hides the system bars instead.
   ///

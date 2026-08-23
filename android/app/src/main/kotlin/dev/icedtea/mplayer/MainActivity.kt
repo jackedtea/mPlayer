@@ -1,6 +1,7 @@
 package dev.icedtea.mplayer
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -12,6 +13,8 @@ class MainActivity : FlutterActivity() {
     private var mediaStore: MediaStoreChannel? = null
     private var saf: SafChannel? = null
     private var incoming: IntentChannel? = null
+    private var pip: PipChannel? = null
+    private var nowPlaying: NowPlayingChannel? = null
 
     /**
      * True when Android rebuilt this activity after killing the process.
@@ -69,9 +72,66 @@ class MainActivity : FlutterActivity() {
             IntentChannel.EVENTS,
         ).setStreamHandler(intents.streamHandler())
 
+        val picture = PipChannel(this)
+        pip = picture
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            PipChannel.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            picture.handle(call.method, call.arguments as? Map<*, *>, result)
+        }
+
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            PipChannel.EVENTS,
+        ).setStreamHandler(picture.streamHandler())
+
+        val playing = NowPlayingChannel(this)
+        nowPlaying = playing
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            NowPlayingChannel.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            playing.handle(call.method, call.arguments as? Map<*, *>, result)
+        }
+
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            NowPlayingChannel.EVENTS,
+        ).setStreamHandler(playing.streamHandler())
+
         // The intent that started the activity. Offered here, after the
         // channels exist, so a cold start has somewhere to put the file.
         if (!restored) intents.offer(intent)
+    }
+
+    /**
+     * Home or Recents. On API 26-30 this is the only chance to enter picture
+     * in picture; 31 and up do it from the params instead.
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        pip?.onUserLeaveHint()
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pip?.onModeChanged(isInPictureInPictureMode)
+    }
+
+    override fun onDestroy() {
+        pip?.dispose()
+        pip = null
+        // The notification outliving the engine would leave buttons that
+        // reach nothing, so the service goes down with the activity.
+        nowPlaying?.dispose()
+        nowPlaying = null
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
