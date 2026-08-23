@@ -250,6 +250,27 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
           TrackOption.fromTrack(t),
       ],
       onSelected: (o) => controller.setSubtitleTrack(o.track),
+      action: TrackSheetAction(
+        label: 'Open subtitle file…',
+        icon: Icons.subtitles_outlined,
+        onTap: () => _openSubtitleFile(controller),
+      ),
+    );
+  }
+
+  /// Picks a subtitle off the device and loads it into the running file.
+  ///
+  /// Always offered, including for a share or a stream: the file being
+  /// played does not have to be the one the subtitle sits beside.
+  Future<void> _openSubtitleFile(PlaybackController controller) async {
+    _restartHideTimer();
+
+    final file = await ref.read(localSourceProvider).pickSubtitle();
+    if (file == null) return;
+
+    await controller.addExternalSubtitle(
+      Uri.file(file.path),
+      title: file.name,
     );
   }
 

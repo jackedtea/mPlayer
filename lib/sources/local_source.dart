@@ -31,6 +31,12 @@ class LocalSource implements BrowsableSource {
     'wmv', 'flv', '3gp', 'ogv', 'rmvb',
   ];
 
+  /// Subtitle formats libass and libmpv read. `.sub` needs its `.idx` beside
+  /// it, which is why the pair is offered rather than either alone.
+  static const subtitleExtensions = <String>[
+    'srt', 'ass', 'ssa', 'vtt', 'sub', 'idx', 'sup', 'txt', 'lrc',
+  ];
+
   @override
   String get id => sourceId;
 
@@ -44,15 +50,21 @@ class LocalSource implements BrowsableSource {
   Future<PlayableMedia> resolve(MediaRef ref) async {
     final path = ref.itemId;
 
-    // A content:// URI from the Android picker is already a handle; there is
-    // no filesystem entry to stat, so it goes straight through.
-    if (path.startsWith('content://')) {
+    // Anything carrying a real scheme is already a handle — a content:// URI
+    // from the Android picker or an intent, an rtsp:// stream handed over by
+    // another app. There is no filesystem entry to stat, so it goes straight
+    // through. A Windows drive letter parses as a one-character scheme
+    // ("d:/Videos"), hence the length test.
+    final handle = Uri.tryParse(path);
+    if (handle != null && handle.scheme.length > 1 && handle.scheme != 'file') {
       return PlayableMedia(
         ref: ref,
-        uri: Uri.parse(path),
+        uri: handle,
         kind: kind,
         capabilities: capabilities,
-        sourceLine: 'Device · content provider',
+        sourceLine: handle.scheme == 'content'
+            ? 'Device · content provider'
+            : 'Stream · ${handle.scheme.toUpperCase()}',
       );
     }
 
@@ -160,6 +172,25 @@ class LocalSource implements BrowsableSource {
       itemId: file.path,
       title: file.name.isNotEmpty ? file.name : p.basename(file.path),
     );
+  }
+
+  /// Opens the platform picker for a subtitle file, or null if cancelled.
+  ///
+  /// libmpv finds a sidecar next to a local file by itself; this is for the
+  /// cases it cannot — a differently named file, a subtitle downloaded
+  /// separately, or a video streaming from a share whose directory mpv never
+  /// sees.
+  Future<XFile?> pickSubtitle() async {
+    final group = XTypeGroup(
+      label: 'Subtitle',
+      extensions: subtitleExtensions,
+      // No UTI or MIME wildcard covers subtitles, and naming text/plain here
+      // would hide .ass and .srt on the platforms that key off it — so the
+      // group stays extension-only and Android falls back to any file.
+      uniformTypeIdentifiers: const <String>['public.data'],
+    );
+
+    return openFile(acceptedTypeGroups: <XTypeGroup>[group]);
   }
 }
 

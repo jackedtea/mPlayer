@@ -42,9 +42,12 @@ Verified by actually building and running, not assumed:
 
 Still open:
 
-1. Play a real file on a real Android device. `file_selector_android` may hand back a
-   `content://` URI; `LocalSource.resolve` passes those through untouched, but **whether
-   libmpv opens them has not been tested**. If it fails, copy to cache or resolve the fd.
+1. Play a real file on a real Android device. `file_selector_android`, MediaStore, SAF and
+   incoming intents all hand back a `content://` URI, and `LocalSource.resolve` passes any
+   real scheme through untouched. media_kit resolves those itself —
+   `Media.normalizeURI` opens a file descriptor through `AndroidContentUriProvider` and
+   gives libmpv `fd://<n>` — so **no copy to cache is needed**, but the path has still
+   only been read in the package source, never run on a device.
 2. Confirm the Linux build on a machine with `libmpv-dev`
 
 3. **Verify container chapters against a real chaptered MKV.** The list is read from

@@ -6,76 +6,125 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import '../../sources/local_source.dart';
 import '../../sources/media_source.dart';
 
+/// What `main` was invoked with, overridden in `main.dart`.
+///
+/// A provider rather than a global so a test can hand the controller an
+/// argument list without touching process state.
+final startupArgumentsProvider =
+    Provider<List<String>>((ref) => const <String>[]);
+
 /// A file handed to mPlayer by another app.
 ///
-/// Two ways in: the system chooser ("Open with") and the share sheet. Both
-/// arrive here as a path, because the plugin copies a `content://` URI out to
-/// a readable file first — which also sidesteps the open question of whether
-/// libmpv can open a content URI directly.
+/// Three ways in: the system chooser ("Open with"), the share sheet, and — on
+/// desktop — a path on the command line, which is also how Windows and Linux
+/// file associations open a file. The first two arrive as a URI, and the URI
+/// is what reaches libmpv: nothing is copied and nothing is read ahead of
+/// playback. That rules out the usual plugin behaviour of staging the file in
+/// the app cache first, which for the multi-gigabyte containers this player
+/// exists for means a minutes-long launch and a full internal storage.
+///
+/// See `android/app/src/main/kotlin/dev/icedtea/mplayer/IntentChannel.kt`.
 final incomingMediaProvider =
     NotifierProvider<IncomingMediaController, MediaRef?>(
   IncomingMediaController.new,
 );
 
 class IncomingMediaController extends Notifier<MediaRef?> {
-  StreamSubscription<List<SharedMediaFile>>? _sub;
+  static const _channel = MethodChannel('dev.icedtea.mplayer/intent');
+  static const _events = EventChannel('dev.icedtea.mplayer/intent-events');
+
+  StreamSubscription<Object?>? _sub;
 
   @override
   MediaRef? build() {
-    // Desktop has no share sheet; the plugin's platform channels are absent
-    // there and calling them throws.
-    if (!_isSupported) return null;
+    // The channels are registered by MainActivity, so they exist on Android
+    // and nowhere else.
+    if (Platform.isAndroid) {
+      _listen();
+      ref.onDispose(() => _sub?.cancel());
+      return null;
+    }
 
-    _listen();
-    ref.onDispose(() => _sub?.cancel());
+    _acceptStartupArguments();
     return null;
   }
 
-  static bool get _isSupported => Platform.isAndroid || Platform.isIOS;
+  /// `mPlayer video.mkv`, and every desktop file association — Windows and
+  /// Linux both open a file by launching the app with its path.
+  ///
+  /// Published a microtask later rather than returned: the app root watches
+  /// this provider for *changes*, so a file that is already there when the
+  /// first listener attaches would otherwise never be seen.
+  void _acceptStartupArguments() {
+    final path = ref
+        .read(startupArgumentsProvider)
+        // Flags belong to the engine, not to us. Nothing here takes an
+        // option, so the first bare argument is the file.
+        .where((a) => a.isNotEmpty && !a.startsWith('-'))
+        .firstOrNull;
+    if (path == null) return;
+
+    Future<void>.microtask(() {
+      state = MediaRef(
+        sourceId: LocalSource.sourceId,
+        itemId: path,
+        title: p.basename(path),
+      );
+    });
+  }
 
   void _listen() {
-    // Files that arrived while the app was already running.
-    _sub = ReceiveSharingIntent.instance.getMediaStream().listen(
-      _accept,
-      onError: (Object e) => debugPrint('Shared media stream failed: $e'),
-    );
+    // Subscribed before the first read on purpose. The native side holds an
+    // intent that arrives with no listener attached and releases it on the
+    // `initialMedia` call below, so doing it in this order cannot drop one.
+    _sub = _events.receiveBroadcastStream().listen(
+          _accept,
+          onError: (Object e) => debugPrint('Incoming file stream failed: $e'),
+        );
 
-    // The file that launched the app, if it was launched by one.
     unawaited(
-      ReceiveSharingIntent.instance.getInitialMedia().then(
-        (files) {
-          _accept(files);
-          // Without this the same file is replayed every time the app
-          // resumes, dragging the user back into the player.
-          ReceiveSharingIntent.instance.reset();
-        },
-        onError: (Object e) => debugPrint('Initial shared media failed: $e'),
+      _channel.invokeMapMethod<String, Object?>('initialMedia').then(
+        _accept,
+        onError: (Object e) => debugPrint('Initial incoming file failed: $e'),
       ),
     );
   }
 
-  void _accept(List<SharedMediaFile> files) {
-    if (files.isEmpty) return;
+  void _accept(Object? payload) {
+    final mediaRef = _refFrom(payload);
+    if (mediaRef != null) state = mediaRef;
+  }
 
-    // A chooser can hand over several files; the player takes one at a time,
-    // so the first is opened and the rest ignored rather than silently
-    // dropping the lot.
-    final file = files.first;
-    final path = file.path;
-    if (path.isEmpty) return;
+  MediaRef? _refFrom(Object? payload) {
+    if (payload is! Map) return null;
 
-    state = MediaRef(
+    final raw = payload['uri'] as String?;
+    if (raw == null || raw.isEmpty) return null;
+
+    final uri = Uri.tryParse(raw);
+    // A file:// hand-off is nothing but a path, and the device source reads
+    // paths directly. Everything else — content://, rtsp://, https:// — stays
+    // a URI and is opened as one.
+    final itemId =
+        uri != null && uri.scheme == 'file' ? uri.toFilePath() : raw;
+
+    final title = (payload['title'] as String?)?.trim();
+
+    return MediaRef(
       sourceId: LocalSource.sourceId,
-      itemId: path,
-      title: p.basename(path),
+      itemId: itemId,
+      // A content provider is free to answer nothing for the display name, in
+      // which case the tail of the URI is the best that is on offer.
+      title: title != null && title.isNotEmpty ? title : p.basename(itemId),
     );
   }
 

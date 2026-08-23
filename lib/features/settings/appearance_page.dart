@@ -4,39 +4,25 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/appearance_settings.dart';
 import '../../app/tokens.dart';
 import 'settings_widgets.dart';
 
 /// Screen 1m, Appearance.
 ///
-/// The controls are live but not yet persisted — wiring them to
-/// `shared_preferences` and lifting theme mode into a provider is the next
-/// task on this page.
-class AppearancePage extends StatefulWidget {
+/// Every control writes straight through to [appearanceSettingsProvider],
+/// which persists it and which the app root themes from — so a choice takes
+/// effect on the page that made it, with no apply step.
+class AppearancePage extends ConsumerWidget {
   const AppearancePage({super.key});
 
   @override
-  State<AppearancePage> createState() => _AppearancePageState();
-}
-
-class _AppearancePageState extends State<AppearancePage> {
-  /// The design's four presets. The first is the app's seed.
-  static const _accents = <Color>[
-    Color(0xFF00658F),
-    Color(0xFF00629E),
-    Color(0xFF00696E),
-    Color(0xFF6750A4),
-  ];
-
-  ThemeMode _mode = ThemeMode.light;
-  int _accent = 0;
-  bool _dynamicColour = false;
-  bool _pureBlack = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
+    final settings = ref.watch(appearanceSettingsProvider);
+    final controller = ref.read(appearanceSettingsProvider.notifier);
 
     return SettingsScaffold(
       title: 'Appearance',
@@ -58,8 +44,9 @@ class _AppearancePageState extends State<AppearancePage> {
                   child: _ThemeCard(
                     label: label,
                     mode: mode,
-                    selected: _mode == mode,
-                    onTap: () => setState(() => _mode = mode),
+                    selected: settings.mode == mode,
+                    onTap: () =>
+                        controller.update(settings.copyWith(mode: mode)),
                   ),
                 ),
             ],
@@ -72,18 +59,20 @@ class _AppearancePageState extends State<AppearancePage> {
             spacing: spacing.md,
             runSpacing: spacing.md,
             children: <Widget>[
-              for (final (int i, Color colour) in _accents.indexed)
+              for (final (int i, Color colour) in accentPresets.indexed)
                 _AccentSwatch(
                   colour: colour,
-                  selected: i == _accent && !_dynamicColour,
-                  onTap: () => setState(() {
-                    _accent = i;
-                    _dynamicColour = false;
-                  }),
+                  selected: i == settings.accentIndex && !settings.dynamicColour,
+                  // Picking a colour is also how the user turns the wallpaper
+                  // palette back off — the two are one choice in the design.
+                  onTap: () => controller.update(
+                    settings.copyWith(accentIndex: i, dynamicColour: false),
+                  ),
                 ),
               _WallpaperSwatch(
-                selected: _dynamicColour,
-                onTap: () => setState(() => _dynamicColour = true),
+                selected: settings.dynamicColour,
+                onTap: () =>
+                    controller.update(settings.copyWith(dynamicColour: true)),
               ),
             ],
           ),
@@ -92,14 +81,15 @@ class _AppearancePageState extends State<AppearancePage> {
         SettingsSwitchRow(
           title: 'Material You dynamic colour',
           subtitle: 'Follow the system wallpaper palette',
-          value: _dynamicColour,
-          onChanged: (v) => setState(() => _dynamicColour = v),
+          value: settings.dynamicColour,
+          onChanged: (v) =>
+              controller.update(settings.copyWith(dynamicColour: v)),
         ),
         SettingsSwitchRow(
           title: 'Pure black in dark mode',
           subtitle: 'Saves power on OLED screens',
-          value: _pureBlack,
-          onChanged: (v) => setState(() => _pureBlack = v),
+          value: settings.pureBlack,
+          onChanged: (v) => controller.update(settings.copyWith(pureBlack: v)),
         ),
         const SettingsSection(title: 'Layout'),
         const SettingsValueRow(title: 'Default library view', value: 'Grid'),

@@ -20,6 +20,7 @@ class TrackSheet extends StatelessWidget {
     required this.options,
     required this.selectedId,
     required this.onSelected,
+    this.action,
   });
 
   final String title;
@@ -27,12 +28,18 @@ class TrackSheet extends StatelessWidget {
   final String? selectedId;
   final ValueChanged<TrackOption> onSelected;
 
+  /// An optional command below the list — "Open subtitle file", say. It is
+  /// not one of the [options] because it selects nothing; it dismisses the
+  /// sheet and goes off to do something.
+  final TrackSheetAction? action;
+
   static Future<void> show({
     required BuildContext context,
     required String title,
     required List<TrackOption> options,
     required String? selectedId,
     required ValueChanged<TrackOption> onSelected,
+    TrackSheetAction? action,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -46,6 +53,7 @@ class TrackSheet extends StatelessWidget {
         options: options,
         selectedId: selectedId,
         onSelected: onSelected,
+        action: action,
       ),
     );
   }
@@ -91,11 +99,39 @@ class TrackSheet extends StatelessWidget {
               ],
             ),
           ),
+          if (action != null) ...<Widget>[
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(action!.icon, color: Colors.white70),
+              title: Text(
+                action!.label,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                action!.onTap();
+              },
+            ),
+          ],
           SizedBox(height: spacing.sm),
         ],
       ),
     );
   }
+}
+
+/// The command row at the foot of a [TrackSheet].
+@immutable
+class TrackSheetAction {
+  const TrackSheetAction({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
 }
 
 class _Row extends StatelessWidget {

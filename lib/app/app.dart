@@ -5,6 +5,7 @@
 
 import 'dart:async';
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +14,7 @@ import '../features/player/incoming_media.dart';
 import '../features/player/playback_controller.dart';
 import '../l10n/app_localizations.dart';
 import '../sources/media_source.dart';
+import 'appearance_settings.dart';
 import 'locale_controller.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -22,13 +24,13 @@ import 'theme.dart';
 /// [router] is injectable so widget tests can drive a single screen without
 /// standing up the whole shell.
 class MPlayerApp extends ConsumerStatefulWidget {
-  const MPlayerApp({super.key, this.router, this.themeMode = ThemeMode.system});
+  const MPlayerApp({super.key, this.router, this.themeMode});
 
   final GoRouter? router;
 
-  /// Persisted to `shared_preferences` once the Appearance page lands; the
-  /// design's default is Light, with System offered alongside it.
-  final ThemeMode themeMode;
+  /// Forces a theme mode, for tests that need one. Null — the normal case —
+  /// follows the persisted choice from the Appearance page.
+  final ThemeMode? themeMode;
 
   @override
   ConsumerState<MPlayerApp> createState() => _MPlayerAppState();
@@ -46,15 +48,45 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
       if (mediaRef != null) unawaited(_openIncoming(mediaRef));
     });
 
+    final appearance = ref.watch(appearanceSettingsProvider);
+
+    // Only the wallpaper palette needs the platform round-trip, so the
+    // builder is skipped entirely unless the user asked for it — every other
+    // configuration paints on the first frame.
+    if (!appearance.dynamicColour) return _app(appearance);
+
+    return DynamicColorBuilder(
+      builder: (ColorScheme? light, ColorScheme? dark) =>
+          _app(appearance, dynamicLight: light, dynamicDark: dark),
+    );
+  }
+
+  /// [dynamicLight] / [dynamicDark] are null on every platform but Android
+  /// 12+, and on Android before the palette has been read; the accent
+  /// preset stands in until then.
+  Widget _app(
+    AppearanceSettings appearance, {
+    ColorScheme? dynamicLight,
+    ColorScheme? dynamicDark,
+  }) {
     return MaterialApp.router(
       title: 'mPlayer',
       debugShowCheckedModeBanner: false,
       // Lets a failure from an incoming file report without a BuildContext
       // from inside the navigator.
       scaffoldMessengerKey: _messengerKey,
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
-      themeMode: widget.themeMode,
+      theme: buildTheme(
+        Brightness.light,
+        accent: appearance.accent,
+        dynamicScheme: dynamicLight,
+      ),
+      darkTheme: buildTheme(
+        Brightness.dark,
+        accent: appearance.accent,
+        dynamicScheme: dynamicDark,
+        pureBlack: appearance.pureBlack,
+      ),
+      themeMode: widget.themeMode ?? appearance.mode,
       // Null means follow the device; Flutter then resolves against
       // supportedLocales and falls back to English.
       locale: ref.watch(localeProvider),

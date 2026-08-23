@@ -436,20 +436,63 @@ class PlaybackController extends Notifier<PlaybackState> {
     }
   }
 
-  /// Loads a subtitle file sitting next to the video.
+  /// Loads a subtitle file that is not in the container.
   ///
-  /// Sidecar `.srt`/`.ass` files are how most downloaded video ships its
-  /// subtitles, and nothing in the container points at them.
+  /// libmpv finds a sidecar beside a local file on its own; this covers the
+  /// rest — a differently named file, one downloaded separately, or a video
+  /// streaming from a share whose directory mpv never sees.
+  ///
+  /// `sub-files-append` rather than `SubtitleTrack.uri`: the latter keys the
+  /// selection by the URI while mpv's own track list numbers it, so the
+  /// picker would show the file twice and tick neither.
   Future<void> addExternalSubtitle(Uri uri, {String? title}) async {
     final platform = _player?.platform;
     if (platform is! NativePlayer) return;
 
+    final before = state.subtitleTracks.map((t) => t.id).toSet();
+
     try {
-      await platform.setProperty('sub-files-append', uri.toString());
+      // `sub-files` is a path list, so a local file goes in as a path — a
+      // file:// URL would reach mpv with its spaces percent-encoded.
+      await platform.setProperty(
+        'sub-files-append',
+        uri.isScheme('file') ? uri.toFilePath() : uri.toString(),
+      );
     } catch (e) {
       state = state.copyWith(error: 'Could not load that subtitle file.');
       debugPrint('sub-files-append failed: $e');
+      return;
     }
+
+    // Loading without selecting would leave the user to open the picker a
+    // second time to see the file they just chose.
+    final added = await _awaitNewSubtitleTrack(before);
+    if (added != null) {
+      await setSubtitleTrack(added);
+    } else {
+      // mpv rejects a file it cannot parse by simply not adding a track.
+      state = state.copyWith(error: 'That subtitle file could not be read.');
+    }
+  }
+
+  /// Waits for mpv to publish the track [addExternalSubtitle] just appended.
+  ///
+  /// The track list arrives on a stream, so there is nothing to await
+  /// directly. A second is far longer than parsing a subtitle file takes and
+  /// short enough that a rejected file reports promptly.
+  Future<MediaTrack?> _awaitNewSubtitleTrack(Set<String> before) async {
+    const step = Duration(milliseconds: 50);
+
+    for (var waited = Duration.zero;
+        waited < const Duration(seconds: 1);
+        waited += step) {
+      final added = state.subtitleTracks
+          .where((t) => !t.isOff && !before.contains(t.id))
+          .toList();
+      if (added.isNotEmpty) return added.last;
+      await Future<void>.delayed(step);
+    }
+    return null;
   }
 
   /// Reads the container's own chapter list out of libmpv.

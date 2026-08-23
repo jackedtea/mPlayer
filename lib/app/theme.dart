@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 
 import 'tokens.dart';
@@ -52,9 +53,44 @@ ColorScheme _darkScheme() {
   );
 }
 
-ThemeData buildTheme(Brightness brightness) {
+/// True black surfaces for OLED screens, applied on top of the dark scheme.
+///
+/// Only the surface roles move. Recolouring the containers to pure black too
+/// would erase the elevation steps the design relies on to separate a sheet
+/// from the page behind it.
+ColorScheme _pureBlackify(ColorScheme scheme) {
+  return scheme.copyWith(
+    surface: const Color(0xFF000000),
+    surfaceContainerLowest: const Color(0xFF000000),
+    surfaceContainerLow: const Color(0xFF0A0A0A),
+  );
+}
+
+/// Builds the app theme.
+///
+/// [accent] null — or the design's own [seedColor] — keeps the palette the
+/// spec pins role by role. Any other accent means the user has deliberately
+/// left that palette, so the scheme is generated from their colour instead
+/// and only the tokens and component shapes carry over.
+///
+/// [dynamicScheme] wins over both: it is the system wallpaper palette, which
+/// only Android 12+ supplies.
+ThemeData buildTheme(
+  Brightness brightness, {
+  Color? accent,
+  ColorScheme? dynamicScheme,
+  bool pureBlack = false,
+}) {
   final isLight = brightness == Brightness.light;
-  final scheme = isLight ? _lightScheme() : _darkScheme();
+
+  var scheme = switch ((dynamicScheme, accent)) {
+    (final ColorScheme d, _) => d.harmonized(),
+    (_, final Color a) when a != seedColor =>
+      ColorScheme.fromSeed(seedColor: a, brightness: brightness),
+    _ => isLight ? _lightScheme() : _darkScheme(),
+  };
+  if (!isLight && pureBlack) scheme = _pureBlackify(scheme);
+
   final semantic = isLight ? AppSemanticColors.light : AppSemanticColors.dark;
   const spacing = AppSpacing();
   const radii = AppRadii();

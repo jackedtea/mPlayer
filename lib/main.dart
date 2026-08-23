@@ -10,12 +10,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'app/app.dart';
+import 'features/player/incoming_media.dart';
 
-void main() {
+/// [args] carries a file named on the command line. The Windows and Linux
+/// runners already forward it as the Dart entrypoint arguments, so this is
+/// all that "open with mPlayer" and `mPlayer video.mkv` need on desktop;
+/// Android hands its files over through an intent channel instead.
+void main(List<String> args) {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   _registerBundledFontLicenses();
-  runApp(const ProviderScope(child: MPlayerApp()));
+  runApp(
+    ProviderScope(
+      overrides: [startupArgumentsProvider.overrideWithValue(args)],
+      child: const MPlayerApp(),
+    ),
+  );
 }
 
 /// Roboto ships inside the app, so its OFL notice has to ship with it — this

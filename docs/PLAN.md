@@ -161,7 +161,9 @@ supersedes the ordering guesses in this phase list where the two disagree.
 - [x] Screens 1a (Storage), 1c (Server empty + add-server sheet), 1n (Search idle),
       1l (Settings index) against placeholder data
 - [x] Bundle Roboto (variable, OFL) — `google_fonts` rejected, it fetches at runtime
-- [ ] Theme mode + accent persisted via `shared_preferences` (Appearance page, 1m)
+- [x] Theme mode + accent persisted via `shared_preferences` — `app/appearance_settings.dart`,
+      read by the app root. Pure-black dark and Material You (Android 12+, via
+      `dynamic_color`) ride along with it
 - [ ] Replace `core/sample_data.dart` with repository-backed Riverpod providers
 
 ### Design build step 2 — playback core (done)
@@ -238,7 +240,9 @@ supersedes the ordering guesses in this phase list where the two disagree.
 - [ ] Seek bar with buffered range + preview thumbnail (desktop first)
 - [ ] Track selection: audio, subtitle, video quality
 - [ ] Subtitle rendering — ASS/SSA/SRT; verify `media_kit` handles ASS styling adequately before writing anything custom
-- [ ] External subtitle loading (file picker + sidecar auto-detect)
+- [x] External subtitle loading — "Open subtitle file" in the subtitle sheet, which
+      loads *and* selects. Sidecar auto-detect needs no code: libmpv's own `sub-auto`
+      already finds a file named after the video beside it
 - [ ] Playback speed, aspect ratio / zoom modes
 - [ ] Mobile gestures: double-tap seek, vertical drag for volume/brightness, horizontal drag to scrub, long-press speed-up
 - [ ] Desktop: keyboard shortcuts, fullscreen, always-on-top, `window_manager` integration
@@ -315,7 +319,8 @@ Deliberately **without** metadata scraping. Jellyfin and Emby already supply met
 - [ ] Window size/position persistence (`window_manager`)
 - [ ] System tray with playback controls (optional)
 - [ ] File association: open a video file with mPlayer (Windows registry, Linux `.desktop` MimeType already declared)
-- [ ] Command-line argument handling (`mPlayer video.mkv`)
+- [x] Command-line argument handling (`mPlayer video.mkv`) — the Windows and Linux
+      runners already forward the arguments; `main` feeds them to `incomingMediaProvider`
 - [ ] Drag-and-drop a file onto the window
 - [ ] Single-instance enforcement
 - [ ] Global media key handling
