@@ -526,17 +526,64 @@ class _ControlRow extends StatelessWidget {
           );
         }
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        // Portrait on a phone: labelled pills and four icon buttons cannot
+        // share a row, so the track controls drop their labels and join the
+        // others as icons. The label's information is not lost — each sheet
+        // still names the current selection, and the icons themselves carry
+        // the state worth seeing at a glance.
+        //
+        // Seven or eight buttons at their natural 44pt overrun a 320pt phone,
+        // so they share the row equally instead: the tight width an [Expanded]
+        // hands down overrides the button's own, shrinking the touch target
+        // rather than pushing a control off-screen where it cannot be reached
+        // at all.
+        return Row(
           children: <Widget>[
-            _pills(context),
-            SizedBox(height: context.spacing.xs),
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: _icons()),
+            for (final button in <Widget>[..._trackIcons(context), ..._icons()])
+              Expanded(child: button),
           ],
         );
       },
     );
+  }
+
+  /// The pills, reduced to icons.
+  List<Widget> _trackIcons(BuildContext context) {
+    final state = this_.state;
+    final accent = context.colors.primaryContainer;
+    final subtitleOn = state.activeSubtitle?.isOff == false;
+    final speedChanged = (state.speed - 1.0).abs() > 0.01;
+
+    return <Widget>[
+      _SmallIcon(
+        // Off is worth seeing without opening the sheet, so the glyph says so.
+        icon: subtitleOn
+            ? Icons.subtitles_rounded
+            : Icons.subtitles_off_rounded,
+        tooltip: 'Subtitles: ${state.activeSubtitle?.label ?? 'Off'}',
+        colour: subtitleOn ? accent : null,
+        onTap: this_.onSubtitles,
+      ),
+      _SmallIcon(
+        icon: Icons.graphic_eq_rounded,
+        tooltip: 'Audio: ${state.activeAudio?.label ?? 'Default'}',
+        onTap: this_.onAudio,
+      ),
+      if (this_.media.capabilities.transcoding)
+        _SmallIcon(
+          icon: Icons.hd_rounded,
+          tooltip: 'Quality',
+          onTap: this_.onQuality,
+        ),
+      _SmallIcon(
+        icon: Icons.speed_rounded,
+        // Playing at anything but normal speed is easy to forget and hard to
+        // notice; the tint is the only cue left once the label is gone.
+        tooltip: 'Speed: ${state.speed.toStringAsFixed(2)}×',
+        colour: speedChanged ? accent : null,
+        onTap: this_.onSpeed,
+      ),
+    ];
   }
 
   Widget _pills(BuildContext context) {
@@ -556,11 +603,15 @@ class _ControlRow extends StatelessWidget {
             label: state.activeAudio?.label ?? 'Default',
             onTap: this_.onAudio,
           ),
-          _Pill(
-            icon: Icons.hd_rounded,
-            label: 'Original',
-            onTap: this_.onQuality,
-          ),
+          // Quality only means something when the far end can re-encode.
+          // A local file, a share or a WebDAV stream is served as-is, so the
+          // pill would open a sheet with exactly one choice in it.
+          if (this_.media.capabilities.transcoding)
+            _Pill(
+              icon: Icons.hd_rounded,
+              label: 'Original',
+              onTap: this_.onQuality,
+            ),
           _Pill(
             icon: Icons.speed_rounded,
             label: '${state.speed.toStringAsFixed(1)}×',
@@ -652,18 +703,22 @@ class _SmallIcon extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onTap,
+    this.colour,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
 
+  /// Tints the glyph to carry state the label used to. Null means plain white.
+  final Color? colour;
+
   @override
   Widget build(BuildContext context) {
     return IconButton(
       icon: Icon(icon),
       iconSize: 22,
-      color: Colors.white,
+      color: colour ?? Colors.white,
       tooltip: tooltip,
       onPressed: onTap,
       constraints: const BoxConstraints.tightFor(width: 44, height: 44),

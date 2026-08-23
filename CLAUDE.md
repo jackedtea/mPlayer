@@ -320,9 +320,9 @@ Linux is not covered by that tool — its icons live in `linux/packaging/icons/h
 
 ## CI / release
 
-`.github/workflows/release.yml` builds an Android APK and a Windows zip, publishes a
-GitHub release and posts to Telegram. Runs on push to `main` or `dev`, or manually on any
-branch.
+`.github/workflows/release.yml` builds Android APKs, a Windows zip and a Linux tarball,
+publishes a GitHub release and posts to Telegram. Runs on push to `main` or `dev`, or
+manually on any branch.
 
 - **`main` is the only production branch**; every other ref builds as a dev channel —
   application id gets `.dev` (so both installs coexist), version name and artifact name
@@ -336,7 +336,12 @@ branch.
 - Never select secrets with `cond && secrets.A || secrets.B` — that operator falls through
   to `B` when `A` is empty, which would sign a main build with the dev key silently. The
   workflow passes both sets and chooses in shell.
-- Missing keystore secrets do not fail the build; the APK is debug-signed and both the
+- Android builds with `--split-per-abi`, so the release carries three APKs named
+  `<base>-android-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`) instead of one fat
+  one — media_kit bundles an 11–15 MB `libmpv.so` per ABI. Flutter's Gradle plugin
+  offsets the version code per ABI automatically; the rename loop and the release-notes
+  table both spell the three ABIs out, so adding or dropping one means touching both.
+- Missing keystore secrets do not fail the build; the APKs are debug-signed and both the
   release notes and the Telegram message say so.
 
 ## Reference material

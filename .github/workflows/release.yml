@@ -157,17 +157,24 @@ jobs:
 
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Build APK
+      # One APK per ABI rather than one fat one: media_kit bundles an 11-15 MB
+      # libmpv.so for each ABI, so a universal APK is about three times the size
+      # any single device actually needs. Flutter's Gradle plugin offsets the
+      # version code per ABI (armeabi-v7a 1000, arm64-v8a 2000, x86_64 3000).
+      - name: Build APKs
         env:
           APP_ID_SUFFIX: ${{ needs.prepare.outputs.app_id_suffix }}
           VERSION_NAME_SUFFIX: ${{ needs.prepare.outputs.version_name_suffix }}
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
 
-      - name: Name the artifact
+      - name: Name the artifacts
         run: |
           set -euo pipefail
-          mv build/app/outputs/flutter-apk/app-release.apk \
-             "${{ needs.prepare.outputs.artifact_base }}.apk"
+          BASE="${{ needs.prepare.outputs.artifact_base }}"
+          for ABI in arm64-v8a armeabi-v7a x86_64; do
+            mv "build/app/outputs/flutter-apk/app-${ABI}-release.apk" \
+               "${BASE}-android-${ABI}.apk"
+          done
 
       - name: Always remove the keystore
         if: always()
@@ -176,7 +183,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: android-apk
-          path: ${{ needs.prepare.outputs.artifact_base }}.apk
+          path: ${{ needs.prepare.outputs.artifact_base }}-android-*.apk
           if-no-files-found: error
           retention-days: 14
 
@@ -296,14 +303,20 @@ jobs:
             if [ "${{ needs.android.outputs.signed }}" != "true" ]; then
               echo ""
               echo "> **Warning**"
-              echo "> No keystore secret was set for this branch, so the APK is **debug-signed**. Do not distribute it."
+              echo "> No keystore secret was set for this branch, so the APKs are **debug-signed**. Do not distribute them."
             fi
             echo ""
             echo "| Artifact | Platform |"
             echo "|---|---|"
-            echo "| \`${{ needs.prepare.outputs.artifact_base }}.apk\` | Android |"
+            echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-arm64-v8a.apk\` | Android · 64-bit ARM |"
+            echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-armeabi-v7a.apk\` | Android · 32-bit ARM |"
+            echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-x86_64.apk\` | Android · x86_64 |"
             echo "| \`${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip\` | Windows x64 |"
             echo "| \`${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz\` | Linux x64 |"
+            echo ""
+            echo "Android ships one APK per architecture — take \`arm64-v8a\` unless the"
+            echo "device is an older 32-bit phone (\`armeabi-v7a\`) or an emulator"
+            echo "(\`x86_64\`)."
             echo ""
             echo "The Linux bundle links libmpv from the system: install \`libmpv2\` (or"
             echo "\`mpv\`) before running it."
@@ -368,7 +381,7 @@ jobs:
 
           WARN=""
           if [ "${{ needs.android.outputs.signed }}" != "true" ]; then
-            WARN="⚠️ APK is debug-signed (no keystore secret)"
+            WARN="⚠️ APKs are debug-signed (no keystore secret)"
           fi
 
           # jq builds both the text and the JSON, so a branch name or release
@@ -383,7 +396,9 @@ jobs:
             --arg sha "${{ needs.prepare.outputs.short_sha }}" \
             --arg warn "$WARN" \
             --arg ok "$OK" \
-            --arg apk "$DL/$BASE.apk" \
+            --arg apk_arm64 "$DL/$BASE-android-arm64-v8a.apk" \
+            --arg apk_arm32 "$DL/$BASE-android-armeabi-v7a.apk" \
+            --arg apk_x64 "$DL/$BASE-android-x86_64.apk" \
             --arg win "$DL/$BASE-windows-x64.zip" \
             --arg linux "$DL/$BASE-linux-x64.tar.gz" \
             --arg notes "$NOTES_URL" \
@@ -395,7 +410,9 @@ jobs:
              # should start that download, not open a release page to hunt
              # through on a phone.
              def downloads:
-               "📱 " + link($apk; "Android APK") + "\n"
+               "📱 Android " + link($apk_arm64; "arm64-v8a")
+                 + " · " + link($apk_arm32; "armeabi-v7a")
+                 + " · " + link($apk_x64; "x86_64") + "\n"
                + "🪟 " + link($win; "Windows x64") + "\n"
                + "🐧 " + link($linux; "Linux x64") + "\n\n"
                + link($notes; "Release notes") + " · " + link($run; "Logs");
