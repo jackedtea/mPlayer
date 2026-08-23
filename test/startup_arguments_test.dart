@@ -36,7 +36,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         startupArgumentsProvider
-            .overrideWithValue(<String>[r'D:\Movies\dune.mkv']),
+            .overrideWithValue(<String>['/home/nam/videos/dune.mkv']),
       ],
     );
     addTearDown(container.dispose);
@@ -48,10 +48,21 @@ void main() {
 
     final mediaRef = container.read(incomingMediaProvider);
     expect(mediaRef, isNotNull);
-    expect(mediaRef!.itemId, r'D:\Movies\dune.mkv');
+    expect(mediaRef!.itemId, '/home/nam/videos/dune.mkv');
     expect(mediaRef.title, 'dune.mkv');
     expect(mediaRef.sourceId, LocalSource.sourceId);
   }, skip: Platform.isAndroid);
+
+  // Windows-only: the title comes from `p.basename`, which reads the *host*
+  // path style. A backslash separates nothing on a POSIX runner, so asserting
+  // this anywhere else tests a case that cannot occur.
+  test('a Windows path keeps its file name as the title', () async {
+    final container = await containerFor(<String>[r'D:\Movies\dune.mkv']);
+
+    final mediaRef = container.read(incomingMediaProvider);
+    expect(mediaRef!.itemId, r'D:\Movies\dune.mkv');
+    expect(mediaRef.title, 'dune.mkv');
+  }, skip: !Platform.isWindows);
 
   test('engine flags are not mistaken for a file', () async {
     final container = await containerFor(<String>[
