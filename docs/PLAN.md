@@ -201,8 +201,11 @@ supersedes the ordering guesses in this phase list where the two disagree.
       device description, and AVTransport over SOAP. Works on Android, Windows and Linux
       alike, and a second `MediaProxyServer` bound to the LAN serves the file — a
       television cannot fetch the loopback address libmpv plays from
-- [ ] Casting to **Chromecast** — needs `play-services-cast-framework` and a Kotlin
-      channel behind the same `CastRenderer` interface. Android only
+- [x] Casting to **Chromecast** — `CastChannel.kt` over `play-services-cast-framework`,
+      behind the same `CastRenderer` interface. Android only, and optional at runtime: a
+      device without Play Services simply lists no Chromecasts. Adds ~0.9 MB per ABI
+      after R8. The default media receiver plays MP4/WebM and **not** Matroska, which a
+      rejected load reports in words
 - [x] Audio delay (A/V sync) — in Player settings and in the player's overflow menu,
       since it is a fault you notice mid-film
 - [x] Picture-in-picture — `PipChannel.kt` + `features/player/pip_controller.dart`.

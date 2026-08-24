@@ -60,6 +60,15 @@ android {
     }
 }
 
+dependencies {
+    // Chromecast. The only Google Play Services dependency in the app, and it
+    // is optional at runtime: a device without Play Services throws from the
+    // first CastContext call, which `CastChannel` answers with "unavailable"
+    // so the picker simply lists no Chromecasts. DLNA needs none of this and
+    // is what covers Windows and Linux.
+    implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

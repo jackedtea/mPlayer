@@ -13,6 +13,7 @@ import 'package:path/path.dart' as p;
 import '../../cast/cast_device.dart';
 import '../../cast/cast_discovery.dart';
 import '../../cast/cast_renderer.dart';
+import '../../cast/chromecast.dart';
 import '../../cast/dlna_renderer.dart';
 import '../../sources/media_proxy_server.dart';
 import '../../sources/media_source.dart';
@@ -77,16 +78,34 @@ class CastController extends Notifier<CastState> {
   MediaProxyServer? _proxy;
   Timer? _poll;
   String? _publishedId;
+  StreamSubscription<List<CastDevice>>? _chromecasts;
+
+  /// Kept apart because they arrive differently: DLNA answers a search once,
+  /// while the Cast router keeps reporting as televisions wake up. Merging
+  /// one into the other would drop whichever finished first.
+  List<CastDevice> _dlna = const <CastDevice>[];
+  List<CastDevice> _chromecast = const <CastDevice>[];
 
   @override
   CastState build() {
+    _chromecasts = Chromecast.instance.devices.listen((devices) {
+      _chromecast = devices;
+      state = state.copyWith(devices: _merged());
+    });
+
     ref.onDispose(() {
       _poll?.cancel();
+      unawaited(_chromecasts?.cancel());
+      unawaited(Chromecast.instance.stopDiscovery());
       unawaited(_renderer?.dispose());
       unawaited(_proxy?.shutdown());
     });
     return const CastState();
   }
+
+  /// Chromecasts first: on a phone they are the likelier answer, and the DLNA
+  /// list can be long on a network full of media servers.
+  List<CastDevice> _merged() => <CastDevice>[..._chromecast, ..._dlna];
 
   /// Looks for devices. Safe to call again; the list is replaced, not merged,
   /// so a television switched off since the last search disappears.
@@ -94,9 +113,18 @@ class CastController extends Notifier<CastState> {
     if (state.searching) return;
     state = state.copyWith(searching: true, clearError: true);
 
+    // Both at once. The Cast router answers almost immediately from what the
+    // platform already knows, while SSDP has to wait out its timeout, so
+    // running them in sequence would mean staring at an empty sheet.
     try {
-      final devices = await discoverDlnaDevices();
-      state = state.copyWith(devices: devices, searching: false);
+      final results = await Future.wait(<Future<List<CastDevice>>>[
+        discoverDlnaDevices(),
+        Chromecast.instance.startDiscovery(),
+      ]);
+
+      _dlna = results[0];
+      _chromecast = results[1];
+      state = state.copyWith(devices: _merged(), searching: false);
     } catch (e) {
       debugPrint('Cast search failed: $e');
       state = state.copyWith(
@@ -105,6 +133,10 @@ class CastController extends Notifier<CastState> {
       );
     }
   }
+
+  /// Called when the picker closes: an active Cast scan costs battery, and
+  /// nothing is watching the list any more.
+  Future<void> stopSearching() => Chromecast.instance.stopDiscovery();
 
   /// Starts playing [media] on [device], from [from].
   ///
@@ -211,11 +243,7 @@ class CastController extends Notifier<CastState> {
   CastRenderer _rendererFor(CastDevice device) {
     return switch (device.kind) {
       CastKind.dlna => DlnaRenderer(device),
-      // The Chromecast renderer lands next; a device of that kind cannot
-      // reach this list until it does.
-      CastKind.chromecast => throw const CastException(
-          'Chromecast is not supported yet.',
-        ),
+      CastKind.chromecast => ChromecastRenderer(device),
     };
   }
 

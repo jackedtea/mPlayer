@@ -221,8 +221,30 @@ Cast SDK is Android-only and drags in Play Services.
 - A `content://` URI cannot be cast — only Android's content resolver can read one, not a
   Dart `File`. The picker says so rather than failing silently.
 
-`CastRenderer` is the seam Chromecast will plug into; nothing above it knows which
-protocol a device speaks.
+### Chromecast
+
+`CastChannel.kt` + `cast/chromecast.dart`, behind the same `CastRenderer`. Only the
+mechanism differs from DLNA — `MediaRouter` instead of SSDP, `RemoteMediaClient` instead
+of SOAP — and, as with every other channel here, **Kotlin decides nothing**: which device,
+what to load and when to give up are all Dart's.
+
+- The **only** Google Play Services dependency in the app, and optional at runtime: a
+  device without Play Services throws from the first `CastContext` call, which is caught
+  and reported as unavailable so the picker lists no Chromecasts. This is why DLNA exists
+  alongside it — it is what covers Windows and Linux.
+- `CastOptionsProvider` is found **by class name** from a manifest `meta-data` entry, the
+  only reference to it. Renaming it breaks casting at runtime, not at compile time.
+- The **default media receiver** is used, so no receiver app has to be registered with
+  Google. It plays MP4/H.264 and WebM and does **not** play Matroska — most of what this
+  player exists for. A rejected load says so in words rather than leaving a black screen;
+  fixing it properly means transcoding, which is a server's job.
+- There is no "connect" call in the SDK: selecting a route makes the session manager open
+  a session, and the answer arrives as an event. `Chromecast.connect` awaits that event.
+- Discovery is an **active** scan, which costs battery — so it is started with the picker
+  and stopped in the sheet's `dispose`.
+
+Nothing above `CastRenderer` knows which protocol a device speaks; `CastController` merges
+the two lists and picks the renderer from `CastDevice.kind`.
 
 ## Background playback & picture in picture
 

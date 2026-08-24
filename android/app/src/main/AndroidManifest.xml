@@ -253,6 +253,15 @@
             </intent-filter>
         </activity>
         <!--
+          The Cast SDK finds its configuration by class name, so this entry is
+          the only reference to CastOptionsProvider — renaming the class
+          without editing this breaks casting at runtime, not at compile time.
+        -->
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="dev.icedtea.mplayer.CastOptionsProvider"/>
+
+        <!--
           Not exported: every start comes from this app's own channel, and the
           service takes no action a foreign app has any business triggering.
         -->

@@ -15,6 +15,7 @@ class MainActivity : FlutterActivity() {
     private var incoming: IntentChannel? = null
     private var pip: PipChannel? = null
     private var nowPlaying: NowPlayingChannel? = null
+    private var cast: CastChannel? = null
 
     /**
      * True when Android rebuilt this activity after killing the process.
@@ -102,6 +103,21 @@ class MainActivity : FlutterActivity() {
             NowPlayingChannel.EVENTS,
         ).setStreamHandler(playing.streamHandler())
 
+        val chromecast = CastChannel(this)
+        cast = chromecast
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CastChannel.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            chromecast.handle(call.method, call.arguments as? Map<*, *>, result)
+        }
+
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CastChannel.EVENTS,
+        ).setStreamHandler(chromecast.streamHandler())
+
         // The intent that started the activity. Offered here, after the
         // channels exist, so a cold start has somewhere to put the file.
         if (!restored) intents.offer(intent)
@@ -131,6 +147,10 @@ class MainActivity : FlutterActivity() {
         // reach nothing, so the service goes down with the activity.
         nowPlaying?.dispose()
         nowPlaying = null
+        // An active scan left running would keep costing battery after the
+        // player is gone.
+        cast?.dispose()
+        cast = null
         super.onDestroy()
     }
 

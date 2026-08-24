@@ -49,6 +49,14 @@ class _CastSheetState extends ConsumerState<CastSheet> {
   }
 
   @override
+  void dispose() {
+    // An active Cast scan keeps the radio busy; nothing is watching the list
+    // once the sheet is gone.
+    ref.read(castControllerProvider.notifier).stopSearching();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final state = ref.watch(castControllerProvider);

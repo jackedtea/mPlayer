@@ -5,6 +5,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:mplayer/cast/cast_device.dart';
+import 'package:mplayer/cast/chromecast.dart';
 import 'package:mplayer/cast/ssdp.dart';
 import 'package:mplayer/cast/upnp.dart';
 import 'package:mplayer/features/cast/cast_controller.dart';
@@ -232,6 +234,23 @@ void main() {
       );
 
       expect(didl, contains('&lt;script&gt;&amp;'));
+    });
+  });
+
+  group('Chromecast state', () {
+    test('maps what the receiver reports', () {
+      expect(castPlaybackFrom('playing'), CastPlayback.playing);
+      expect(castPlaybackFrom('paused'), CastPlayback.paused);
+      expect(castPlaybackFrom('stopped'), CastPlayback.stopped);
+      // Loading and buffering are one state to a viewer, and the Kotlin side
+      // folds them together before they get here.
+      expect(castPlaybackFrom('buffering'), CastPlayback.buffering);
+    });
+
+    test('anything unrecognised is idle, not a guess', () {
+      expect(castPlaybackFrom(null), CastPlayback.idle);
+      expect(castPlaybackFrom('something new'), CastPlayback.idle);
+      expect(castPlaybackFrom(7), CastPlayback.idle);
     });
   });
 
