@@ -149,8 +149,11 @@ void main() {
       });
 
       expect(restored.skipBack, const Duration(seconds: 5));
-      expect(restored.pipOnLeave, isTrue);
-      expect(restored.backgroundAudio, isTrue);
+      // Both off: leaving a video player should stop the video, and a window
+      // that follows the user out of the app is a surprise the first time.
+      // They are settings to turn on, not behaviours to opt out of.
+      expect(restored.pipOnLeave, isFalse);
+      expect(restored.backgroundAudio, isFalse);
       expect(restored.preferredLanguage, isNull);
       expect(restored.smartSubtitles, isTrue);
     });

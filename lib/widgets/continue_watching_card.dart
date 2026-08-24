@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../app/tokens.dart';
 import '../core/models/media_models.dart';
 import 'gradient_art.dart';
+import 'remote_art.dart';
 
 /// 200x112 resume card: source badge top-left, centred play circle, and a 4px
 /// progress bar pinned to the bottom of the thumbnail.
@@ -30,9 +31,14 @@ class ContinueWatchingCard extends StatelessWidget {
     this.onTap,
     this.width = 200,
     this.artHeight = 112,
+    this.artUrl,
   });
 
   final ResumeItem item;
+
+  /// Artwork from a server. A still captured on this device wins over it —
+  /// the frame the user actually stopped on says more than a poster.
+  final Uri? artUrl;
   final VoidCallback? onTap;
   final double width;
   final double artHeight;
@@ -98,6 +104,10 @@ class ContinueWatchingCard extends StatelessWidget {
                     // the file is decoded, and remains the artwork for an
                     // item that never got one.
                     GradientArt(seed: item.title),
+                    // Server artwork sits between the gradient and the
+                    // captured still: a frame grabbed from this device is
+                    // more useful than a poster, so it wins.
+                    RemoteArt(url: artUrl),
                     if (item.thumbnailPath != null)
                       _Thumbnail(path: item.thumbnailPath!, width: width),
                     Center(

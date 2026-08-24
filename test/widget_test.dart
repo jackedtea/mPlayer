@@ -196,6 +196,76 @@ void main() {
     });
   });
 
+  group('clearing Continue watching', () {
+    testWidgets('the action only appears when there is something to clear',
+        (tester) async {
+      // Reset explicitly: the preference mock is global, so a shelf seeded by
+      // an earlier test would still be there.
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+
+      // The whole section is absent on an empty shelf, and so is its button.
+      await pumpAppAt(tester, const Size(400, 800));
+
+      expect(find.text('Continue watching'), findsNothing);
+      expect(find.widgetWithText(TextButton, 'Clear'), findsNothing);
+    });
+
+    testWidgets('clearing asks first, and says what it does not touch',
+        (tester) async {
+      seedResumePoints(2);
+      await pumpAppAt(tester, const Size(400, 800));
+
+      expect(find.text('Clip 0'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Clear'));
+      await tester.pumpAndSettle();
+
+      // "Clear" beside a shelf of films is easy to read as "delete the
+      // films", so the dialog has to say what stays.
+      expect(find.text('Clear Continue watching?'), findsOneWidget);
+      expect(
+        find.textContaining('Nothing is deleted from your shares'),
+        findsOneWidget,
+      );
+
+      // Cancelling leaves the shelf alone.
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Clip 0'), findsOneWidget);
+    });
+
+    testWidgets('confirming empties the shelf', (tester) async {
+      seedResumePoints(2);
+      await pumpAppAt(tester, const Size(400, 800));
+
+      await tester.tap(find.widgetWithText(TextButton, 'Clear'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Clear'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+
+      // `path_provider` has no mock here, so the still-sweep's directory
+      // lookup runs to its timeout rather than answering. That bound is the
+      // point — before it existed, this hung for ever and the button looked
+      // like it did nothing — so the test waits it out.
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Continue watching cleared'), findsOneWidget);
+      expect(find.text('Clip 0'), findsNothing);
+      // The section takes itself down with its last card.
+      expect(find.text('Continue watching'), findsNothing);
+    });
+  });
+
   group('continue-watching shelf geometry', () {
     testWidgets('artwork lands on the 16pt margin and 12pt card gap', (
       tester,

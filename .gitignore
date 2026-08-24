@@ -55,3 +55,9 @@ app.*.map.json
 *.keystore
 key.properties
 **/android/key.properties
+
+# Local development secrets — server addresses, usernames, passwords.
+# Never committed: this repository is public.
+.env
+.env.*
+!.env.example

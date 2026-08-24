@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../app/tokens.dart';
 import '../l10n/app_localizations.dart';
 import 'gradient_art.dart';
+import 'remote_art.dart';
 
 /// Artwork header with a scrim fading into the page surface, plus floating
 /// circular controls. 268h on the movie detail (1f), 196h on the series (1g).
@@ -22,9 +23,14 @@ class BackdropHeader extends StatelessWidget {
     required this.height,
     required this.child,
     this.actions = const <Widget>[],
+    this.artUrl,
   });
 
   final String seed;
+
+  /// Server artwork behind the scrim. Null falls back to the gradient, which
+  /// the scrim was designed against in the first place.
+  final Uri? artUrl;
   final double height;
 
   /// Title block laid over the bottom of the scrim.
@@ -44,6 +50,9 @@ class BackdropHeader extends StatelessWidget {
         fit: StackFit.expand,
         children: <Widget>[
           GradientArt(seed: seed),
+          // Under the scrim, so the title stays legible over whatever the
+          // artwork turns out to be.
+          RemoteArt(url: artUrl),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

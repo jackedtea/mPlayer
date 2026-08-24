@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
@@ -210,6 +211,10 @@ class ResumeRepository {
 
   Future<void> clear() async {
     await _write(const <ResumePoint>[]);
+    // Awaited so a caller knows the stills are gone too. Safe to wait on:
+    // the directory lookup behind it is bounded, so a slow or unavailable
+    // app-support directory degrades to "no stills" instead of hanging the
+    // button the user just pressed.
     await _thumbnails.retainOnly(const <String>[]);
   }
 

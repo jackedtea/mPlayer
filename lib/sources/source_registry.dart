@@ -19,6 +19,8 @@ import 'saf_source.dart';
 import 'smb_source.dart';
 import 'source_config.dart';
 import 'webdav_source.dart';
+import '../servers/jellyfin_media_source.dart';
+import '../servers/server_registry.dart';
 
 /// Where configured shares are persisted.
 ///
@@ -136,8 +138,22 @@ final sourceRegistryProvider =
 ///
 /// Derived so playback keeps a synchronous lookup even though configured
 /// shares load asynchronously — the device is available from the first frame.
+///
+/// The signed-in server is folded in here rather than kept apart: once it is
+/// one more entry in this map, the player, the folder queue, resume points
+/// and casting all work against it without knowing what it is.
 final mediaSourcesProvider = Provider<Map<String, MediaSource>>(
-  (ref) => ref.watch(sourceRegistryProvider).drivers,
+  (ref) {
+    final drivers = <String, MediaSource>{
+      ...ref.watch(sourceRegistryProvider).drivers,
+    };
+
+    final library = ref.watch(serverRegistryProvider).source;
+    if (library != null) {
+      drivers[library.profile.id] = JellyfinMediaSource(library);
+    }
+    return drivers;
+  },
 );
 
 class SourceRegistry extends Notifier<SourceRegistryState> {

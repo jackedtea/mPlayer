@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../app/tokens.dart';
 import '../core/models/library_models.dart';
 import 'gradient_art.dart';
+import 'remote_art.dart';
 
 /// Poster plus caption, used by the "Recently added" shelf (1d), the library
 /// grid (1e) and the server group of search results (1n).
@@ -22,9 +23,14 @@ class PosterTile extends StatelessWidget {
     required this.width,
     required this.posterHeight,
     this.onTap,
+    this.artUrl,
   });
 
   final LibraryItem item;
+
+  /// Artwork from a server, drawn over the gradient. Null for anything the
+  /// server has no image for, and for every local source.
+  final Uri? artUrl;
   final double width;
   final double posterHeight;
   final VoidCallback? onTap;
@@ -74,6 +80,9 @@ class PosterTile extends StatelessWidget {
                     fit: StackFit.expand,
                     children: <Widget>[
                       GradientArt(seed: item.title, icon: Icons.movie_rounded),
+                      // Over the gradient, which stays the artwork for
+                      // anything the server has no image for.
+                      RemoteArt(url: artUrl),
                       if (item.watched)
                         Positioned(
                           right: spacing.xs + 2,

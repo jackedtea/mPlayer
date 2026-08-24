@@ -53,8 +53,8 @@ class PlayerSettings {
     this.autoPlayNext = true,
     this.autoSkipIntro = false,
     this.swipeGestures = true,
-    this.pipOnLeave = true,
-    this.backgroundAudio = true,
+    this.pipOnLeave = false,
+    this.backgroundAudio = false,
     this.preferredLanguage,
     this.smartSubtitles = true,
     this.subtitleTextScale = 1.0,
@@ -78,8 +78,8 @@ class PlayerSettings {
       autoPlayNext: json['autoPlayNext'] as bool? ?? true,
       autoSkipIntro: json['autoSkipIntro'] as bool? ?? false,
       swipeGestures: json['swipeGestures'] as bool? ?? true,
-      pipOnLeave: json['pipOnLeave'] as bool? ?? true,
-      backgroundAudio: json['backgroundAudio'] as bool? ?? true,
+      pipOnLeave: json['pipOnLeave'] as bool? ?? false,
+      backgroundAudio: json['backgroundAudio'] as bool? ?? false,
       preferredLanguage: json['preferredLanguage'] as String?,
       smartSubtitles: json['smartSubtitles'] as bool? ?? true,
       subtitleTextScale:
@@ -110,10 +110,18 @@ class PlayerSettings {
 
   /// Shrink into a picture-in-picture window when the user leaves mid-play.
   /// Android only; inert everywhere else.
+  ///
+  /// **Off by default.** A window that follows you out of the app is a
+  /// surprise the first time it happens, and the setting is there for people
+  /// who want it rather than a behaviour to be opted out of.
   final bool pipOnLeave;
 
   /// Keep playing with the screen off or the app in the background, with a
   /// media notification to control it.
+  ///
+  /// Off by default for the same reason: leaving a video player should stop
+  /// the video. Turning this on is a deliberate choice, and the notification
+  /// then makes it obvious and controllable.
   final bool backgroundAudio;
 
   /// Canonical language code the user reads in — see `core/languages.dart`.

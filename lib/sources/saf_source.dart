@@ -34,7 +34,7 @@ class SafFolder {
 /// common case with no user action, but it cannot see a folder containing a
 /// `.nomedia` file, nor anything MediaScanner declined to classify. A SAF
 /// grant sees the folder as it really is, and survives reboots.
-class SafSource implements BrowsableSource {
+class SafSource implements BrowsableSource, StableItemId {
   const SafSource();
 
   static const sourceId = 'saf';
@@ -149,10 +149,19 @@ class SafSource implements BrowsableSource {
     return BrowseListing(path: path, entries: entries);
   }
 
+  /// The document URI, dropped out of the browsing path around it.
+  ///
+  /// An id here reads `tree|parent|document`, and the first two change as the
+  /// user navigates. Only the last part identifies the file, which is what a
+  /// resume point has to be filed under.
+  @override
+  String stableItemId(String itemId) => itemId.split('|').last;
+
   @override
   Future<PlayableMedia> resolve(MediaRef ref) async {
     // The itemId carries the document URI after the path parts; playback needs
-    // the URI, not the id.
+    // the URI, not the id. A bare URI splits to itself, so an id already
+    // reduced by [stableItemId] still resolves.
     final uri = ref.itemId.split('|').last;
     return PlayableMedia(
       ref: ref,

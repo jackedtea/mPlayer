@@ -87,6 +87,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
           SliverToBoxAdapter(
             child: BackdropHeader(
               seed: series.title,
+              artUrl: artUrlFor(ref, item, maxWidth: 900),
               height: 196,
               actions: <Widget>[
                 CircleControl(
@@ -130,12 +131,22 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
         body: TabBarView(
           controller: tabs,
           children: <Widget>[
-            for (final Season season in series.seasons)
+            for (final (int s, Season season) in series.seasons.indexed)
               ListView.builder(
                 padding: EdgeInsets.symmetric(vertical: spacing.sm),
                 itemCount: season.episodes.length,
-                itemBuilder: (context, i) =>
-                    _EpisodeRow(episode: season.episodes[i]),
+                itemBuilder: (context, i) {
+                  // The rows are grouped copies of the flat list, so the
+                  // item behind one is found by matching what identifies it
+                  // rather than by an index into a list it is not in.
+                  final source = _episodeAt(episodes, series, s, i);
+                  return _EpisodeRow(
+                    episode: season.episodes[i],
+                    onTap: source == null
+                        ? () {}
+                        : () => playServerItem(context, ref, source.id),
+                  );
+                },
               ),
           ],
         ),
@@ -167,10 +178,33 @@ class _TabBarHeader extends SliverPersistentHeaderDelegate {
       old.tabBar != tabBar || old.background != background;
 }
 
+/// The server item behind the row at [index] of season [seasonIndex].
+///
+/// Matched on season and episode number rather than on position: the grouped
+/// view and the flat list agree on those, and a special with no number would
+/// otherwise shift everything after it.
+ServerItem? _episodeAt(
+  List<ServerItem> episodes,
+  SeriesDetail series,
+  int seasonIndex,
+  int index,
+) {
+  final row = series.seasons[seasonIndex].episodes[index];
+  for (final ServerItem item in episodes) {
+    if (item.episodeNumber == row.number && item.title == row.title) {
+      return item;
+    }
+  }
+  return null;
+}
+
 class _EpisodeRow extends StatelessWidget {
-  const _EpisodeRow({required this.episode});
+  const _EpisodeRow({required this.episode, required this.onTap});
 
   final Episode episode;
+
+  /// Resolves the episode through the server and opens the player.
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +212,7 @@ class _EpisodeRow extends StatelessWidget {
     final scheme = context.colors;
 
     return InkWell(
-      onTap: () => _notYet(context, 'Play episode ${episode.number}'),
+      onTap: onTap,
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: spacing.screenHorizontal(context.windowSize),

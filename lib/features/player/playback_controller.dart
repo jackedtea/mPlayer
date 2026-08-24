@@ -242,6 +242,9 @@ class PlaybackController extends Notifier<PlaybackState> {
     // Awaited, unlike the periodic writes — it grabs a frame off the player,
     // and tearing the player down underneath that would lose the still.
     await _recordProgress(force: true);
+    // Before the teardown: the session has to be closed while there is still
+    // something to close it with.
+    await _reportStopped();
 
     await _teardownAsync();
     state = const PlaybackState();
@@ -401,6 +404,24 @@ class PlaybackController extends Notifier<PlaybackState> {
           ),
           thumbnail: thumbnail,
         );
+
+    // A server keeps its own watch state, gathered from every device the
+    // user owns. Told alongside the local write rather than instead of it:
+    // the local point is what makes the shelf work offline.
+    await _reportToSource(media, paused: !state.playing);
+  }
+
+  /// Passes the position on to a source that keeps watch state of its own.
+  Future<void> _reportToSource(PlayableMedia media, {required bool paused}) {
+    final source = ref.read(mediaSourcesProvider)[media.ref.sourceId];
+    if (source case final ProgressReporting reporter) {
+      return reporter.reportProgress(
+        media.ref.itemId,
+        position: state.position,
+        isPaused: paused,
+      );
+    }
+    return Future<void>.value();
   }
 
   /// The current video frame as JPEG, for the Continue-watching card.
@@ -712,6 +733,25 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   void _teardown() {
     unawaited(_teardownAsync());
+  }
+
+  /// Tells a server that playback ended.
+  ///
+  /// Separate from the throttled progress write because it must happen once
+  /// and exactly once: it is what ends the session, and a transcode left
+  /// unclosed keeps ffmpeg running on the far end until the server gives up
+  /// on it.
+  Future<void> _reportStopped() async {
+    final media = state.media;
+    if (media == null) return;
+
+    final source = ref.read(mediaSourcesProvider)[media.ref.sourceId];
+    if (source case final ProgressReporting reporter) {
+      await reporter.reportStopped(
+        media.ref.itemId,
+        position: state.position,
+      );
+    }
   }
 
   Future<void> _teardownAsync() async {

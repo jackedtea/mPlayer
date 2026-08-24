@@ -64,6 +64,7 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
         children: <Widget>[
           BackdropHeader(
             seed: movie.title,
+            artUrl: artUrlFor(ref, item, maxWidth: 900),
             height: 268,
             actions: <Widget>[
               CircleControl(
@@ -92,7 +93,10 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _ActionRow(movie: movie),
+                _ActionRow(
+                  movie: movie,
+                  onPlay: () => playServerItem(context, ref, item.id),
+                ),
                 if (movie.isStarted) ...<Widget>[
                   SizedBox(height: spacing.lg),
                   _ProgressLine(movie: movie),
@@ -175,9 +179,12 @@ class _MetaRow extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.movie});
+  const _ActionRow({required this.movie, required this.onPlay});
 
   final MovieDetail movie;
+
+  /// Resolves the item through the server and opens the player.
+  final VoidCallback onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -195,9 +202,9 @@ class _ActionRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(radii.action),
                 ),
               ),
-              onPressed: () => _notYet(context, 'Playback from the server'),
+              onPressed: onPlay,
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(movie.resumeLabel ?? 'Play'),
+              label: Text(movie.resumeLabel ?? AppLocalizations.of(context).play),
             ),
           ),
         ),

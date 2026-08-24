@@ -979,6 +979,19 @@ class AppLocalizationsVi extends AppLocalizations {
   String get noResults => 'Không có kết quả nào';
 
   @override
+  String get clearAll => 'Xoá hết';
+
+  @override
+  String get clearContinueWatchingTitle => 'Xoá kệ Xem tiếp?';
+
+  @override
+  String get clearContinueWatchingBody =>
+      'Mọi vị trí đã lưu sẽ bị quên, chỉ trên máy này. Không xoá gì trên chia sẻ hay máy chủ của bạn.';
+
+  @override
+  String get continueWatchingCleared => 'Đã xoá kệ Xem tiếp';
+
+  @override
   String get rotationAuto => 'Tự động';
 
   @override

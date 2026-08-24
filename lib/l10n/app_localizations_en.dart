@@ -978,6 +978,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noResults => 'Nothing matched that';
 
   @override
+  String get clearAll => 'Clear';
+
+  @override
+  String get clearContinueWatchingTitle => 'Clear Continue watching?';
+
+  @override
+  String get clearContinueWatchingBody =>
+      'Every saved position is forgotten, on this device only. Nothing is deleted from your shares or your server.';
+
+  @override
+  String get continueWatchingCleared => 'Continue watching cleared';
+
+  @override
   String get rotationAuto => 'Auto';
 
   @override

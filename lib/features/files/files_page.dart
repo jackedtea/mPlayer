@@ -110,7 +110,13 @@ class _ContinueWatchingSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SectionHeader(title: AppLocalizations.of(context).continueWatching),
+        SectionHeader(
+          title: AppLocalizations.of(context).continueWatching,
+          // Only offered while there is something to clear, which is also
+          // the only time this section is drawn at all.
+          actionLabel: AppLocalizations.of(context).clearAll,
+          onAction: () => _clearContinueWatching(context, ref),
+        ),
         SizedBox(
           height: ContinueWatchingCard.outerHeight(context),
           child: ListView.separated(
@@ -127,6 +133,47 @@ class _ContinueWatchingSection extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Forgets every saved position, after asking.
+///
+/// Asked because it cannot be undone and the shelf is the only record: the
+/// positions live on this device, and nothing on a share or a server carries
+/// a copy to restore them from.
+Future<void> _clearContinueWatching(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context);
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(l10n.clearContinueWatchingTitle),
+      // Says what is *not* touched as well as what is. "Clear" next to a
+      // shelf of films is easy to read as "delete the films".
+      content: Text(l10n.clearContinueWatchingBody),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text(l10n.actionCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: Text(l10n.clearAll),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return;
+
+  // Clears the stills with the points; a frame left behind belongs to
+  // nothing and would never be swept.
+  await ref.read(resumeRepositoryProvider).clear();
+  ref.invalidate(resumePointsProvider);
+
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(l10n.continueWatchingCleared)),
+  );
 }
 
 class _ThisDeviceSection extends ConsumerWidget {

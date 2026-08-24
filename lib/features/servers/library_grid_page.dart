@@ -135,6 +135,7 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage> {
                 final entry = all.firstWhere((e) => e.id == items[i].id);
                 return PosterTile(
                   item: items[i],
+                  artUrl: artUrlFor(ref, entry, maxWidth: 300),
                   width: 108,
                   posterHeight: 142,
                   onTap: () => context.push(

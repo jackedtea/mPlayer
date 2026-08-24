@@ -388,6 +388,11 @@
   "kindEpisode": "Episode",
   "noResults": "Nothing matched that",
 
+  "clearAll": "Clear",
+  "clearContinueWatchingTitle": "Clear Continue watching?",
+  "clearContinueWatchingBody": "Every saved position is forgotten, on this device only. Nothing is deleted from your shares or your server.",
+  "continueWatchingCleared": "Continue watching cleared",
+
   "rotationAuto": "Auto",
   "rotationLandscape": "Landscape",
   "rotationPortrait": "Portrait",

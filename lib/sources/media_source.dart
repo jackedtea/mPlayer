@@ -189,6 +189,42 @@ abstract interface class MediaSource {
 /// Kept separate from [MediaSource] because a Jellyfin library is browsed by
 /// collection and id, not by path — the browser screen (1b) only ever talks to
 /// this interface.
+/// A source whose item ids describe a *route* rather than a file.
+///
+/// SAF is the reason this exists: its ids carry the folder they were reached
+/// through, so the same document browsed from two places yields two ids — and
+/// anything keyed on the id, the Continue-watching shelf most of all, then
+/// holds the same film twice with two different positions.
+abstract interface class StableItemId {
+  /// The same file always yields the same value, whatever route reached it.
+  String stableItemId(String itemId);
+}
+
+/// The identity to file [itemId] under.
+///
+/// Falls back to the id itself, which is already stable for every source that
+/// does not implement [StableItemId].
+String stableIdFor(MediaSource? source, String itemId) {
+  if (source case final StableItemId stable) return stable.stableItemId(itemId);
+  return itemId;
+}
+
+/// A source that keeps watch state somewhere other than this device.
+///
+/// Implemented by servers. `PlaybackController` calls it alongside the local
+/// resume write, so a film paused on a phone is where you left it on a
+/// television — and so a transcode is torn down when playback stops rather
+/// than left running until the server times it out.
+abstract interface class ProgressReporting {
+  Future<void> reportProgress(
+    String itemId, {
+    required Duration position,
+    required bool isPaused,
+  });
+
+  Future<void> reportStopped(String itemId, {required Duration position});
+}
+
 abstract interface class BrowsableSource implements MediaSource {
   /// Path shown as the breadcrumb root, e.g. `smb://nas/media`.
   String get rootLabel;

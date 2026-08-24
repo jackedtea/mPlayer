@@ -40,10 +40,16 @@ class ThumbnailStore {
 
   Future<Directory?> _directory() async {
     try {
-      return await (_pending ??= _resolve());
+      // Bounded, because the result is cached: a platform call that never
+      // answers would otherwise be remembered as a future that never
+      // completes, and every later write, delete and sweep would await it
+      // for the life of the process.
+      return await (_pending ??= _resolve()).timeout(const Duration(seconds: 5));
     } catch (e) {
       // No writable directory means no stills, which the shelf survives.
       debugPrint('No thumbnail directory: $e');
+      // Dropped so a transient failure is retried rather than remembered.
+      _pending = null;
       return null;
     }
   }

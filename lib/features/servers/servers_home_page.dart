@@ -262,6 +262,7 @@ class _CardShelf extends ConsumerWidget {
         separatorBuilder: (_, _) => SizedBox(width: gap),
         itemBuilder: (context, i) => ContinueWatchingCard(
           item: resumeItemFrom(resolved[i], l10n, serverLabel: serverName),
+          artUrl: artUrlFor(ref, resolved[i], maxWidth: 400),
           onTap: () => _open(context, resolved[i]),
         ),
       ),
@@ -302,6 +303,7 @@ class _RecentlyAddedShelf extends ConsumerWidget {
         separatorBuilder: (_, _) => SizedBox(width: gap),
         itemBuilder: (context, i) => PosterTile(
           item: libraryItemFrom(latest[i]),
+          artUrl: artUrlFor(ref, latest[i], maxWidth: 300),
           width: _posterWidth,
           posterHeight: _posterHeight,
           onTap: () => _open(context, latest[i]),

@@ -17,8 +17,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/library_models.dart';
 import '../../core/models/media_models.dart';
 import '../../l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
+import '../../sources/media_source.dart';
+import '../../sources/source_registry.dart';
 
 /// The signed-in client, or null when nothing is signed in.
 final activeServerProvider = Provider<MediaLibrarySource?>(
@@ -125,7 +129,46 @@ final seriesEpisodesProvider =
   return source.episodes(seriesId);
 });
 
+/// Resolves a server item and hands it to the player.
+///
+/// Resolution happens here rather than inside the player so a server that
+/// refuses reports on the screen the user pressed, instead of opening a black
+/// player that then fails. The resume position comes back with it: the server
+/// has been collecting that from every device, not just this one.
+Future<void> playServerItem(
+  BuildContext context,
+  WidgetRef ref,
+  String itemId,
+) async {
+  final profile = ref.read(serverRegistryProvider).active;
+  if (profile == null) return;
+
+  final source = ref.read(mediaSourcesProvider)[profile.id];
+  if (source == null) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final router = GoRouter.of(context);
+
+  try {
+    final media = await source.resolve(
+      MediaRef(sourceId: profile.id, itemId: itemId, title: ''),
+    );
+    router.push('/player', extra: media);
+  } on MediaSourceException catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(e.message)));
+  }
+}
+
 // --------------------------------------------------------------- mapping
+
+/// Artwork for [item] on the signed-in server, or null.
+///
+/// [maxWidth] is asked for so the server resizes rather than sending a 2000px
+/// poster to fill a 108px tile — the difference on a phone is most of the
+/// data a library grid costs.
+Uri? artUrlFor(WidgetRef ref, ServerItem item, {int? maxWidth}) {
+  return ref.watch(activeServerProvider)?.imageUrl(item, maxWidth: maxWidth);
+}
 
 /// A poster tile in a grid or a shelf.
 LibraryItem libraryItemFrom(ServerItem item) {

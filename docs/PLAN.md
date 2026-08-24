@@ -359,17 +359,22 @@ code path is complete and unit-tested; neither has been run against a real NAS.
       added and the library list; the library grid (1e) with a real sort; movie detail
       (1f); series with its seasons (1g); and server search (1n). Only Downloads (1i) is
       still on sample data, and that is parked until after this phase
-- [ ] Artwork: `imageUrl` is built and tested but nothing draws it yet — the tiles still
-      render the gradient placeholder
-- [ ] Playing from a server: `playback()` resolves a URL, but the detail screen's Play
-      button does not call it yet
-- [ ] Progress reporting from the player back to the server
+- [x] Artwork — `widgets/remote_art.dart` over `cached_network_image`, drawn on top of
+      the gradient so an item with no image still has a complete picture, and cached on
+      disk so a grid does not refetch forty posters per scroll
+- [x] Playing from a server — `servers/jellyfin_media_source.dart` makes the signed-in
+      server one more entry in the driver map the player already resolves against, so the
+      player, the queue, resume points and casting all reach it without knowing what it is
+- [x] Progress reporting — written alongside the local resume point, never instead of it,
+      and a stop report closes the session (which is also what tears down a transcode)
 - [ ] Map the domain types onto what the screens draw — the presentation models will
       need reshaping, since they were written around the sample data
 - [ ] `EmbySource`: same surface; Emby and Jellyfin diverged enough that a shared base plus two subclasses is right — mirror `refs/.../lib/services/media_server_service_base.dart` (837 lines)
 - [x] Quick-connect / device ID handling
 - [ ] Multi-server support with a server switcher
-- [ ] Transcode settings (max bitrate, resolution cap, force direct play)
+- [ ] Transcode settings (max bitrate, resolution cap, force direct play) — the quality
+      pill appears now that a source advertises transcoding, but choosing a bitrate is
+      still inert
 - [ ] Image loading with a disk cache
 - [ ] Handle multiple network addresses per server (LAN vs WAN) — see their `multi_address_server_service.dart`
 

@@ -337,6 +337,11 @@
   "kindEpisode": "Tập",
   "noResults": "Không có kết quả nào",
 
+  "clearAll": "Xoá hết",
+  "clearContinueWatchingTitle": "Xoá kệ Xem tiếp?",
+  "clearContinueWatchingBody": "Mọi vị trí đã lưu sẽ bị quên, chỉ trên máy này. Không xoá gì trên chia sẻ hay máy chủ của bạn.",
+  "continueWatchingCleared": "Đã xoá kệ Xem tiếp",
+
   "rotationAuto": "Tự động",
   "rotationLandscape": "Ngang",
   "rotationPortrait": "Dọc",

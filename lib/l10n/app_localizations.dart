@@ -1868,6 +1868,30 @@ abstract class AppLocalizations {
   /// **'Nothing matched that'**
   String get noResults;
 
+  /// No description provided for @clearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clearAll;
+
+  /// No description provided for @clearContinueWatchingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Continue watching?'**
+  String get clearContinueWatchingTitle;
+
+  /// No description provided for @clearContinueWatchingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every saved position is forgotten, on this device only. Nothing is deleted from your shares or your server.'**
+  String get clearContinueWatchingBody;
+
+  /// No description provided for @continueWatchingCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue watching cleared'**
+  String get continueWatchingCleared;
+
   /// No description provided for @rotationAuto.
   ///
   /// In en, this message translates to:
