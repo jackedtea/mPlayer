@@ -34,9 +34,18 @@ int durationToTicks(Duration duration) =>
 /// The header every request carries.
 ///
 /// Jellyfin parses this itself rather than using a standard scheme, and it is
-/// strict about the shape: a quoted value per field, comma separated. The
-/// token is absent until the user has signed in, and sending `Token=""` is
-/// what a server reads as an anonymous request.
+/// strict about the shape: a quoted value per field, comma separated.
+///
+/// **Every value is percent-encoded**, and the server decodes it while
+/// parsing. This is not tidiness — it is what makes the header sendable at
+/// all. A device name is whatever the OS reports, so "Điện thoại của Nam" or
+/// "Bjørn PC" is entirely ordinary, and `dart:io` **throws** on a header value
+/// above 0x7F rather than sending it. Encoding also disposes of the
+/// characters the header's own grammar has no escape for: quotes, commas and
+/// `=` inside a value.
+///
+/// The token is absent until the user has signed in: sending `Token=""` is
+/// read as a malformed request rather than an anonymous one.
 String authorizationHeader({
   required String client,
   required String device,
@@ -44,19 +53,41 @@ String authorizationHeader({
   required String version,
   String? token,
 }) {
-  final fields = <String>[
-    'Client="${_escape(client)}"',
-    'Device="${_escape(device)}"',
-    'DeviceId="${_escape(deviceId)}"',
-    'Version="${_escape(version)}"',
-    if (token != null && token.isNotEmpty) 'Token="${_escape(token)}"',
-  ];
-  return 'MediaBrowser ${fields.join(', ')}';
+  String field(String name, String value) =>
+      '$name="${Uri.encodeComponent(value)}"';
+
+  // Both Jellyfin and Emby refuse to create a session without a client, a
+  // device and a version, so each falls back to something non-empty rather
+  // than being sent blank.
+  final resolvedClient = _meaningful(client).isEmpty
+      ? 'mPlayer'
+      : _meaningful(client);
+  final resolvedDevice =
+      _meaningful(device).isEmpty ? resolvedClient : _meaningful(device);
+  final resolvedVersion =
+      _meaningful(version).isEmpty ? '1.0' : _meaningful(version);
+  final id = _meaningful(deviceId);
+  final resolvedToken = _meaningful(token ?? '');
+
+  return 'MediaBrowser ${<String>[
+    field('Client', resolvedClient),
+    field('Device', resolvedDevice),
+    // Omitted rather than sent empty: on an authenticated request the server
+    // recovers it from the token, and an empty field is a parse error.
+    if (id.isNotEmpty) field('DeviceId', id),
+    field('Version', resolvedVersion),
+    if (resolvedToken.isNotEmpty) field('Token', resolvedToken),
+  ].join(', ')}';
 }
 
-/// A device name is whatever the OS reports, and a quote in it would end the
-/// field early.
-String _escape(String value) => value.replaceAll('"', '');
+final _controlCharacters = RegExp(r'[\x00-\x1f\x7f-\x9f]');
+
+/// Percent-encoding makes any byte transportable, so the only thing worth
+/// stripping is what carries no identity at all — a name of control
+/// characters would reach the server's device list as `%00` noise instead of
+/// falling back to something readable.
+String _meaningful(String value) =>
+    value.replaceAll(_controlCharacters, '').trim();
 
 /// One `BaseItemDto` from any of the item endpoints.
 ServerItem serverItemFromJson(Map<String, dynamic> json) {

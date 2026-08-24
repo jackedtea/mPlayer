@@ -368,6 +368,39 @@ class JellyfinSource implements MediaLibrarySource {
   }
 }
 
+/// Which of the two servers answered.
+///
+/// `ProductName` is the obvious signal and Jellyfin sets it — but **Emby 4.9
+/// omits it entirely**, so a client that only looks there files every modern
+/// Emby as Jellyfin and then calls routes it does not have. Emby is the only
+/// one of the two that returns `RemoteAddresses`, which is the fallback.
+ServerKind dialectFromPublicInfo(Map<Object?, Object?> json) {
+  final productName = json['ProductName'];
+  if (productName is String && productName.isNotEmpty) {
+    final normalised = productName.toLowerCase();
+    if (normalised.contains('jellyfin')) return ServerKind.jellyfin;
+    if (normalised.contains('emby')) return ServerKind.emby;
+  }
+  if (json.containsKey('RemoteAddresses')) return ServerKind.emby;
+
+  // Neither signal: assume the one this client actually implements.
+  return ServerKind.jellyfin;
+}
+
+/// Where the probe ended up, which is not always where it was sent.
+String _effectiveBaseUrl(String requested, Response<dynamic> response) {
+  final finalUri = response.realUri;
+  if (finalUri.toString().isEmpty) return requested;
+
+  // Strip the endpoint back off; what is wanted is the server root.
+  const suffix = '/System/Info/Public';
+  final text = finalUri.toString();
+  if (!text.endsWith(suffix)) return requested;
+
+  return normaliseServerUrl(text.substring(0, text.length - suffix.length)) ??
+      requested;
+}
+
 /// Signing in, which happens before there is a [JellyfinSource] to do it.
 ///
 /// Separate for that reason: authentication is the one exchange that has no
@@ -414,14 +447,14 @@ class JellyfinAuth {
     }
 
     return ServerInfo(
-      uri: url,
+      // Whatever the request finally reached: a server behind a redirect from
+      // http to https answers here, and storing the address the user typed
+      // would mean paying for that redirect on every later request.
+      uri: _effectiveBaseUrl(url, response),
       name: data['ServerName'] as String? ?? url,
       version: data['Version'] as String? ?? '',
       serverId: data['Id'] as String? ?? '',
-      // Emby answers the same endpoint, and the two APIs diverge afterwards.
-      kind: (data['ProductName'] as String? ?? '').toLowerCase().contains('emby')
-          ? ServerKind.emby
-          : ServerKind.jellyfin,
+      kind: dialectFromPublicInfo(data),
     );
   }
 
@@ -467,6 +500,151 @@ class JellyfinAuth {
       );
     }
 
+    return _authResultFrom(data, fallbackUsername: username, server: server);
+  }
+
+  /// Whether the server offers Quick Connect at all.
+  ///
+  /// **Emby answers 404 to every `/QuickConnect/*` route**, and an
+  /// administrator can switch the feature off in Jellyfin, so the switch in
+  /// the UI has to be led by this rather than by hope.
+  Future<bool> isQuickConnectEnabled(ServerInfo server) async {
+    if (server.kind != ServerKind.jellyfin) return false;
+
+    try {
+      final response = await _dio.getUri<dynamic>(
+        Uri.parse('${server.uri}/QuickConnect/Enabled'),
+        options: Options(validateStatus: (_) => true),
+      );
+      // The body is a bare `true`/`false`.
+      return response.statusCode == 200 && response.data == true;
+    } catch (e) {
+      debugPrint('Could not ask about Quick Connect: $e');
+      return false;
+    }
+  }
+
+  /// Starts a Quick Connect attempt.
+  ///
+  /// The user reads [QuickConnectRequest.code] out to their own Jellyfin,
+  /// approves it there, and the secret is exchanged for a token here — so no
+  /// password is ever typed on this device.
+  Future<QuickConnectRequest> initiateQuickConnect(ServerInfo server) async {
+    final url = Uri.parse('${server.uri}/QuickConnect/Initiate');
+    final options = Options(
+      headers: <String, String>{'Authorization': _anonymousHeader()},
+      validateStatus: (_) => true,
+    );
+
+    Response<dynamic> response;
+    try {
+      // 10.7 and later accept GET; older builds required POST.
+      response = await _dio.getUri<dynamic>(url, options: options);
+      if (response.statusCode == 405) {
+        response = await _dio.postUri<dynamic>(url, options: options);
+      }
+    } on DioException {
+      throw ServerException('Could not reach ${server.name}.');
+    }
+
+    final data = response.data;
+    if (response.statusCode != 200 || data is! Map) {
+      throw const ServerException(
+        'This server would not start a Quick Connect request.',
+      );
+    }
+
+    final code = data['Code'] as String?;
+    final secret = data['Secret'] as String?;
+    if (code == null || secret == null) {
+      throw const ServerException('The server sent an unusable code.');
+    }
+
+    return QuickConnectRequest(code: code, secret: secret);
+  }
+
+  /// Waits for the user to approve [request] on another device.
+  ///
+  /// Returns null when [timeout] passes without approval, which is a person
+  /// walking away rather than a failure. A 404 mid-poll is terminal: the
+  /// secret expired or was revoked on the server.
+  Future<AuthResult?> awaitQuickConnect(
+    ServerInfo server,
+    QuickConnectRequest request, {
+    Duration timeout = const Duration(minutes: 3),
+    Duration interval = const Duration(seconds: 3),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+
+    while (DateTime.now().isBefore(deadline)) {
+      final Response<dynamic> response;
+      try {
+        response = await _dio.getUri<dynamic>(
+          Uri.parse('${server.uri}/QuickConnect/Connect')
+              .replace(queryParameters: <String, String>{
+            'secret': request.secret,
+          }),
+          options: Options(validateStatus: (_) => true),
+        );
+      } on DioException {
+        // A blip on the way to a server that is otherwise fine; the deadline
+        // is the safety net.
+        await Future<void>.delayed(interval);
+        continue;
+      }
+
+      if (response.statusCode == 404) {
+        throw const ServerException('That code expired. Start again.');
+      }
+
+      final data = response.data;
+      if (data is Map && data['Authenticated'] == true) {
+        return _exchangeQuickConnect(server, request.secret);
+      }
+
+      await Future<void>.delayed(interval);
+    }
+
+    return null;
+  }
+
+  Future<AuthResult> _exchangeQuickConnect(
+    ServerInfo server,
+    String secret,
+  ) async {
+    final response = await _dio.postUri<dynamic>(
+      Uri.parse('${server.uri}/Users/AuthenticateWithQuickConnect'),
+      data: <String, String>{'Secret': secret},
+      options: Options(
+        headers: <String, String>{
+          'Authorization': _anonymousHeader(),
+          'Content-Type': 'application/json',
+        },
+        validateStatus: (_) => true,
+      ),
+    );
+
+    final data = response.data;
+    if (response.statusCode != 200 || data is! Map) {
+      throw const ServerException('The approval was not accepted.');
+    }
+
+    return _authResultFrom(data, fallbackUsername: '', server: server);
+  }
+
+  /// The header used before there is a token to put in it.
+  String _anonymousHeader() => authorizationHeader(
+        client: identity.client,
+        device: identity.deviceName,
+        deviceId: identity.deviceId,
+        version: identity.version,
+      );
+
+  static AuthResult _authResultFrom(
+    Map<Object?, Object?> data, {
+    required String fallbackUsername,
+    required ServerInfo server,
+  }) {
     final token = data['AccessToken'] as String?;
     final user = data['User'];
     if (token == null || user is! Map) {
@@ -476,12 +654,24 @@ class JellyfinAuth {
     return AuthResult(
       token: token,
       userId: user['Id'] as String? ?? '',
-      username: user['Name'] as String? ?? username,
+      username: user['Name'] as String? ?? fallbackUsername,
       serverId: data['ServerId'] as String? ?? server.serverId,
     );
   }
 
   Future<void> dispose() async => _dio.close(force: true);
+}
+
+/// A Quick Connect attempt in progress.
+@immutable
+class QuickConnectRequest {
+  const QuickConnectRequest({required this.code, required this.secret});
+
+  /// Shown to the user, who types it into their own Jellyfin.
+  final String code;
+
+  /// The opaque handle this device polls and finally exchanges.
+  final String secret;
 }
 
 @immutable

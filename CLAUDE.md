@@ -6,23 +6,26 @@ Cross-platform video player and media server client (Jellyfin/Emby) with SMB/Web
 
 ## Current state (2026-08-24)
 
-**The player is essentially complete. The Jellyfin client has not been started.**
+**The player is essentially complete. The Jellyfin client has a data layer and no UI.**
 
 Real, end to end: playing a file from the device, a SAF folder, the Android media index,
 an SMB share or a WebDAV mount — browse it in 1b, play it in 1h, resume where you left
 off. Casting to a DLNA renderer or a Chromecast. Picture in picture, background audio
 with a media notification, smart subtitles, audio delay.
 
+`lib/servers/` can probe a server, sign in, list libraries and items, resolve playback
+and report progress — all of it unit-tested against captured responses. **Nothing calls
+it yet**: there is no server registry, and `add_server_sheet.dart` still collects an
+address and reports "not implemented yet".
+
 Still sample data (`core/sample_library.dart`): screens **1d-1g** (server home, library
-grid, movie, series), **1i** downloads and the active state of **1n** search. Those are
-the Jellyfin client's UI and are waiting on it — `add_server_sheet.dart` collects an
-address and then reports "not implemented yet".
+grid, movie, series), **1i** downloads and the active state of **1n** search.
 
 Verified by building and running, not assumed:
 
 - Windows debug build links and bundles `libmpv-2.dll`
 - Android release builds per ABI: armeabi-v7a 36.2 MB, arm64-v8a 39.3 MB, x86_64 44.2 MB
-- `flutter analyze` clean; `flutter test` **248 passing**. `test/screens_test.dart` pumps
+- `flutter analyze` clean; `flutter test` **317 passing**. `test/screens_test.dart` pumps
   **every route at all three breakpoints** and fails on any overflow — it caught a
   duplicate FAB hero tag and two real overflows, so do not weaken it.
 
@@ -36,7 +39,7 @@ Also open:
 
 1. **The quality pill** is hidden, not stubbed: it only appears for a source that
    advertises `SourceCapabilities.transcoding`, and none does until Phase 4.
-2. Roughly 99 English literals are still hardcoded in `lib/features/` and `lib/widgets/`.
+2. English literals remain only in the sample-data screens; see Localisation.
 3. Dropped on purpose, so nobody picks them up again by accident: **NFS** (no viable
    pure-Dart client — it would mean hand-written RPC/XDR or a native build per
    platform), **network scanning** for shares, and **preview thumbnails** on the
@@ -475,7 +478,41 @@ manually on any branch.
 - Missing keystore secrets do not fail the build; the APKs are debug-signed and both the
   release notes and the Telegram message say so.
 
+## Media servers (Jellyfin)
+
+`lib/servers/` is the data layer; nothing above it is wired up yet. Three rules it keeps:
+
+- **Domain types, not the design's.** `core/models/library_models.dart` holds strings the
+  design already shaped ("2h 16m", "48m · watched") and an `IconData`. A network client
+  producing those would put date formatting and translation behind HTTP. The screens map
+  `ServerItem` onto them instead.
+- **Parsing is a separate, pure file.** `jellyfin_dto.dart` imports nothing but the
+  models, so the whole protocol is tested against captured responses with no server —
+  the same split `parsePropfind` follows.
+- **Errors are sentences.** A 401 is flagged `isUnauthorised`, because it is the one
+  failure with an answer nothing else has: ask for the password again.
+
+Four things that are easy to get wrong and are already handled:
+
+1. **Ticks.** Jellyfin counts in 100-nanosecond units — ten thousand to the millisecond.
+   Getting this wrong yields a runtime out by 10,000× that still looks plausible.
+2. **The auth header must be percent-encoded.** `dart:io` *throws* on a header value
+   above 0x7F, so a phone named "Điện thoại của Nam" fails every request before it is
+   sent. Encoding also handles the quotes and commas the header's grammar cannot escape.
+3. **Emby 4.9 omits `ProductName`.** Detecting the dialect from that field alone files
+   every modern Emby as Jellyfin, which then gets called on routes it does not have.
+   `RemoteAddresses` is the fallback signal. Note also that Emby only accepts the
+   pre-10.9 `/Users/{userId}/…` spelling of the user-scoped routes this client uses.
+4. **A `TranscodingUrl` on the media source means the server chose to re-encode**,
+   whatever `SupportsDirectPlay` says — those flags describe what is possible, not what
+   was decided. The direct-play URL carries the token as `api_key` in the query, because
+   libmpv fetches it itself and cannot be handed a header.
+
 ## Reference material
+
+`../refs/plezy` (see its LICENSE) — a shipping Flutter client for Plex, Jellyfin and Emby
+on the same Flutter version. The best reference for anything Jellyfin: points 2 and 3
+above are both bugs its source caught in this one. Read `lib/services/jellyfin_*.dart`.
 
 `../refs/NipaPlay-Reload` (MIT) — a working Flutter media client. Its `lib/services/` contains Emby (1712 lines), Jellyfin (1655), WebDAV (1617) and SMB implementations with **zero danmaku coupling**, sharing `media_server_service_base.dart`. Adapt these; do not fork the whole app (its `lib/` is ~270k lines and heavily anime-oriented).
 

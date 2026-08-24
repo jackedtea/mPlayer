@@ -46,7 +46,8 @@ void main() {
 
       expect(header, startsWith('MediaBrowser '));
       expect(header, contains('Client="mPlayer"'));
-      expect(header, contains('Device="Pixel 8"'));
+      // Encoded, space and all — the server decodes while parsing.
+      expect(header, contains('Device="Pixel%208"'));
       expect(header, contains('DeviceId="abc-123"'));
       expect(header, contains('Token="tok"'));
     });
@@ -64,16 +65,52 @@ void main() {
       expect(header, isNot(contains('Token=')));
     });
 
-    test('a quote in the device name cannot break the header', () {
+    test('a non-ASCII device name survives', () {
+      // The one that matters: dart:io throws on a header value above 0x7F
+      // rather than sending it, and a phone named in Vietnamese is entirely
+      // ordinary. Percent-encoding is what makes the header sendable at all.
       final header = authorizationHeader(
         client: 'mPlayer',
-        device: 'Nam"s PC',
+        device: 'Điện thoại của Nam',
         deviceId: 'id',
         version: '1.0.0',
         token: 't',
       );
 
-      expect(header, contains('Device="Nams PC"'));
+      expect(header.codeUnits.every((c) => c < 0x80), isTrue);
+      expect(header, contains('Device="%C4%90i%E1%BB%87n'));
+    });
+
+    test('quotes and commas cannot break the grammar', () {
+      // The header has no escape of its own for either.
+      final header = authorizationHeader(
+        client: 'mPlayer',
+        device: 'Nam"s, PC',
+        deviceId: 'id',
+        version: '1.0.0',
+        token: 't',
+      );
+
+      expect(header.split('", ').length, 5);
+      expect(header, isNot(contains('Device="Nam"')));
+    });
+
+    test('empty fields fall back rather than being sent blank', () {
+      // Both dialects refuse to create a session without a client, a device
+      // and a version.
+      final header = authorizationHeader(
+        client: '',
+        device: '',
+        deviceId: '',
+        version: '',
+      );
+
+      expect(header, contains('Client="mPlayer"'));
+      expect(header, contains('Device="mPlayer"'));
+      expect(header, contains('Version="1.0"'));
+      // An empty DeviceId is a parse error; the server recovers it from the
+      // token on an authenticated request.
+      expect(header, isNot(contains('DeviceId=')));
     });
   });
 

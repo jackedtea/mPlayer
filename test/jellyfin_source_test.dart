@@ -258,6 +258,36 @@ void main() {
       expect(adapter.requests.single.uri.path, '/System/Info/Public');
     });
 
+    test('Emby 4.9 is recognised even though it omits ProductName', () async {
+      // The trap: an Emby server filed as Jellyfin gets called on routes it
+      // does not have. `RemoteAddresses` is the only signal it gives.
+      final dio = Dio(BaseOptions(validateStatus: (_) => true))
+        ..httpClientAdapter = _FakeAdapter(
+          (_) => _json(<String, dynamic>{
+            'ServerName': 'Old Emby',
+            'Id': 'srv2',
+            'RemoteAddresses': <dynamic>['1.2.3.4'],
+          }),
+        );
+
+      final auth = JellyfinAuth(identity: _identity, client: dio);
+      expect((await auth.probe('http://host')).kind, ServerKind.emby);
+    });
+
+    test('a server naming itself Jellyfin is Jellyfin', () async {
+      final dio = Dio(BaseOptions(validateStatus: (_) => true))
+        ..httpClientAdapter = _FakeAdapter(
+          (_) => _json(<String, dynamic>{
+            'ServerName': 'Home',
+            'Id': 's',
+            'ProductName': 'Jellyfin Server',
+          }),
+        );
+
+      final auth = JellyfinAuth(identity: _identity, client: dio);
+      expect((await auth.probe('http://host')).kind, ServerKind.jellyfin);
+    });
+
     test('something that is not a server says so', () async {
       final dio = Dio(BaseOptions(validateStatus: (_) => true))
         ..httpClientAdapter = _FakeAdapter(

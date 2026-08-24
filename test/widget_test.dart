@@ -162,7 +162,7 @@ void main() {
       expect(find.text('Scan this network'), findsOneWidget);
     });
 
-    testWidgets('add-server sheet opens and defaults to Quick Connect', (
+    testWidgets('add-server sheet asks for an address before anything else', (
       tester,
     ) async {
       await pumpAppAt(tester, const Size(400, 900));
@@ -173,16 +173,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Add a server'), findsOneWidget);
+      expect(find.text('Enter an address to detect the server'), findsOneWidget);
 
-      final quickConnect = tester.widget<SwitchListTile>(
-        find.byType(SwitchListTile),
-      );
-      expect(quickConnect.value, isTrue);
+      // Username and password are the path that always works, so they are
+      // what the sheet opens on.
+      expect(find.widgetWithText(TextField, 'Username'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
 
-      // Quick Connect approves on another device, so no password field.
-      expect(find.widgetWithText(TextField, 'Password'), findsNothing);
+      // Quick Connect is *not* offered yet: nothing is known about the
+      // server, and Emby answers 404 to every Quick Connect route while a
+      // Jellyfin administrator can switch the feature off. Offering it before
+      // asking would be a switch that sometimes cannot work.
+      expect(find.byType(SwitchListTile), findsNothing);
 
-      // Connect stays disabled until an address is entered.
+      // Connect stays disabled until an address has been detected.
       final connect = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, 'Connect'),
       );

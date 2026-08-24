@@ -348,12 +348,18 @@ code path is complete and unit-tested; neither has been run against a real NAS.
       whole progress/played/favourite surface. Parsing is a separate, pure file so the
       protocol is tested against captured responses with no server, the same split
       `parsePropfind` follows
-- [ ] Wire it up: server registry (profiles in prefs, token in the keychain), the
-      add-server sheet, and the seven screens still on `sample_library.dart`
+- [x] `servers/server_registry.dart` — profiles in preferences, tokens in the keychain,
+      the same two-store split `SourceRepository` keeps. Also owns the **stable device
+      id**: Jellyfin files sessions and tokens under it, so a fresh one per launch
+      orphans the token issued to the last
+- [x] The add-server sheet is real: the address is probed as it is typed (before any
+      password is asked for), and sign-in stores a working session
+- [x] Quick Connect — offered only where the server actually has it
+- [ ] The seven screens still on `sample_library.dart`
 - [ ] Map the domain types onto what the screens draw — the presentation models will
       need reshaping, since they were written around the sample data
 - [ ] `EmbySource`: same surface; Emby and Jellyfin diverged enough that a shared base plus two subclasses is right — mirror `refs/.../lib/services/media_server_service_base.dart` (837 lines)
-- [ ] Quick-connect / device ID handling
+- [x] Quick-connect / device ID handling
 - [ ] Multi-server support with a server switcher
 - [ ] Transcode settings (max bitrate, resolution cap, force direct play)
 - [ ] Image loading with a disk cache
