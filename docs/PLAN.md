@@ -338,8 +338,20 @@ code path is complete and unit-tested; neither has been run against a real NAS.
 
 ## Phase 4 — Media server clients
 
-- [ ] `data/servers/media_library_source.dart` — the interface above
-- [ ] `JellyfinSource`: auth (username/password + API key), libraries, items, images, playback info, direct play vs transcode decision, progress reporting
+- [x] `servers/media_library_source.dart` — the interface, plus the domain types
+      (`LibraryView`, `ServerItem`, `ServerPlayback`, `PlaybackCapabilities`). Deliberately
+      **not** the `core/models/library_models.dart` types: those hold strings the design
+      already shaped ("2h 16m", "48m · watched") and an `IconData`, so building them in
+      the data layer would put formatting and translation behind the network client
+- [x] `servers/jellyfin_source.dart` + `servers/jellyfin_dto.dart` — probe, sign in,
+      views, items, episodes, resume, next-up, search, artwork, playback info and the
+      whole progress/played/favourite surface. Parsing is a separate, pure file so the
+      protocol is tested against captured responses with no server, the same split
+      `parsePropfind` follows
+- [ ] Wire it up: server registry (profiles in prefs, token in the keychain), the
+      add-server sheet, and the seven screens still on `sample_library.dart`
+- [ ] Map the domain types onto what the screens draw — the presentation models will
+      need reshaping, since they were written around the sample data
 - [ ] `EmbySource`: same surface; Emby and Jellyfin diverged enough that a shared base plus two subclasses is right — mirror `refs/.../lib/services/media_server_service_base.dart` (837 lines)
 - [ ] Quick-connect / device ID handling
 - [ ] Multi-server support with a server switcher
@@ -388,7 +400,6 @@ Deliberately **without** metadata scraping. Jellyfin and Emby already supply met
 - [x] Window size/position persistence — `app/desktop_window.dart`. A minimised or
       fullscreen window is deliberately not saved, and a position on a monitor that has
       since been unplugged is discarded rather than restored off-screen
-- [ ] System tray with playback controls (optional)
 - [ ] File association: open a video file with mPlayer (Windows registry, Linux `.desktop` MimeType already declared)
 - [x] Command-line argument handling (`mPlayer video.mkv`) — the Windows and Linux
       runners already forward the arguments; `main` feeds them to `incomingMediaProvider`
@@ -396,7 +407,14 @@ Deliberately **without** metadata scraping. Jellyfin and Emby already supply met
       drop anywhere plays, not only on the Files tab
 - [x] Single-instance enforcement — binding a fixed loopback port *is* the lock: exactly
       one process gets it, and a second launch hands its file over that socket and exits
-- [ ] Global media key handling
+- ~~Global media key handling~~ — **dropped for now.** Android already has it through the
+      `MediaSession` the playback service owns. On desktop the only route is
+      `hotkey_manager`, whose Linux implementation needs `keybinder-3.0` **at run time as
+      well as build time** — every Linux user would have to install a second system
+      package beside libmpv for a convenience. Reconsider if desktop becomes the main
+      platform
+- [ ] System tray with playback controls — same question, lower value: a video player
+      that hides in the tray is a niche want, and it is another dependency
 
 ---
 

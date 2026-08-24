@@ -437,6 +437,12 @@ class _BottomBar extends StatelessWidget {
           children: <Widget>[
             _Scrubber(
               value: value,
+              // How far ahead the decoder has read. Zero for a local file,
+              // where there is nothing to wait for and nothing to show.
+              buffered: state.duration > Duration.zero
+                  ? state.buffered.inMilliseconds /
+                      state.duration.inMilliseconds
+                  : 0,
               duration: state.duration,
               chapters: state.chapters,
               onStart: this_.onScrubStart,
@@ -476,6 +482,7 @@ class _BottomBar extends StatelessWidget {
 class _Scrubber extends StatelessWidget {
   const _Scrubber({
     required this.value,
+    required this.buffered,
     required this.duration,
     required this.chapters,
     required this.onStart,
@@ -484,6 +491,10 @@ class _Scrubber extends StatelessWidget {
   });
 
   final double value;
+
+  /// 0..1 of the file that has been read ahead.
+  final double buffered;
+
   final Duration duration;
   final List<MediaChapter> chapters;
   final ValueChanged<double> onStart;
@@ -515,6 +526,25 @@ class _Scrubber extends StatelessWidget {
                 ),
               ),
             ),
+          // Behind the slider, and above the chapter ticks: the buffered
+          // stretch is context for the track, not a control, so the thumb and
+          // the played portion both draw over it.
+          if (buffered > 0.001 && duration > Duration.zero)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Padding(
+                  // The same inset the ticks use — the slider's usable track
+                  // is shortened by the thumb radius at each end.
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
+                  child: CustomPaint(
+                    painter: _BufferedTrack(
+                      progress: buffered.clamp(0.0, 1.0),
+                      colour: Colors.white.withValues(alpha: 0.45),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               trackHeight: 4,
@@ -536,6 +566,34 @@ class _Scrubber extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The read-ahead stretch, drawn as a dimmer version of the played track.
+class _BufferedTrack extends CustomPainter {
+  _BufferedTrack({required this.progress, required this.colour});
+
+  final double progress;
+  final Color colour;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 4 logical pixels, matching `trackHeight`, and rounded at both ends the
+    // way Material draws the track itself.
+    const height = 4.0;
+    final top = (size.height - height) / 2;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, top, size.width * progress, height),
+        const Radius.circular(height / 2),
+      ),
+      Paint()..color = colour,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BufferedTrack old) =>
+      old.progress != progress || old.colour != colour;
 }
 
 class _ChapterTicks extends CustomPainter {

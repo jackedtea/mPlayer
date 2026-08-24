@@ -75,6 +75,48 @@ Future<void> pumpControls(
 }
 
 void main() {
+  group('buffered range', () {
+    testWidgets('a partly buffered stream draws the read-ahead track',
+        (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: const PlaybackState(
+          duration: Duration(minutes: 10),
+          position: Duration(minutes: 1),
+          buffered: Duration(minutes: 3),
+        ),
+      );
+
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.painter.runtimeType.toString()
+              .contains('_BufferedTrack'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a local file with nothing buffered draws none',
+        (tester) async {
+      // Zero is the honest answer for a file already on disk, and an empty
+      // bar reads as a stream that has stalled.
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: const PlaybackState(duration: Duration(minutes: 10)),
+      );
+
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.painter.runtimeType.toString()
+              .contains('_BufferedTrack'),
+        ),
+        findsNothing,
+      );
+    });
+  });
+
   group('control row layout', () {
     testWidgets('portrait fits every control on one row without overflowing', (
       tester,
