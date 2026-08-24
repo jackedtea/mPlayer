@@ -4,58 +4,43 @@ Cross-platform video player and media server client (Jellyfin/Emby) with SMB/Web
 
 **Read [docs/PLAN.md](docs/PLAN.md) first** — it holds the architecture, the phase checklist, and the environment gotchas already resolved.
 
-## Current state (2026-08-10)
+## Current state (2026-08-24)
 
-Design build steps 1–3 done, step 4 partly. **Every screen `1a`–`1n` is drawn and
-reachable.** Device and WebDAV browsing and playback are real; the server screens
-(1d–1g) still render `core/sample_library.dart`.
+**The player is essentially complete. The Jellyfin client has not been started.**
 
-**Step 1 — shell.** `app/tokens.dart` (design tokens as `ThemeExtension`s + `WindowSize`),
-`app/theme.dart`, `app/router.dart`, `app/adaptive_scaffold.dart`, and screens 1a Storage,
-1c Server-empty + add-server sheet, 1n Search-idle, 1l Settings-index. These render against
-`core/sample_data.dart` placeholders — **the browse/library UI has no real data yet.**
+Real, end to end: playing a file from the device, a SAF folder, the Android media index,
+an SMB share or a WebDAV mount — browse it in 1b, play it in 1h, resume where you left
+off. Casting to a DLNA renderer or a Chromecast. Picture in picture, background audio
+with a media notification, smart subtitles, audio delay.
 
-**Step 2 — playback.** `sources/media_source.dart` (the `MediaSource` interface,
-`MediaRef`, `PlayableMedia`, `SourceCapabilities`), `sources/local_source.dart`, and
-`features/player/` — `PlaybackController` (Riverpod, hand-written) over `media_kit`, plus
-screen 1h with the video surface, transport and scrubber. Picking a file from the Storage
-FAB plays it end to end. This path uses **no** sample data.
+Still sample data (`core/sample_library.dart`): screens **1d-1g** (server home, library
+grid, movie, series), **1i** downloads and the active state of **1n** search. Those are
+the Jellyfin client's UI and are waiting on it — `add_server_sheet.dart` collects an
+address and then reports "not implemented yet".
 
-**Step 3 — player chrome.** `features/player/` is now split the way the design suggests:
-`controls_overlay.dart` (top bar, transport, scrubber with chapter ticks, control-row
-pills, skip-intro), `gesture_layer.dart` (brightness / volume / double-tap seek /
-horizontal scrub), `track_sheet.dart`, `more_menu.dart`, `stats_overlay.dart`, and
-`player_ui_state.dart` for lock, rotation, aspect, stats and sleep timer.
-
-**Screens.** 1b browser, 1d server home, 1e library grid, 1f movie detail, 1g series,
-1i downloads, 1m settings pages (Appearance / Player / Subtitle / About) and the active
-state of 1n all render against `core/sample_library.dart`. General and Audio settings are
-listed in the index but have no page yet — the design does not draw them either.
-
-Verified by actually building and running, not assumed:
+Verified by building and running, not assumed:
 
 - Windows debug build links and bundles `libmpv-2.dll`
-- Android debug APK builds and bundles `libmpv.so` for all three ABIs, plus the Roboto asset
-- `flutter analyze` clean; `flutter test` 140/140 passing. `test/screens_test.dart` pumps
+- Android release builds per ABI: armeabi-v7a 36.2 MB, arm64-v8a 39.3 MB, x86_64 44.2 MB
+- `flutter analyze` clean; `flutter test` **248 passing**. `test/screens_test.dart` pumps
   **every route at all three breakpoints** and fails on any overflow — it caught a
   duplicate FAB hero tag and two real overflows, so do not weaken it.
 
-Still open:
+**Everything platform-specific is unverified on a real device.** The list is long enough
+to be worth writing down: `content://` handles through libmpv, container chapters from a
+real MKV, the Linux build, picture in picture, the background-audio service and its
+notification, audio focus, DLNA casting, Chromecast casting. All of it compiles, is
+statically analysed and has its pure logic unit-tested; none of it has run on hardware.
 
-1. Play a real file on a real Android device. `file_selector_android`, MediaStore, SAF and
-   incoming intents all hand back a `content://` URI, and `LocalSource.resolve` passes any
-   real scheme through untouched. media_kit resolves those itself —
-   `Media.normalizeURI` opens a file descriptor through `AndroidContentUriProvider` and
-   gives libmpv `fd://<n>` — so **no copy to cache is needed**, but the path has still
-   only been read in the package source, never run on a device.
-2. Confirm the Linux build on a machine with `libmpv-dev`
+Also open:
 
-3. **Verify container chapters against a real chaptered MKV.** The list is read from
-   libmpv's `chapter-list` properties, but this machine has no chaptered sample and no
-   ffmpeg to make one, so only the merge logic is unit-tested — the property read itself
-   has never run against a real file.
-4. **The quality pill is inert.** Choosing a bitrate only means something once a server
-   can transcode (step 5).
+1. **The quality pill** is hidden, not stubbed: it only appears for a source that
+   advertises `SourceCapabilities.transcoding`, and none does until Phase 4.
+2. Roughly 99 English literals are still hardcoded in `lib/features/` and `lib/widgets/`.
+3. Dropped on purpose, so nobody picks them up again by accident: **NFS** (no viable
+   pure-Dart client — it would mean hand-written RPC/XDR or a native build per
+   platform), **network scanning** for shares, and **preview thumbnails** on the
+   scrubber. Downloads (screen 1i) is parked until after the Jellyfin client.
 
 ## Localisation
 
@@ -71,10 +56,26 @@ synthetic packages — and are regenerated by `flutter pub get` / `flutter gen-l
 - Language choice lives in `app/locale_controller.dart` (`shared_preferences`). **Null
   means follow the system**, which is the default and is not the same as English.
 - Each language is named in its own language (`Tiếng Việt`, not `Vietnamese`).
+- `test/l10n_test.dart` fails when an English key has no Vietnamese translation. The
+  build writes the same finding to `l10n_untranslated.json`, but only someone who opens
+  that file ever sees it — a missing key is an English word in the middle of a
+  Vietnamese screen, which is worth failing a test over.
+- A widget that reads `AppLocalizations` needs a harness that supplies it: a test
+  pumping a bare `MaterialApp` gets null back and throws.
 
-**Conversion is incomplete.** The shell, settings index and General page read from
-`AppLocalizations`; roughly 157 literals across `lib/features/` and `lib/widgets/` are
-still hardcoded English. Find them with:
+**Every screen that is real is converted.** The shell, the player and its chrome, the
+Files and Browse screens, the share sheet, casting, and all seven settings pages read
+from `AppLocalizations`.
+
+What is left is deliberate: the **server, search and downloads screens still render
+sample data** and will be rewritten with the Jellyfin client, so translating them now is
+work thrown away twice. `features/playback/smoke_test_page.dart` is a developer tool and
+is not translated either.
+
+Two enums lost their `label` field on the way (`RotationMode`, `AspectMode`,
+`GaplessAudio`): an enum constant is built once, before there is a locale to build it in,
+so the name now comes from a `label(l10n)` method or a helper next to the page that shows
+it. Find any remaining literals with:
 
 ```bash
 grep -rn "Text('\|tooltip: '\|labelText: '" lib/features lib/widgets --include=*.dart \
@@ -94,9 +95,11 @@ library is browsed by collection, not by path, so it will never implement it.
 | Kind | Driver | State |
 |---|---|---|
 | Device | `LocalSource` | Browsing + playback |
+| Device (Android) | `MediaStoreSource` | The system media index — scoped storage forbids listing shared storage directly |
+| Device (Android) | `SafSource` | Folders the user granted explicitly, for what the index cannot see |
 | WebDAV | `WebDavSource` | Browsing + direct-play streaming |
-| SMB | — | **No driver.** See below |
-| NFS | — | No driver |
+| SMB | `SmbSource` | Browsing + playback through the local HTTP proxy |
+| NFS | — | No driver, and no pure-Dart client to build one on |
 
 `features/storage/source_sheet.dart` both adds and edits a share — the same form, opened
 from the Network section's *Add* or from a tile's overflow menu. `SourceRegistry.update`
@@ -125,17 +128,24 @@ also keeps the parser testable against captured server responses with no live sh
 `parsePropfind` matches on **local** element names because prefixes differ between
 servers (`d:`, `D:`, none).
 
-### SMB — why there is no driver yet
+### SMB, and the proxy it needs
 
-libmpv cannot consume a Dart stream; it needs a URL or a path. `smb_connect`'s
-`openRead` returns `Stream<Uint8List>`, so SMB playback needs a **local HTTP bridge**: a
-`dart:io` `HttpServer` on `127.0.0.1` translating Range requests into
-`openRead(start, end)`, with libmpv pointed at `http://127.0.0.1:port/...`. That is the
-missing piece, and it is pure Dart — no native build.
+libmpv cannot consume a Dart stream; it needs a URL or a path. `dart_smb2` gives
+random-access reads and nothing else, so `sources/media_proxy_server.dart` bridges the
+two: a `dart:io` `HttpServer` on `127.0.0.1` that turns `Range` requests into offset
+reads, with libmpv pointed at `http://127.0.0.1:<port>/media/<id>`. Pure Dart, no native
+build — the vendored fork and the FFI package `refs/NipaPlay-Reload` needed turned out to
+be avoidable.
 
-The reference app reached the same conclusion the hard way: `refs/NipaPlay-Reload` pins
-`smb_connect` to a **vendored, patched copy** in `third_party/` via `dependency_overrides`
-*and* ships its own FFI package `nipaplay_smb2`. Budget accordingly.
+Two things the proxy does that are easy to undo by accident:
+
+- **1 MiB chunks with a `flush` between them.** Without the back-pressure a fast share
+  outruns the socket and the whole file buffers in memory.
+- **A 416 carries the real size.** libmpv corrects its own request from it; answering a
+  bare 416 leaves it guessing.
+
+The same server, bound to every interface instead of loopback, is what serves a file to a
+television while casting. See the Casting section.
 
 ## Subtitles
 
@@ -245,6 +255,23 @@ what to load and when to give up are all Dart's.
 
 Nothing above `CastRenderer` knows which protocol a device speaks; `CastController` merges
 the two lists and picks the renderer from `CastDevice.kind`.
+
+## Desktop window
+
+`app/desktop_window.dart`, all of it inert off desktop — `window_manager` throws on
+Android and iOS, which is the signal to do nothing.
+
+- **Single instance is a bound socket.** A fixed loopback port (47821) is the lock:
+  exactly one process can bind it, so failing to bind *is* how a second launch knows it
+  is the second. It then writes its file path to that socket and exits, and the running
+  instance opens the file and raises its window. No lock file to go stale after a crash.
+- Size and position are restored before the window is shown, through
+  `waitUntilReadyToShow`, or the user watches it appear at the default size and jump.
+  A **minimised or fullscreen** window is not saved — neither is what they left behind —
+  and a position on a monitor that has since been unplugged is discarded.
+- Saves are debounced 600 ms: dragging an edge fires a resize per frame.
+- Drag-and-drop wraps the **navigator**, not a screen, so a file dropped anywhere in the
+  window plays.
 
 ## Background playback & picture in picture
 
@@ -461,5 +488,13 @@ flutter analyze
 flutter test
 flutter build windows --debug
 flutter build apk --debug
-dart run build_runner build --delete-conflicting-outputs   # drift + freezed + json_serializable
+flutter build apk --release --split-per-abi    # what CI ships
+```
+
+`build_runner` is not part of the loop yet — `drift`, `freezed` and `json_serializable`
+are dependencies but nothing generates from them, and there is not a single `.g.dart` in
+`lib/`. The command lands with the Drift schema in Phase 4:
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
 ```

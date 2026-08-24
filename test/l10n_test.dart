@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,6 +74,32 @@ void main() {
 
       expect(vi.showMoreFrom(6, 'NAS'), allOf(contains('6'), contains('NAS')));
       expect(vi.minutes(30), contains('30'));
+
+      // The transport buttons follow the skip amounts from Player settings,
+      // so these two carry a number rather than naming a fixed 10 and 30.
+      expect(en.back10(15), contains('15'));
+      expect(vi.forward30(60), contains('60'));
+
+      expect(vi.playingOn('Living room TV'), contains('Living room TV'));
+      expect(vi.rotationValue('Auto'), contains('Auto'));
+    });
+
+    test('every English key has a Vietnamese translation', () async {
+      // `l10n_untranslated.json` reports this at build time, but only when
+      // someone reads it. A missing key is an English word appearing in the
+      // middle of a Vietnamese screen, which is worth failing a test over.
+      final enArb = jsonDecode(
+        await File('lib/l10n/app_en.arb').readAsString(),
+      ) as Map<String, dynamic>;
+      final viArb = jsonDecode(
+        await File('lib/l10n/app_vi.arb').readAsString(),
+      ) as Map<String, dynamic>;
+
+      final missing = enArb.keys
+          .where((k) => !k.startsWith('@') && !viArb.containsKey(k))
+          .toList();
+
+      expect(missing, isEmpty, reason: 'Untranslated: ${missing.join(', ')}');
     });
   });
 

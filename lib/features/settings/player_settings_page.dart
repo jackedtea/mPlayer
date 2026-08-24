@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../player/playback_controller.dart';
 import 'player_settings.dart';
+import '../../l10n/app_localizations.dart';
 import 'settings_widgets.dart';
 
 /// Screen 1l, Player section.
@@ -40,17 +41,17 @@ class PlayerSettingsPage extends ConsumerWidget {
     }
 
     return SettingsScaffold(
-      title: 'Player',
+      title: AppLocalizations.of(context).settingsPlayer,
       children: <Widget>[
-        const SettingsSection(title: 'Playback'),
+        SettingsSection(title: AppLocalizations.of(context).playback),
         SettingsValueRow(
-          title: 'Hardware decoding',
+          title: AppLocalizations.of(context).hardwareDecoding,
           value: settings.hardwareDecoding.label,
-          subtitle: 'Falls back to software when a codec is unsupported',
+          subtitle: AppLocalizations.of(context).hardwareDecodingFallback,
           onTap: () => _pickHardwareDecoding(context, settings, save),
         ),
         SettingsValueRow(
-          title: 'Skip back',
+          title: AppLocalizations.of(context).skipBack,
           value: '${settings.skipBack.inSeconds}s',
           onTap: () => _pickSkip(
             context,
@@ -59,7 +60,7 @@ class PlayerSettingsPage extends ConsumerWidget {
           ),
         ),
         SettingsValueRow(
-          title: 'Skip forward',
+          title: AppLocalizations.of(context).skipForward,
           value: '${settings.skipForward.inSeconds}s',
           onTap: () => _pickSkip(
             context,
@@ -68,9 +69,9 @@ class PlayerSettingsPage extends ConsumerWidget {
           ),
         ),
         SettingsValueRow(
-          title: 'Audio delay',
+          title: AppLocalizations.of(context).audioDelay,
           value: formatDelay(settings.audioDelay),
-          subtitle: 'Shifts the sound against the picture',
+          subtitle: AppLocalizations.of(context).audioDelaySub,
           onTap: () => pickAudioDelay(
             context,
             settings.audioDelay,
@@ -78,47 +79,50 @@ class PlayerSettingsPage extends ConsumerWidget {
           ),
         ),
         SettingsSwitchRow(
-          title: 'Auto-play next episode',
-          subtitle: 'Continues with the next video in the folder',
+          title: AppLocalizations.of(context).autoPlayNext,
+          subtitle: AppLocalizations.of(context).autoPlayNextSub,
           value: settings.autoPlayNext,
           onChanged: (v) => save(settings.copyWith(autoPlayNext: v)),
         ),
         SettingsSwitchRow(
-          title: 'Auto skip intro',
-          subtitle: 'Only where the source marks an intro chapter',
+          title: AppLocalizations.of(context).autoSkipIntro,
+          subtitle: AppLocalizations.of(context).autoSkipIntroSub,
           value: settings.autoSkipIntro,
           onChanged: (v) => save(settings.copyWith(autoSkipIntro: v)),
         ),
-        const SettingsSection(title: 'Screen & gestures'),
+        SettingsSection(title: AppLocalizations.of(context).screenAndGestures),
         // Both are Android behaviours with no desktop equivalent, so the rows
         // are absent rather than present and inert.
         if (Platform.isAndroid) ...<Widget>[
           SettingsSwitchRow(
-            title: 'Picture in picture',
-            subtitle: 'Shrink into a floating window when you leave the app',
+            title: AppLocalizations.of(context).pictureInPicture,
+            subtitle: AppLocalizations.of(context).pictureInPictureSub,
             value: settings.pipOnLeave,
             onChanged: (v) => save(settings.copyWith(pipOnLeave: v)),
           ),
           SettingsSwitchRow(
-            title: 'Play audio in background',
-            subtitle: 'Keeps playing with the screen off, with a notification',
+            title: AppLocalizations.of(context).backgroundAudio,
+            subtitle: AppLocalizations.of(context).backgroundAudioSub,
             value: settings.backgroundAudio,
             onChanged: (v) => save(settings.copyWith(backgroundAudio: v)),
           ),
         ],
         SettingsSwitchRow(
-          title: 'Swipe gestures',
-          subtitle: 'Brightness on the left, volume on the right',
+          title: AppLocalizations.of(context).swipeGestures,
+          subtitle: AppLocalizations.of(context).swipeGesturesSub,
           value: settings.swipeGestures,
           onChanged: (v) => save(settings.copyWith(swipeGestures: v)),
         ),
-        const SettingsValueRow(title: 'Rotation', value: 'Follow video'),
-        const SettingsSection(title: 'Streaming quality'),
-        const SettingsValueRow(title: 'On Wi-Fi', value: 'Original'),
-        const SettingsValueRow(
-          title: 'On cellular',
-          value: 'Original',
-          subtitle: 'Needs a server that can transcode',
+        SettingsValueRow(
+          title: AppLocalizations.of(context).rotation,
+          value: AppLocalizations.of(context).followVideo,
+        ),
+        SettingsSection(title: AppLocalizations.of(context).streamingQuality),
+        SettingsValueRow(title: AppLocalizations.of(context).onWifi, value: AppLocalizations.of(context).original),
+        SettingsValueRow(
+          title: AppLocalizations.of(context).onCellular,
+          value: AppLocalizations.of(context).original,
+          subtitle: AppLocalizations.of(context).needsTranscodingServer,
         ),
       ],
     );
@@ -167,7 +171,9 @@ class PlayerSettingsPage extends ConsumerWidget {
           children: <Widget>[
             for (final int seconds in _skipChoices)
               ListTile(
-                title: Text('$seconds seconds'),
+                title: Text(
+                  AppLocalizations.of(sheetContext).seconds(seconds),
+                ),
                 trailing: seconds == current.inSeconds
                     ? const Icon(Icons.check_rounded)
                     : null,

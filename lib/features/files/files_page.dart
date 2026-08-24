@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/models/media_models.dart';
 import '../../core/resume_repository.dart';
 import '../../sources/local_source.dart';
@@ -36,11 +37,11 @@ class FilesPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Files'),
+        title: Text(AppLocalizations.of(context).navStorage),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Settings',
+            tooltip: AppLocalizations.of(context).settings,
             onPressed: () => context.push('/settings'),
           ),
           SizedBox(width: spacing.sm),
@@ -65,7 +66,7 @@ class FilesPage extends ConsumerWidget {
           : FloatingActionButton(
               heroTag: 'storage-open-file',
               onPressed: () => openLocalVideo(context, ref),
-              tooltip: 'Open a file or folder',
+              tooltip: AppLocalizations.of(context).openFileOrFolder,
               child: const Icon(Icons.folder_open_rounded),
             ),
     );
@@ -109,7 +110,7 @@ class _ContinueWatchingSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const SectionHeader(title: 'Continue watching'),
+        SectionHeader(title: AppLocalizations.of(context).continueWatching),
         SizedBox(
           height: ContinueWatchingCard.outerHeight(context),
           child: ListView.separated(
@@ -155,7 +156,7 @@ class _ThisDeviceSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         SectionHeader(
-          title: 'This device',
+          title: AppLocalizations.of(context).thisDevice,
           // Partial access can be widened; full access has nothing to add.
           actionLabel: access == MediaAccess.partial ? 'Select more' : null,
           bottomPadding: spacing.xs + 2,
@@ -244,7 +245,7 @@ class _FoldersSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         SectionHeader(
-          title: 'Folders',
+          title: AppLocalizations.of(context).folders,
           actionLabel: 'Add',
           bottomPadding: spacing.xs + 2,
           onAction: () => _addFolder(context, ref),
@@ -262,10 +263,10 @@ class _FoldersSection extends ConsumerWidget {
               ),
             ),
             title: Text(folder.name),
-            subtitle: const Text('Granted folder'),
+            subtitle: Text(AppLocalizations.of(context).grantedFolder),
             trailing: IconButton(
               icon: const Icon(Icons.close_rounded),
-              tooltip: 'Remove folder',
+              tooltip: AppLocalizations.of(context).removeFolder,
               onPressed: () async {
                 await ref.read(safSourceProvider).release(folder.treeUri);
                 ref.invalidate(safFoldersProvider);
@@ -280,8 +281,8 @@ class _FoldersSection extends ConsumerWidget {
           Padding(
             padding: spacing.screenPadding(context.windowSize),
             child: AddSourceTile(
-              title: 'Add a folder',
-              subtitle: 'For videos the media index does not list',
+              title: AppLocalizations.of(context).addFolder,
+              subtitle: AppLocalizations.of(context).addFolderSubtitle,
               onTap: () => _addFolder(context, ref),
             ),
           ),
@@ -311,7 +312,10 @@ class _DesktopDeviceSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SectionHeader(title: 'This device', bottomPadding: spacing.xs + 2),
+        SectionHeader(
+          title: AppLocalizations.of(context).thisDevice,
+          bottomPadding: spacing.xs + 2,
+        ),
         for (final DeviceFolder folder in folders)
           ListTile(
             contentPadding: spacing.screenPadding(context.windowSize),
@@ -355,7 +359,10 @@ class _PermissionPrompt extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SectionHeader(title: 'This device', bottomPadding: spacing.xs + 2),
+        SectionHeader(
+          title: AppLocalizations.of(context).thisDevice,
+          bottomPadding: spacing.xs + 2,
+        ),
         Padding(
           padding: spacing.screenPadding(context.windowSize),
           child: Container(
@@ -381,7 +388,7 @@ class _PermissionPrompt extends StatelessWidget {
                 SizedBox(height: spacing.md),
                 FilledButton(
                   onPressed: onGrant,
-                  child: const Text('Allow access'),
+                  child: Text(AppLocalizations.of(context).allowAccess),
                 ),
               ],
             ),
@@ -426,7 +433,7 @@ class _NetworkSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         SectionHeader(
-          title: 'Network',
+          title: AppLocalizations.of(context).network,
           actionLabel: 'Add',
           bottomPadding: spacing.xs + 2,
           onAction: () => SourceSheet.showAdd(context),
@@ -444,8 +451,8 @@ class _NetworkSection extends ConsumerWidget {
                 SizedBox(height: spacing.sm),
               ],
               AddSourceTile(
-                title: 'Add SMB, WebDAV or NFS',
-                subtitle: 'Or scan the local network',
+                title: AppLocalizations.of(context).addShareTitle,
+                subtitle: AppLocalizations.of(context).addShareSubtitle,
                 onTap: () => SourceSheet.showAdd(context),
               ),
             ],
@@ -484,7 +491,7 @@ class _ConfiguredSourceTile extends ConsumerWidget {
           : null,
       trailing: IconButton(
         icon: const Icon(Icons.more_vert_rounded),
-        tooltip: 'Share options',
+        tooltip: AppLocalizations.of(context).shareOptions,
         onPressed: () => _showOptions(context, ref),
       ),
     );
@@ -499,8 +506,8 @@ class _ConfiguredSourceTile extends ConsumerWidget {
           children: <Widget>[
             ListTile(
               leading: const Icon(Icons.edit_rounded),
-              title: const Text('Edit share'),
-              subtitle: const Text('Change its name, address or credentials'),
+              title: Text(AppLocalizations.of(context).editShare),
+              subtitle: Text(AppLocalizations.of(context).editShareSubtitle),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 SourceSheet.showEdit(context, config);
@@ -508,8 +515,8 @@ class _ConfiguredSourceTile extends ConsumerWidget {
             ),
             ListTile(
               leading: const Icon(Icons.delete_rounded),
-              title: const Text('Remove share'),
-              subtitle: const Text('Its saved password is deleted too'),
+              title: Text(AppLocalizations.of(context).removeShare),
+              subtitle: Text(AppLocalizations.of(context).removeShareSubtitle),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 ref.read(sourceRegistryProvider.notifier).remove(config.id);
@@ -560,6 +567,6 @@ Future<void> _resume(
 /// Placeholder feedback for actions whose feature lands in a later build step.
 void _notYet(BuildContext context, String what) {
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$what — not implemented yet')),
+    SnackBar(content: Text(AppLocalizations.of(context).notImplemented(what))),
   );
 }

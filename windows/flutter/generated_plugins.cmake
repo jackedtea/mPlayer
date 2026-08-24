@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  desktop_drop
   dynamic_color
   file_selector_windows
   flutter_secure_storage_windows
@@ -10,6 +11,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   media_kit_video
   screen_brightness_windows
   screen_retriever_windows
+  url_launcher_windows
   window_manager
 )
 

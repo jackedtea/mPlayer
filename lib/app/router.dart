@@ -18,6 +18,9 @@ import '../features/servers/servers_empty_page.dart';
 import '../features/servers/servers_home_page.dart';
 import '../features/settings/about_page.dart';
 import '../features/settings/appearance_page.dart';
+import '../features/settings/audio_settings_page.dart';
+import '../features/settings/diagnostics_page.dart';
+import '../features/settings/privacy_page.dart';
 import '../features/settings/general_settings_page.dart';
 import '../features/settings/player_settings_page.dart';
 import '../features/settings/settings_index_page.dart';
@@ -86,12 +89,24 @@ GoRouter buildRouter() {
             builder: (context, state) => const PlayerSettingsPage(),
           ),
           GoRoute(
+            path: 'audio',
+            builder: (context, state) => const AudioSettingsPage(),
+          ),
+          GoRoute(
             path: 'subtitle',
             builder: (context, state) => const SubtitleSettingsPage(),
           ),
           GoRoute(
             path: 'about',
             builder: (context, state) => const AboutPage(),
+          ),
+          GoRoute(
+            path: 'diagnostics',
+            builder: (context, state) => const DiagnosticsPage(),
+          ),
+          GoRoute(
+            path: 'privacy',
+            builder: (context, state) => const PrivacyPage(),
           ),
         ],
       ),

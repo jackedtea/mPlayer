@@ -37,7 +37,9 @@ Established by actually building on this machine — do not re-litigate these.
 | Android SDK installed | up to `android-37.0` |
 | `media_kit` on Windows | ✅ builds, bundles `libmpv-2.dll` (28 MB) automatically |
 | `media_kit` on Android | ✅ builds, bundles `libmpv.so` per ABI (~11–15 MB each) |
-| Debug fat APK size | 199 MB (all 3 ABIs + symbols) — release with `--split-per-abi` will be far smaller |
+| Debug fat APK size | 199 MB (all 3 ABIs + symbols) |
+| Release APK, per ABI | armeabi-v7a 36.2 MB · arm64-v8a 39.3 MB · x86_64 44.2 MB (`--split-per-abi`) |
+| Cost of the Cast SDK | ~0.9 MB per ABI after R8 |
 
 ### Gotchas already hit and resolved
 
@@ -105,23 +107,30 @@ UI (Material 3)  →  Riverpod providers  →  repositories
 
 ### Directory shape
 
+What was built, which is flatter than the sketch this section used to hold — the
+`data/` and `domain/` split never earned its keep while every source was a driver with
+one job:
+
 ```
 lib/
-├── main.dart
-├── app/            app.dart, theme.dart, router.dart
-├── core/           result types, errors, logging, extensions
-├── data/
-│   ├── db/         Drift database, DAOs, migrations
-│   ├── storage/    StorageDriver + local/smb/webdav implementations
-│   └── servers/    MediaLibrarySource + jellyfin/emby implementations
-├── domain/         MediaItem, MediaDetail, PlaybackInfo, ServerProfile (freezed)
-└── features/
-    ├── playback/   PlaybackController, player UI, controls, gestures, subtitles
-    ├── library/    browse, grid/list, detail pages
-    ├── servers/    add/edit server, connection test
-    ├── search/
-    └── settings/
+  main.dart
+  app/         app.dart, theme.dart, router.dart, tokens.dart, appearance_settings.dart
+  cast/        CastRenderer + DLNA (ssdp, upnp, dlna_renderer) and Chromecast
+  core/        models, resume_repository, thumbnail_store, languages, sample data
+  sources/     MediaSource + local / MediaStore / SAF / SMB / WebDAV + media_proxy_server
+  features/
+    player/    PlaybackController, chrome, gestures, PiP, now-playing, smart subtitles
+    cast/      device picker, casting overlay, controller
+    files/     screen 1a, share sheet
+    browse/    screen 1b
+    servers/   screens 1c-1g - still on sample data
+    search/    screen 1n - still on sample data
+    downloads/ screen 1i - still on sample data
+    settings/  screens 1l/1m
 ```
+
+`MediaLibrarySource` and the Drift cache land with Phase 4; there is no `data/` layer
+until something needs one.
 
 ---
 
@@ -164,7 +173,12 @@ supersedes the ordering guesses in this phase list where the two disagree.
 - [x] Theme mode + accent persisted via `shared_preferences` — `app/appearance_settings.dart`,
       read by the app root. Pure-black dark and Material You (Android 12+, via
       `dynamic_color`) ride along with it
-- [ ] Replace `core/sample_data.dart` with repository-backed Riverpod providers
+- [x] Screens 1a and 1b read live data (`SourceRegistry`, the drivers, `ResumeRepository`)
+- [x] Localisation of every screen that is real — player, Files, Browse, the share sheet,
+      casting and all seven settings pages. The sample-data screens are left in English
+      on purpose: they are rewritten with Phase 4
+- [ ] Screens 1d-1g, 1i and the active state of 1n still render `core/sample_library.dart`
+      — they are the Jellyfin client's UI and land with Phase 4
 
 ### Design build step 2 — playback core (done)
 
@@ -225,14 +239,21 @@ supersedes the ordering guesses in this phase list where the two disagree.
       passwords in `flutter_secure_storage`, never together
 - [x] Add-share sheet with a real connection test before saving
 - [x] Screen 1b wired to live listings: loading, inline retry on failure, empty state
-- [ ] **SMB driver.** Blocked on a design decision, not on effort: libmpv cannot read a
-      Dart stream, so `smb_connect.openRead` needs a local `HttpServer` bridge on
-      `127.0.0.1` that maps Range requests onto `openRead(start, end)`. Pure Dart, no
-      native build. `refs/NipaPlay-Reload` needed a patched vendored `smb_connect` plus
-      its own FFI package, so budget accordingly.
-- [ ] NFS driver
-- [ ] Network scan ("Or scan the local network" on the add tile)
-- [ ] Resume points for network sources — needs the Drift schema from Phase 1
+- [x] **SMB driver** — `sources/smb_source.dart` over `dart_smb2`, with
+      `sources/media_proxy_server.dart` as the local HTTP bridge: libmpv cannot read a
+      Dart stream, so Range requests are mapped onto offset reads and libmpv is pointed
+      at `http://127.0.0.1:<port>/...`. Pure Dart — no vendored package and no FFI were
+      needed in the end
+- [x] `MediaStoreSource` and `SafSource` — scoped storage forbids listing shared storage
+      directly, so the Files tab is built from Android's media index, with SAF for the
+      folders it cannot see
+- [x] Resume points for every source — `ResumeRepository` keys on `sourceId::itemId` in
+      `shared_preferences`, so a share resumes like a local file. No Drift needed
+- ~~NFS driver~~ — **dropped.** No viable pure-Dart client exists, so it would mean
+      hand-written RPC/XDR or an FFI package with a native build per platform. SMB and
+      WebDAV cover the same shares on every NAS worth supporting
+- ~~Network scan~~ ("Or scan the local network" on the add tile) — dropped; a share is
+      added by address
 - [ ] `data/db/app_database.dart` — Drift schema v1:
   - [ ] `server_profiles` (type, url, credentials ref, display name, last used)
   - [ ] `media_items` (metadata cache)
@@ -240,31 +261,52 @@ supersedes the ordering guesses in this phase list where the two disagree.
   - [ ] `storage_sources` (driver type, root path, credentials ref)
 - [ ] `flutter_secure_storage` wrapper for passwords/tokens — **never** put credentials in Drift
 - [ ] Riverpod provider conventions documented in `docs/CONVENTIONS.md` (hand-written, no codegen)
-- [ ] Global error surface (snackbar + log sink)
-- [ ] Settings page skeleton: appearance, playback, sources, about
+- [ ] Global error surface (snackbar + log sink) — errors currently surface per screen
+- [x] Settings pages: Appearance, General, Player, **Audio**, Subtitle, About, plus
+      Diagnostics and Privacy below About
 
-**Exit criteria**: navigable empty app with persisted theme and a migrating database.
+**Exit criteria**: navigable app with persisted theme — met, except for the database,
+which nothing needs before Phase 4.
 
 ---
 
 ## Phase 2 — Playback core
 
-- [ ] `features/playback/playback_controller.dart` — wrap `media_kit` `Player`; expose position, duration, buffering, tracks, state as Riverpod `AsyncNotifier`s. Keep `media_kit` types out of the UI layer.
-- [ ] Player page: video surface, tap-to-toggle chrome, auto-hide
-- [ ] Seek bar with buffered range + preview thumbnail (desktop first)
-- [ ] Track selection: audio, subtitle, video quality
-- [ ] Subtitle rendering — ASS/SSA/SRT; verify `media_kit` handles ASS styling adequately before writing anything custom
+Done, apart from the three items marked open. The controller is
+`features/player/playback_controller.dart` (a hand-written `Notifier`, not an
+`AsyncNotifier` — the state is a single value, not a future) and it is the only place
+outside the video surface that imports `media_kit`.
+
+- [x] `features/player/playback_controller.dart` — position, duration, buffering, tracks
+      and state as one `PlaybackState`
+- [x] Player page: video surface, tap-to-toggle chrome, auto-hide
+- [ ] Seek bar: buffered range — `PlaybackState.buffered` is tracked but the scrubber
+      does not draw it
+- ~~Preview thumbnails on the scrubber~~ — dropped
+- [x] Track selection: audio and subtitle. Video quality needs a server that transcodes,
+      so the pill hides until one exists
+- [x] Subtitle rendering — ASS/SSA/SRT through libass (`libass: true`), with styling for
+      the plain-text formats. See the Subtitles section of `CLAUDE.md` for the PGS
+      problem and how the bundled libmpv was replaced to fix it
 - [x] External subtitle loading — "Open subtitle file" in the subtitle sheet, which
       loads *and* selects. Sidecar auto-detect needs no code: libmpv's own `sub-auto`
       already finds a file named after the video beside it
-- [ ] Playback speed, aspect ratio / zoom modes
-- [ ] Mobile gestures: double-tap seek, vertical drag for volume/brightness, horizontal drag to scrub, long-press speed-up
-- [ ] Desktop: keyboard shortcuts, fullscreen, always-on-top, `window_manager` integration
-- [ ] Playlist / next-episode queue
-- [ ] Resume-from-position prompt
-- [ ] Wakelock during playback
+- [x] Playback speed, aspect ratio / zoom modes, rotation, sleep timer, lock
+- [x] Mobile gestures: double-tap seek, vertical drag for brightness and volume,
+      horizontal drag to scrub. **Long-press speed-up is not implemented**
+- [x] Desktop: keyboard transport and fullscreen through `window_manager`. Always-on-top
+      is not implemented
+- [x] Playlist / next-episode queue — the folder the file came from, loaded after
+      playback starts so the first frame never waits on a directory listing
+- [x] Resume — applied **silently** from `ResumeRepository` rather than by prompting.
+      Deliberate: a dialog between the user and their film is worth more than the two
+      seconds it saves when the guess is wrong
+- [x] Wakelock during playback — nothing to write: `media_kit_video`'s `Video` widget
+      owns one and defaults it on
+- [x] Audio delay (A/V sync), smart subtitles, external subtitle loading
 
-**Exit criteria**: play a local file with full controls on Windows and Android.
+**Exit criteria**: play a local file with full controls on Windows and Android — met on
+Windows; Android is built and installed but has never been run on a real device.
 
 **Reference**: `refs/NipaPlay-Reload/lib/player_abstraction/` for the multi-kernel interface shape — but implement against `media_kit` only. Don't inherit their kernel-switching complexity yet.
 
@@ -272,16 +314,25 @@ supersedes the ordering guesses in this phase list where the two disagree.
 
 ## Phase 3 — Storage drivers
 
-- [ ] `data/storage/storage_driver.dart` — the interface above
-- [ ] `LocalStorageDriver` — `dart:io`, plus Android SAF handling for external storage
-- [ ] `WebDavStorageDriver` — port from `refs/.../lib/services/webdav_service.dart` (1617 lines; adapt, don't copy blindly)
-- [ ] `SmbStorageDriver` — evaluate `nipaplay_smb2` (their FFI package, `refs/.../packages/nipaplay_smb2`) vs a pure-Dart SMB client. FFI means per-platform native builds.
-- [ ] Local HTTP proxy so `media_kit` can stream from drivers that only expose byte ranges (their `smb_proxy_service.dart` is the model)
-- [ ] Connection test + credential capture UI
-- [ ] Directory browser UI with breadcrumbs, sort, filter by media type
-- [ ] Play directly from the browser without a library scan
+Done, and not as this phase imagined it: there is no separate `StorageDriver`. The
+`MediaSource` / `BrowsableSource` pair from Phase 1 turned out to cover both jobs, and a
+second interface would only have been a second thing to implement per source.
 
-**Exit criteria**: browse an SMB share and a WebDAV mount, play a file from each.
+- [x] `sources/media_source.dart` — `MediaSource` resolves for playback, `BrowsableSource`
+      adds `listDirectory`
+- [x] `LocalSource`, plus `MediaStoreSource` and `SafSource` for Android's scoped storage
+- [x] `WebDavSource` — hand-written PROPFIND over dio, tested against captured Nextcloud
+      and Apache mod_dav responses. The reference implementation was not ported: listing
+      is the only operation needed and playback bypasses the client entirely
+- [x] `SmbSource` over `dart_smb2` — pure Dart, no FFI and no vendored fork
+- [x] `sources/media_proxy_server.dart` — the local HTTP bridge, with Range parsing and
+      1 MiB chunked reads. Also what serves a file to a television when casting
+- [x] Connection test + credential capture UI (`features/files/source_sheet.dart`)
+- [x] Directory browser with breadcrumbs (screen 1b), play straight from it
+- [ ] Filter by media type in the browser
+
+**Exit criteria**: browse an SMB share and a WebDAV mount, play a file from each — the
+code path is complete and unit-tested; neither has been run against a real NAS.
 
 ---
 
@@ -319,8 +370,12 @@ Deliberately **without** metadata scraping. Jellyfin and Emby already supply met
 
 ## Phase 6 — History, resume, sync
 
-- [ ] Unified watch history across all source types
-- [ ] Continue Watching row on home
+- [x] Unified watch history across all source types — `ResumeRepository`, keyed
+      `sourceId::itemId`, throttled to one write every 5 seconds. Barely-started and
+      finished files are dropped rather than stored
+- [x] Continue Watching row, on the Files screen rather than a home screen (there is no
+      home until a server exists), with stills grabbed off the player by
+      `core/thumbnail_store.dart`
 - [ ] Next Up for series
 - [ ] Two-way progress sync with Jellyfin/Emby (server wins on conflict, configurable)
 - [ ] Mark watched/unwatched, favorites
@@ -330,13 +385,17 @@ Deliberately **without** metadata scraping. Jellyfin and Emby already supply met
 
 ## Phase 7 — Desktop polish
 
-- [ ] Window size/position persistence (`window_manager`)
+- [x] Window size/position persistence — `app/desktop_window.dart`. A minimised or
+      fullscreen window is deliberately not saved, and a position on a monitor that has
+      since been unplugged is discarded rather than restored off-screen
 - [ ] System tray with playback controls (optional)
 - [ ] File association: open a video file with mPlayer (Windows registry, Linux `.desktop` MimeType already declared)
 - [x] Command-line argument handling (`mPlayer video.mkv`) — the Windows and Linux
       runners already forward the arguments; `main` feeds them to `incomingMediaProvider`
-- [ ] Drag-and-drop a file onto the window
-- [ ] Single-instance enforcement
+- [x] Drag-and-drop a file onto the window — `desktop_drop`, wrapping the navigator so a
+      drop anywhere plays, not only on the Files tab
+- [x] Single-instance enforcement — binding a fixed loopback port *is* the lock: exactly
+      one process gets it, and a second launch hands its file over that socket and exits
 - [ ] Global media key handling
 
 ---
@@ -388,11 +447,14 @@ Explicitly deprioritised. It applies **only** to raw file sources — media serv
 
 ## Phase 11 — Packaging & release
 
-- [ ] Android: release signing config, `--split-per-abi`, R8 rules for `media_kit`
+- [x] Android: release signing from repository secrets, `--split-per-abi`. No extra R8
+      rules were needed for `media_kit`
 - [ ] Windows: MSIX or Inno Setup installer; confirm `libmpv-2.dll` ships
 - [ ] Linux: `.deb` + AppImage (bundle libmpv or declare the dependency), reuse `linux/packaging/`
 - [ ] Flatpak manifest (optional)
-- [ ] CI: GitHub Actions matrix for Android + Windows + Linux
+- [x] CI: `.github/workflows/release.yml` builds Android, Windows and Linux, publishes a
+      GitHub release and posts to Telegram. `main` is the only production branch; every
+      other ref ships as a dev channel with a `.dev` application id
 - [ ] Version bump + changelog process
 - [ ] Crash/error reporting decision (self-hosted vs none — avoid third-party telemetry by default)
 

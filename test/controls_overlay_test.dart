@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mplayer/app/theme.dart';
+import 'package:mplayer/l10n/app_localizations.dart';
 import 'package:mplayer/core/models/media_models.dart';
 import 'package:mplayer/features/player/controls_overlay.dart';
 import 'package:mplayer/features/player/playback_state.dart';
@@ -37,6 +38,10 @@ Future<void> pumpControls(
   await tester.pumpWidget(
     MaterialApp(
       theme: buildTheme(Brightness.dark),
+      // The chrome reads its labels from AppLocalizations now, so the
+      // harness has to supply them the way the real app does.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: ControlsOverlay(
           media: media(transcoding: transcoding),

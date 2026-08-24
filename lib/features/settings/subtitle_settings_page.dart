@@ -10,6 +10,7 @@ import '../../app/tokens.dart';
 import '../../core/languages.dart';
 import '../player/playback_controller.dart';
 import 'player_settings.dart';
+import '../../l10n/app_localizations.dart';
 import 'settings_widgets.dart';
 
 /// Screen 1m, Subtitle.
@@ -57,8 +58,8 @@ class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
           shrinkWrap: true,
           children: <Widget>[
             ListTile(
-              title: const Text('No preference'),
-              subtitle: const Text('Leave the tracks the file chose'),
+              title: Text(AppLocalizations.of(context).noPreference),
+              subtitle: Text(AppLocalizations.of(context).noPreferenceSub),
               trailing: settings.preferredLanguage == null
                   ? const Icon(Icons.check_rounded)
                   : null,
@@ -102,7 +103,7 @@ class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
           children: <Widget>[
             for (final int ms in _delayChoices)
               ListTile(
-                title: Text('$ms ms'),
+                title: Text(AppLocalizations.of(sheetContext).milliseconds(ms)),
                 trailing: ms == settings.subtitleDelay.inMilliseconds
                     ? const Icon(Icons.check_rounded)
                     : null,
@@ -121,6 +122,7 @@ class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final spacing = context.spacing;
     final settings = ref.watch(playerSettingsProvider);
     final colourIndex = _colours.indexWhere(
@@ -128,17 +130,17 @@ class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
     );
 
     return SettingsScaffold(
-      title: 'Subtitle',
+      title: l10n.settingsSubtitle,
       children: <Widget>[
         _Preview(
           textScale: settings.subtitleTextScale,
           backgroundOpacity: settings.subtitleBackgroundOpacity,
           colour: settings.subtitleColour,
         ),
-        const SettingsSection(title: 'Style'),
-        const SettingsValueRow(title: 'Font', value: 'Roboto'),
+        SettingsSection(title: l10n.style),
+        SettingsValueRow(title: l10n.font, value: 'Roboto'),
         SettingsSliderRow(
-          title: 'Text size',
+          title: l10n.textSize,
           valueLabel: '${(settings.subtitleTextScale * 100).round()}%',
           value: settings.subtitleTextScale,
           min: 0.5,
@@ -147,7 +149,7 @@ class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
           onChanged: (v) => _save(settings.copyWith(subtitleTextScale: v)),
         ),
         SettingsSliderRow(
-          title: 'Background opacity',
+          title: l10n.backgroundOpacity,
           valueLabel:
               '${(settings.subtitleBackgroundOpacity * 100).round()}%',
           value: settings.subtitleBackgroundOpacity,
@@ -186,29 +188,29 @@ class _SubtitleSettingsPageState extends ConsumerState<SubtitleSettingsPage> {
             ],
           ),
         ),
-        const SettingsSection(title: 'Behaviour'),
+        SettingsSection(title: l10n.behaviour),
         SettingsValueRow(
-          title: 'Preferred language',
+          title: l10n.preferredLanguage,
           value: languageLabel(settings.preferredLanguage),
-          subtitle: 'The language you would rather hear and read',
+          subtitle: l10n.preferredLanguageSub,
           onTap: () => _pickLanguage(settings),
         ),
         SettingsSwitchRow(
-          title: 'Smart subtitles',
-          subtitle: 'Subtitles only when the audio is in another language',
+          title: l10n.smartSubtitles,
+          subtitle: l10n.smartSubtitlesSub,
           value: settings.smartSubtitles,
           onChanged: (v) => _save(settings.copyWith(smartSubtitles: v)),
         ),
         SettingsSwitchRow(
-          title: 'Burn in when transcoding',
-          subtitle: 'Image-based subtitles only',
+          title: l10n.burnInWhenTranscoding,
+          subtitle: l10n.imageBasedOnly,
           value: _burnIn,
           onChanged: (v) => setState(() => _burnIn = v),
         ),
         SettingsValueRow(
-          title: 'Sync offset',
+          title: l10n.syncOffset,
           value: '${settings.subtitleDelay.inMilliseconds} ms',
-          subtitle: 'Positive delays the subtitles',
+          subtitle: l10n.syncOffsetSub,
           onTap: () => _pickDelay(settings),
         ),
       ],

@@ -290,5 +290,15 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!--
+          Opening the repository and the release notes in a browser. From
+          Android 11 an app cannot even see whether a browser exists without
+          declaring the intent here, and `launchUrl` then fails with nothing
+          to show for it.
+        -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>

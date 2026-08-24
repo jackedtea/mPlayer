@@ -23,7 +23,22 @@ enum HardwareDecoding {
   final String mpvValue;
 }
 
-/// Everything the Player and Subtitle settings pages control.
+/// How hard mpv should try to play one file into the next without a gap.
+///
+/// Three states rather than a switch because mpv has three, and the middle
+/// one is its default: gapless only where the next file's format matches, so
+/// nothing has to be reinitialised. Forcing it always can resample.
+enum GaplessAudio {
+  off('no'),
+  automatic('weak'),
+  always('yes');
+
+  const GaplessAudio(this.mpvValue);
+
+  final String mpvValue;
+}
+
+/// Everything the Player, Audio and Subtitle settings pages control.
 ///
 /// One object rather than a scattering of keys so the player reads a single
 /// value and nothing can drift out of step. Persisted as JSON in
@@ -47,6 +62,9 @@ class PlayerSettings {
     this.subtitleColour = const Color(0xFFFFFFFF),
     this.subtitleDelay = Duration.zero,
     this.audioDelay = Duration.zero,
+    this.audioPassthrough = false,
+    this.volumeBoost = 100,
+    this.gapless = GaplessAudio.automatic,
   });
 
   factory PlayerSettings.fromJson(Map<String, dynamic> json) {
@@ -72,6 +90,12 @@ class PlayerSettings {
       subtitleDelay:
           Duration(milliseconds: json['subtitleDelayMs'] as int? ?? 0),
       audioDelay: Duration(milliseconds: json['audioDelayMs'] as int? ?? 0),
+      audioPassthrough: json['audioPassthrough'] as bool? ?? false,
+      volumeBoost: json['volumeBoost'] as int? ?? 100,
+      gapless: GaplessAudio.values.firstWhere(
+        (g) => g.name == json['gapless'],
+        orElse: () => GaplessAudio.automatic,
+      ),
     );
   }
 
@@ -111,6 +135,20 @@ class PlayerSettings {
   /// out of step. Positive plays the audio later.
   final Duration audioDelay;
 
+  /// Send AC3/DTS/E-AC3/TrueHD to the amplifier untouched instead of decoding
+  /// them here.
+  ///
+  /// Off by default, and it has to be: a device with no receiver on the other
+  /// end of the cable plays **silence**, which is a worse first impression
+  /// than a downmix nobody asked for.
+  final bool audioPassthrough;
+
+  /// Ceiling for the volume slider, as a percentage. 100 is the recorded
+  /// level; above it mpv amplifies, which is what rescues a quiet film.
+  final int volumeBoost;
+
+  final GaplessAudio gapless;
+
   /// mpv's default subtitle size, which the scale multiplies.
   static const _baseSubtitleSize = 55;
 
@@ -119,6 +157,12 @@ class PlayerSettings {
 
   /// mpv wants `#AARRGGBB`.
   String get mpvSubtitleColour => _mpvColour(subtitleColour, 1);
+
+  /// The formats handed to the amplifier untouched, or an empty list.
+  ///
+  /// Only lossy-or-bitstreamable codecs are listed: mpv passes these through
+  /// as-is, and anything else it must decode anyway.
+  String get mpvSpdif => audioPassthrough ? 'ac3,dts,eac3,truehd' : '';
 
   String get mpvSubtitleBackColour =>
       _mpvColour(const Color(0xFF000000), subtitleBackgroundOpacity);
@@ -148,6 +192,9 @@ class PlayerSettings {
         'subtitleColour': subtitleColour.toARGB32(),
         'subtitleDelayMs': subtitleDelay.inMilliseconds,
         'audioDelayMs': audioDelay.inMilliseconds,
+        'audioPassthrough': audioPassthrough,
+        'volumeBoost': volumeBoost,
+        'gapless': gapless.name,
       };
 
   PlayerSettings copyWith({
@@ -167,6 +214,9 @@ class PlayerSettings {
     Color? subtitleColour,
     Duration? subtitleDelay,
     Duration? audioDelay,
+    bool? audioPassthrough,
+    int? volumeBoost,
+    GaplessAudio? gapless,
   }) {
     return PlayerSettings(
       hardwareDecoding: hardwareDecoding ?? this.hardwareDecoding,
@@ -189,6 +239,9 @@ class PlayerSettings {
       subtitleColour: subtitleColour ?? this.subtitleColour,
       subtitleDelay: subtitleDelay ?? this.subtitleDelay,
       audioDelay: audioDelay ?? this.audioDelay,
+      audioPassthrough: audioPassthrough ?? this.audioPassthrough,
+      volumeBoost: volumeBoost ?? this.volumeBoost,
+      gapless: gapless ?? this.gapless,
     );
   }
 }

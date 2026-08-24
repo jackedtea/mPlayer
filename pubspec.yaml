@@ -61,6 +61,9 @@ dependencies:
   # Flutter's, so `DynamicColorBuilder` no longer hands back something
   # `MaterialApp.theme` accepts.
   dynamic_color: ^1.7.0
+  package_info_plus: ^10.2.1
+  url_launcher: ^6.3.2
+  desktop_drop: ^0.8.0
 dependency_overrides:
   media_kit_libs_android_video:
     path: packages/media_kit_libs_android_video

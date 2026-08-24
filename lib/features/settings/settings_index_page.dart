@@ -44,6 +44,7 @@ class SettingsIndexPage extends StatelessWidget {
         title: l10n.settingsAudio,
         subtitle: l10n.settingsAudioSub,
         icon: Icons.graphic_eq_rounded,
+        route: 'audio',
       ),
       _SettingsEntry(
         title: l10n.settingsSubtitle,

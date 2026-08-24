@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../settings/player_settings.dart';
 import '../settings/player_settings_page.dart';
 import 'playback_controller.dart';
@@ -29,6 +30,7 @@ class MoreMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final ui = ref.watch(playerUiProvider);
     final controller = ref.read(playerUiProvider.notifier);
 
@@ -38,13 +40,13 @@ class MoreMenu extends ConsumerWidget {
         children: <Widget>[
           _Row(
             icon: ui.rotation.icon,
-            label: 'Rotation',
-            value: ui.rotation.label,
+            label: l10n.rotation,
+            value: ui.rotation.label(l10n),
             onTap: controller.cycleRotation,
           ),
           _Row(
             icon: Icons.lock_rounded,
-            label: 'Lock player',
+            label: l10n.lockPlayer,
             onTap: () {
               controller.toggleLock();
               Navigator.of(context).pop();
@@ -52,13 +54,13 @@ class MoreMenu extends ConsumerWidget {
           ),
           _Row(
             icon: Icons.aspect_ratio_rounded,
-            label: 'Aspect ratio',
-            value: ui.aspect.label,
+            label: l10n.aspectRatio,
+            value: ui.aspect.label(l10n),
             onTap: controller.cycleAspect,
           ),
           _Row(
             icon: Icons.bedtime_rounded,
-            label: 'Sleep timer',
+            label: l10n.sleepTimer,
             value: ui.sleepLabel,
             onTap: () => _pickSleepTimer(context, ref),
           ),
@@ -67,15 +69,15 @@ class MoreMenu extends ConsumerWidget {
           // moment you were judging it by.
           _Row(
             icon: Icons.av_timer_rounded,
-            label: 'Audio delay',
+            label: l10n.audioDelay,
             value: formatDelay(ref.watch(playerSettingsProvider).audioDelay),
             onTap: () => _pickAudioDelay(context, ref),
           ),
           const Divider(height: 1, color: Colors.white24),
           _Row(
             icon: Icons.analytics_rounded,
-            label: 'Stats for nerds',
-            value: ui.statsVisible ? 'On' : 'Off',
+            label: l10n.statsForNerds,
+            value: ui.statsVisible ? l10n.on : l10n.off,
             onTap: () {
               controller.toggleStats();
               Navigator.of(context).pop();
@@ -83,7 +85,7 @@ class MoreMenu extends ConsumerWidget {
           ),
           _Row(
             icon: Icons.settings_rounded,
-            label: 'Player settings',
+            label: l10n.playerSettings,
             onTap: () {
               Navigator.of(context).pop();
               context.push('/settings/player');
@@ -107,11 +109,12 @@ class MoreMenu extends ConsumerWidget {
   }
 
   Future<void> _pickSleepTimer(BuildContext context, WidgetRef ref) async {
-    const choices = <(String, Duration?)>[
-      ('Off', null),
-      ('15 minutes', Duration(minutes: 15)),
-      ('30 minutes', Duration(minutes: 30)),
-      ('60 minutes', Duration(minutes: 60)),
+    final l10n = AppLocalizations.of(context);
+    final choices = <(String, Duration?)>[
+      (l10n.off, null),
+      (l10n.minutes(15), const Duration(minutes: 15)),
+      (l10n.minutes(30), const Duration(minutes: 30)),
+      (l10n.minutes(60), const Duration(minutes: 60)),
     ];
 
     final chosen = await showModalBottomSheet<(String, Duration?)>(

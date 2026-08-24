@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../sources/media_source.dart';
 import 'playback_state.dart';
 import 'player_ui_state.dart';
@@ -42,6 +43,8 @@ class ControlsOverlay extends StatelessWidget {
     required this.onMore,
     this.onPip,
     this.onCast,
+    this.skipBack = const Duration(seconds: 10),
+    this.skipForward = const Duration(seconds: 30),
     required this.onSkipIntro,
     required this.notImplemented,
   });
@@ -84,6 +87,12 @@ class ControlsOverlay extends StatelessWidget {
   final VoidCallback? onCast;
   final ValueChanged<MediaChapter> onSkipIntro;
   final void Function(String) notImplemented;
+
+  /// The amounts from Player settings. The transport buttons used to be fixed
+  /// at 10 and 30 seconds, which quietly ignored the setting the gestures
+  /// were already honouring — so the two disagreed about what a skip was.
+  final Duration skipBack;
+  final Duration skipForward;
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +178,7 @@ class _TopBar extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.arrow_back_rounded),
               color: Colors.white,
-              tooltip: 'Back',
+              tooltip: AppLocalizations.of(context).actionBack,
               onPressed: () {
                 this_.onInteraction();
                 if (context.canPop()) context.pop();
@@ -219,20 +228,20 @@ class _TopBar extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.picture_in_picture_alt_rounded),
                 color: Colors.white,
-                tooltip: 'Picture in picture',
+                tooltip: AppLocalizations.of(context).pictureInPicture,
                 onPressed: this_.onPip,
               ),
             if (this_.onCast != null)
               IconButton(
                 icon: const Icon(Icons.cast_rounded),
                 color: Colors.white,
-                tooltip: 'Cast',
+                tooltip: AppLocalizations.of(context).castTo,
                 onPressed: this_.onCast,
               ),
             IconButton(
               icon: const Icon(Icons.more_vert_rounded),
               color: Colors.white,
-              tooltip: 'More',
+              tooltip: AppLocalizations.of(context).actionMore,
               onPressed: this_.onMore,
             ),
           ],
@@ -267,21 +276,22 @@ class _Transport extends StatelessWidget {
             foreground: queue.hasPrevious
                 ? Colors.white
                 : Colors.white.withValues(alpha: 0.3),
-            tooltip: 'Previous',
+            tooltip: AppLocalizations.of(context).previousFile,
             onPressed: queue.hasPrevious ? this_.onPrevious : null,
           ),
           const SizedBox(width: 16),
         ],
         CircleButton(
-          icon: Icons.replay_10_rounded,
+          icon: _replayIcon(this_.skipBack),
           size: 56,
           iconSize: 28,
           background: Colors.white.withValues(alpha: 0.12),
           foreground: Colors.white,
-          tooltip: 'Back 10 seconds',
+          tooltip: AppLocalizations.of(context)
+              .back10(this_.skipBack.inSeconds),
           onPressed: () {
             this_.onInteraction();
-            this_.onSkip(const Duration(seconds: -10));
+            this_.onSkip(-this_.skipBack);
           },
         ),
         const SizedBox(width: 28),
@@ -300,20 +310,23 @@ class _Transport extends StatelessWidget {
             // not absent.
             background: Colors.transparent,
             foreground: Colors.white,
-            tooltip: this_.state.playing ? 'Pause' : 'Play',
+            tooltip: this_.state.playing
+                ? AppLocalizations.of(context).pause
+                : AppLocalizations.of(context).play,
             onPressed: this_.onPlayPause,
           ),
         const SizedBox(width: 28),
         CircleButton(
-          icon: Icons.forward_30_rounded,
+          icon: _forwardIcon(this_.skipForward),
           size: 56,
           iconSize: 28,
           background: Colors.white.withValues(alpha: 0.12),
           foreground: Colors.white,
-          tooltip: 'Forward 30 seconds',
+          tooltip: AppLocalizations.of(context)
+              .forward30(this_.skipForward.inSeconds),
           onPressed: () {
             this_.onInteraction();
-            this_.onSkip(const Duration(seconds: 30));
+            this_.onSkip(this_.skipForward);
           },
         ),
         if (queue.hasSiblings) ...<Widget>[
@@ -326,7 +339,7 @@ class _Transport extends StatelessWidget {
             foreground: queue.hasNext
                 ? Colors.white
                 : Colors.white.withValues(alpha: 0.3),
-            tooltip: 'Next',
+            tooltip: AppLocalizations.of(context).nextFile,
             onPressed: queue.hasNext ? this_.onNext : null,
           ),
         ],
@@ -352,7 +365,7 @@ class _TransportSpinner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Loading',
+      message: AppLocalizations.of(context).loading,
       child: SizedBox(
         width: size,
         height: size,
@@ -391,7 +404,7 @@ class _SkipIntroPill extends StatelessWidget {
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Text(
-            'Skip intro',
+            AppLocalizations.of(context).skipIntro,
             style: TextStyle(
               color: context.colors.onPrimaryContainer,
               fontSize: 14,
@@ -576,7 +589,7 @@ class _ControlRow extends StatelessWidget {
           return Row(
             children: <Widget>[
               Expanded(child: _pills(context)),
-              ..._icons(),
+              ..._icons(context),
             ],
           );
         }
@@ -594,7 +607,8 @@ class _ControlRow extends StatelessWidget {
         // at all.
         return Row(
           children: <Widget>[
-            for (final button in <Widget>[..._trackIcons(context), ..._icons()])
+            for (final button
+                in <Widget>[..._trackIcons(context), ..._icons(context)])
               Expanded(child: button),
           ],
         );
@@ -604,6 +618,7 @@ class _ControlRow extends StatelessWidget {
 
   /// The pills, reduced to icons.
   List<Widget> _trackIcons(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = this_.state;
     final accent = context.colors.primaryContainer;
     final subtitleOn = state.activeSubtitle?.isOff == false;
@@ -615,26 +630,27 @@ class _ControlRow extends StatelessWidget {
         icon: subtitleOn
             ? Icons.subtitles_rounded
             : Icons.subtitles_off_rounded,
-        tooltip: 'Subtitles: ${state.activeSubtitle?.label ?? 'Off'}',
+        tooltip: l10n.subtitlesValue(state.activeSubtitle?.label ?? l10n.off),
         colour: subtitleOn ? accent : null,
         onTap: this_.onSubtitles,
       ),
       _SmallIcon(
         icon: Icons.graphic_eq_rounded,
-        tooltip: 'Audio: ${state.activeAudio?.label ?? 'Default'}',
+        tooltip:
+            l10n.audioValue(state.activeAudio?.label ?? l10n.defaultLabel),
         onTap: this_.onAudio,
       ),
       if (this_.media.capabilities.transcoding)
         _SmallIcon(
           icon: Icons.hd_rounded,
-          tooltip: 'Quality',
+          tooltip: l10n.quality,
           onTap: this_.onQuality,
         ),
       _SmallIcon(
         icon: Icons.speed_rounded,
         // Playing at anything but normal speed is easy to forget and hard to
         // notice; the tint is the only cue left once the label is gone.
-        tooltip: 'Speed: ${state.speed.toStringAsFixed(2)}×',
+        tooltip: l10n.speedValue(state.speed.toStringAsFixed(2)),
         colour: speedChanged ? accent : null,
         onTap: this_.onSpeed,
       ),
@@ -642,6 +658,7 @@ class _ControlRow extends StatelessWidget {
   }
 
   Widget _pills(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = this_.state;
 
     return SingleChildScrollView(
@@ -650,12 +667,12 @@ class _ControlRow extends StatelessWidget {
         children: <Widget>[
           _Pill(
             icon: Icons.subtitles_rounded,
-            label: state.activeSubtitle?.label ?? 'Off',
+            label: state.activeSubtitle?.label ?? l10n.off,
             onTap: this_.onSubtitles,
           ),
           _Pill(
             icon: Icons.graphic_eq_rounded,
-            label: state.activeAudio?.label ?? 'Default',
+            label: state.activeAudio?.label ?? l10n.defaultLabel,
             onTap: this_.onAudio,
           ),
           // Quality only means something when the far end can re-encode.
@@ -664,7 +681,7 @@ class _ControlRow extends StatelessWidget {
           if (this_.media.capabilities.transcoding)
             _Pill(
               icon: Icons.hd_rounded,
-              label: 'Original',
+              label: l10n.original,
               onTap: this_.onQuality,
             ),
           _Pill(
@@ -677,28 +694,29 @@ class _ControlRow extends StatelessWidget {
     );
   }
 
-  List<Widget> _icons() {
+  List<Widget> _icons(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final ui = this_.ui;
 
     return <Widget>[
       _SmallIcon(
         icon: ui.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
-        tooltip: 'Lock player',
+        tooltip: l10n.lockPlayer,
         onTap: this_.onLock,
       ),
       _SmallIcon(
         icon: ui.rotation.icon,
-        tooltip: 'Rotation: ${ui.rotation.label}',
+        tooltip: l10n.rotationValue(ui.rotation.label(l10n)),
         onTap: this_.onRotate,
       ),
       _SmallIcon(
         icon: Icons.segment_rounded,
-        tooltip: 'Chapters',
+        tooltip: l10n.chapters,
         onTap: this_.onChapters,
       ),
       _SmallIcon(
         icon: Icons.fullscreen_rounded,
-        tooltip: 'Fullscreen',
+        tooltip: l10n.fullscreen,
         onTap: this_.onFullscreen,
       ),
     ];
@@ -826,3 +844,20 @@ class CircleButton extends StatelessWidget {
     );
   }
 }
+
+/// Material ships replay/forward glyphs for 5, 10 and 30 seconds only, so any
+/// other amount falls back to the plain arrow rather than drawing a number the
+/// button does not honour.
+IconData _replayIcon(Duration amount) => switch (amount.inSeconds) {
+      5 => Icons.replay_5_rounded,
+      10 => Icons.replay_10_rounded,
+      30 => Icons.replay_30_rounded,
+      _ => Icons.fast_rewind_rounded,
+    };
+
+IconData _forwardIcon(Duration amount) => switch (amount.inSeconds) {
+      5 => Icons.forward_5_rounded,
+      10 => Icons.forward_10_rounded,
+      30 => Icons.forward_30_rounded,
+      _ => Icons.fast_forward_rounded,
+    };

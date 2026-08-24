@@ -13,6 +13,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../cast/cast_device.dart';
 import '../../sources/media_source.dart';
 import '../cast/cast_controller.dart';
@@ -327,6 +328,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       onMore: () => MoreMenu.show(context),
                       onPip: pip.supported ? _enterPip : null,
                       onCast: _pickCastDevice,
+                      // The same amounts the gestures use; the buttons used
+                      // to be fixed at 10 and 30 seconds regardless.
+                      skipBack: settings.skipBack,
+                      skipForward: settings.skipForward,
                       onSkipIntro: (chapter) => controller.seek(chapter.end),
                       notImplemented: _notImplemented,
                     ),
@@ -350,7 +355,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _restartHideTimer();
     await TrackSheet.show(
       context: context,
-      title: 'Subtitles',
+      title: AppLocalizations.of(context).subtitles,
       selectedId: state.activeSubtitle?.id,
       options: <TrackOption>[
         for (final MediaTrack t in state.subtitleTracks)
@@ -358,7 +363,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       ],
       onSelected: (o) => controller.setSubtitleTrack(o.track),
       action: TrackSheetAction(
-        label: 'Open subtitle file…',
+        label: AppLocalizations.of(context).openSubtitleFile,
         icon: Icons.subtitles_outlined,
         onTap: () => _openSubtitleFile(controller),
       ),
@@ -388,7 +393,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _restartHideTimer();
     await TrackSheet.show(
       context: context,
-      title: 'Audio',
+      title: AppLocalizations.of(context).audio,
       selectedId: state.activeAudio?.id,
       options: <TrackOption>[
         for (final MediaTrack t in state.audioTracks) TrackOption.fromTrack(t),
@@ -406,7 +411,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _restartHideTimer();
     await TrackSheet.show(
       context: context,
-      title: 'Playback speed',
+      title: AppLocalizations.of(context).playbackSpeed,
       selectedId: state.speed.toStringAsFixed(2),
       options: <TrackOption>[
         for (final double s in _speeds)
@@ -433,14 +438,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     // none at all, and saying so beats opening an empty sheet.
     if (state.chapters.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This file has no chapters')),
+        SnackBar(content: Text(AppLocalizations.of(context).noChaptersInFile)),
       );
       return;
     }
 
     await TrackSheet.show(
       context: context,
-      title: 'Chapters',
+      title: AppLocalizations.of(context).chapters,
       selectedId: state.chapterAt(state.position)?.title,
       options: <TrackOption>[
         for (final MediaChapter c in state.chapters)
@@ -627,7 +632,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   void _notImplemented(String what) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$what — not implemented yet')),
+      SnackBar(content: Text(AppLocalizations.of(context).notImplemented(what))),
     );
   }
 }
@@ -724,7 +729,7 @@ class _LockedOverlayState extends ConsumerState<_LockedOverlay> {
                         iconSize: 26,
                         background: Colors.white.withValues(alpha: 0.12),
                         foreground: Colors.white,
-                        tooltip: 'Locked',
+                        tooltip: AppLocalizations.of(context).locked,
                         // Handled by the double-tap wrapper; a single tap
                         // must not unlock.
                         onPressed: _restartHint,

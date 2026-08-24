@@ -5,16 +5,20 @@
 
 import 'dart:async';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
 
 import '../features/player/incoming_media.dart';
 import '../features/player/playback_controller.dart';
 import '../l10n/app_localizations.dart';
+import '../sources/local_source.dart';
 import '../sources/media_source.dart';
 import 'appearance_settings.dart';
+import 'desktop_window.dart';
 import 'locale_controller.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -38,6 +42,37 @@ class MPlayerApp extends ConsumerStatefulWidget {
 
 class _MPlayerAppState extends ConsumerState<MPlayerApp> {
   late final GoRouter _router = widget.router ?? buildRouter();
+
+  StreamSubscription<String>? _handoffs;
+
+  @override
+  void initState() {
+    super.initState();
+    // A second launch on desktop hands its file here rather than opening a
+    // window of its own.
+    _handoffs = handedOverFiles.listen(_openPath);
+  }
+
+  @override
+  void dispose() {
+    unawaited(_handoffs?.cancel());
+    super.dispose();
+  }
+
+  /// A path from outside the app: a second launch, or a file dropped on the
+  /// window. Both are local paths, which is what the device source reads.
+  void _openPath(String path) {
+    if (path.isEmpty) return;
+    unawaited(
+      _openIncoming(
+        MediaRef(
+          sourceId: LocalSource.sourceId,
+          itemId: path,
+          title: p.basename(path),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +128,17 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: _router,
+      // Wrapping the navigator rather than a screen: a file dropped anywhere
+      // in the window should play, not only on the Files tab.
+      builder: (context, child) => isDesktop
+          ? DropTarget(
+              onDragDone: (details) {
+                final file = details.files.firstOrNull;
+                if (file != null) _openPath(file.path);
+              },
+              child: child ?? const SizedBox.shrink(),
+            )
+          : child ?? const SizedBox.shrink(),
     );
   }
 

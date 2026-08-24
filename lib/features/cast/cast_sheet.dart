@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../cast/cast_device.dart';
 import 'cast_controller.dart';
 
@@ -58,6 +59,7 @@ class _CastSheetState extends ConsumerState<CastSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final spacing = context.spacing;
     final state = ref.watch(castControllerProvider);
 
@@ -75,9 +77,9 @@ class _CastSheetState extends ConsumerState<CastSheet> {
             ),
             child: Row(
               children: <Widget>[
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Play on',
+                    l10n.playOn,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -101,7 +103,7 @@ class _CastSheetState extends ConsumerState<CastSheet> {
                   IconButton(
                     icon: const Icon(Icons.refresh_rounded),
                     color: Colors.white70,
-                    tooltip: 'Search again',
+                    tooltip: l10n.searchAgain,
                     onPressed: ref.read(castControllerProvider.notifier).search,
                   ),
               ],
@@ -125,10 +127,9 @@ class _CastSheetState extends ConsumerState<CastSheet> {
                 spacing.xl,
                 spacing.xl,
               ),
-              child: const Text(
-                'No devices found. Check that the television is on and on '
-                'the same network.',
-                style: TextStyle(color: Colors.white70),
+              child: Text(
+                l10n.noDevicesFound,
+                style: const TextStyle(color: Colors.white70),
               ),
             ),
 
@@ -175,9 +176,9 @@ class _CastSheetState extends ConsumerState<CastSheet> {
           if (state.isCasting)
             ListTile(
               leading: const Icon(Icons.stop_circle_outlined, color: Colors.white70),
-              title: const Text(
-                'Stop casting',
-                style: TextStyle(color: Colors.white),
+              title: Text(
+                l10n.stopCasting,
+                style: const TextStyle(color: Colors.white),
               ),
               onTap: () {
                 Navigator.of(context).pop();

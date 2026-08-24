@@ -83,10 +83,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get openFileOrFolder => 'Mở tệp hoặc thư mục';
 
   @override
-  String get addShareTitle => 'Thêm SMB, WebDAV hoặc NFS';
+  String get addShareTitle => 'Thêm SMB hoặc WebDAV';
 
   @override
-  String get addShareSubtitle => 'Hoặc quét mạng nội bộ';
+  String get addShareSubtitle => 'Một chia sẻ trong mạng của bạn';
 
   @override
   String driverUnavailable(String kind) {
@@ -590,13 +590,332 @@ class AppLocalizationsVi extends AppLocalizations {
   String get on => 'Bật';
 
   @override
-  String get back10 => 'Lùi 10 giây';
+  String back10(int seconds) {
+    return 'Lùi $seconds giây';
+  }
 
   @override
-  String get forward30 => 'Tiến 30 giây';
+  String forward30(int seconds) {
+    return 'Tiến $seconds giây';
+  }
 
   @override
   String get nothingToPlay => 'Chưa có gì để phát — hãy chọn tệp từ tab Tệp.';
+
+  @override
+  String get previousFile => 'Trước';
+
+  @override
+  String get nextFile => 'Tiếp';
+
+  @override
+  String get loading => 'Đang tải';
+
+  @override
+  String aspectRatioValue(String mode) {
+    return 'Tỉ lệ khung hình: $mode';
+  }
+
+  @override
+  String rotationValue(String mode) {
+    return 'Xoay: $mode';
+  }
+
+  @override
+  String subtitlesValue(String track) {
+    return 'Phụ đề: $track';
+  }
+
+  @override
+  String audioValue(String track) {
+    return 'Âm thanh: $track';
+  }
+
+  @override
+  String speedValue(String speed) {
+    return 'Tốc độ: $speed×';
+  }
+
+  @override
+  String get audioDelay => 'Độ trễ âm thanh';
+
+  @override
+  String get openSubtitleFile => 'Mở tệp phụ đề…';
+
+  @override
+  String get playOn => 'Phát trên';
+
+  @override
+  String get searchAgain => 'Tìm lại';
+
+  @override
+  String get noDevicesFound =>
+      'Không tìm thấy thiết bị nào. Kiểm tra TV đã bật và cùng mạng với điện thoại.';
+
+  @override
+  String get stopCasting => 'Dừng truyền';
+
+  @override
+  String playingOn(String device) {
+    return 'Đang phát trên $device';
+  }
+
+  @override
+  String get couldNotCast => 'Không truyền được tới thiết bị đó.';
+
+  @override
+  String get folders => 'Thư mục';
+
+  @override
+  String get grantedFolder => 'Thư mục đã cấp quyền';
+
+  @override
+  String get removeFolder => 'Gỡ thư mục';
+
+  @override
+  String get addFolder => 'Thêm thư mục';
+
+  @override
+  String get addFolderSubtitle => 'Cho video mà chỉ mục media không liệt kê';
+
+  @override
+  String get allowAccess => 'Cho phép truy cập';
+
+  @override
+  String get editShare => 'Sửa chia sẻ';
+
+  @override
+  String get editShareSubtitle => 'Đổi tên, địa chỉ hoặc thông tin đăng nhập';
+
+  @override
+  String get hardwareDecodingFallback =>
+      'Tự chuyển sang phần mềm khi codec không được hỗ trợ';
+
+  @override
+  String get audioDelaySub => 'Dịch tiếng so với hình';
+
+  @override
+  String get autoPlayNextSub => 'Phát tiếp video kế trong thư mục';
+
+  @override
+  String get pictureInPictureSub =>
+      'Thu thành cửa sổ nổi khi bạn rời khỏi ứng dụng';
+
+  @override
+  String get backgroundAudio => 'Phát tiếng ở nền';
+
+  @override
+  String get backgroundAudioSub =>
+      'Vẫn phát khi tắt màn hình, kèm thông báo điều khiển';
+
+  @override
+  String get followVideo => 'Theo video';
+
+  @override
+  String get needsTranscodingServer => 'Cần máy chủ có khả năng chuyển mã';
+
+  @override
+  String get noPreference => 'Không ưu tiên';
+
+  @override
+  String get noPreferenceSub => 'Giữ nguyên track mà tệp đã chọn';
+
+  @override
+  String get preferredLanguage => 'Ngôn ngữ ưu tiên';
+
+  @override
+  String get preferredLanguageSub => 'Ngôn ngữ bạn muốn nghe và đọc';
+
+  @override
+  String get smartSubtitles => 'Phụ đề thông minh';
+
+  @override
+  String get smartSubtitlesSub => 'Chỉ bật phụ đề khi tiếng là ngôn ngữ khác';
+
+  @override
+  String get imageBasedOnly => 'Chỉ với phụ đề dạng ảnh';
+
+  @override
+  String get syncOffsetSub => 'Số dương làm phụ đề chậm lại';
+
+  @override
+  String get subtitlePreviewLine => 'Thuỷ triều đổi chiều lúc nửa đêm.';
+
+  @override
+  String get grid => 'Lưới';
+
+  @override
+  String get comfortable => 'Thoải mái';
+
+  @override
+  String get audioOutput => 'Đầu ra';
+
+  @override
+  String get passthrough => 'Truyền thẳng bitstream';
+
+  @override
+  String get passthroughSub =>
+      'Gửi AC3, DTS, E-AC3 và TrueHD sang ampli mà không giải mã';
+
+  @override
+  String get passthroughNote =>
+      'Chỉ bật nếu có receiver hoặc soundbar giải mã hộ. Không có thì truyền thẳng sẽ ra im lặng.';
+
+  @override
+  String get volumeBoost => 'Tăng âm lượng';
+
+  @override
+  String get volumeBoostNote =>
+      'Trần cho thao tác chỉnh âm lượng. Trên 100% tiếng được khuếch đại — cứu được phim nhỏ tiếng, nhưng phim to tiếng có thể bị rè.';
+
+  @override
+  String get gapless => 'Phát liền mạch';
+
+  @override
+  String get gaplessSub =>
+      'Mức cố gắng nối tệp này sang tệp kế mà không có khoảng lặng';
+
+  @override
+  String get gaplessOff => 'Tắt';
+
+  @override
+  String get gaplessOffSub => 'Luôn khởi tạo lại giữa các tệp';
+
+  @override
+  String get gaplessAutomatic => 'Tự động';
+
+  @override
+  String get gaplessAutomaticSub => 'Liền mạch khi tệp kế cùng định dạng';
+
+  @override
+  String get gaplessAlways => 'Luôn luôn';
+
+  @override
+  String get gaplessAlwaysSub => 'Liền mạch kể cả khi phải lấy mẫu lại';
+
+  @override
+  String get tracks => 'Track';
+
+  @override
+  String get sharedWithSubtitles => 'Dùng chung với cài đặt Phụ đề';
+
+  @override
+  String get checkForUpdatesSub =>
+      'Hỏi GitHub một lần. Không gửi gì về bạn hay thiết bị';
+
+  @override
+  String get diagnosticsSub =>
+      'Bản dựng, thiết bị và log trình phát, để báo lỗi';
+
+  @override
+  String get privacySub => 'Cái gì rời khỏi máy này, và cái gì thì không';
+
+  @override
+  String get checking => 'Đang kiểm tra…';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Đã có bản $version';
+  }
+
+  @override
+  String get couldNotCheck => 'Không kiểm tra được';
+
+  @override
+  String couldNotOpen(String url) {
+    return 'Không mở được $url';
+  }
+
+  @override
+  String get build => 'Bản dựng';
+
+  @override
+  String get version => 'Phiên bản';
+
+  @override
+  String get applicationId => 'Mã ứng dụng';
+
+  @override
+  String get platform => 'Nền tảng';
+
+  @override
+  String get operatingSystem => 'Hệ điều hành';
+
+  @override
+  String get locale => 'Ngôn ngữ hệ thống';
+
+  @override
+  String get screen => 'Màn hình';
+
+  @override
+  String get playerLog => 'Log trình phát';
+
+  @override
+  String get copyEverything => 'Sao chép tất cả';
+
+  @override
+  String get diagnosticsCopied => 'Đã sao chép thông tin chẩn đoán';
+
+  @override
+  String get logEmpty =>
+      'Chưa có gì. Log chỉ đầy lên khi đang phát, và chỉ giữ trong phiên này.';
+
+  @override
+  String get privacyNoTelemetry =>
+      'Không thống kê, không telemetry, không báo cáo sự cố';
+
+  @override
+  String get privacyNoTelemetryBody =>
+      'Không có SDK bên thứ ba nào thu thập gì. mPlayer chỉ liên lạc với máy chủ và chia sẻ mà bạn tự cấu hình, ngoài ra không gì khác.';
+
+  @override
+  String get privacyLocal => 'Thư viện của bạn nằm lại trên máy';
+
+  @override
+  String get privacyLocalBody =>
+      'Bạn xem gì, xem tới đâu và ảnh trên kệ Xem tiếp đều lưu cục bộ. Không thứ nào rời khỏi máy.';
+
+  @override
+  String get privacyKeychain => 'Mật khẩu nằm trong keychain của hệ thống';
+
+  @override
+  String get privacyKeychainBody =>
+      'Thông tin đăng nhập chia sẻ và máy chủ đi vào bộ lưu trữ bảo mật của nền tảng, không bao giờ nằm chung với các cài đặt thường.';
+
+  @override
+  String get privacyUpdates => 'Kiểm tra cập nhật là thủ công';
+
+  @override
+  String get privacyUpdatesBody =>
+      'Không kiểm tra gì lúc khởi động. Bấm \"Kiểm tra cập nhật\" mới gửi một yêu cầu ẩn danh tới API releases của GitHub — không kèm định danh nào.';
+
+  @override
+  String get privacyCasting =>
+      'Truyền màn hình mở một máy chủ trong mạng của bạn';
+
+  @override
+  String get privacyCastingBody =>
+      'Trong lúc truyền, tệp đang phát được phục vụ qua mạng nội bộ để TV lấy về. Máy chủ đó tắt ngay khi ngừng truyền.';
+
+  @override
+  String get privacyFooter =>
+      'mPlayer là phần mềm tự do theo GPL-3.0-or-later. Bạn có thể đọc mã nguồn và tự kiểm chứng mọi điều trên trang này.';
+
+  @override
+  String get noChaptersInFile => 'Tệp này không có chương';
+
+  @override
+  String get locked => 'Đã khoá';
+
+  @override
+  String milliseconds(int count) {
+    return '$count ms';
+  }
+
+  @override
+  String seconds(int count) {
+    return '$count giây';
+  }
 
   @override
   String get rotationAuto => 'Tự động';

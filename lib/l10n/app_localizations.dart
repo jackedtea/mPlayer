@@ -245,13 +245,13 @@ abstract class AppLocalizations {
   /// No description provided for @addShareTitle.
   ///
   /// In en, this message translates to:
-  /// **'Add SMB, WebDAV or NFS'**
+  /// **'Add SMB or WebDAV'**
   String get addShareTitle;
 
   /// No description provided for @addShareSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Or scan the local network'**
+  /// **'A share on your network'**
   String get addShareSubtitle;
 
   /// No description provided for @driverUnavailable.
@@ -1199,20 +1199,572 @@ abstract class AppLocalizations {
   /// No description provided for @back10.
   ///
   /// In en, this message translates to:
-  /// **'Back 10 seconds'**
-  String get back10;
+  /// **'Back {seconds} seconds'**
+  String back10(int seconds);
 
   /// No description provided for @forward30.
   ///
   /// In en, this message translates to:
-  /// **'Forward 30 seconds'**
-  String get forward30;
+  /// **'Forward {seconds} seconds'**
+  String forward30(int seconds);
 
   /// No description provided for @nothingToPlay.
   ///
   /// In en, this message translates to:
   /// **'Nothing to play — pick a file from Files.'**
   String get nothingToPlay;
+
+  /// No description provided for @previousFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previousFile;
+
+  /// No description provided for @nextFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get nextFile;
+
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get loading;
+
+  /// No description provided for @aspectRatioValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Aspect ratio: {mode}'**
+  String aspectRatioValue(String mode);
+
+  /// No description provided for @rotationValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotation: {mode}'**
+  String rotationValue(String mode);
+
+  /// No description provided for @subtitlesValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles: {track}'**
+  String subtitlesValue(String track);
+
+  /// No description provided for @audioValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio: {track}'**
+  String audioValue(String track);
+
+  /// No description provided for @speedValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed: {speed}×'**
+  String speedValue(String speed);
+
+  /// No description provided for @audioDelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio delay'**
+  String get audioDelay;
+
+  /// No description provided for @openSubtitleFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open subtitle file…'**
+  String get openSubtitleFile;
+
+  /// No description provided for @playOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Play on'**
+  String get playOn;
+
+  /// No description provided for @searchAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Search again'**
+  String get searchAgain;
+
+  /// No description provided for @noDevicesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No devices found. Check that the television is on and on the same network.'**
+  String get noDevicesFound;
+
+  /// No description provided for @stopCasting.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop casting'**
+  String get stopCasting;
+
+  /// No description provided for @playingOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing on {device}'**
+  String playingOn(String device);
+
+  /// No description provided for @couldNotCast.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not cast to that device.'**
+  String get couldNotCast;
+
+  /// No description provided for @folders.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders'**
+  String get folders;
+
+  /// No description provided for @grantedFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Granted folder'**
+  String get grantedFolder;
+
+  /// No description provided for @removeFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove folder'**
+  String get removeFolder;
+
+  /// No description provided for @addFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a folder'**
+  String get addFolder;
+
+  /// No description provided for @addFolderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'For videos the media index does not list'**
+  String get addFolderSubtitle;
+
+  /// No description provided for @allowAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow access'**
+  String get allowAccess;
+
+  /// No description provided for @editShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit share'**
+  String get editShare;
+
+  /// No description provided for @editShareSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change its name, address or credentials'**
+  String get editShareSubtitle;
+
+  /// No description provided for @hardwareDecodingFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Falls back to software when a codec is unsupported'**
+  String get hardwareDecodingFallback;
+
+  /// No description provided for @audioDelaySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Shifts the sound against the picture'**
+  String get audioDelaySub;
+
+  /// No description provided for @autoPlayNextSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Continues with the next video in the folder'**
+  String get autoPlayNextSub;
+
+  /// No description provided for @pictureInPictureSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Shrink into a floating window when you leave the app'**
+  String get pictureInPictureSub;
+
+  /// No description provided for @backgroundAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Play audio in background'**
+  String get backgroundAudio;
+
+  /// No description provided for @backgroundAudioSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps playing with the screen off, with a notification'**
+  String get backgroundAudioSub;
+
+  /// No description provided for @followVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow video'**
+  String get followVideo;
+
+  /// No description provided for @needsTranscodingServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a server that can transcode'**
+  String get needsTranscodingServer;
+
+  /// No description provided for @noPreference.
+  ///
+  /// In en, this message translates to:
+  /// **'No preference'**
+  String get noPreference;
+
+  /// No description provided for @noPreferenceSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave the tracks the file chose'**
+  String get noPreferenceSub;
+
+  /// No description provided for @preferredLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred language'**
+  String get preferredLanguage;
+
+  /// No description provided for @preferredLanguageSub.
+  ///
+  /// In en, this message translates to:
+  /// **'The language you would rather hear and read'**
+  String get preferredLanguageSub;
+
+  /// No description provided for @smartSubtitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart subtitles'**
+  String get smartSubtitles;
+
+  /// No description provided for @smartSubtitlesSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles only when the audio is in another language'**
+  String get smartSubtitlesSub;
+
+  /// No description provided for @imageBasedOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Image-based subtitles only'**
+  String get imageBasedOnly;
+
+  /// No description provided for @syncOffsetSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Positive delays the subtitles'**
+  String get syncOffsetSub;
+
+  /// No description provided for @subtitlePreviewLine.
+  ///
+  /// In en, this message translates to:
+  /// **'The tide turns at midnight.'**
+  String get subtitlePreviewLine;
+
+  /// No description provided for @grid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get grid;
+
+  /// No description provided for @comfortable.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfortable'**
+  String get comfortable;
+
+  /// No description provided for @audioOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get audioOutput;
+
+  /// No description provided for @passthrough.
+  ///
+  /// In en, this message translates to:
+  /// **'Bitstream passthrough'**
+  String get passthrough;
+
+  /// No description provided for @passthroughSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Send AC3, DTS, E-AC3 and TrueHD to the amplifier undecoded'**
+  String get passthroughSub;
+
+  /// No description provided for @passthroughNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this on only if a receiver or soundbar is decoding for you. Without one, passthrough plays silence.'**
+  String get passthroughNote;
+
+  /// No description provided for @volumeBoost.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume boost'**
+  String get volumeBoost;
+
+  /// No description provided for @volumeBoostNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The ceiling for the volume gesture. Above 100% the sound is amplified, which rescues a quiet film and can clip a loud one.'**
+  String get volumeBoostNote;
+
+  /// No description provided for @gapless.
+  ///
+  /// In en, this message translates to:
+  /// **'Gapless playback'**
+  String get gapless;
+
+  /// No description provided for @gaplessSub.
+  ///
+  /// In en, this message translates to:
+  /// **'How hard to try to run one file into the next'**
+  String get gaplessSub;
+
+  /// No description provided for @gaplessOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get gaplessOff;
+
+  /// No description provided for @gaplessOffSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Always reinitialise between files'**
+  String get gaplessOffSub;
+
+  /// No description provided for @gaplessAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get gaplessAutomatic;
+
+  /// No description provided for @gaplessAutomaticSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Gapless when the next file matches'**
+  String get gaplessAutomaticSub;
+
+  /// No description provided for @gaplessAlways.
+  ///
+  /// In en, this message translates to:
+  /// **'Always'**
+  String get gaplessAlways;
+
+  /// No description provided for @gaplessAlwaysSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Gapless even if it means resampling'**
+  String get gaplessAlwaysSub;
+
+  /// No description provided for @tracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracks'**
+  String get tracks;
+
+  /// No description provided for @sharedWithSubtitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with Subtitle settings'**
+  String get sharedWithSubtitles;
+
+  /// No description provided for @checkForUpdatesSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Asks GitHub once. Nothing about you or the device is sent'**
+  String get checkForUpdatesSub;
+
+  /// No description provided for @diagnosticsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Build, device and the player log, for a bug report'**
+  String get diagnosticsSub;
+
+  /// No description provided for @privacySub.
+  ///
+  /// In en, this message translates to:
+  /// **'What leaves this device, and what does not'**
+  String get privacySub;
+
+  /// No description provided for @checking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get checking;
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is out'**
+  String updateAvailable(String version);
+
+  /// No description provided for @couldNotCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check'**
+  String get couldNotCheck;
+
+  /// No description provided for @couldNotOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open {url}'**
+  String couldNotOpen(String url);
+
+  /// No description provided for @build.
+  ///
+  /// In en, this message translates to:
+  /// **'Build'**
+  String get build;
+
+  /// No description provided for @version.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get version;
+
+  /// No description provided for @applicationId.
+  ///
+  /// In en, this message translates to:
+  /// **'Application id'**
+  String get applicationId;
+
+  /// No description provided for @platform.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform'**
+  String get platform;
+
+  /// No description provided for @operatingSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Operating system'**
+  String get operatingSystem;
+
+  /// No description provided for @locale.
+  ///
+  /// In en, this message translates to:
+  /// **'Locale'**
+  String get locale;
+
+  /// No description provided for @screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen'**
+  String get screen;
+
+  /// No description provided for @playerLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Player log'**
+  String get playerLog;
+
+  /// No description provided for @copyEverything.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy everything'**
+  String get copyEverything;
+
+  /// No description provided for @diagnosticsCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics copied'**
+  String get diagnosticsCopied;
+
+  /// No description provided for @logEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet. The log fills while a file is playing, and is kept only for the current session.'**
+  String get logEmpty;
+
+  /// No description provided for @privacyNoTelemetry.
+  ///
+  /// In en, this message translates to:
+  /// **'No analytics, no telemetry, no crash reporting'**
+  String get privacyNoTelemetry;
+
+  /// No description provided for @privacyNoTelemetryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no third-party SDK collecting anything. mPlayer contacts the servers and shares you configure, and nothing else.'**
+  String get privacyNoTelemetryBody;
+
+  /// No description provided for @privacyLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Your library stays on your device'**
+  String get privacyLocal;
+
+  /// No description provided for @privacyLocalBody.
+  ///
+  /// In en, this message translates to:
+  /// **'What you watch, where you got to and the stills on the Continue watching shelf are stored locally. None of it leaves the device.'**
+  String get privacyLocalBody;
+
+  /// No description provided for @privacyKeychain.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords live in the system keychain'**
+  String get privacyKeychain;
+
+  /// No description provided for @privacyKeychainBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Share and server credentials go to the platform secure storage, never into ordinary preferences alongside the rest of the settings.'**
+  String get privacyKeychainBody;
+
+  /// No description provided for @privacyUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Update checks are manual'**
+  String get privacyUpdates;
+
+  /// No description provided for @privacyUpdatesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is checked on launch. Pressing \"Check for updates\" makes one anonymous request to the GitHub releases API — no identifier is sent with it.'**
+  String get privacyUpdatesBody;
+
+  /// No description provided for @privacyCasting.
+  ///
+  /// In en, this message translates to:
+  /// **'Casting opens a server on your network'**
+  String get privacyCasting;
+
+  /// No description provided for @privacyCastingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'While a cast is running, the file being played is served over the local network so the television can fetch it. That server stops when the cast does.'**
+  String get privacyCastingBody;
+
+  /// No description provided for @privacyFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'mPlayer is free software under the GPL-3.0-or-later. You can read the source and check every claim on this page for yourself.'**
+  String get privacyFooter;
+
+  /// No description provided for @noChaptersInFile.
+  ///
+  /// In en, this message translates to:
+  /// **'This file has no chapters'**
+  String get noChaptersInFile;
+
+  /// No description provided for @locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get locked;
+
+  /// No description provided for @milliseconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} ms'**
+  String milliseconds(int count);
+
+  /// No description provided for @seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} seconds'**
+  String seconds(int count);
 
   /// No description provided for @rotationAuto.
   ///

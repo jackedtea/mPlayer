@@ -4,20 +4,29 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+
+import '../../l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Rotation control cycles through these; the default follows the video's own
 /// aspect rather than the device sensor.
 enum RotationMode {
-  auto('Auto', Icons.screen_rotation_rounded),
-  landscape('Landscape', Icons.stay_current_landscape_rounded),
-  portrait('Portrait', Icons.stay_current_portrait_rounded);
+  auto(Icons.screen_rotation_rounded),
+  landscape(Icons.stay_current_landscape_rounded),
+  portrait(Icons.stay_current_portrait_rounded);
 
-  const RotationMode(this.label, this.icon);
+  const RotationMode(this.icon);
 
-  final String label;
   final IconData icon;
+
+  /// The name in the user's language. A `label` field cannot carry this: an
+  /// enum constant is built once, before there is a locale to build it in.
+  String label(AppLocalizations l10n) => switch (this) {
+        RotationMode.auto => l10n.rotationAuto,
+        RotationMode.landscape => l10n.rotationLandscape,
+        RotationMode.portrait => l10n.rotationPortrait,
+      };
 
   RotationMode get next =>
       RotationMode.values[(index + 1) % RotationMode.values.length];
@@ -56,13 +65,17 @@ List<DeviceOrientation> orientationsForVideo(int width, int height) {
 
 /// How the video fills the surface.
 enum AspectMode {
-  fit('Fit', BoxFit.contain),
-  fill('Fill', BoxFit.cover),
-  stretch('Stretch', BoxFit.fill);
+  fit(BoxFit.contain),
+  fill(BoxFit.cover),
+  stretch(BoxFit.fill);
 
-  const AspectMode(this.label, this.boxFit);
+  const AspectMode(this.boxFit);
 
-  final String label;
+  String label(AppLocalizations l10n) => switch (this) {
+        AspectMode.fit => l10n.aspectFit,
+        AspectMode.fill => l10n.aspectFill,
+        AspectMode.stretch => l10n.aspectStretch,
+      };
 
   /// Named `boxFit` because `fit` would collide with the enum value.
   final BoxFit boxFit;

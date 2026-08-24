@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../cast/cast_device.dart';
 
 /// What the player shows while the television is the one playing.
@@ -35,6 +36,7 @@ class CastingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final spacing = context.spacing;
     final duration = status.duration;
     final progress = duration > Duration.zero
@@ -52,7 +54,7 @@ class CastingOverlay extends StatelessWidget {
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 color: Colors.white,
-                tooltip: 'Back',
+                tooltip: l10n.actionBack,
                 onPressed: onBack,
               ),
             ),
@@ -75,7 +77,7 @@ class CastingOverlay extends StatelessWidget {
             ),
             SizedBox(height: spacing.xs),
             Text(
-              'Playing on ${device.name}',
+              l10n.playingOn(device.name),
               style: const TextStyle(color: Colors.white70),
             ),
             const Spacer(),
@@ -128,7 +130,7 @@ class CastingOverlay extends StatelessWidget {
                   iconSize: 28,
                   icon: const Icon(Icons.stop_circle_outlined),
                   color: Colors.white,
-                  tooltip: 'Stop casting',
+                  tooltip: l10n.stopCasting,
                   onPressed: onStop,
                 ),
               ],

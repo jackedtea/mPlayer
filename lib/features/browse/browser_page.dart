@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/models/library_models.dart';
 import '../../sources/local_source.dart' show formatBytes;
 import '../../sources/media_source.dart';
@@ -65,7 +66,7 @@ class _BrowserPageState extends ConsumerState<BrowserPage> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
+            tooltip: AppLocalizations.of(context).actionRefresh,
             onPressed: () =>
                 ref.invalidate(directoryListingProvider(location)),
           ),
@@ -129,7 +130,9 @@ class _BrowserPageState extends ConsumerState<BrowserPage> {
 
     if (!entry.isPlayable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${entry.name} is not a video file')),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).notAVideo(entry.name)),
+        ),
       );
       return;
     }
@@ -486,7 +489,7 @@ class _ErrorState extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: onRetry,
               icon: const Icon(Icons.restart_alt_rounded),
-              label: const Text('Retry'),
+              label: Text(AppLocalizations.of(context).actionRetry),
             ),
           ],
         ),

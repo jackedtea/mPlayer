@@ -156,6 +156,49 @@ void main() {
     });
   });
 
+  group('audio', () {
+    test('defaults are the safe ones', () {
+      const s = PlayerSettings();
+
+      // Passthrough with no receiver attached plays silence, so it cannot be
+      // the default.
+      expect(s.audioPassthrough, isFalse);
+      expect(s.mpvSpdif, '');
+      expect(s.volumeBoost, 100);
+      // mpv's own default, and the middle of the three.
+      expect(s.gapless, GaplessAudio.automatic);
+      expect(s.gapless.mpvValue, 'weak');
+    });
+
+    test('passthrough lists the formats an amplifier can decode', () {
+      const s = PlayerSettings(audioPassthrough: true);
+
+      expect(s.mpvSpdif, 'ac3,dts,eac3,truehd');
+    });
+
+    test('round-trips through JSON', () {
+      const original = PlayerSettings(
+        audioPassthrough: true,
+        volumeBoost: 150,
+        gapless: GaplessAudio.always,
+      );
+
+      final restored = PlayerSettings.fromJson(original.toJson());
+
+      expect(restored.audioPassthrough, isTrue);
+      expect(restored.volumeBoost, 150);
+      expect(restored.gapless, GaplessAudio.always);
+    });
+
+    test('a gapless mode a newer build wrote falls back to automatic', () {
+      final restored = PlayerSettings.fromJson(<String, dynamic>{
+        'gapless': 'quantum',
+      });
+
+      expect(restored.gapless, GaplessAudio.automatic);
+    });
+  });
+
   group('preferred language', () {
     test('is clearable, which a null argument alone cannot express', () {
       const chosen = PlayerSettings(preferredLanguage: 'vi');

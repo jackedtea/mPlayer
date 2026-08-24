@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Scaffold shared by every settings sub-page, so they cannot drift apart.
 class SettingsScaffold extends StatelessWidget {
@@ -62,6 +63,37 @@ class SettingsSection extends StatelessWidget {
   }
 }
 
+/// An explanatory paragraph under a row.
+///
+/// For the settings whose consequence is not visible from the switch itself —
+/// passthrough with no receiver attached plays silence, and a user cannot
+/// work that out from inside a film.
+class SettingsNote extends StatelessWidget {
+  const SettingsNote(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        spacing.screenHorizontal(context.windowSize),
+        0,
+        spacing.screenHorizontal(context.windowSize),
+        spacing.sm,
+      ),
+      child: Text(
+        text,
+        style: context.texts.bodySmall?.copyWith(
+          color: context.colors.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
 /// A row whose value opens a picker. Value sits on the right, muted.
 class SettingsValueRow extends StatelessWidget {
   const SettingsValueRow({
@@ -83,10 +115,23 @@ class SettingsValueRow extends StatelessWidget {
       contentPadding: context.spacing.screenPadding(context.windowSize),
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing: Text(
-        value,
-        style: context.texts.bodyMedium
-            ?.copyWith(color: context.colors.onSurfaceVariant),
+      // Bounded, and ellipsised inside that bound. A ListTile asserts when
+      // its trailing widget claims the whole tile, and a value long enough to
+      // do that is real — an OS version string on a phone, say. Half the
+      // width leaves the title readable, which is what tells the user which
+      // row they are looking at.
+      trailing: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width / 2,
+        ),
+        child: Text(
+          value,
+          textAlign: TextAlign.end,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: context.texts.bodyMedium
+              ?.copyWith(color: context.colors.onSurfaceVariant),
+        ),
       ),
       onTap: onTap ?? () => notImplemented(context, title),
     );
@@ -176,6 +221,6 @@ class SettingsSliderRow extends StatelessWidget {
 
 void notImplemented(BuildContext context, String what) {
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$what — not implemented yet')),
+    SnackBar(content: Text(AppLocalizations.of(context).notImplemented(what))),
   );
 }

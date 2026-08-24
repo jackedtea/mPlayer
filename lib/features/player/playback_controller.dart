@@ -491,6 +491,11 @@ class PlaybackController extends Notifier<PlaybackState> {
         'audio-delay',
         '${settings.audioDelay.inMilliseconds / 1000}',
       );
+      // Empty means "decode everything here", which is the safe default: a
+      // device with no receiver attached plays silence otherwise.
+      await platform.setProperty('audio-spdif', settings.mpvSpdif);
+      await platform.setProperty('volume-max', '${settings.volumeBoost}');
+      await platform.setProperty('gapless-audio', settings.gapless.mpvValue);
     } catch (e) {
       // Best-effort: a property mpv does not know must not stop playback.
       debugPrint('Could not apply player settings: $e');

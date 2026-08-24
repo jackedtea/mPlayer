@@ -83,10 +83,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openFileOrFolder => 'Open a file or folder';
 
   @override
-  String get addShareTitle => 'Add SMB, WebDAV or NFS';
+  String get addShareTitle => 'Add SMB or WebDAV';
 
   @override
-  String get addShareSubtitle => 'Or scan the local network';
+  String get addShareSubtitle => 'A share on your network';
 
   @override
   String driverUnavailable(String kind) {
@@ -589,13 +589,332 @@ class AppLocalizationsEn extends AppLocalizations {
   String get on => 'On';
 
   @override
-  String get back10 => 'Back 10 seconds';
+  String back10(int seconds) {
+    return 'Back $seconds seconds';
+  }
 
   @override
-  String get forward30 => 'Forward 30 seconds';
+  String forward30(int seconds) {
+    return 'Forward $seconds seconds';
+  }
 
   @override
   String get nothingToPlay => 'Nothing to play — pick a file from Files.';
+
+  @override
+  String get previousFile => 'Previous';
+
+  @override
+  String get nextFile => 'Next';
+
+  @override
+  String get loading => 'Loading';
+
+  @override
+  String aspectRatioValue(String mode) {
+    return 'Aspect ratio: $mode';
+  }
+
+  @override
+  String rotationValue(String mode) {
+    return 'Rotation: $mode';
+  }
+
+  @override
+  String subtitlesValue(String track) {
+    return 'Subtitles: $track';
+  }
+
+  @override
+  String audioValue(String track) {
+    return 'Audio: $track';
+  }
+
+  @override
+  String speedValue(String speed) {
+    return 'Speed: $speed×';
+  }
+
+  @override
+  String get audioDelay => 'Audio delay';
+
+  @override
+  String get openSubtitleFile => 'Open subtitle file…';
+
+  @override
+  String get playOn => 'Play on';
+
+  @override
+  String get searchAgain => 'Search again';
+
+  @override
+  String get noDevicesFound =>
+      'No devices found. Check that the television is on and on the same network.';
+
+  @override
+  String get stopCasting => 'Stop casting';
+
+  @override
+  String playingOn(String device) {
+    return 'Playing on $device';
+  }
+
+  @override
+  String get couldNotCast => 'Could not cast to that device.';
+
+  @override
+  String get folders => 'Folders';
+
+  @override
+  String get grantedFolder => 'Granted folder';
+
+  @override
+  String get removeFolder => 'Remove folder';
+
+  @override
+  String get addFolder => 'Add a folder';
+
+  @override
+  String get addFolderSubtitle => 'For videos the media index does not list';
+
+  @override
+  String get allowAccess => 'Allow access';
+
+  @override
+  String get editShare => 'Edit share';
+
+  @override
+  String get editShareSubtitle => 'Change its name, address or credentials';
+
+  @override
+  String get hardwareDecodingFallback =>
+      'Falls back to software when a codec is unsupported';
+
+  @override
+  String get audioDelaySub => 'Shifts the sound against the picture';
+
+  @override
+  String get autoPlayNextSub => 'Continues with the next video in the folder';
+
+  @override
+  String get pictureInPictureSub =>
+      'Shrink into a floating window when you leave the app';
+
+  @override
+  String get backgroundAudio => 'Play audio in background';
+
+  @override
+  String get backgroundAudioSub =>
+      'Keeps playing with the screen off, with a notification';
+
+  @override
+  String get followVideo => 'Follow video';
+
+  @override
+  String get needsTranscodingServer => 'Needs a server that can transcode';
+
+  @override
+  String get noPreference => 'No preference';
+
+  @override
+  String get noPreferenceSub => 'Leave the tracks the file chose';
+
+  @override
+  String get preferredLanguage => 'Preferred language';
+
+  @override
+  String get preferredLanguageSub =>
+      'The language you would rather hear and read';
+
+  @override
+  String get smartSubtitles => 'Smart subtitles';
+
+  @override
+  String get smartSubtitlesSub =>
+      'Subtitles only when the audio is in another language';
+
+  @override
+  String get imageBasedOnly => 'Image-based subtitles only';
+
+  @override
+  String get syncOffsetSub => 'Positive delays the subtitles';
+
+  @override
+  String get subtitlePreviewLine => 'The tide turns at midnight.';
+
+  @override
+  String get grid => 'Grid';
+
+  @override
+  String get comfortable => 'Comfortable';
+
+  @override
+  String get audioOutput => 'Output';
+
+  @override
+  String get passthrough => 'Bitstream passthrough';
+
+  @override
+  String get passthroughSub =>
+      'Send AC3, DTS, E-AC3 and TrueHD to the amplifier undecoded';
+
+  @override
+  String get passthroughNote =>
+      'Turn this on only if a receiver or soundbar is decoding for you. Without one, passthrough plays silence.';
+
+  @override
+  String get volumeBoost => 'Volume boost';
+
+  @override
+  String get volumeBoostNote =>
+      'The ceiling for the volume gesture. Above 100% the sound is amplified, which rescues a quiet film and can clip a loud one.';
+
+  @override
+  String get gapless => 'Gapless playback';
+
+  @override
+  String get gaplessSub => 'How hard to try to run one file into the next';
+
+  @override
+  String get gaplessOff => 'Off';
+
+  @override
+  String get gaplessOffSub => 'Always reinitialise between files';
+
+  @override
+  String get gaplessAutomatic => 'Automatic';
+
+  @override
+  String get gaplessAutomaticSub => 'Gapless when the next file matches';
+
+  @override
+  String get gaplessAlways => 'Always';
+
+  @override
+  String get gaplessAlwaysSub => 'Gapless even if it means resampling';
+
+  @override
+  String get tracks => 'Tracks';
+
+  @override
+  String get sharedWithSubtitles => 'Shared with Subtitle settings';
+
+  @override
+  String get checkForUpdatesSub =>
+      'Asks GitHub once. Nothing about you or the device is sent';
+
+  @override
+  String get diagnosticsSub =>
+      'Build, device and the player log, for a bug report';
+
+  @override
+  String get privacySub => 'What leaves this device, and what does not';
+
+  @override
+  String get checking => 'Checking…';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Version $version is out';
+  }
+
+  @override
+  String get couldNotCheck => 'Could not check';
+
+  @override
+  String couldNotOpen(String url) {
+    return 'Could not open $url';
+  }
+
+  @override
+  String get build => 'Build';
+
+  @override
+  String get version => 'Version';
+
+  @override
+  String get applicationId => 'Application id';
+
+  @override
+  String get platform => 'Platform';
+
+  @override
+  String get operatingSystem => 'Operating system';
+
+  @override
+  String get locale => 'Locale';
+
+  @override
+  String get screen => 'Screen';
+
+  @override
+  String get playerLog => 'Player log';
+
+  @override
+  String get copyEverything => 'Copy everything';
+
+  @override
+  String get diagnosticsCopied => 'Diagnostics copied';
+
+  @override
+  String get logEmpty =>
+      'Nothing yet. The log fills while a file is playing, and is kept only for the current session.';
+
+  @override
+  String get privacyNoTelemetry =>
+      'No analytics, no telemetry, no crash reporting';
+
+  @override
+  String get privacyNoTelemetryBody =>
+      'There is no third-party SDK collecting anything. mPlayer contacts the servers and shares you configure, and nothing else.';
+
+  @override
+  String get privacyLocal => 'Your library stays on your device';
+
+  @override
+  String get privacyLocalBody =>
+      'What you watch, where you got to and the stills on the Continue watching shelf are stored locally. None of it leaves the device.';
+
+  @override
+  String get privacyKeychain => 'Passwords live in the system keychain';
+
+  @override
+  String get privacyKeychainBody =>
+      'Share and server credentials go to the platform secure storage, never into ordinary preferences alongside the rest of the settings.';
+
+  @override
+  String get privacyUpdates => 'Update checks are manual';
+
+  @override
+  String get privacyUpdatesBody =>
+      'Nothing is checked on launch. Pressing \"Check for updates\" makes one anonymous request to the GitHub releases API — no identifier is sent with it.';
+
+  @override
+  String get privacyCasting => 'Casting opens a server on your network';
+
+  @override
+  String get privacyCastingBody =>
+      'While a cast is running, the file being played is served over the local network so the television can fetch it. That server stops when the cast does.';
+
+  @override
+  String get privacyFooter =>
+      'mPlayer is free software under the GPL-3.0-or-later. You can read the source and check every claim on this page for yourself.';
+
+  @override
+  String get noChaptersInFile => 'This file has no chapters';
+
+  @override
+  String get locked => 'Locked';
+
+  @override
+  String milliseconds(int count) {
+    return '$count ms';
+  }
+
+  @override
+  String seconds(int count) {
+    return '$count seconds';
+  }
 
   @override
   String get rotationAuto => 'Auto';

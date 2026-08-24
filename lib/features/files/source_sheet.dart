@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/models/media_models.dart';
 import '../../sources/media_source.dart';
 import '../../sources/source_config.dart';
@@ -161,8 +162,10 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
               SizedBox(height: spacing.lg),
               TextField(
                 controller: _name,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).fieldName,
+                  // A placeholder, not a label: it is an example of a name,
+                  // and reads the same in every language.
                   hintText: 'NAS',
                 ),
                 onChanged: (_) => setState(() {}),
@@ -173,7 +176,7 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
                 keyboardType: TextInputType.url,
                 autocorrect: false,
                 decoration: InputDecoration(
-                  labelText: 'Address',
+                  labelText: AppLocalizations.of(context).fieldAddress,
                   hintText: _kind == SourceKind.webdav
                       ? 'https://dav.example.com/remote.php/dav/files/me'
                       : '${_kind.name}://192.168.1.10/media',
@@ -184,9 +187,9 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
               TextField(
                 controller: _username,
                 autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  helperText: 'Leave empty for an anonymous share',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).fieldUsername,
+                  helperText: AppLocalizations.of(context).anonymousHint,
                 ),
               ),
               SizedBox(height: spacing.lg),
@@ -195,7 +198,7 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
                 obscureText: _obscure,
                 onChanged: (_) => _passwordTouched = true,
                 decoration: InputDecoration(
-                  labelText: 'Password',
+                  labelText: AppLocalizations.of(context).fieldPassword,
                   suffixIcon: IconButton(
                     tooltip: _obscure ? 'Show password' : 'Hide password',
                     icon: Icon(
@@ -224,7 +227,7 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
                 children: <Widget>[
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(AppLocalizations.of(context).actionCancel),
                   ),
                   SizedBox(width: spacing.sm),
                   if (_supported)
@@ -236,12 +239,12 @@ class _SourceSheetState extends ConsumerState<SourceSheet> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Test'),
+                          : Text(AppLocalizations.of(context).actionTest),
                     ),
                   SizedBox(width: spacing.sm),
                   FilledButton(
                     onPressed: _canSubmit ? _save : null,
-                    child: const Text('Save'),
+                    child: Text(AppLocalizations.of(context).actionSave),
                   ),
                 ],
               ),

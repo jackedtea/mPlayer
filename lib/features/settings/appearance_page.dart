@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/appearance_settings.dart';
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import 'settings_widgets.dart';
 
 /// Screen 1m, Appearance.
@@ -21,13 +22,14 @@ class AppearancePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
+    final l10n = AppLocalizations.of(context);
     final settings = ref.watch(appearanceSettingsProvider);
     final controller = ref.read(appearanceSettingsProvider.notifier);
 
     return SettingsScaffold(
-      title: 'Appearance',
+      title: l10n.settingsAppearance,
       children: <Widget>[
-        const SettingsSection(title: 'Theme'),
+        SettingsSection(title: l10n.theme),
         SizedBox(
           height: 108,
           child: ListView(
@@ -35,9 +37,9 @@ class AppearancePage extends ConsumerWidget {
             padding: spacing.screenPadding(context.windowSize),
             children: <Widget>[
               for (final (ThemeMode mode, String label) in <(ThemeMode, String)>[
-                (ThemeMode.light, 'Light'),
-                (ThemeMode.dark, 'Dark'),
-                (ThemeMode.system, 'System'),
+                (ThemeMode.light, l10n.themeLight),
+                (ThemeMode.dark, l10n.themeDark),
+                (ThemeMode.system, l10n.themeSystem),
               ])
                 Padding(
                   padding: EdgeInsets.only(right: spacing.md),
@@ -52,7 +54,7 @@ class AppearancePage extends ConsumerWidget {
             ],
           ),
         ),
-        const SettingsSection(title: 'Accent'),
+        SettingsSection(title: l10n.accent),
         Padding(
           padding: spacing.screenPadding(context.windowSize),
           child: Wrap(
@@ -79,21 +81,21 @@ class AppearancePage extends ConsumerWidget {
         ),
         SizedBox(height: spacing.sm),
         SettingsSwitchRow(
-          title: 'Material You dynamic colour',
-          subtitle: 'Follow the system wallpaper palette',
+          title: l10n.dynamicColour,
+          subtitle: l10n.dynamicColourSub,
           value: settings.dynamicColour,
           onChanged: (v) =>
               controller.update(settings.copyWith(dynamicColour: v)),
         ),
         SettingsSwitchRow(
-          title: 'Pure black in dark mode',
-          subtitle: 'Saves power on OLED screens',
+          title: l10n.pureBlack,
+          subtitle: l10n.pureBlackSub,
           value: settings.pureBlack,
           onChanged: (v) => controller.update(settings.copyWith(pureBlack: v)),
         ),
-        const SettingsSection(title: 'Layout'),
-        const SettingsValueRow(title: 'Default library view', value: 'Grid'),
-        const SettingsValueRow(title: 'Density', value: 'Comfortable'),
+        SettingsSection(title: l10n.layout),
+        SettingsValueRow(title: l10n.defaultLibraryView, value: l10n.grid),
+        SettingsValueRow(title: l10n.density, value: l10n.comfortable),
       ],
     );
   }

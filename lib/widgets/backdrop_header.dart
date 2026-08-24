@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../app/tokens.dart';
+import '../l10n/app_localizations.dart';
 import 'gradient_art.dart';
 
 /// Artwork header with a scrim fading into the page surface, plus floating
@@ -64,7 +65,7 @@ class BackdropHeader extends StatelessWidget {
                 children: <Widget>[
                   CircleControl(
                     icon: Icons.arrow_back_rounded,
-                    tooltip: 'Back',
+                    tooltip: AppLocalizations.of(context).actionBack,
                     onPressed: () {
                       if (context.canPop()) context.pop();
                     },
