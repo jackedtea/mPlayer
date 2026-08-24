@@ -57,6 +57,11 @@ class ServerItem {
     this.seriesTitle,
     this.seasonNumber,
     this.episodeNumber,
+    this.rating,
+    this.certificate,
+    this.genres = const <String>[],
+    this.people = const <ServerPerson>[],
+    this.childCount,
   });
 
   final String id;
@@ -90,6 +95,22 @@ class ServerItem {
   final int? seasonNumber;
   final int? episodeNumber;
 
+  /// Community rating out of ten, as the server holds it. Null where nobody
+  /// has rated it — which is not the same as zero.
+  final double? rating;
+
+  /// "PG-13". The server calls this the official rating.
+  final String? certificate;
+
+  final List<String> genres;
+
+  /// Cast and crew, in the order the server lists them — which is the order
+  /// billing was decided in, and better than anything this app could sort by.
+  final List<ServerPerson> people;
+
+  /// Seasons on a series, episodes on a season.
+  final int? childCount;
+
   bool get isStarted => position != null && position! > Duration.zero;
 
   /// 0..1, or null when there is nothing to draw a bar from.
@@ -102,6 +123,20 @@ class ServerItem {
 }
 
 enum ServerItemKind { movie, series, season, episode, video, folder, unknown }
+
+/// Somebody in the cast strip.
+@immutable
+class ServerPerson {
+  const ServerPerson({required this.name, required this.role, this.id});
+
+  final String name;
+
+  /// The character played, or the job done. Empty when the server did not
+  /// say, which the strip renders as a blank second line rather than a guess.
+  final String role;
+
+  final String? id;
+}
 
 /// How the server says a file should be played.
 @immutable

@@ -4,11 +4,16 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/media_models.dart';
 import '../../core/sample_data.dart';
-import '../../core/sample_library.dart';
+import '../../core/models/library_models.dart';
+import '../../l10n/app_localizations.dart';
+import '../../servers/media_library_source.dart';
+import '../../servers/server_registry.dart';
+import '../servers/server_library.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/source_tile.dart';
 import 'search_results.dart';
@@ -97,9 +102,7 @@ class _SearchPageState extends State<SearchPage> {
               onToggle: _toggleScope,
             ),
             if (_isActive)
-              const Expanded(
-                child: SearchResultsView(groups: SampleLibrary.resultGroups),
-              )
+              Expanded(child: _ServerResults(query: _submitted))
             else
             Expanded(
               child: ListView(
@@ -251,6 +254,52 @@ class _ScopeChips extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Results from the signed-in server, grouped the way the design groups them.
+///
+/// One group for now: device and share search need a scanner, which does not
+/// exist yet. Grouping by source is the design's decision and holds whether
+/// there is one group or three.
+class _ServerResults extends ConsumerWidget {
+  const _ServerResults({required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final profile = ref.watch(serverRegistryProvider).active;
+    final request = ref.watch(serverSearchProvider(query));
+
+    final items = request.value ?? const <ServerItem>[];
+
+    if (request.isLoading && items.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (items.isEmpty) {
+      return Center(
+        child: Text(
+          l10n.noResults,
+          style: context.texts.bodyMedium
+              ?.copyWith(color: context.colors.onSurfaceVariant),
+        ),
+      );
+    }
+
+    return SearchResultsView(
+      groups: <SearchResultGroup>[
+        SearchResultGroup(
+          sourceName: profile?.name ?? '',
+          sourceKind: SourceKind.jellyfin,
+          total: items.length,
+          hits: <SearchHit>[
+            for (final ServerItem item in items) searchHitFrom(item, l10n),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -113,6 +113,26 @@ ServerItem serverItemFromJson(Map<String, dynamic> json) {
     seriesTitle: json['SeriesName'] as String?,
     seasonNumber: json['ParentIndexNumber'] as int?,
     episodeNumber: json['IndexNumber'] as int?,
+    rating: (json['CommunityRating'] as num?)?.toDouble(),
+    certificate: json['OfficialRating'] as String?,
+    genres: <String>[
+      for (final Object? g in (json['Genres'] as List?) ?? const <Object?>[])
+        if (g is String) g,
+    ],
+    people: <ServerPerson>[
+      for (final Object? p in (json['People'] as List?) ?? const <Object?>[])
+        if (p is Map)
+          ServerPerson(
+            name: p['Name'] as String? ?? '',
+            // `Role` is the character; `Type` is the job. A director has no
+            // role, and showing "Director" beats showing nothing.
+            role: (p['Role'] as String?)?.trim().isNotEmpty ?? false
+                ? (p['Role'] as String).trim()
+                : (p['Type'] as String? ?? ''),
+            id: p['Id'] as String?,
+          ),
+    ],
+    childCount: json['ChildCount'] as int?,
   );
 }
 

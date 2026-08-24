@@ -159,7 +159,9 @@ void main() {
 
       expect(find.text('No media server yet'), findsOneWidget);
       expect(find.text('Add Jellyfin server'), findsOneWidget);
-      expect(find.text('Scan this network'), findsOneWidget);
+      // Network scanning was dropped, so the button that promised it is gone
+      // rather than left reporting that it does nothing.
+      expect(find.text('Scan this network'), findsNothing);
     });
 
     testWidgets('add-server sheet asks for an address before anything else', (

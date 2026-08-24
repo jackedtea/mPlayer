@@ -355,7 +355,15 @@ code path is complete and unit-tested; neither has been run against a real NAS.
 - [x] The add-server sheet is real: the address is probed as it is typed (before any
       password is asked for), and sign-in stores a working session
 - [x] Quick Connect — offered only where the server actually has it
-- [ ] The seven screens still on `sample_library.dart`
+- [x] The screens are wired: server home (1d) with Continue watching, Next up, Recently
+      added and the library list; the library grid (1e) with a real sort; movie detail
+      (1f); series with its seasons (1g); and server search (1n). Only Downloads (1i) is
+      still on sample data, and that is parked until after this phase
+- [ ] Artwork: `imageUrl` is built and tested but nothing draws it yet — the tiles still
+      render the gradient placeholder
+- [ ] Playing from a server: `playback()` resolves a URL, but the detail screen's Play
+      button does not call it yet
+- [ ] Progress reporting from the player back to the server
 - [ ] Map the domain types onto what the screens draw — the presentation models will
       need reshaping, since they were written around the sample data
 - [ ] `EmbySource`: same surface; Emby and Jellyfin diverged enough that a shared base plus two subclasses is right — mirror `refs/.../lib/services/media_server_service_base.dart` (837 lines)

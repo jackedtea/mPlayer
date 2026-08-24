@@ -270,8 +270,13 @@ class JellyfinSource implements MediaLibrarySource {
 
   // ------------------------------------------------------------ plumbing
 
-  /// The extra properties every screen needs and the server omits by default.
-  static const _fields = 'Overview,ProductionYear,PrimaryImageAspectRatio';
+  /// The extra properties the screens need and the server omits by default.
+  ///
+  /// Asked for on every request rather than only on the detail screen: the
+  /// list endpoint is one round trip either way, and a second fetch to fill
+  /// in an overview is a visible flicker on the card that already showed.
+  static const _fields =
+      'Overview,ProductionYear,Genres,People,ChildCount,PrimaryImageAspectRatio';
 
   Uri _url(String path, [Map<String, String>? query]) {
     return _base.replace(

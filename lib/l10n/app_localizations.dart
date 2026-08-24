@@ -479,7 +479,7 @@ abstract class AppLocalizations {
   /// No description provided for @unwatched.
   ///
   /// In en, this message translates to:
-  /// **'Unwatched'**
+  /// **'new'**
   String get unwatched;
 
   /// No description provided for @unwatchedCount.
@@ -1765,6 +1765,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} seconds'**
   String seconds(int count);
+
+  /// No description provided for @timeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String timeLeft(String time);
+
+  /// No description provided for @sortName.
+  ///
+  /// In en, this message translates to:
+  /// **'A–Z'**
+  String get sortName;
+
+  /// No description provided for @sortDateAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently added'**
+  String get sortDateAdded;
+
+  /// No description provided for @sortReleaseDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Release date'**
+  String get sortReleaseDate;
+
+  /// No description provided for @sortDatePlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently played'**
+  String get sortDatePlayed;
+
+  /// No description provided for @sortRandom.
+  ///
+  /// In en, this message translates to:
+  /// **'Random'**
+  String get sortRandom;
+
+  /// No description provided for @resumeAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume · {time}'**
+  String resumeAt(String time);
+
+  /// No description provided for @watched.
+  ///
+  /// In en, this message translates to:
+  /// **'watched'**
+  String get watched;
+
+  /// No description provided for @seasonCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} seasons'**
+  String seasonCount(int count);
+
+  /// No description provided for @episodeCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} episodes'**
+  String episodeCount(int count);
+
+  /// No description provided for @seasonNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Season {number}'**
+  String seasonNumber(int number);
+
+  /// No description provided for @specials.
+  ///
+  /// In en, this message translates to:
+  /// **'Specials'**
+  String get specials;
+
+  /// No description provided for @kindMovie.
+  ///
+  /// In en, this message translates to:
+  /// **'Movie'**
+  String get kindMovie;
+
+  /// No description provided for @kindSeries.
+  ///
+  /// In en, this message translates to:
+  /// **'Series'**
+  String get kindSeries;
+
+  /// No description provided for @kindSeason.
+  ///
+  /// In en, this message translates to:
+  /// **'Season'**
+  String get kindSeason;
+
+  /// No description provided for @kindEpisode.
+  ///
+  /// In en, this message translates to:
+  /// **'Episode'**
+  String get kindEpisode;
+
+  /// No description provided for @noResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matched that'**
+  String get noResults;
 
   /// No description provided for @rotationAuto.
   ///

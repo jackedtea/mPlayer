@@ -141,10 +141,10 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
-      // Results are grouped per source, never merged into one ranked list.
+      // The idle scope picker gives way to results — which, with no server
+      // signed in, is the empty answer rather than sample groups.
       expect(find.text('Where to look'), findsNothing);
-      expect(find.textContaining('Jellyfin · media.home.lan'), findsWidgets);
-      expect(find.textContaining('NAS · SMB'), findsWidgets);
+      expect(find.text('Nothing matched that'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -166,18 +166,27 @@ void main() {
   });
 
   group('library grid', () {
-    testWidgets('the Unwatched chip actually filters', (tester) async {
+    testWidgets('opens showing everything, with the filter off', (tester) async {
       final router = await pumpRouterAt(tester, const Size(400, 900));
       router.go('/library');
       await tester.pumpAndSettle();
 
-      // Sample data has two watched titles, hidden while the chip is on.
-      expect(find.text('Low Tide'), findsNothing);
+      // A library opens showing its whole contents. Hiding most of a
+      // collection until the user notices a chip is the wrong first
+      // impression, so Unwatched starts off.
+      final chip = tester.widget<FilterChip>(
+        find.widgetWithText(FilterChip, 'Unwatched'),
+      );
+      expect(chip.selected, isFalse);
+
+      // Nothing is signed in here, so the grid is empty and says so rather
+      // than rendering sample titles.
+      expect(find.text('0 items'), findsOneWidget);
 
       await tester.tap(find.widgetWithText(FilterChip, 'Unwatched'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Low Tide'), findsOneWidget);
+      expect(find.text('0 unwatched'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

@@ -4,27 +4,58 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/library_models.dart';
-import '../../core/sample_library.dart';
+import '../../l10n/app_localizations.dart';
+import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
+import 'server_library.dart';
 
 /// Screen 1f — movie detail.
-class MovieDetailPage extends StatefulWidget {
-  const MovieDetailPage({super.key});
+class MovieDetailPage extends ConsumerStatefulWidget {
+  const MovieDetailPage({super.key, this.itemId});
+
+  /// Null when the route was opened directly rather than from a tile.
+  final String? itemId;
 
   @override
-  State<MovieDetailPage> createState() => _MovieDetailPageState();
+  ConsumerState<MovieDetailPage> createState() => _MovieDetailPageState();
 }
 
-class _MovieDetailPageState extends State<MovieDetailPage> {
+class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
   bool _overviewExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
-    final movie = SampleLibrary.movieDetail;
+    final l10n = AppLocalizations.of(context);
+    final itemId = widget.itemId;
+
+    final request = itemId == null
+        ? const AsyncValue<ServerItem?>.data(null)
+        : ref.watch(serverItemProvider(itemId));
+
+    final item = request.value;
+    if (item == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: Center(
+          child: request.isLoading
+              ? const CircularProgressIndicator()
+              : Text(l10n.nothingToPlay),
+        ),
+      );
+    }
+
+    final movie = movieDetailFrom(item, l10n);
     final padding = spacing.screenPadding(context.windowSize);
 
     return Scaffold(
@@ -243,8 +274,10 @@ class _ProgressLine extends StatelessWidget {
           ),
         ),
         SizedBox(height: spacing.sm),
+        // The same sentence the primary button carries, so the two cannot
+        // disagree about where the user got to.
         Text(
-          SampleLibrary.watchedLabel,
+          movie.resumeLabel ?? '',
           style: context.texts.bodySmall
               ?.copyWith(color: scheme.onSurfaceVariant),
         ),

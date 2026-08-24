@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/library_models.dart';
-import '../../core/sample_library.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/gradient_art.dart';
 
 /// Screen 1n, active state — results grouped by the source they came from.
@@ -36,7 +36,11 @@ class SearchResultsView extends StatelessWidget {
             spacing.xs,
           ),
           child: Text(
-            SampleLibrary.resultsSummary,
+            // Counted from what is actually here, so the line cannot claim
+            // more results than the list below it holds.
+            AppLocalizations.of(context).itemCount(
+              groups.fold<int>(0, (sum, g) => sum + g.total),
+            ),
             style: context.texts.bodySmall
                 ?.copyWith(color: context.colors.onSurfaceVariant),
           ),

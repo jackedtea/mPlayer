@@ -121,15 +121,21 @@ GoRouter buildRouter() {
       GoRoute(
         path: '/library',
         parentNavigatorKey: _rootKey,
-        builder: (context, state) => const LibraryGridPage(),
+        // `extra` carries the library's id. Null means the route was opened
+        // directly rather than from a tile, and the screen says so instead of
+        // guessing at a library.
+        builder: (context, state) =>
+            LibraryGridPage(viewId: state.extra as String?),
         routes: <RouteBase>[
           GoRoute(
             path: 'movie',
-            builder: (context, state) => const MovieDetailPage(),
+            builder: (context, state) =>
+                MovieDetailPage(itemId: state.extra as String?),
           ),
           GoRoute(
             path: 'series',
-            builder: (context, state) => const SeriesPage(),
+            builder: (context, state) =>
+                SeriesPage(seriesId: state.extra as String?),
           ),
         ],
       ),

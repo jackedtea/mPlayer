@@ -4,20 +4,31 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../servers/server_registry.dart';
+import 'servers_home_page.dart';
 import 'add_server_sheet.dart';
 
 /// Screen 1c — the Server tab with nothing configured.
 ///
 /// This is an opt-in empty state, never a login wall: the copy exists to say
 /// local playback already works without a server.
-class ServersEmptyPage extends StatelessWidget {
+class ServersEmptyPage extends ConsumerWidget {
   const ServersEmptyPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // The Server tab is one destination with two faces: nothing configured
+    // yet, or the library of whatever is signed in. Choosing here keeps the
+    // tab's back stack from growing an empty state under every visit to the
+    // home screen.
+    if (ref.watch(serverRegistryProvider).hasServer) {
+      return const ServersHomePage();
+    }
+
     final spacing = context.spacing;
     final scheme = context.colors;
 
@@ -77,22 +88,6 @@ class ServersEmptyPage extends StatelessWidget {
                       label: const Text('Add Jellyfin server'),
                     ),
                     SizedBox(height: spacing.sm),
-                    // Until a real connection exists, this is how the
-                    // connected home (1d) is reachable for review.
-                    TextButton(
-                      onPressed: () => context.push('/servers/home'),
-                      child: const Text('Preview a connected server'),
-                    ),
-                    SizedBox(height: spacing.sm),
-                    TextButton.icon(
-                      onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Network scan — not implemented yet'),
-                        ),
-                      ),
-                      icon: const Icon(Icons.radar_rounded, size: 18),
-                      label: const Text('Scan this network'),
-                    ),
                   ],
                 ),
               ),

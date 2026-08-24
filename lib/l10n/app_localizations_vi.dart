@@ -215,7 +215,7 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get unwatched => 'Chưa xem';
+  String get unwatched => 'mới';
 
   @override
   String unwatchedCount(int count) {
@@ -916,6 +916,67 @@ class AppLocalizationsVi extends AppLocalizations {
   String seconds(int count) {
     return '$count giây';
   }
+
+  @override
+  String timeLeft(String time) {
+    return 'còn $time';
+  }
+
+  @override
+  String get sortName => 'A–Z';
+
+  @override
+  String get sortDateAdded => 'Mới thêm';
+
+  @override
+  String get sortReleaseDate => 'Ngày phát hành';
+
+  @override
+  String get sortDatePlayed => 'Mới xem';
+
+  @override
+  String get sortRandom => 'Ngẫu nhiên';
+
+  @override
+  String resumeAt(String time) {
+    return 'Xem tiếp · $time';
+  }
+
+  @override
+  String get watched => 'đã xem';
+
+  @override
+  String seasonCount(int count) {
+    return '$count mùa';
+  }
+
+  @override
+  String episodeCount(int count) {
+    return '$count tập';
+  }
+
+  @override
+  String seasonNumber(int number) {
+    return 'Mùa $number';
+  }
+
+  @override
+  String get specials => 'Đặc biệt';
+
+  @override
+  String get kindMovie => 'Phim';
+
+  @override
+  String get kindSeries => 'Phim bộ';
+
+  @override
+  String get kindSeason => 'Mùa';
+
+  @override
+  String get kindEpisode => 'Tập';
+
+  @override
+  String get noResults => 'Không có kết quả nào';
 
   @override
   String get rotationAuto => 'Tự động';

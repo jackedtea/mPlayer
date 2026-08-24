@@ -214,7 +214,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get unwatched => 'Unwatched';
+  String get unwatched => 'new';
 
   @override
   String unwatchedCount(int count) {
@@ -915,6 +915,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String seconds(int count) {
     return '$count seconds';
   }
+
+  @override
+  String timeLeft(String time) {
+    return '$time left';
+  }
+
+  @override
+  String get sortName => 'A–Z';
+
+  @override
+  String get sortDateAdded => 'Recently added';
+
+  @override
+  String get sortReleaseDate => 'Release date';
+
+  @override
+  String get sortDatePlayed => 'Recently played';
+
+  @override
+  String get sortRandom => 'Random';
+
+  @override
+  String resumeAt(String time) {
+    return 'Resume · $time';
+  }
+
+  @override
+  String get watched => 'watched';
+
+  @override
+  String seasonCount(int count) {
+    return '$count seasons';
+  }
+
+  @override
+  String episodeCount(int count) {
+    return '$count episodes';
+  }
+
+  @override
+  String seasonNumber(int number) {
+    return 'Season $number';
+  }
+
+  @override
+  String get specials => 'Specials';
+
+  @override
+  String get kindMovie => 'Movie';
+
+  @override
+  String get kindSeries => 'Series';
+
+  @override
+  String get kindSeason => 'Season';
+
+  @override
+  String get kindEpisode => 'Episode';
+
+  @override
+  String get noResults => 'Nothing matched that';
 
   @override
   String get rotationAuto => 'Auto';

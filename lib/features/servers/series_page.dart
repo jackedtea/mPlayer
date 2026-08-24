@@ -4,44 +4,89 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/library_models.dart';
-import '../../core/sample_library.dart';
+import '../../l10n/app_localizations.dart';
+import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
 import '../../widgets/gradient_art.dart';
+import 'server_library.dart';
 
 /// Screen 1g — a series, its seasons as tabs, and the episode list.
-class SeriesPage extends StatefulWidget {
-  const SeriesPage({super.key});
+class SeriesPage extends ConsumerStatefulWidget {
+  const SeriesPage({super.key, this.seriesId});
+
+  /// Null when the route was opened directly rather than from a tile.
+  final String? seriesId;
 
   @override
-  State<SeriesPage> createState() => _SeriesPageState();
+  ConsumerState<SeriesPage> createState() => _SeriesPageState();
 }
 
-class _SeriesPageState extends State<SeriesPage>
+class _SeriesPageState extends ConsumerState<SeriesPage>
     with SingleTickerProviderStateMixin {
-  late final SeriesDetail _series = SampleLibrary.series;
-  late final TabController _tabs =
-      TabController(length: _series.seasons.length, vsync: this);
+  TabController? _tabs;
 
   @override
   void dispose() {
-    _tabs.dispose();
+    _tabs?.dispose();
     super.dispose();
+  }
+
+  /// Rebuilt whenever the number of seasons changes, which is once: the
+  /// episodes arrive after the first frame, and a controller made for zero
+  /// tabs cannot drive the tabs that follow.
+  TabController _controllerFor(int seasons) {
+    final existing = _tabs;
+    if (existing != null && existing.length == seasons) return existing;
+
+    existing?.dispose();
+    return _tabs = TabController(length: seasons, vsync: this);
   }
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+    final seriesId = widget.seriesId;
+
+    final item = seriesId == null
+        ? null
+        : ref.watch(serverItemProvider(seriesId)).value;
+    final episodes = seriesId == null
+        ? const <ServerItem>[]
+        : ref.watch(seriesEpisodesProvider(seriesId)).value ??
+            const <ServerItem>[];
+
+    if (item == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: Center(
+          child: seriesId == null
+              ? Text(l10n.nothingToPlay)
+              : const CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final series = seriesDetailFrom(item, episodes, l10n);
+    final tabs = _controllerFor(series.seasons.length);
 
     return Scaffold(
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => <Widget>[
           SliverToBoxAdapter(
             child: BackdropHeader(
-              seed: _series.title,
+              seed: series.title,
               height: 196,
               actions: <Widget>[
                 CircleControl(
@@ -54,10 +99,10 @@ class _SeriesPageState extends State<SeriesPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Text(_series.title, style: context.texts.headlineMedium),
+                  Text(series.title, style: context.texts.headlineMedium),
                   SizedBox(height: spacing.xs),
                   Text(
-                    _series.summary,
+                    series.summary,
                     style: context.texts.bodySmall
                         ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
@@ -69,13 +114,13 @@ class _SeriesPageState extends State<SeriesPage>
             pinned: true,
             delegate: _TabBarHeader(
               TabBar(
-                controller: _tabs,
+                controller: tabs,
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 indicatorWeight: 3,
                 indicatorSize: TabBarIndicatorSize.label,
                 tabs: <Widget>[
-                  for (final Season s in _series.seasons) Tab(text: s.name),
+                  for (final Season s in series.seasons) Tab(text: s.name),
                 ],
               ),
               scheme.surface,
@@ -83,9 +128,9 @@ class _SeriesPageState extends State<SeriesPage>
           ),
         ],
         body: TabBarView(
-          controller: _tabs,
+          controller: tabs,
           children: <Widget>[
-            for (final Season season in _series.seasons)
+            for (final Season season in series.seasons)
               ListView.builder(
                 padding: EdgeInsets.symmetric(vertical: spacing.sm),
                 itemCount: season.episodes.length,
