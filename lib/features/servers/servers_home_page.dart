@@ -15,7 +15,6 @@ import '../../servers/server_registry.dart';
 import '../../widgets/continue_watching_card.dart';
 import '../../widgets/poster_tile.dart';
 import '../../widgets/section_header.dart';
-import 'server_switcher.dart';
 import 'server_library.dart';
 
 /// Screen 1d — the Server tab once a server is configured.
@@ -56,20 +55,16 @@ class _ServersHomePageState extends ConsumerState<ServersHomePage> {
         // of servers.
         leading: Builder(
           builder: (context) {
-            // Reached by a push (from search, say) there really is something
-            // to go back to; as the tab's root there is not, and the glyph
-            // has to say which of the two this is.
-            final canPop = context.canPop();
+            // The server list is this screen's root now, so back always has
+            // somewhere to go. Guarded anyway: a deep link straight to
+            // `/servers/home` has nothing under it, and a dead arrow is worse
+            // than no arrow.
+            if (!context.canPop()) return const SizedBox.shrink();
+
             return IconButton(
-              icon: Icon(
-                canPop ? Icons.arrow_back_rounded : Icons.dns_rounded,
-              ),
-              tooltip: canPop
-                  ? AppLocalizations.of(context).actionBack
-                  : AppLocalizations.of(context).switchServer,
-              onPressed: () => canPop
-                  ? context.pop()
-                  : ServerSwitcherSheet.show(context),
+              icon: const Icon(Icons.arrow_back_rounded),
+              tooltip: AppLocalizations.of(context).actionBack,
+              onPressed: () => context.pop(),
             );
           },
         ),

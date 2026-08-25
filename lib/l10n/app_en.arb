@@ -400,6 +400,13 @@
     }
   },
 
+  "signedInAs": "Signed in as {name}",
+  "@signedInAs": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "signInAgain": "The stored sign-in still works",
+  "change": "Change",
+  "noServersYet": "No servers yet.",
   "moreLikeThis": "More like this",
   "about": "About",
   "studios": "Studio",

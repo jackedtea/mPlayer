@@ -347,6 +347,13 @@
     }
   },
 
+  "signedInAs": "Đang đăng nhập bằng {name}",
+  "@signedInAs": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "signInAgain": "Phiên đã lưu vẫn dùng được",
+  "change": "Đổi",
+  "noServersYet": "Chưa có máy chủ nào.",
   "moreLikeThis": "Phim tương tự",
   "about": "Giới thiệu",
   "studios": "Hãng sản xuất",

@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../servers/server_registry.dart';
-import 'servers_home_page.dart';
+import 'servers_list_page.dart';
 import 'add_server_sheet.dart';
 
 /// Screen 1c — the Server tab with nothing configured.
@@ -22,11 +22,14 @@ class ServersEmptyPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // The Server tab is one destination with two faces: nothing configured
-    // yet, or the library of whatever is signed in. Choosing here keeps the
-    // tab's back stack from growing an empty state under every visit to the
-    // home screen.
+    // yet, or the list of what is. Choosing here keeps the tab's back stack
+    // from growing an empty state under every visit to the list.
+    //
+    // The list rather than a server's own screen: dropping straight into
+    // whichever was used last left that screen with a back button pointing at
+    // nothing, and a second server unreachable.
     if (ref.watch(serverRegistryProvider).hasServer) {
-      return const ServersHomePage();
+      return const ServersListPage();
     }
 
     final spacing = context.spacing;

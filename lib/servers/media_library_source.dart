@@ -113,8 +113,12 @@ class ServerItem {
   /// billing was decided in, and better than anything this app could sort by.
   final List<ServerPerson> people;
 
-  /// Keywords the server holds alongside the genres. Far more numerous and
-  /// far less curated, so the UI shows them after the genres, if at all.
+  /// Keywords the server holds alongside the genres.
+  ///
+  /// Empty unless the request asked for them: no screen shows keywords, so
+  /// `Tags` is not in the field list the client sends. Parsed and kept
+  /// because the field list is the only thing standing between here and a
+  /// screen that wants them.
   final List<String> tags;
 
   final List<String> studios;

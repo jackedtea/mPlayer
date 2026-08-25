@@ -13,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
 import '../../widgets/gradient_art.dart';
+import '../../widgets/remote_art.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
 import 'server_library.dart';
@@ -49,7 +50,9 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
     if (episodes.isEmpty) return;
 
     final started = episodes
-        .where((e) => (e.position ?? Duration.zero) > Duration.zero && !e.played)
+        .where(
+          (e) => (e.position ?? Duration.zero) > Duration.zero && !e.played,
+        )
         .firstOrNull;
     final unwatched = episodes.where((e) => !e.played).firstOrNull;
 
@@ -99,6 +102,13 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
     }
 
     final series = seriesDetailFrom(item, episodes, l10n);
+
+    // The seasons are grouped out of the episode list, so until that request
+    // lands there are no season tabs to draw — and the screen showed nothing
+    // but "About", which reads as a series that has no episodes rather than
+    // one whose episodes are still on their way.
+    final loadingSeasons = episodeRequest.isLoading && episodes.isEmpty;
+
     // One tab past the seasons. The cast, the studio and what the server
     // suggests belong to the series rather than to any season of it, and
     // stacking them above the episode list would push the episodes — the
@@ -128,8 +138,9 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                   SizedBox(height: spacing.xs),
                   Text(
                     series.summary,
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
+                    style: context.texts.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -137,7 +148,8 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: spacing.screenPadding(context.windowSize)
+              padding: spacing
+                  .screenPadding(context.windowSize)
                   .copyWith(top: spacing.md, bottom: spacing.md),
               child: ItemActionRow(
                 item: item,
@@ -166,72 +178,87 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                 ),
               ),
             ),
-          if (item.genres.isNotEmpty || item.tags.isNotEmpty)
+          // Genres only. The server's keywords ride along in the same
+          // response and there are dozens of them per series — "affectation",
+          // "co-workers relationship" — none of which say what the thing is.
+          // A row that has to be scrolled past to find "Comedy" is worse than
+          // one that only ever holds the four words that matter.
+          if (item.genres.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.only(bottom: spacing.sm),
                 child: TagStrip(
-                  tags: <String>[...item.genres, ...item.tags],
+                  tags: item.genres,
                   padding: spacing.screenPadding(context.windowSize),
                 ),
               ),
             ),
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _TabBarHeader(
-              TabBar(
+          if (!loadingSeasons)
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _TabBarHeader(
+                TabBar(
+                  controller: tabs,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  indicatorWeight: 3,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  tabs: <Widget>[
+                    for (final Season s in series.seasons) Tab(text: s.name),
+                    Tab(text: l10n.about),
+                  ],
+                ),
+                scheme.surface,
+              ),
+            ),
+        ],
+        body: loadingSeasons
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
                 controller: tabs,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                indicatorWeight: 3,
-                indicatorSize: TabBarIndicatorSize.label,
-                tabs: <Widget>[
-                  for (final Season s in series.seasons) Tab(text: s.name),
-                  Tab(text: l10n.about),
+                children: <Widget>[
+                  for (final (int s, Season season) in series.seasons.indexed)
+                    if (season.episodes.isEmpty && episodeRequest.isLoading)
+                      const Center(child: CircularProgressIndicator())
+                    else
+                      ListView.builder(
+                        padding: EdgeInsets.only(
+                          top: spacing.sm,
+                          bottom: spacing.sm + context.systemBottomInset,
+                        ),
+                        itemCount: season.episodes.length,
+                        itemBuilder: (context, i) {
+                          // The rows are grouped copies of the flat list, so the
+                          // item behind one is found by matching what identifies it
+                          // rather than by an index into a list it is not in.
+                          final source = _episodeAt(episodes, series, s, i);
+                          return _EpisodeRow(
+                            episode: season.episodes[i],
+                            // The server holds a still per episode, not just the
+                            // series poster: `ImageTags.Primary` on an Episode is
+                            // that frame. The row drew the gradient placeholder and
+                            // nothing else, so every episode looked alike.
+                            artUrl: source == null
+                                ? null
+                                : artUrlFor(ref, source, maxWidth: 320),
+                            // The row opens the episode, where the tracks can be
+                            // chosen before anything starts; the glyph beside it
+                            // skips that for the common case of just watching.
+                            onTap: source == null
+                                ? () {}
+                                : () => context.push(
+                                    '/library/episode',
+                                    extra: source.id,
+                                  ),
+                            onPlay: source == null
+                                ? () {}
+                                : () => playServerItem(context, ref, source.id),
+                          );
+                        },
+                      ),
+                  _AboutTab(item: item),
                 ],
               ),
-              scheme.surface,
-            ),
-          ),
-        ],
-        body: TabBarView(
-          controller: tabs,
-          children: <Widget>[
-            for (final (int s, Season season) in series.seasons.indexed)
-              if (season.episodes.isEmpty && episodeRequest.isLoading)
-                const Center(child: CircularProgressIndicator())
-              else
-                ListView.builder(
-                  padding: EdgeInsets.only(
-                    top: spacing.sm,
-                    bottom: spacing.sm + context.systemBottomInset,
-                  ),
-                  itemCount: season.episodes.length,
-                  itemBuilder: (context, i) {
-                    // The rows are grouped copies of the flat list, so the
-                    // item behind one is found by matching what identifies it
-                    // rather than by an index into a list it is not in.
-                    final source = _episodeAt(episodes, series, s, i);
-                    return _EpisodeRow(
-                      episode: season.episodes[i],
-                      // The row opens the episode, where the tracks can be
-                      // chosen before anything starts; the glyph beside it
-                      // skips that for the common case of just watching.
-                      onTap: source == null
-                          ? () {}
-                          : () => context.push(
-                                '/library/episode',
-                                extra: source.id,
-                              ),
-                      onPlay: source == null
-                          ? () {}
-                          : () => playServerItem(context, ref, source.id),
-                    );
-                  },
-                ),
-            _AboutTab(item: item),
-          ],
-        ),
       ),
     );
   }
@@ -285,9 +312,13 @@ class _EpisodeRow extends StatelessWidget {
     required this.episode,
     required this.onTap,
     required this.onPlay,
+    this.artUrl,
   });
 
   final Episode episode;
+
+  /// The episode's own still, or null where the server has none.
+  final Uri? artUrl;
 
   /// Opens the episode's own screen.
   final VoidCallback onTap;
@@ -310,7 +341,7 @@ class _EpisodeRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            _EpisodeThumb(episode: episode),
+            _EpisodeThumb(episode: episode, artUrl: artUrl),
             SizedBox(width: spacing.md),
             Expanded(
               child: Column(
@@ -321,22 +352,25 @@ class _EpisodeRow extends StatelessWidget {
                     '${episode.number}. ${episode.title}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: context.texts.titleSmall
-                        ?.copyWith(color: scheme.onSurface),
+                    style: context.texts.titleSmall?.copyWith(
+                      color: scheme.onSurface,
+                    ),
                   ),
                   SizedBox(height: spacing.xs / 2),
                   Text(
                     episode.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
+                    style: context.texts.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                   SizedBox(height: spacing.xs),
                   Text(
                     episode.meta,
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: scheme.outline),
+                    style: context.texts.bodySmall?.copyWith(
+                      color: scheme.outline,
+                    ),
                   ),
                 ],
               ),
@@ -354,9 +388,10 @@ class _EpisodeRow extends StatelessWidget {
 }
 
 class _EpisodeThumb extends StatelessWidget {
-  const _EpisodeThumb({required this.episode});
+  const _EpisodeThumb({required this.episode, this.artUrl});
 
   final Episode episode;
+  final Uri? artUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -371,6 +406,11 @@ class _EpisodeThumb extends StatelessWidget {
           fit: StackFit.expand,
           children: <Widget>[
             GradientArt(seed: '${episode.number}${episode.title}'),
+            // Over the gradient, which stays the picture for an episode the
+            // server has no still for. Same arrangement as `PosterTile`:
+            // `RemoteArt` draws nothing while it loads and nothing on
+            // failure, so there is always something underneath it.
+            RemoteArt(url: artUrl),
             Center(
               child: Icon(
                 Icons.play_circle_rounded,
@@ -389,8 +429,7 @@ class _EpisodeThumb extends StatelessWidget {
                   value: episode.progress,
                   minHeight: 3,
                   backgroundColor: Colors.white.withValues(alpha: 0.35),
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(scheme.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
                 ),
               ),
           ],
@@ -401,9 +440,9 @@ class _EpisodeThumb extends StatelessWidget {
 }
 
 void _notYet(BuildContext context, String what) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$what — not implemented yet')),
-  );
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text('$what — not implemented yet')));
 }
 
 /// Everything about a series that is not one of its episodes.
@@ -451,13 +490,12 @@ class _AboutTab extends StatelessWidget {
                   width: 96,
                   child: Text(
                     label,
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
+                    style: context.texts.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
-                Expanded(
-                  child: Text(value, style: context.texts.bodySmall),
-                ),
+                Expanded(child: Text(value, style: context.texts.bodySmall)),
               ],
             ),
           ),
@@ -502,8 +540,9 @@ class _Overview extends StatelessWidget {
             text,
             maxLines: expanded ? null : 3,
             overflow: expanded ? null : TextOverflow.ellipsis,
-            style: context.texts.bodyMedium
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: context.texts.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           Text(
             expanded ? l10n.less : l10n.more,

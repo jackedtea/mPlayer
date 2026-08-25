@@ -1,0 +1,41 @@
+# Splash screen, generated into the native projects by:
+#
+#     dart run flutter_native_splash:create
+#
+# The source is `mplayer-dark` from ../logo/mplayer-logo — the design bundle
+# names that variant as the one for the splash, and it is the only variant
+# with a background of its own rather than one borrowed from the page.
+#
+# The same navy in light mode as in dark, deliberately. The splash is on
+# screen for the moment before the app has decided anything, and a white flash
+# ahead of a dark player is worse than a consistent one. `*_dark` keys repeat
+# the light values rather than being left out, so both themes are stated
+# rather than one being inherited by accident.
+flutter_native_splash:
+  # The lighter end of the artwork's gradient (#0C2A4A → #08182E). A splash
+  # background is one flat colour — Android has no slot for a gradient here —
+  # so the brand navy is the half worth keeping.
+  color: "#0C2A4A"
+  color_dark: "#0C2A4A"
+
+  image: assets/icon/splash.png
+  image_dark: assets/icon/splash.png
+
+  android: true
+  ios: true
+  # No splash on the web build, and the desktop runners have no such concept:
+  # the window is simply not shown until the first frame is ready.
+  web: false
+
+  android_12:
+    # Android 12 masks the splash icon to a circle covering the middle two
+    # thirds. The artwork's rounded corners fall outside that and are clipped
+    # — invisibly, because the icon background below is the same navy. The
+    # marks themselves sit well inside it: the furthest, the outer cast wave,
+    # reaches about 86% of the mask's radius.
+    image: assets/icon/splash.png
+    image_dark: assets/icon/splash.png
+    color: "#0C2A4A"
+    color_dark: "#0C2A4A"
+    icon_background_color: "#0C2A4A"
+    icon_background_color_dark: "#0C2A4A"

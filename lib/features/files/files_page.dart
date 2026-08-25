@@ -82,7 +82,17 @@ class _ContinueWatchingSection extends ConsumerWidget {
 
     // Real resume points now. An empty shelf renders nothing at all rather
     // than an empty row with a heading — there is nothing to continue.
-    final points = ref.watch(resumePointsProvider).value ?? const <ResumePoint>[];
+    //
+    // Files and the network shares it lists, and nothing else. A server keeps
+    // its own watch state — gathered from every device the user owns, not
+    // just this one — and shows it on the Server tab, so a film continued on
+    // the television would turn up here as a second, staler entry saying
+    // something different about the same film.
+    final points = <ResumePoint>[
+      for (final ResumePoint p in ref.watch(resumePointsProvider).value ??
+          const <ResumePoint>[])
+        if (p.kind != SourceKind.jellyfin) p,
+    ];
     if (points.isEmpty) return const SizedBox.shrink();
 
     final items = <ResumeItem>[

@@ -379,8 +379,11 @@ class JellyfinSource implements MediaLibrarySource {
   /// Asked for on every request rather than only on the detail screen: the
   /// list endpoint is one round trip either way, and a second fetch to fill
   /// in an overview is a visible flicker on the card that already showed.
+  // No `Tags`: nothing renders the server's keywords any more, and a series
+  // carries dozens of them. Asked for on every listing that is a hundred
+  // items' worth of words the app throws away.
   static const _fields = 'Overview,ProductionYear,Genres,People,ChildCount,'
-      'PrimaryImageAspectRatio,Tags,Studios,Status,EndDate';
+      'PrimaryImageAspectRatio,Studios,Status,EndDate';
 
   Uri _url(String path, [Map<String, String>? query]) {
     return _base.replace(
@@ -615,6 +618,55 @@ class JellyfinAuth {
     }
 
     return _authResultFrom(data, fallbackUsername: username, server: server);
+  }
+
+  /// Checks whether a token already held still works, and who it belongs to.
+  ///
+  /// This is what stops an edit demanding a password the app does not need.
+  /// Changing a server's name — or moving it to a new address it answers on —
+  /// does not invalidate the session already stored, so the sign-in form is
+  /// only worth showing once this has come back empty-handed.
+  ///
+  /// Null means the token was refused; an exception means the server could not
+  /// be asked at all, which is a different thing and reads differently.
+  Future<AuthResult?> validate(ServerInfo server, String token) async {
+    final Response<dynamic> response;
+    try {
+      response = await _dio.getUri<dynamic>(
+        Uri.parse('${server.uri}/Users/Me'),
+        options: Options(
+          headers: <String, String>{
+            'Accept': 'application/json',
+            'Authorization': authorizationHeader(
+              client: identity.client,
+              device: identity.deviceName,
+              deviceId: identity.deviceId,
+              version: identity.version,
+              token: token,
+            ),
+          },
+          validateStatus: (_) => true,
+        ),
+      );
+    } on DioException {
+      throw ServerException('Could not reach ${server.name}.');
+    }
+
+    // 401 is the answer this is looking for, not a failure: it means the
+    // stored session is gone and a password really is needed now.
+    if (response.statusCode == 401) return null;
+
+    final data = response.data;
+    if (response.statusCode != 200 || data is! Map) return null;
+
+    // `/Users/Me` describes the user rather than a sign-in, so there is no
+    // AccessToken in it — the one being validated is still the one to keep.
+    return AuthResult(
+      token: token,
+      userId: data['Id'] as String? ?? '',
+      username: data['Name'] as String? ?? '',
+      serverId: data['ServerId'] as String? ?? server.serverId,
+    );
   }
 
   /// Whether the server offers Quick Connect at all.

@@ -1011,6 +1011,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String signedInAs(String name) {
+    return 'Signed in as $name';
+  }
+
+  @override
+  String get signInAgain => 'The stored sign-in still works';
+
+  @override
+  String get change => 'Change';
+
+  @override
+  String get noServersYet => 'No servers yet.';
+
+  @override
   String get moreLikeThis => 'More like this';
 
   @override

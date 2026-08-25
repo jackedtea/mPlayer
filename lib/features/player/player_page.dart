@@ -74,6 +74,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   /// playing behind the popped route.
   late final PlaybackController _playback;
   late final PlayerUiController _playerUi;
+  late final NowPlayingController _nowPlaying;
 
   /// While the user drags, the scrubber follows the finger rather than the
   /// position stream, which would fight it.
@@ -93,6 +94,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     super.initState();
     _playback = ref.read(playbackControllerProvider.notifier);
     _playerUi = ref.read(playerUiProvider.notifier);
+    _nowPlaying = ref.read(nowPlayingProvider.notifier);
 
     // The notifier outlives this page, so opening happens after the first
     // frame — mutating a provider during build is not allowed.
@@ -122,8 +124,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
     // The notification, the lock screen, a headset button, headphones pulled
     // out, a phone call taking audio focus. All of them end up here.
-    _notificationCommands =
-        ref.read(nowPlayingProvider.notifier).commands.listen((event) {
+    _notificationCommands = _nowPlaying.commands.listen((event) {
       switch (event.command) {
         case NowPlayingCommand.play:
           _playback.play();
@@ -138,36 +139,60 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
           if (to != null) _playback.seek(to);
         case NowPlayingCommand.stop:
           _playback.pause();
-          unawaited(ref.read(nowPlayingProvider.notifier).stop());
+          unawaited(_nowPlaying.stop());
       }
     });
 
-    _lifecycle = AppLifecycleListener(
-      onStateChange: _onLifecycleChanged,
-    );
+    _lifecycle = AppLifecycleListener(onStateChange: _onLifecycleChanged);
 
     _restartHideTimer();
   }
 
   @override
   void dispose() {
-    _leftForegroundTimer?.cancel();
-    _lifecycle?.dispose();
+    // Ordered, and each step guarded, because this method used to be a chain:
+    // one `ref.read` in the middle of it threw while the element was being
+    // torn down, and everything after that line — stopping the decoder,
+    // releasing the rotation lock — silently never ran. That is one bug
+    // wearing two faces, and it survived being fixed twice at the far end
+    // because the far end was never reached. Nothing here may depend on
+    // anything above it succeeding.
+    //
+    // `ref` is not touched at all: every notifier this needs was captured in
+    // [initState] for exactly this reason.
+    _guard(() => _leftForegroundTimer?.cancel());
+    _guard(() => _hideTimer?.cancel());
+    _guard(() => _sleepTimer?.cancel());
+    _guard(() => _lifecycle?.dispose());
+    _guard(() => unawaited(_pipControls?.cancel()));
+    _guard(() => unawaited(_notificationCommands?.cancel()));
+
+    // The two that matter most to the user, and so the two that go first
+    // among the ones that can fail: a decoder still holding the file is
+    // audible, and a stranded orientation lock leaves the whole app sideways.
+    _guard(() => unawaited(_playback.stop()));
+    _guard(_playerUi.reset);
+    _guard(() => unawaited(_nowPlaying.stop()));
+
     // The rest of the app is not a video player: leaving the bars hidden
     // would strand every screen after this one without a status bar.
-    if (!isDesktop) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    }
-    unawaited(_notificationCommands?.cancel());
-    unawaited(ref.read(nowPlayingProvider.notifier).stop());
-    _hideTimer?.cancel();
-    _sleepTimer?.cancel();
-    unawaited(_pipControls?.cancel());
-    // Leaving the screen must not strand a decoder holding the file open, nor
-    // a locked orientation on the rest of the app.
-    unawaited(_playback.stop());
-    _playerUi.reset();
+    _guard(() {
+      if (!isDesktop) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      }
+    });
+
     super.dispose();
+  }
+
+  /// Runs one teardown step, reporting a failure rather than letting it stop
+  /// the steps that follow.
+  void _guard(void Function() step) {
+    try {
+      step();
+    } catch (e) {
+      debugPrint('Player teardown step failed: $e');
+    }
   }
 
   void _restartHideTimer() {
@@ -217,9 +242,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     // The decoder reports the frame size a moment after opening, which is when
     // "Auto" rotation can finally decide which way up the video wants to be.
     ref.listen(
-      playbackControllerProvider.select(
-        (s) => (s.stats.width, s.stats.height),
-      ),
+      playbackControllerProvider.select((s) => (s.stats.width, s.stats.height)),
       (_, size) => _playerUi.followVideoAspect(size.$1, size.$2),
     );
 
@@ -278,119 +301,134 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       );
     }
 
-    return Theme(
-      // The player is always dark, whatever the app theme is.
-      data: ThemeData.dark(useMaterial3: true).copyWith(
-        colorScheme: ThemeData.dark(useMaterial3: true).colorScheme.copyWith(
-              primaryContainer: const Color(0xFF004C6D),
-              onPrimaryContainer: const Color(0xFFC7E7FF),
-            ),
-        extensions: Theme.of(context).extensions.values,
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Focus(
-          autofocus: true,
-          onKeyEvent: (_, event) => _handleKey(event, controller, ui),
-          child: Stack(
-            fit: StackFit.expand,
-            children: <Widget>[
-              _VideoSurface(controller: controller, fit: ui.aspect.boxFit),
+    return PopScope(
+      // A second net under the teardown, not a replacement for it.
+      //
+      // This fires while the widget is unambiguously alive, before any of the
+      // dispose ordering matters, and pausing is instant and idempotent — so
+      // however the route goes away, the audio stops with it. `dispose` still
+      // does the real work: releasing the decoder, the session and the
+      // rotation lock.
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _playback.pause();
+      },
+      child: Theme(
+        // The player is always dark, whatever the app theme is.
+        data: ThemeData.dark(useMaterial3: true).copyWith(
+          colorScheme: ThemeData.dark(useMaterial3: true).colorScheme.copyWith(
+            primaryContainer: const Color(0xFF004C6D),
+            onPrimaryContainer: const Color(0xFFC7E7FF),
+          ),
+          extensions: Theme.of(context).extensions.values,
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Focus(
+            autofocus: true,
+            onKeyEvent: (_, event) => _handleKey(event, controller, ui),
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                _VideoSurface(controller: controller, fit: ui.aspect.boxFit),
 
-              // Gestures sit above the video and below the chrome, and go
-              // inert entirely while locked.
-              GestureLayer(
-                // Locked ignores everything; the settings switch turns off the
-                // brightness and volume drags without locking the screen.
-                enabled: !ui.locked,
-                gesturesEnabled: settings.swipeGestures,
-                state: state,
-                onTap: _toggleChrome,
-                onSeekBy: controller.skip,
-                onSeekTo: controller.seek,
-                onVolume: controller.setVolume,
-                skipBack: settings.skipBack,
-                skipForward: settings.skipForward,
-              ),
-
-              if (state.error != null) _ErrorOverlay(message: state.error!),
-              // Only where the transport is not already showing one: the
-              // controls sit dead centre, and with the chrome up its
-              // play/pause slot becomes the spinner instead. Two would
-              // overlap, which is what made loading look like a stuck button.
-              if (state.buffering &&
-                  state.error == null &&
-                  (!_chromeVisible || ui.locked))
-                const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+                // Gestures sit above the video and below the chrome, and go
+                // inert entirely while locked.
+                GestureLayer(
+                  // Locked ignores everything; the settings switch turns off the
+                  // brightness and volume drags without locking the screen.
+                  enabled: !ui.locked,
+                  gesturesEnabled: settings.swipeGestures,
+                  state: state,
+                  onTap: _toggleChrome,
+                  onSeekBy: controller.skip,
+                  onSeekTo: controller.seek,
+                  onVolume: controller.setVolume,
+                  skipBack: settings.skipBack,
+                  skipForward: settings.skipForward,
                 ),
 
-              if (ui.statsVisible) StatsOverlay(state: state),
+                if (state.error != null) _ErrorOverlay(message: state.error!),
+                // Only where the transport is not already showing one: the
+                // controls sit dead centre, and with the chrome up its
+                // play/pause slot becomes the spinner instead. Two would
+                // overlap, which is what made loading look like a stuck button.
+                if (state.buffering &&
+                    state.error == null &&
+                    (!_chromeVisible || ui.locked))
+                  const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
 
-              if (!ui.locked)
-                AnimatedOpacity(
-                  opacity: _chromeVisible ? 1 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: IgnorePointer(
-                    ignoring: !_chromeVisible,
-                    child: ControlsOverlay(
-                      media: widget.media,
-                      state: state,
-                      ui: ui,
-                      dragProgress: _dragProgress,
-                      onInteraction: _restartHideTimer,
-                      onPlayPause: () {
-                        _restartHideTimer();
-                        controller.playOrPause();
-                      },
-                      onSkip: controller.skip,
-                      onPrevious: () {
-                        _restartHideTimer();
-                        controller.playPrevious();
-                      },
-                      onNext: () {
-                        _restartHideTimer();
-                        controller.playNext();
-                      },
-                      onScrubStart: (v) => setState(() => _dragProgress = v),
-                      onScrubUpdate: (v) => setState(() => _dragProgress = v),
-                      onScrubEnd: (v) {
-                        setState(() => _dragProgress = null);
-                        controller.seek(state.duration * v);
-                      },
-                      onSubtitles: () => _pickSubtitle(state, controller),
-                      onAudio: () => _pickAudio(state, controller),
-                      onQuality: () => _pickQuality(state, controller),
-                      qualityLabel: () {
-                        final q = ref.watch(streamQualityProvider);
-                        return q.isOriginal
-                            ? AppLocalizations.of(context).qualityOriginal
-                            : q.label;
-                      }(),
-                      onSpeed: () => _pickSpeed(state, controller),
-                      onLock: () {
-                        ref.read(playerUiProvider.notifier).toggleLock();
-                        setState(() => _chromeVisible = false);
-                        _applySystemUi();
-                      },
-                      onRotate: ref.read(playerUiProvider.notifier).cycleRotation,
-                      onChapters: () => _showChapters(state, controller),
-                      onFullscreen: _toggleFullscreen,
-                      onMore: () => MoreMenu.show(context),
-                      onPip: pip.supported ? _enterPip : null,
-                      onCast: _pickCastDevice,
-                      // The same amounts the gestures use; the buttons used
-                      // to be fixed at 10 and 30 seconds regardless.
-                      skipBack: settings.skipBack,
-                      skipForward: settings.skipForward,
-                      onSkipIntro: (chapter) => controller.seek(chapter.end),
-                      notImplemented: _notImplemented,
+                if (ui.statsVisible) StatsOverlay(state: state),
+
+                if (!ui.locked)
+                  AnimatedOpacity(
+                    opacity: _chromeVisible ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: IgnorePointer(
+                      ignoring: !_chromeVisible,
+                      child: ControlsOverlay(
+                        media: widget.media,
+                        state: state,
+                        ui: ui,
+                        dragProgress: _dragProgress,
+                        onInteraction: _restartHideTimer,
+                        onPlayPause: () {
+                          _restartHideTimer();
+                          controller.playOrPause();
+                        },
+                        onSkip: controller.skip,
+                        onPrevious: () {
+                          _restartHideTimer();
+                          controller.playPrevious();
+                        },
+                        onNext: () {
+                          _restartHideTimer();
+                          controller.playNext();
+                        },
+                        onScrubStart: (v) => setState(() => _dragProgress = v),
+                        onScrubUpdate: (v) => setState(() => _dragProgress = v),
+                        onScrubEnd: (v) {
+                          setState(() => _dragProgress = null);
+                          controller.seek(state.duration * v);
+                        },
+                        onSubtitles: () => _pickSubtitle(state, controller),
+                        onAudio: () => _pickAudio(state, controller),
+                        onQuality: () => _pickQuality(state, controller),
+                        qualityLabel: () {
+                          final q = ref.watch(streamQualityProvider);
+                          return q.isOriginal
+                              ? AppLocalizations.of(context).qualityOriginal
+                              : q.label;
+                        }(),
+                        onSpeed: () => _pickSpeed(state, controller),
+                        onLock: () {
+                          ref.read(playerUiProvider.notifier).toggleLock();
+                          setState(() => _chromeVisible = false);
+                          _applySystemUi();
+                        },
+                        onRotate: ref
+                            .read(playerUiProvider.notifier)
+                            .cycleRotation,
+                        onChapters: () => _showChapters(state, controller),
+                        onFullscreen: _toggleFullscreen,
+                        onMore: () => MoreMenu.show(context),
+                        onPip: pip.supported ? _enterPip : null,
+                        onCast: _pickCastDevice,
+                        // The same amounts the gestures use; the buttons used
+                        // to be fixed at 10 and 30 seconds regardless.
+                        skipBack: settings.skipBack,
+                        skipForward: settings.skipForward,
+                        onSkipIntro: (chapter) => controller.seek(chapter.end),
+                        notImplemented: _notImplemented,
+                      ),
                     ),
                   ),
-                ),
 
-              if (ui.locked) _LockedOverlay(state: state),
-            ],
+                if (ui.locked) _LockedOverlay(state: state),
+              ],
+            ),
           ),
         ),
       ),
@@ -431,10 +469,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final file = await ref.read(localSourceProvider).pickSubtitle();
     if (file == null) return;
 
-    await controller.addExternalSubtitle(
-      Uri.file(file.path),
-      title: file.name,
-    );
+    await controller.addExternalSubtitle(Uri.file(file.path), title: file.name);
   }
 
   Future<void> _pickAudio(
@@ -590,7 +625,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   /// Shrinks the app into the picture-in-picture window.
   Future<void> _enterPip() async {
     final state = ref.read(playbackControllerProvider);
-    await ref.read(pipProvider.notifier).enter(
+    await ref
+        .read(pipProvider.notifier)
+        .enter(
           width: state.stats.width,
           height: state.stats.height,
           playing: state.playing,
@@ -603,7 +640,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   /// leaves is a window they did not ask for.
   void _syncPip(bool playing, int? width, int? height) {
     unawaited(
-      ref.read(pipProvider.notifier).update(
+      ref
+          .read(pipProvider.notifier)
+          .update(
             width: width,
             height: height,
             playing: playing,
@@ -727,7 +766,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   void _notImplemented(String what) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context).notImplemented(what))),
+      SnackBar(
+        content: Text(AppLocalizations.of(context).notImplemented(what)),
+      ),
     );
   }
 }
@@ -816,8 +857,7 @@ class _LockedOverlayState extends ConsumerState<_LockedOverlay> {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     GestureDetector(
-                      onDoubleTap:
-                          ref.read(playerUiProvider.notifier).unlock,
+                      onDoubleTap: ref.read(playerUiProvider.notifier).unlock,
                       child: CircleButton(
                         icon: Icons.lock_rounded,
                         size: 56,
@@ -883,7 +923,11 @@ class _ErrorOverlay extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 44),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Colors.white,
+              size: 44,
+            ),
             SizedBox(height: spacing.lg),
             Text(
               message,

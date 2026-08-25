@@ -118,10 +118,11 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
           // Outside the page padding: the strip scrolls edge to edge and
           // supplies its own inset, so the last chip is not clipped by a
           // margin the user cannot scroll past.
-          TagStrip(
-            tags: <String>[...item.genres, ...item.tags],
-            padding: padding,
-          ),
+          // Genres only, same as the series screen: the server's keywords
+          // arrive in the same response and are far more numerous and far
+          // less curated, so they bury the four words that say what the film
+          // is.
+          TagStrip(tags: item.genres, padding: padding),
           // Only when there is something in it. The rows come from the
           // stream list, which arrives with the playback decision rather than
           // with the item, so before a play this card is an empty box.

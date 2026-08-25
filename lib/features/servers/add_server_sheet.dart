@@ -46,7 +46,20 @@ class AddServerSheet extends ConsumerStatefulWidget {
 }
 
 /// What the sheet is doing, which decides everything it shows.
-enum _Stage { typing, probing, found, signingIn, waitingForApproval }
+enum _Stage {
+  typing,
+  probing,
+  found,
+
+  /// Editing a server whose stored session still works.
+  ///
+  /// Nothing to type: the app already holds a credential this address
+  /// accepts, so the sheet has one button on it and no password field.
+  signedIn,
+
+  signingIn,
+  waitingForApproval,
+}
 
 class _AddServerSheetState extends ConsumerState<AddServerSheet> {
   final _address = TextEditingController();
@@ -63,6 +76,10 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
 
   Timer? _debounce;
   JellyfinAuth? _auth;
+
+  /// The session already stored for the server being edited, once it has been
+  /// checked and found to still work. Null means a password is needed.
+  AuthResult? _existingSession;
 
   /// Bumped whenever the address changes, so a probe that finishes after the
   /// user has typed on cannot overwrite a newer answer.
@@ -104,6 +121,9 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
     setState(() {
       _server = null;
       _error = null;
+      // Checked against the address that was there a moment ago, which is not
+      // the one being typed now.
+      _existingSession = null;
       _quickConnectAvailable = false;
       _stage = _address.text.trim().isEmpty ? _Stage.typing : _Stage.probing;
     });
@@ -129,6 +149,8 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
         _stage = _Stage.found;
         _error = null;
       });
+
+      await _tryStoredSession(info, generation);
     } on ServerException catch (e) {
       if (!mounted || generation != _probeGeneration) return;
       setState(() {
@@ -166,6 +188,50 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
         _stage = _Stage.found;
       });
     }
+  }
+
+  /// Sees whether the credential already held still opens this address.
+  ///
+  /// Renaming a server, or moving it to an address it answers on just the
+  /// same, does not invalidate the session stored for it — so demanding the
+  /// password again is asking the user to re-prove something the app can
+  /// check for itself. It only falls through to the form when the server
+  /// actually refuses the token.
+  Future<void> _tryStoredSession(ServerInfo info, int generation) async {
+    final editing = widget.editing;
+    if (editing == null) return;
+
+    final token =
+        await ref.read(serverRegistryProvider.notifier).tokenFor(editing.id);
+    if (token == null || token.isEmpty) return;
+    if (!mounted || generation != _probeGeneration) return;
+
+    try {
+      final auth = await _authService();
+      final session = await auth.validate(info, token);
+      if (!mounted || generation != _probeGeneration) return;
+      if (session == null) return;
+
+      setState(() {
+        _existingSession = session;
+        _username.text = session.username;
+        _stage = _Stage.signedIn;
+      });
+    } on ServerException {
+      // Unreachable rather than refused. The form is still the right next
+      // step, and the probe has already said what went wrong.
+      return;
+    }
+  }
+
+  /// Saves an edit that needed no new password.
+  Future<void> _saveWithStoredSession() async {
+    final server = _server;
+    final session = _existingSession;
+    if (server == null || session == null) return;
+
+    setState(() => _stage = _Stage.signingIn);
+    await _finish(server, session);
   }
 
   Future<void> _startQuickConnect() async {
@@ -274,14 +340,40 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                   spacing.lg,
                   0,
                 ),
-                child: _DetectionLine(
-                  stage: _stage,
-                  server: _server,
-                  error: _error,
-                ),
+                child: _DetectionLine(server: _server, error: _error),
               ),
 
-              if (_stage == _Stage.waitingForApproval)
+              if (_signedInAlready)
+                // No password field, because none is needed: the credential
+                // already stored was just checked against this address and
+                // accepted. Asking again would be asking the user to re-prove
+                // something the app can verify for itself.
+                Padding(
+                  padding: EdgeInsets.only(top: spacing.lg),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.verified_user_rounded,
+                      color: context.semantic.success,
+                    ),
+                    title: Text(
+                      AppLocalizations.of(context)
+                          .signedInAs(_existingSession!.username),
+                    ),
+                    subtitle: Text(AppLocalizations.of(context).signInAgain),
+                    trailing: TextButton(
+                      // A way out for the case this cannot detect: the account
+                      // itself is being changed, not just the address.
+                      onPressed: () => setState(() {
+                        _existingSession = null;
+                        _password.clear();
+                        _stage = _Stage.found;
+                      }),
+                      child: Text(AppLocalizations.of(context).change),
+                    ),
+                  ),
+                )
+              else if (_stage == _Stage.waitingForApproval)
                 _QuickConnectPanel(request: _quickConnectRequest)
               else ...<Widget>[
                 SizedBox(height: spacing.xl - spacing.xs),
@@ -354,10 +446,16 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                     )
                   else
                     FilledButton(
-                      onPressed: _quickConnect
-                          ? (_server == null ? null : _startQuickConnect)
-                          : (_canSignIn ? _signIn : null),
-                      child: Text(_quickConnect ? 'Get a code' : 'Connect'),
+                      onPressed: _signedInAlready
+                          ? _saveWithStoredSession
+                          : (_quickConnect
+                              ? (_server == null ? null : _startQuickConnect)
+                              : (_canSignIn ? _signIn : null)),
+                      child: Text(
+                        _signedInAlready
+                            ? AppLocalizations.of(context).save
+                            : (_quickConnect ? 'Get a code' : 'Connect'),
+                      ),
                     ),
                 ],
               ),
@@ -368,6 +466,10 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
     );
   }
 
+  /// Editing a server the app can still open without being told anything.
+  bool get _signedInAlready =>
+      _stage == _Stage.signedIn && _existingSession != null;
+
   bool get _canSignIn =>
       _server != null &&
       _username.text.trim().isNotEmpty &&
@@ -376,13 +478,8 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
 
 /// The line under the address field: what was found, or what went wrong.
 class _DetectionLine extends StatelessWidget {
-  const _DetectionLine({
-    required this.stage,
-    required this.server,
-    required this.error,
-  });
+  const _DetectionLine({required this.server, required this.error});
 
-  final _Stage stage;
   final ServerInfo? server;
   final String? error;
 
@@ -398,26 +495,14 @@ class _DetectionLine extends StatelessWidget {
       );
     }
 
-    if (stage == _Stage.probing) {
-      return Row(
-        children: <Widget>[
-          SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          SizedBox(width: context.spacing.sm),
-          Text(
-            'Looking for a server…',
-            style: context.texts.bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-        ],
-      );
-    }
+    // Nothing is said while the probe is in flight. It fires on every pause
+    // in typing, so a spinner and "Looking for a server…" appeared and
+    // vanished under the address field on the way to typing one — motion
+    // reporting on the app's own busywork rather than on anything the user
+    // asked about. The outcome is what matters, and it arrives either way.
+    //
+    // The line keeps its idle prompt rather than collapsing, so the fields
+    // below do not jump each time.
 
     final found = server;
     if (found != null) {

@@ -1012,6 +1012,20 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String signedInAs(String name) {
+    return 'Đang đăng nhập bằng $name';
+  }
+
+  @override
+  String get signInAgain => 'Phiên đã lưu vẫn dùng được';
+
+  @override
+  String get change => 'Đổi';
+
+  @override
+  String get noServersYet => 'Chưa có máy chủ nào.';
+
+  @override
   String get moreLikeThis => 'Phim tương tự';
 
   @override

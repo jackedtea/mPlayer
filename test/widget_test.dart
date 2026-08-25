@@ -197,6 +197,74 @@ void main() {
     });
   });
 
+  group('what the Files shelf continues', () {
+    testWidgets('a server item is not one of them', (tester) async {
+      // A server keeps its own watch state, gathered from every device the
+      // user owns, and shows it on the Server tab. Repeating it here would
+      // put two entries for one film on two screens, disagreeing about the
+      // position as soon as it were watched anywhere else.
+      final now = DateTime(2026, 2, 10);
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'resume_points_v1': <String>[
+          jsonEncode(
+            ResumePoint(
+              sourceId: 'device',
+              itemId: '/media/local.mkv',
+              title: 'A local file',
+              kind: SourceKind.device,
+              position: const Duration(minutes: 10),
+              duration: const Duration(minutes: 100),
+              updatedAt: now,
+            ).toJson(),
+          ),
+          jsonEncode(
+            ResumePoint(
+              sourceId: 'server-1',
+              itemId: 'abc123',
+              title: 'A film from the server',
+              kind: SourceKind.jellyfin,
+              position: const Duration(minutes: 20),
+              duration: const Duration(minutes: 100),
+              updatedAt: now,
+            ).toJson(),
+          ),
+        ],
+      });
+
+      await pumpAppAt(tester, const Size(400, 800));
+
+      expect(find.text('A local file'), findsOneWidget);
+      expect(find.text('A film from the server'), findsNothing);
+    });
+
+    testWidgets('a shelf of nothing but server items is not drawn at all',
+        (tester) async {
+      final now = DateTime(2026, 2, 10);
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'resume_points_v1': <String>[
+          jsonEncode(
+            ResumePoint(
+              sourceId: 'server-1',
+              itemId: 'abc123',
+              title: 'A film from the server',
+              kind: SourceKind.jellyfin,
+              position: const Duration(minutes: 20),
+              duration: const Duration(minutes: 100),
+              updatedAt: now,
+            ).toJson(),
+          ),
+        ],
+      });
+
+      await pumpAppAt(tester, const Size(400, 800));
+
+      // Heading and Clear button both go with it: an empty shelf under a
+      // heading reads as something having gone wrong.
+      expect(find.text('Continue watching'), findsNothing);
+      expect(find.widgetWithText(TextButton, 'Clear'), findsNothing);
+    });
+  });
+
   group('clearing Continue watching', () {
     testWidgets('the action only appears when there is something to clear',
         (tester) async {

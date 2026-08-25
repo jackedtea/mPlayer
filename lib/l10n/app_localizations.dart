@@ -1940,6 +1940,30 @@ abstract class AppLocalizations {
   /// **'S{season}E{episode}'**
   String episodeOf(int season, int episode);
 
+  /// No description provided for @signedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {name}'**
+  String signedInAs(String name);
+
+  /// No description provided for @signInAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'The stored sign-in still works'**
+  String get signInAgain;
+
+  /// No description provided for @change.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get change;
+
+  /// No description provided for @noServersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No servers yet.'**
+  String get noServersYet;
+
   /// No description provided for @moreLikeThis.
   ///
   /// In en, this message translates to:

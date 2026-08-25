@@ -284,6 +284,16 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     return profile;
   }
 
+  /// The stored token for a profile, or null when there is none.
+  ///
+  /// Exposed so the edit form can try the session already held before asking
+  /// for a password again.
+  Future<String?> tokenFor(String profileId) async {
+    final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
+    if (profile == null) return null;
+    return _repository.readToken(profile);
+  }
+
   /// Rewrites a server the user has already added, keeping its id.
   ///
   /// The id is what the token is filed under and what every resume point

@@ -13,12 +13,16 @@ import '../../widgets/poster_tile.dart';
 import '../../widgets/remote_art.dart';
 import 'server_library.dart';
 
-/// Genres and keywords, as one horizontally scrolling row.
+/// Genres, as one horizontally scrolling row.
 ///
-/// A `Wrap` was the obvious layout and the wrong one: a film carries five
-/// genres and a series can carry thirty keywords, and wrapped at full chip
-/// size they pushed the cast and the media info a screen and a half down. One
-/// row that scrolls costs a fixed 36 points however many there are.
+/// A `Wrap` was the obvious layout and the wrong one: wrapped at full chip
+/// size these pushed the cast and the media info a screen and a half down.
+/// One row that scrolls costs a fixed 34 points however many there are.
+///
+/// The server's keywords used to ride along here and no longer do. A series
+/// carries dozens — "affectation", "co-workers relationship" — and none of
+/// them answer the question a genre answers, so they only made "Comedy"
+/// something to scroll for.
 class TagStrip extends StatelessWidget {
   const TagStrip({
     super.key,
