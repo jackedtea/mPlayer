@@ -14,6 +14,7 @@ import '../../servers/stream_preferences.dart';
 import '../../widgets/backdrop_header.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
+import 'media_info_sheet.dart';
 import 'server_library.dart';
 
 /// One episode, with its tracks chosen before anything starts playing.
@@ -76,7 +77,7 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
     final siblings = item.seriesId == null
         ? const <ServerItem>[]
         : ref.watch(seriesEpisodesProvider(item.seriesId!)).value ??
-            const <ServerItem>[];
+              const <ServerItem>[];
 
     return Scaffold(
       body: ListView(
@@ -97,8 +98,9 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                     item.seriesTitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodyMedium
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
                   ),
                 Text(
                   item.title,
@@ -109,8 +111,9 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                 SizedBox(height: spacing.xs),
                 Text(
                   _metaLine(item, l10n),
-                  style: context.texts.bodySmall
-                      ?.copyWith(color: context.colors.onSurfaceVariant),
+                  style: context.texts.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -127,9 +130,11 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
                   playlistIds: <String>[item.id],
                   onPlay: () => _play(item, playback),
                   onStartOver: () => _play(item, playback, fromStart: true),
-                  onMediaInfo: playback == null
-                      ? null
-                      : () => _showMediaInfo(playback),
+                  // Always offered: the sheet fetches the track list itself
+                  // and says so while it does, which is better than an action
+                  // that is missing until a request the user cannot see
+                  // finishes.
+                  onMediaInfo: () => showMediaInfo(context, item.id),
                 ),
                 if ((item.overview ?? '').isNotEmpty) ...<Widget>[
                   SizedBox(height: spacing.lg),
@@ -184,7 +189,9 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
   }) async {
     // Recorded against this item's id, so a choice cannot leak onto whatever
     // is played next — the indexes mean something entirely different there.
-    ref.read(trackChoiceProvider.notifier).set(
+    ref
+        .read(trackChoiceProvider.notifier)
+        .set(
           _audioTouched || _subtitleTouched
               ? TrackChoice(
                   itemId: item.id,
@@ -196,15 +203,6 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
         );
 
     await playServerItem(context, ref, item.id, fromStart: fromStart);
-  }
-
-  void _showMediaInfo(ServerPlayback playback) {
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (_) => _MediaInfoSheet(playback: playback),
-    );
   }
 
   static String _metaLine(ServerItem item, AppLocalizations l10n) {
@@ -321,8 +319,9 @@ class _TrackPickers extends StatelessWidget {
             if (offLabel != null)
               ListTile(
                 title: Text(offLabel),
-                trailing:
-                    selected == null ? const Icon(Icons.check_rounded) : null,
+                trailing: selected == null
+                    ? const Icon(Icons.check_rounded)
+                    : null,
                 onTap: () =>
                     Navigator.of(sheetContext).pop(const _Choice(null)),
               ),
@@ -381,97 +380,6 @@ class _PickerRow extends StatelessWidget {
   }
 }
 
-/// Every stream in the file, as the server describes it.
-class _MediaInfoSheet extends StatelessWidget {
-  const _MediaInfoSheet({required this.playback});
-
-  final ServerPlayback playback;
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final scheme = context.colors;
-    final l10n = AppLocalizations.of(context);
-
-    return SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: EdgeInsets.only(bottom: spacing.xl),
-        children: <Widget>[
-          Padding(
-            padding: EdgeInsets.all(spacing.lg),
-            child: Text(l10n.mediaInfo, style: context.texts.titleMedium),
-          ),
-          _Fact(
-            label: 'Container',
-            value: playback.container?.toUpperCase() ?? '—',
-          ),
-          _Fact(label: 'Bitrate', value: _mbps(playback.bitrate)),
-          _Fact(
-            label: 'Delivery',
-            value: playback.isDirectPlay ? 'Direct play' : 'Transcoding',
-          ),
-          const Divider(),
-          for (final ServerStream stream in playback.streams)
-            ListTile(
-              dense: true,
-              leading: Icon(
-                switch (stream.type) {
-                  ServerStreamType.video => Icons.movie_outlined,
-                  ServerStreamType.audio => Icons.multitrack_audio_rounded,
-                  ServerStreamType.subtitle => Icons.closed_caption_outlined,
-                  ServerStreamType.unknown => Icons.help_outline_rounded,
-                },
-                color: scheme.onSurfaceVariant,
-              ),
-              title: Text(stream.label),
-              subtitle: Text(
-                <String>[
-                  if (stream.width != null && stream.height != null)
-                    '${stream.width}×${stream.height}',
-                  if (stream.bitrate != null) _mbps(stream.bitrate),
-                ].join(' · '),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  static String _mbps(int? bits) =>
-      bits == null ? '—' : '${(bits / 1000000).toStringAsFixed(1)} Mbps';
-}
-
-class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.lg,
-        vertical: context.spacing.xs,
-      ),
-      child: Row(
-        children: <Widget>[
-          SizedBox(
-            width: 96,
-            child: Text(
-              label,
-              style: context.texts.bodySmall
-                  ?.copyWith(color: context.colors.onSurfaceVariant),
-            ),
-          ),
-          Expanded(child: Text(value, style: context.texts.bodySmall)),
-        ],
-      ),
-    );
-  }
-}
-
 /// The episode summary, three lines until it is tapped.
 class _Overview extends StatelessWidget {
   const _Overview({
@@ -498,8 +406,9 @@ class _Overview extends StatelessWidget {
             text,
             maxLines: expanded ? null : 3,
             overflow: expanded ? null : TextOverflow.ellipsis,
-            style: context.texts.bodyMedium
-                ?.copyWith(color: context.colors.onSurfaceVariant),
+            style: context.texts.bodyMedium?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
           ),
           Text(
             expanded ? l10n.less : l10n.more,

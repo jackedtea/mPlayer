@@ -378,7 +378,11 @@ class _LibraryGrid extends ConsumerWidget {
         itemCount: views.length,
         itemBuilder: (context, i) {
           final LibraryView view = views[i];
-          final LibrarySection section = librarySectionFrom(view);
+          // A request of its own per library, so the tiles draw immediately
+          // and the counts fill in behind them.
+          final count = ref.watch(libraryItemCountProvider(view.id)).value;
+          final LibrarySection section =
+              librarySectionFrom(view, itemCount: count);
           return Material(
             color: scheme.surfaceContainerLow,
             borderRadius: context.radii.cardAll,
@@ -402,12 +406,18 @@ class _LibraryGrid extends ConsumerWidget {
                             section.name,
                             style: context.texts.bodyLarge,
                           ),
-                          Text(
-                            '${section.itemCount} items',
-                            style: context.texts.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
+                          // Nothing at all until the count is known: a
+                          // library labelled "0 items" while its tally is in
+                          // flight reads as an empty library.
+                          if (count != null)
+                            Text(
+                              AppLocalizations.of(
+                                context,
+                              ).itemCount(section.itemCount),
+                              style: context.texts.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),

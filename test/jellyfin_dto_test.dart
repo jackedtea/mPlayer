@@ -347,14 +347,13 @@ void main() {
       });
 
       expect(view.kind, 'movies');
-      expect(view.itemCount, 412);
     });
 
     test('a plain folder with no collection type still lists', () {
       final view = libraryViewFromJson(<String, dynamic>{'Id': 'v2', 'Name': 'Odds'});
 
       expect(view.kind, 'unknown');
-      expect(view.itemCount, isNull);
+      expect(view.name, 'Odds');
     });
 
     test('names sort ascending, everything time-based descending', () {

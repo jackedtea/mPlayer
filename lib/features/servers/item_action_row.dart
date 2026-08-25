@@ -14,9 +14,9 @@ import 'item_actions.dart';
 /// The primary button plus the row of things that can be done to an item.
 ///
 /// Shared between the series and the episode screens because the list is the
-/// same one in both places, and two copies would drift: the series version
-/// grew "download all" and the episode version "media info", and everything
-/// else — watch state, favourites, shuffle, playlists — is identical.
+/// same one in both places. The choices themselves come from
+/// [itemActionsFor], which the episode row's menu renders too — this widget
+/// only decides that they are drawn as chips.
 class ItemActionRow extends ConsumerWidget {
   const ItemActionRow({
     super.key,
@@ -53,7 +53,7 @@ class ItemActionRow extends ConsumerWidget {
   final bool downloadsAll;
 
   /// Opens the stream list. Null on screens that have no such panel.
-  final VoidCallback? onMediaInfo;
+  final Future<void> Function()? onMediaInfo;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -62,6 +62,16 @@ class ItemActionRow extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
 
     final started = (item.position ?? Duration.zero) > Duration.zero;
+    final actions = itemActionsFor(
+      context,
+      ref,
+      item: item,
+      seriesId: seriesId,
+      shuffleFrom: shuffleFrom,
+      playlistIds: playlistIds,
+      downloadsAll: downloadsAll,
+      onMediaInfo: onMediaInfo,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,9 +89,7 @@ class ItemActionRow extends ConsumerWidget {
                   ),
                   onPressed: onPlay,
                   icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(
-                    started ? l10n.continueWatching : l10n.play,
-                  ),
+                  label: Text(started ? l10n.continueWatching : l10n.play),
                 ),
               ),
             ),
@@ -101,93 +109,14 @@ class ItemActionRow extends ConsumerWidget {
         // buttons pushing the description off the screen.
         SizedBox(
           height: 40,
-          child: ListView(
+          child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            children: <Widget>[
-              _Action(
-                icon: item.played
-                    ? Icons.check_circle_rounded
-                    : Icons.check_circle_outline_rounded,
-                label: item.played ? l10n.markUnwatched : l10n.markWatched,
-                selected: item.played,
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final ok = await setWatched(
-                    ref,
-                    item.id,
-                    watched: !item.played,
-                    seriesId: seriesId,
-                  );
-                  if (!ok) {
-                    messenger.showSnackBar(
-                      SnackBar(content: Text(l10n.actionFailed)),
-                    );
-                  }
-                },
-              ),
-              SizedBox(width: spacing.sm),
-              _Action(
-                icon: item.favourite
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                label: item.favourite
-                    ? l10n.removeFavourite
-                    : l10n.addFavourite,
-                selected: item.favourite,
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final ok = await setFavourite(
-                    ref,
-                    item.id,
-                    favourite: !item.favourite,
-                    seriesId: seriesId,
-                  );
-                  if (!ok) {
-                    messenger.showSnackBar(
-                      SnackBar(content: Text(l10n.actionFailed)),
-                    );
-                  }
-                },
-              ),
-              if (shuffleFrom.isNotEmpty) ...<Widget>[
-                SizedBox(width: spacing.sm),
-                _Action(
-                  icon: Icons.shuffle_rounded,
-                  label: l10n.shufflePlay,
-                  onPressed: () => shufflePlay(context, ref, shuffleFrom),
-                ),
-              ],
-              if (playlistIds.isNotEmpty) ...<Widget>[
-                SizedBox(width: spacing.sm),
-                _Action(
-                  icon: Icons.playlist_add_rounded,
-                  label: l10n.addToPlaylist,
-                  onPressed: () =>
-                      showPlaylistSheet(context, ref, itemIds: playlistIds),
-                ),
-              ],
-              if (onMediaInfo != null) ...<Widget>[
-                SizedBox(width: spacing.sm),
-                _Action(
-                  icon: Icons.info_outline_rounded,
-                  label: l10n.mediaInfo,
-                  onPressed: onMediaInfo!,
-                ),
-              ],
-              SizedBox(width: spacing.sm),
-              _Action(
-                icon: Icons.download_for_offline_outlined,
-                label: downloadsAll ? l10n.downloadAll : l10n.download,
-                // Offline copies are a whole subsystem — a store, a queue, a
-                // resolver that keeps working when the server is gone — and
-                // none of it exists yet. Shown and honest rather than hidden,
-                // because the design's screen for it already exists.
-                onPressed: () => reportFailure(
-                  context,
-                  l10n.notImplemented(l10n.download),
-                ),
-              ),
-            ],
+            itemCount: actions.length,
+            separatorBuilder: (_, _) => SizedBox(width: spacing.sm),
+            itemBuilder: (context, i) {
+              final action = actions[i];
+              return _Chip(action: action);
+            },
           ),
         ),
       ],
@@ -195,18 +124,10 @@ class ItemActionRow extends ConsumerWidget {
   }
 }
 
-class _Action extends StatelessWidget {
-  const _Action({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-    this.selected = false,
-  });
+class _Chip extends StatelessWidget {
+  const _Chip({required this.action});
 
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-  final bool selected;
+  final ItemAction action;
 
   @override
   Widget build(BuildContext context) {
@@ -214,13 +135,15 @@ class _Action extends StatelessWidget {
 
     return ActionChip(
       avatar: Icon(
-        icon,
+        action.icon,
         size: 18,
-        color: selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant,
+        color: action.selected
+            ? scheme.onSecondaryContainer
+            : scheme.onSurfaceVariant,
       ),
-      label: Text(label),
-      backgroundColor: selected ? scheme.secondaryContainer : null,
-      onPressed: onPressed,
+      label: Text(action.label),
+      backgroundColor: action.selected ? scheme.secondaryContainer : null,
+      onPressed: () => action.onSelected(),
     );
   }
 }
@@ -255,6 +178,58 @@ class _Square extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The same choices as [ItemActionRow], as an overflow menu.
+///
+/// What an episode row has room for: a list of rows cannot each carry six
+/// chips, and the row already spends its width on a still, a title and a
+/// description.
+class ItemActionMenu extends ConsumerWidget {
+  const ItemActionMenu({
+    super.key,
+    required this.item,
+    this.seriesId,
+    this.shuffleFrom = const <ServerItem>[],
+    this.onMediaInfo,
+  });
+
+  final ServerItem item;
+  final String? seriesId;
+  final List<ServerItem> shuffleFrom;
+  final Future<void> Function()? onMediaInfo;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final actions = itemActionsFor(
+      context,
+      ref,
+      item: item,
+      seriesId: seriesId,
+      shuffleFrom: shuffleFrom,
+      playlistIds: <String>[item.id],
+      onMediaInfo: onMediaInfo,
+    );
+
+    return PopupMenuButton<int>(
+      icon: const Icon(Icons.more_vert_rounded),
+      tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+      onSelected: (i) => actions[i].onSelected(),
+      itemBuilder: (context) => <PopupMenuEntry<int>>[
+        for (final (int i, ItemAction action) in actions.indexed)
+          PopupMenuItem<int>(
+            value: i,
+            child: Row(
+              children: <Widget>[
+                Icon(action.icon, size: 20),
+                SizedBox(width: context.spacing.md),
+                Expanded(child: Text(action.label)),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

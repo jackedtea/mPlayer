@@ -121,6 +121,23 @@ final serverItemProvider =
   return source.item(itemId);
 });
 
+/// How many items one library holds.
+///
+/// Separate from [serverViewsProvider] because it is a separate request per
+/// library — cheap ones, `limit=0`, but the library tiles must draw before
+/// they land rather than waiting on four round trips.
+final libraryItemCountProvider =
+    FutureProvider.family<int?, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return null;
+  try {
+    return await source.itemCount(viewId);
+  } on ServerException {
+    // No count is better than a wrong one; the tile shows the name alone.
+    return null;
+  }
+});
+
 /// What the server suggests alongside an item.
 ///
 /// A separate request from the item itself, so a server that has no `/Similar`
@@ -461,10 +478,13 @@ IconData iconForLibrary(String kind) {
 }
 
 /// A library, as the sections list draws it.
-LibrarySection librarySectionFrom(LibraryView view) {
+LibrarySection librarySectionFrom(LibraryView view, {int? itemCount}) {
   return LibrarySection(
     name: view.name,
-    itemCount: view.itemCount ?? 0,
+    // Zero only when the server has actually said so. The tile treats a null
+    // count as "not known yet" and draws no line at all, rather than claiming
+    // an empty library.
+    itemCount: itemCount ?? 0,
     icon: iconForLibrary(view.kind),
   );
 }

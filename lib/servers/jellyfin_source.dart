@@ -126,6 +126,23 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
+  Future<int> itemCount(String viewId) async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      'parentId': viewId,
+      'recursive': 'true',
+      // The same filter the listing uses, or the count would describe a
+      // different set of things from the grid it labels.
+      'includeItemTypes': 'Movie,Series,Video,BoxSet',
+      // Nothing is sent back but the tally.
+      'limit': '0',
+      'enableTotalRecordCount': 'true',
+    });
+
+    return json['TotalRecordCount'] as int? ?? 0;
+  }
+
+  @override
   Future<ServerItem> item(String itemId) async {
     final json = await _get('/Items/$itemId', <String, String>{
       'userId': _profile.userId,

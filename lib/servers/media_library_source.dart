@@ -19,12 +19,7 @@ import 'server_profile.dart';
 /// A top-level library: Movies, Shows, Music.
 @immutable
 class LibraryView {
-  const LibraryView({
-    required this.id,
-    required this.name,
-    required this.kind,
-    this.itemCount,
-  });
+  const LibraryView({required this.id, required this.name, required this.kind});
 
   final String id;
   final String name;
@@ -34,8 +29,12 @@ class LibraryView {
   /// app has never heard of should still list.
   final String kind;
 
-  /// Null when the server did not say, which it often does not for a view.
-  final int? itemCount;
+  // There is deliberately no item count here. `/UserViews` answers with a
+  // `ChildCount`, and on a library it is not the number of items in it — the
+  // dev server returns 7 for a library of 99 films, 7 for one of 8 series and
+  // 7 for a collection folder holding 32 box sets. Whatever it counts, it is
+  // not what a user reading "8 items" would understand. The real number comes
+  // from [itemCount], which asks the server to count.
 }
 
 /// One entry in a library, a shelf, or a search result.
@@ -309,6 +308,13 @@ abstract class MediaLibrarySource {
 
   /// The libraries the signed-in user can see.
   Future<List<LibraryView>> views();
+
+  /// How many items a library holds.
+  ///
+  /// A request of its own because the only trustworthy source for it is a
+  /// listing's `TotalRecordCount`, which means asking for the listing — with
+  /// a limit of zero, so the server counts without sending anything.
+  Future<int> itemCount(String viewId);
 
   /// One library's contents.
   Future<List<ServerItem>> items(

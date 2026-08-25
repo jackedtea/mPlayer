@@ -281,6 +281,113 @@ class _PlaylistRow extends ConsumerWidget {
   }
 }
 
+/// One thing that can be done to an item.
+///
+/// The list is built once and rendered twice — as chips under a detail
+/// screen's play button, and as a menu on an episode row. Two hand-written
+/// copies of the same six choices is how one of them ends up missing
+/// "favourite" a month from now.
+@immutable
+class ItemAction {
+  const ItemAction({
+    required this.icon,
+    required this.label,
+    required this.onSelected,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Future<void> Function() onSelected;
+
+  /// On, in the sense a toggle is on: watched, or a favourite. Drawn as a
+  /// filled chip, and it is why the label reads "Mark as unwatched".
+  final bool selected;
+}
+
+/// Everything offered for [item], in the order both presentations use.
+List<ItemAction> itemActionsFor(
+  BuildContext context,
+  WidgetRef ref, {
+  required ServerItem item,
+  String? seriesId,
+  List<ServerItem> shuffleFrom = const <ServerItem>[],
+  List<String> playlistIds = const <String>[],
+  bool downloadsAll = false,
+  Future<void> Function()? onMediaInfo,
+}) {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+
+  Future<void> report(bool ok) async {
+    if (!ok) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.actionFailed)));
+    }
+  }
+
+  return <ItemAction>[
+    ItemAction(
+      icon: item.played
+          ? Icons.check_circle_rounded
+          : Icons.check_circle_outline_rounded,
+      label: item.played ? l10n.markUnwatched : l10n.markWatched,
+      selected: item.played,
+      onSelected: () async => report(
+        await setWatched(
+          ref,
+          item.id,
+          watched: !item.played,
+          seriesId: seriesId,
+        ),
+      ),
+    ),
+    ItemAction(
+      icon: item.favourite
+          ? Icons.favorite_rounded
+          : Icons.favorite_border_rounded,
+      label: item.favourite ? l10n.removeFavourite : l10n.addFavourite,
+      selected: item.favourite,
+      onSelected: () async => report(
+        await setFavourite(
+          ref,
+          item.id,
+          favourite: !item.favourite,
+          seriesId: seriesId,
+        ),
+      ),
+    ),
+    if (shuffleFrom.isNotEmpty)
+      ItemAction(
+        icon: Icons.shuffle_rounded,
+        label: l10n.shufflePlay,
+        onSelected: () => shufflePlay(context, ref, shuffleFrom),
+      ),
+    if (playlistIds.isNotEmpty)
+      ItemAction(
+        icon: Icons.playlist_add_rounded,
+        label: l10n.addToPlaylist,
+        onSelected: () =>
+            showPlaylistSheet(context, ref, itemIds: playlistIds),
+      ),
+    if (onMediaInfo != null)
+      ItemAction(
+        icon: Icons.info_outline_rounded,
+        label: l10n.mediaInfo,
+        onSelected: onMediaInfo,
+      ),
+    ItemAction(
+      icon: Icons.download_for_offline_outlined,
+      label: downloadsAll ? l10n.downloadAll : l10n.download,
+      // Offline copies are a whole subsystem — a store, a queue, a resolver
+      // that keeps working when the server is gone — and none of it exists
+      // yet. Shown and honest rather than hidden, because the design's screen
+      // for it already exists.
+      onSelected: () async =>
+          reportFailure(context, l10n.notImplemented(l10n.download)),
+    ),
+  ];
+}
+
 /// Reports an action that could not be carried out.
 void reportFailure(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));

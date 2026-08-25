@@ -199,7 +199,6 @@ LibraryView libraryViewFromJson(Map<String, dynamic> json) {
     // `CollectionType` is absent on a plain folder, which is still a library
     // worth listing.
     kind: json['CollectionType'] as String? ?? 'unknown',
-    itemCount: json['ChildCount'] as int?,
   );
 }
 

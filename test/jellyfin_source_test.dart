@@ -78,6 +78,43 @@ const _identity = ClientIdentity(deviceId: 'dev1', deviceName: 'Test');
 }
 
 void main() {
+  group('counting a library', () {
+    test('the server counts, and sends nothing back to be counted', () async {
+      // `/UserViews` carries a `ChildCount` that is not the number of items
+      // in a library — a live server answers 7 for a library of 99 films, 7
+      // for one of 8 series and 7 for a collection folder of 32 box sets.
+      // Trusting it put three wrong numbers on the home screen. The only
+      // honest source is a listing's own tally.
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{
+          'Items': <dynamic>[],
+          'TotalRecordCount': 99,
+        }),
+      );
+
+      expect(await source.itemCount('v1'), 99);
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['parentId'], 'v1');
+      expect(query['limit'], '0', reason: 'count without transferring a page');
+      expect(query['enableTotalRecordCount'], 'true');
+      expect(query['recursive'], 'true');
+      // The same filter the grid lists under, or the number describes a
+      // different set of things from the one it labels.
+      expect(query['includeItemTypes'], contains('Movie'));
+      expect(query['includeItemTypes'], contains('BoxSet'));
+    });
+
+    test('a server that sends no tally counts as none, not as an error',
+        () async {
+      final (source, _) = sourceWith(
+        (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
+      );
+
+      expect(await source.itemCount('v1'), 0);
+    });
+  });
+
   group('requests', () {
     test('every call carries the MediaBrowser authorization header', () async {
       final (source, adapter) = sourceWith(

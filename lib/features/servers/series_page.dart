@@ -16,6 +16,7 @@ import '../../widgets/gradient_art.dart';
 import '../../widgets/remote_art.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
+import 'media_info_sheet.dart';
 import 'server_library.dart';
 
 /// Screen 1g — a series, its seasons as tabs, and the episode list.
@@ -234,6 +235,9 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                           final source = _episodeAt(episodes, series, s, i);
                           return _EpisodeRow(
                             episode: season.episodes[i],
+                            item: source,
+                            seriesId: item.id,
+                            siblings: episodes,
                             // The server holds a still per episode, not just the
                             // series poster: `ImageTags.Primary` on an Episode is
                             // that frame. The row drew the gradient placeholder and
@@ -312,10 +316,22 @@ class _EpisodeRow extends StatelessWidget {
     required this.episode,
     required this.onTap,
     required this.onPlay,
+    this.item,
+    this.seriesId,
+    this.siblings = const <ServerItem>[],
     this.artUrl,
   });
 
   final Episode episode;
+
+  /// The server item behind this row. Null when the grouped list and the flat
+  /// one could not be matched up, which leaves the row readable but inert.
+  final ServerItem? item;
+
+  final String? seriesId;
+
+  /// What "shuffle" plays: every episode of the series, not only this season.
+  final List<ServerItem> siblings;
 
   /// The episode's own still, or null where the server has none.
   final Uri? artUrl;
@@ -341,7 +357,14 @@ class _EpisodeRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            _EpisodeThumb(episode: episode, artUrl: artUrl),
+            // The still carries a play glyph, so it plays. It used to open
+            // the episode's screen like the rest of the row — a button that
+            // says one thing and does another.
+            InkWell(
+              onTap: onPlay,
+              borderRadius: context.radii.chipAll,
+              child: _EpisodeThumb(episode: episode, artUrl: artUrl),
+            ),
             SizedBox(width: spacing.md),
             Expanded(
               child: Column(
@@ -375,11 +398,16 @@ class _EpisodeRow extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.play_arrow_rounded),
-              tooltip: AppLocalizations.of(context).play,
-              onPressed: onPlay,
-            ),
+            // No play button here: the still is the play affordance now, and
+            // two of them on one row is one too many. This is where the rest
+            // of what can be done to an episode lives.
+            if (item != null)
+              ItemActionMenu(
+                item: item!,
+                seriesId: seriesId,
+                shuffleFrom: siblings,
+                onMediaInfo: () => showMediaInfo(context, item!.id),
+              ),
           ],
         ),
       ),

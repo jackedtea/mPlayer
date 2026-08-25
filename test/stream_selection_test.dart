@@ -378,5 +378,7 @@ class _RecordingLibrary implements MediaLibrarySource {
   @override
   Future<List<LibraryView>> views() async => const <LibraryView>[];
   @override
+  Future<int> itemCount(String viewId) async => 0;
+  @override
   Future<void> dispose() async {}
 }
