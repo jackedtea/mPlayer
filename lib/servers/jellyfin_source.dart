@@ -109,7 +109,10 @@ class JellyfinSource implements MediaLibrarySource {
       'parentId': viewId,
       // Without this a library returns its folders rather than its films.
       'recursive': 'true',
-      'includeItemTypes': 'Movie,Series,Video',
+      // BoxSet is here for the Collections library, whose entries are box
+      // sets rather than films. Jellyfin happens to return them anyway, but
+      // Emby honours the filter, and without it that library comes back empty.
+      'includeItemTypes': 'Movie,Series,Video,BoxSet',
       'sortBy': sortByFor(sort),
       'sortOrder': sortOrderFor(sort),
       'startIndex': '$startIndex',
@@ -181,8 +184,23 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
+  Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async {
+    final json = await _get('/Items/$itemId/Similar', <String, String>{
+      'userId': _profile.userId,
+      'limit': '$limit',
+      'fields': _fields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) =>
       imageUrlFor(item, base: _base, maxWidth: maxWidth);
+
+  @override
+  Uri? personImageUrl(ServerPerson person, {int? maxWidth}) =>
+      personImageUrlFor(person, base: _base, maxWidth: maxWidth);
 
   // ----------------------------------------------------------- playback
 
@@ -275,8 +293,8 @@ class JellyfinSource implements MediaLibrarySource {
   /// Asked for on every request rather than only on the detail screen: the
   /// list endpoint is one round trip either way, and a second fetch to fill
   /// in an overview is a visible flicker on the card that already showed.
-  static const _fields =
-      'Overview,ProductionYear,Genres,People,ChildCount,PrimaryImageAspectRatio';
+  static const _fields = 'Overview,ProductionYear,Genres,People,ChildCount,'
+      'PrimaryImageAspectRatio,Tags,Studios,Status,EndDate';
 
   Uri _url(String path, [Map<String, String>? query]) {
     return _base.replace(

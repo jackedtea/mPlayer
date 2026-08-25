@@ -31,7 +31,9 @@ class SettingsScaffold extends StatelessWidget {
         title: Text(title),
       ),
       body: ListView(
-        padding: EdgeInsets.only(bottom: context.spacing.xl),
+        padding: EdgeInsets.only(
+          bottom: context.spacing.xl + context.systemBottomInset,
+        ),
         children: children,
       ),
     );

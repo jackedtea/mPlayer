@@ -12,6 +12,7 @@ import '../../core/models/library_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
+import 'detail_sections.dart';
 import 'server_library.dart';
 
 /// Screen 1f — movie detail.
@@ -60,7 +61,9 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
 
     return Scaffold(
       body: ListView(
-        padding: EdgeInsets.only(bottom: spacing.xl * 2),
+        padding: EdgeInsets.only(
+          bottom: spacing.xl * 2 + context.systemBottomInset,
+        ),
         children: <Widget>[
           BackdropHeader(
             seed: movie.title,
@@ -108,24 +111,34 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
                   onToggle: () =>
                       setState(() => _overviewExpanded = !_overviewExpanded),
                 ),
-                SizedBox(height: spacing.lg),
-                Wrap(
-                  spacing: spacing.sm,
-                  runSpacing: spacing.sm,
-                  children: <Widget>[
-                    for (final String genre in movie.genres)
-                      Chip(label: Text(genre)),
-                  ],
-                ),
-                SizedBox(height: spacing.xl),
-                _MediaInfoCard(rows: movie.info),
-                SizedBox(height: spacing.xl),
-                Text('Cast', style: context.texts.titleMedium),
-                SizedBox(height: spacing.md),
               ],
             ),
           ),
-          _CastStrip(cast: movie.cast),
+          SizedBox(height: spacing.lg),
+          // Outside the page padding: the strip scrolls edge to edge and
+          // supplies its own inset, so the last chip is not clipped by a
+          // margin the user cannot scroll past.
+          TagStrip(
+            tags: <String>[...item.genres, ...item.tags],
+            padding: padding,
+          ),
+          // Only when there is something in it. The rows come from the
+          // stream list, which arrives with the playback decision rather than
+          // with the item, so before a play this card is an empty box.
+          if (movie.info.isNotEmpty)
+            Padding(
+              padding: padding.copyWith(top: spacing.xl, bottom: 0),
+              child: _MediaInfoCard(rows: movie.info),
+            ),
+          if (item.people.isNotEmpty) ...<Widget>[
+            Padding(
+              padding: padding.copyWith(top: spacing.xl, bottom: spacing.md),
+              child: Text(l10n.cast, style: context.texts.titleMedium),
+            ),
+            PeopleStrip(people: item.people),
+          ],
+          SizedBox(height: spacing.xl),
+          SimilarStrip(itemId: item.id, title: l10n.moreLikeThis),
         ],
       ),
     );
@@ -322,7 +335,9 @@ class _Overview extends StatelessWidget {
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
           Text(
-            expanded ? 'Less' : 'More',
+            expanded
+                ? AppLocalizations.of(context).showLess
+                : AppLocalizations.of(context).showMore,
             style: context.texts.bodyMedium?.copyWith(
               color: scheme.primary,
               fontWeight: FontWeight.w500,
@@ -381,64 +396,6 @@ class _MediaInfoCard extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _CastStrip extends StatelessWidget {
-  const _CastStrip({required this.cast});
-
-  final List<CastMember> cast;
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final scheme = context.colors;
-
-    return SizedBox(
-      height: 116,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: spacing.screenPadding(context.windowSize),
-        itemCount: cast.length,
-        separatorBuilder: (_, _) => SizedBox(width: spacing.lg),
-        itemBuilder: (context, i) {
-          final member = cast[i];
-          return SizedBox(
-            width: 72,
-            child: Column(
-              children: <Widget>[
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: scheme.surfaceContainerHighest,
-                  child: Text(
-                    member.name.characters.first,
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                SizedBox(height: spacing.sm - 2),
-                Text(
-                  member.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  member.role,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }

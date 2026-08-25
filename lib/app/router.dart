@@ -124,8 +124,13 @@ GoRouter buildRouter() {
         // `extra` carries the library's id. Null means the route was opened
         // directly rather than from a tile, and the screen says so instead of
         // guessing at a library.
-        builder: (context, state) =>
-            LibraryGridPage(viewId: state.extra as String?),
+        // `title` in the query is what a collection passes: its name is not
+        // in `/UserViews`, so the screen cannot look it up the way it looks up
+        // a library's.
+        builder: (context, state) => LibraryGridPage(
+          viewId: state.extra as String?,
+          title: state.uri.queryParameters['title'] ?? 'Library',
+        ),
         routes: <RouteBase>[
           GoRoute(
             path: 'movie',

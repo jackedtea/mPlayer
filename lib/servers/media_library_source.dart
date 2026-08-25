@@ -62,6 +62,10 @@ class ServerItem {
     this.genres = const <String>[],
     this.people = const <ServerPerson>[],
     this.childCount,
+    this.tags = const <String>[],
+    this.studios = const <String>[],
+    this.status,
+    this.endYear,
   });
 
   final String id;
@@ -108,6 +112,19 @@ class ServerItem {
   /// billing was decided in, and better than anything this app could sort by.
   final List<ServerPerson> people;
 
+  /// Keywords the server holds alongside the genres. Far more numerous and
+  /// far less curated, so the UI shows them after the genres, if at all.
+  final List<String> tags;
+
+  final List<String> studios;
+
+  /// "Continuing" or "Ended", for a series. Null for everything else.
+  final String? status;
+
+  /// When a series finished. Null while it is still running, and null for a
+  /// film, where [year] is the whole story.
+  final int? endYear;
+
   /// Seasons on a series, episodes on a season.
   final int? childCount;
 
@@ -122,12 +139,31 @@ class ServerItem {
   }
 }
 
-enum ServerItemKind { movie, series, season, episode, video, folder, unknown }
+/// A collection is a [folder] the design treats as a poster: it is browsed,
+/// not played, and getting that wrong opens a Play button over a box set.
+enum ServerItemKind {
+  movie,
+  series,
+  season,
+  episode,
+  video,
+  folder,
+  collection,
+  unknown;
+
+  /// Whether tapping this opens a grid of its children rather than a detail.
+  bool get isBrowsable => this == folder || this == collection;
+}
 
 /// Somebody in the cast strip.
 @immutable
 class ServerPerson {
-  const ServerPerson({required this.name, required this.role, this.id});
+  const ServerPerson({
+    required this.name,
+    required this.role,
+    this.id,
+    this.imageTag,
+  });
 
   final String name;
 
@@ -136,6 +172,10 @@ class ServerPerson {
   final String role;
 
   final String? id;
+
+  /// Their headshot, if the server holds one. Null is common — a person
+  /// scraped from an episode credit often has no image at all.
+  final String? imageTag;
 }
 
 /// How the server says a file should be played.
@@ -201,8 +241,17 @@ abstract class MediaLibrarySource {
 
   Future<List<ServerItem>> search(String query, {int limit = 40});
 
+  /// What the server thinks resembles [itemId].
+  ///
+  /// Empty rather than an error when the server has no opinion — a shelf that
+  /// cannot be filled is simply not drawn.
+  Future<List<ServerItem>> similar(String itemId, {int limit = 12});
+
   /// Artwork, or null when the item has none.
   Uri? imageUrl(ServerItem item, {int? maxWidth});
+
+  /// A person's headshot, or null when the server holds none.
+  Uri? personImageUrl(ServerPerson person, {int? maxWidth});
 
   /// How to play [itemId], given what this device can decode.
   Future<ServerPlayback> playback(String itemId, PlaybackCapabilities caps);

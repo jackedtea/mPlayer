@@ -13,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
 import '../../widgets/gradient_art.dart';
+import 'detail_sections.dart';
 import 'server_library.dart';
 
 /// Screen 1g — a series, its seasons as tabs, and the episode list.
@@ -29,6 +30,8 @@ class SeriesPage extends ConsumerStatefulWidget {
 class _SeriesPageState extends ConsumerState<SeriesPage>
     with SingleTickerProviderStateMixin {
   TabController? _tabs;
+
+  bool _overviewExpanded = false;
 
   @override
   void dispose() {
@@ -57,10 +60,10 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
     final item = seriesId == null
         ? null
         : ref.watch(serverItemProvider(seriesId)).value;
-    final episodes = seriesId == null
-        ? const <ServerItem>[]
-        : ref.watch(seriesEpisodesProvider(seriesId)).value ??
-            const <ServerItem>[];
+    final episodeRequest = seriesId == null
+        ? const AsyncValue<List<ServerItem>>.data(<ServerItem>[])
+        : ref.watch(seriesEpisodesProvider(seriesId));
+    final episodes = episodeRequest.value ?? const <ServerItem>[];
 
     if (item == null) {
       return Scaffold(
@@ -79,7 +82,11 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
     }
 
     final series = seriesDetailFrom(item, episodes, l10n);
-    final tabs = _controllerFor(series.seasons.length);
+    // One tab past the seasons. The cast, the studio and what the server
+    // suggests belong to the series rather than to any season of it, and
+    // stacking them above the episode list would push the episodes — the
+    // reason the screen exists — most of a screen down.
+    final tabs = _controllerFor(series.seasons.length + 1);
 
     return Scaffold(
       body: NestedScrollView(
@@ -111,6 +118,28 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
               ),
             ),
           ),
+          if ((item.overview ?? '').isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: spacing.screenPadding(context.windowSize),
+                child: _Overview(
+                  text: item.overview!,
+                  expanded: _overviewExpanded,
+                  onToggle: () =>
+                      setState(() => _overviewExpanded = !_overviewExpanded),
+                ),
+              ),
+            ),
+          if (item.genres.isNotEmpty || item.tags.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: spacing.sm),
+                child: TagStrip(
+                  tags: <String>[...item.genres, ...item.tags],
+                  padding: spacing.screenPadding(context.windowSize),
+                ),
+              ),
+            ),
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabBarHeader(
@@ -122,6 +151,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                 indicatorSize: TabBarIndicatorSize.label,
                 tabs: <Widget>[
                   for (final Season s in series.seasons) Tab(text: s.name),
+                  Tab(text: l10n.about),
                 ],
               ),
               scheme.surface,
@@ -132,22 +162,29 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
           controller: tabs,
           children: <Widget>[
             for (final (int s, Season season) in series.seasons.indexed)
-              ListView.builder(
-                padding: EdgeInsets.symmetric(vertical: spacing.sm),
-                itemCount: season.episodes.length,
-                itemBuilder: (context, i) {
-                  // The rows are grouped copies of the flat list, so the
-                  // item behind one is found by matching what identifies it
-                  // rather than by an index into a list it is not in.
-                  final source = _episodeAt(episodes, series, s, i);
-                  return _EpisodeRow(
-                    episode: season.episodes[i],
-                    onTap: source == null
-                        ? () {}
-                        : () => playServerItem(context, ref, source.id),
-                  );
-                },
-              ),
+              if (season.episodes.isEmpty && episodeRequest.isLoading)
+                const Center(child: CircularProgressIndicator())
+              else
+                ListView.builder(
+                  padding: EdgeInsets.only(
+                    top: spacing.sm,
+                    bottom: spacing.sm + context.systemBottomInset,
+                  ),
+                  itemCount: season.episodes.length,
+                  itemBuilder: (context, i) {
+                    // The rows are grouped copies of the flat list, so the
+                    // item behind one is found by matching what identifies it
+                    // rather than by an index into a list it is not in.
+                    final source = _episodeAt(episodes, series, s, i);
+                    return _EpisodeRow(
+                      episode: season.episodes[i],
+                      onTap: source == null
+                          ? () {}
+                          : () => playServerItem(context, ref, source.id),
+                    );
+                  },
+                ),
+            _AboutTab(item: item),
           ],
         ),
       ),
@@ -315,4 +352,116 @@ void _notYet(BuildContext context, String what) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text('$what — not implemented yet')),
   );
+}
+
+/// Everything about a series that is not one of its episodes.
+class _AboutTab extends StatelessWidget {
+  const _AboutTab({required this.item});
+
+  final ServerItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+    final padding = spacing.screenPadding(context.windowSize);
+
+    final facts = <(String, String)>[
+      if (item.status != null && item.status!.isNotEmpty)
+        (
+          l10n.seriesStatus,
+          switch (item.status) {
+            'Continuing' => l10n.statusContinuing,
+            'Ended' => l10n.statusEnded,
+            // Anything the server invents is shown as it wrote it rather
+            // than dropped.
+            final String other => other,
+            null => '',
+          },
+        ),
+      if (item.studios.isNotEmpty) (l10n.studios, item.studios.join(', ')),
+    ];
+
+    return ListView(
+      padding: EdgeInsets.only(
+        top: spacing.md,
+        bottom: spacing.xl * 2 + context.systemBottomInset,
+      ),
+      children: <Widget>[
+        for (final (String label, String value) in facts)
+          Padding(
+            padding: padding.copyWith(top: 0, bottom: spacing.sm),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                SizedBox(
+                  width: 96,
+                  child: Text(
+                    label,
+                    style: context.texts.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ),
+                Expanded(
+                  child: Text(value, style: context.texts.bodySmall),
+                ),
+              ],
+            ),
+          ),
+        if (item.people.isNotEmpty) ...<Widget>[
+          Padding(
+            padding: padding.copyWith(top: spacing.lg, bottom: spacing.md),
+            child: Text(l10n.cast, style: context.texts.titleMedium),
+          ),
+          PeopleStrip(people: item.people),
+        ],
+        SizedBox(height: spacing.xl),
+        SimilarStrip(itemId: item.id, title: l10n.moreLikeThis),
+      ],
+    );
+  }
+}
+
+/// The series summary, three lines until it is tapped.
+class _Overview extends StatelessWidget {
+  const _Overview({
+    required this.text,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  final String text;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+
+    return GestureDetector(
+      onTap: onToggle,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            text,
+            maxLines: expanded ? null : 3,
+            overflow: expanded ? null : TextOverflow.ellipsis,
+            style: context.texts.bodyMedium
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          Text(
+            expanded ? l10n.showLess : l10n.showMore,
+            style: context.texts.bodyMedium?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

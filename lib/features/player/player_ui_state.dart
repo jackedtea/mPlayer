@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
-import 'package:flutter/material.dart';
+import 'dart:async' show unawaited;
 
-import '../../l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../l10n/app_localizations.dart';
 
 /// Rotation control cycles through these; the default follows the video's own
 /// aspect rather than the device sensor.
@@ -61,6 +63,36 @@ List<DeviceOrientation> orientationsForVideo(int width, int height) {
           DeviceOrientation.portraitUp,
           DeviceOrientation.portraitDown,
         ];
+}
+
+/// Every orientation, which on Android means `SCREEN_ORIENTATION_FULL_SENSOR`.
+const allOrientations = <DeviceOrientation>[
+  DeviceOrientation.portraitUp,
+  DeviceOrientation.landscapeLeft,
+  DeviceOrientation.portraitDown,
+  DeviceOrientation.landscapeRight,
+];
+
+/// Hands the window's rotation back to the user on the way out of the player.
+///
+/// Releasing straight to the empty list is the obvious thing and it is what
+/// left the app stuck sideways. An empty list means
+/// `SCREEN_ORIENTATION_UNSPECIFIED`, which asks the system to decide — and a
+/// device with auto-rotate switched off decides to keep whatever is already on
+/// screen. Having forced landscape for a 16:9 film, the app then stayed
+/// landscape for the rest of the session.
+///
+/// So the lock is released in two steps: a moment of full-sensor, which makes
+/// the window follow how the phone is actually being held, and only then the
+/// empty list, which gives the rotation lock back to the user. Holding the
+/// phone sideways on the way out therefore stays sideways, which is right.
+///
+/// The delay is what makes it work — the two calls in one frame would cancel
+/// each other before the window ever moved — and it is why this is async.
+Future<void> releaseOrientation() async {
+  await SystemChrome.setPreferredOrientations(allOrientations);
+  await Future<void>.delayed(const Duration(milliseconds: 450));
+  await SystemChrome.setPreferredOrientations(const <DeviceOrientation>[]);
 }
 
 /// How the video fills the surface.
@@ -139,9 +171,7 @@ class PlayerUiController extends Notifier<PlayerUiState> {
   PlayerUiState build() {
     // Leaving the player must not strand a locked orientation on the rest of
     // the app.
-    ref.onDispose(() => SystemChrome.setPreferredOrientations(
-          const <DeviceOrientation>[],
-        ));
+    ref.onDispose(releaseOrientation);
     return const PlayerUiState();
   }
 
@@ -206,7 +236,7 @@ class PlayerUiController extends Notifier<PlayerUiState> {
   /// Called when the player screen closes, so a second file does not inherit
   /// the previous one's lock or rotation.
   void reset() {
-    SystemChrome.setPreferredOrientations(const <DeviceOrientation>[]);
+    unawaited(releaseOrientation());
     // Otherwise the next file inherits the previous one's shape before its
     // own dimensions arrive.
     _videoWidth = null;

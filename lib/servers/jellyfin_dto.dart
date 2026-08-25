@@ -130,9 +130,22 @@ ServerItem serverItemFromJson(Map<String, dynamic> json) {
                 ? (p['Role'] as String).trim()
                 : (p['Type'] as String? ?? ''),
             id: p['Id'] as String?,
+            imageTag: p['PrimaryImageTag'] as String?,
           ),
     ],
     childCount: json['ChildCount'] as int?,
+    tags: <String>[
+      for (final Object? t in (json['Tags'] as List?) ?? const <Object?>[])
+        if (t is String) t,
+    ],
+    studios: <String>[
+      for (final Object? s in (json['Studios'] as List?) ?? const <Object?>[])
+        if (s is Map && s['Name'] is String) s['Name'] as String,
+    ],
+    status: json['Status'] as String?,
+    // The server dates the end rather than numbering the year, so it is the
+    // one field here that has to be parsed out of a timestamp.
+    endYear: DateTime.tryParse(json['EndDate'] as String? ?? '')?.year,
   );
 }
 
@@ -171,7 +184,8 @@ ServerItemKind _kindFrom(String? type) {
     'Season' => ServerItemKind.season,
     'Episode' => ServerItemKind.episode,
     'Video' => ServerItemKind.video,
-    'Folder' || 'CollectionFolder' || 'BoxSet' => ServerItemKind.folder,
+    'BoxSet' => ServerItemKind.collection,
+    'Folder' || 'CollectionFolder' => ServerItemKind.folder,
     _ => ServerItemKind.unknown,
   };
 }
@@ -282,6 +296,24 @@ Uri? imageUrlFor(
   // artwork has to be asked for under the series' id.
   final owner = item.imageOwnerId ?? item.id;
 
+  return _primaryImageUrl(base, owner, tag, maxWidth);
+}
+
+/// A person's headshot. Same route as an item's — a person *is* an item to
+/// the server — but the tag lives on the credit rather than in `ImageTags`.
+Uri? personImageUrlFor(
+  ServerPerson person, {
+  required Uri base,
+  int? maxWidth,
+}) {
+  final tag = person.imageTag;
+  final id = person.id;
+  if (tag == null || tag.isEmpty || id == null || id.isEmpty) return null;
+
+  return _primaryImageUrl(base, id, tag, maxWidth);
+}
+
+Uri _primaryImageUrl(Uri base, String owner, String tag, int? maxWidth) {
   return base.replace(
     pathSegments: <String>[
       ...base.pathSegments.where((s) => s.isNotEmpty),

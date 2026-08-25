@@ -923,6 +923,38 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get moreLikeThis => 'Phim tương tự';
+
+  @override
+  String get about => 'Giới thiệu';
+
+  @override
+  String get showMore => 'Xem thêm';
+
+  @override
+  String get showLess => 'Thu gọn';
+
+  @override
+  String get studios => 'Hãng sản xuất';
+
+  @override
+  String get seriesStatus => 'Trạng thái';
+
+  @override
+  String get statusContinuing => 'Đang chiếu';
+
+  @override
+  String get statusEnded => 'Đã kết thúc';
+
+  @override
+  String get gridSize => 'Cỡ lưới';
+
+  @override
+  String gridColumns(int count) {
+    return '$count mỗi hàng';
+  }
+
+  @override
   String get sortName => 'A–Z';
 
   @override

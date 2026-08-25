@@ -303,3 +303,23 @@ extension TokenAccess on BuildContext {
   WindowSize get windowSize =>
       WindowSize.fromWidth(MediaQuery.sizeOf(this).width);
 }
+
+/// System-bar insets, for the places that have to add them by hand.
+extension SystemInsets on BuildContext {
+  /// The height of the system navigation bar under this widget.
+  ///
+  /// Needed because a scroll view insets itself against the system bars
+  /// *only while its own `padding` is null* — `BoxScrollView` reads the
+  /// media query when it has nothing else to use, and passing any padding at
+  /// all silently turns that off. Every list here passes one, which is how a
+  /// settings page ended up with its last row under the navigation bar.
+  ///
+  /// Zero inside the shell, where the [Scaffold] has already spent the inset
+  /// on its navigation bar and removed it from the body's media query, so
+  /// adding this is safe whether or not a screen sits in the shell.
+  double get systemBottomInset => MediaQuery.paddingOf(this).bottom;
+
+  /// The status bar's height above this widget. Zero under an [AppBar],
+  /// which has already consumed it.
+  double get systemTopInset => MediaQuery.paddingOf(this).top;
+}

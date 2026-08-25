@@ -237,14 +237,33 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Releases the backend but keeps the notifier alive, so leaving the player
   /// screen does not strand a decoder.
   Future<void> stop() async {
+    // Silence first, and synchronously as far as the decoder is concerned.
+    //
+    // Everything below this line waits on something slow — a frame grabbed
+    // off the player, a write to disk, a report to a server that may be
+    // unreachable — and until the teardown at the end of it the file is
+    // still playing. That is what "I pressed back and the film kept going"
+    // was: not a leaked route, just several seconds of bookkeeping with the
+    // audio thread left running underneath it.
+    await _player?.pause();
+
     // Force a final write: the throttle would otherwise drop the last few
     // seconds, which is exactly the position the user will resume from.
     // Awaited, unlike the periodic writes — it grabs a frame off the player,
     // and tearing the player down underneath that would lose the still.
-    await _recordProgress(force: true);
-    // Before the teardown: the session has to be closed while there is still
-    // something to close it with.
-    await _reportStopped();
+    // Bounded, because none of it is worth holding the decoder open for: a
+    // server that has gone away must cost the user a progress report, not a
+    // player that never closes.
+    try {
+      await Future<void>(() async {
+        await _recordProgress(force: true);
+        // Before the teardown: the session has to be closed while there is
+        // still something to close it with.
+        await _reportStopped();
+      }).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('Gave up on the closing report: $e');
+    }
 
     await _teardownAsync();
     state = const PlaybackState();

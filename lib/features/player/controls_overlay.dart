@@ -399,10 +399,12 @@ class _SkipIntroPill extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Container(
-          height: 40,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+        // **No alignment, and no fixed height.** A Container given either one
+        // expands to fill the constraints it is handed, which is what turned
+        // this pill into a bar across the whole screen. Padding around the
+        // text is the only thing that should size it.
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Text(
             AppLocalizations.of(context).skipIntro,
             style: TextStyle(

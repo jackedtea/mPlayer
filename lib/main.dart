@@ -32,6 +32,24 @@ Future<void> main(List<String> args) async {
   MediaKit.ensureInitialized();
   _registerBundledFontLicenses();
 
+  // Declared rather than inherited. Android 15 draws every app edge to edge
+  // whether it asks to or not, and Android 14 and below do not, so without
+  // this the same build lays out differently on two phones and only one of
+  // them matches what the insets are calculated against. The player switches
+  // to `immersiveSticky` and puts this back on the way out.
+  if (!isDesktop) {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // Transparent bars over the app's own surface: the icons are drawn by
+    // the system in whichever contrast the theme asks for.
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+    );
+  }
+
   // `waitUntilReadyToShow` keeps the window hidden while the saved size and
   // position are applied, so the user does not watch it appear at the default
   // size and then jump.

@@ -24,7 +24,13 @@ class PosterTile extends StatelessWidget {
     required this.posterHeight,
     this.onTap,
     this.artUrl,
+    this.titleLines = defaultTitleLines,
   });
+
+  /// Two, because one truncates most of what a media server holds: a title
+  /// like "Loạt phim Thành Phố Động Vật" is three words past a poster's width
+  /// and an ellipsis after the first is not a label.
+  static const defaultTitleLines = 2;
 
   final LibraryItem item;
 
@@ -35,24 +41,38 @@ class PosterTile extends StatelessWidget {
   final double posterHeight;
   final VoidCallback? onTap;
 
+  /// How many caption lines the tile reserves. Reserved, not maximum — the
+  /// height is the same whether the title needs them, so a grid row stays
+  /// level however long its neighbours' titles are.
+  final int titleLines;
+
   static double outerWidth(BuildContext context, double width) =>
       width + context.spacing.hitInset * 2;
 
   /// Caption line, rounded up per line and scaled with the user's text size —
   /// same reasoning as `ContinueWatchingCard.captionHeight`.
-  static double captionHeight(BuildContext context) {
+  static double captionHeight(
+    BuildContext context, {
+    int lines = defaultTitleLines,
+  }) {
     final scaler = MediaQuery.textScalerOf(context);
     final style = context.texts.bodySmall;
     final line = (scaler.scale(style?.fontSize ?? 12) * (style?.height ?? 16 / 12))
         .ceilToDouble();
-    return (context.spacing.sm - 2) + line;
+    return (context.spacing.sm - 2) + line * lines;
   }
 
   /// Footprint including the ink ring. Grids must pass this as
   /// `mainAxisExtent`: deriving cell height from an aspect ratio makes it
   /// depend on the column width, which varies with the window.
-  static double outerHeight(BuildContext context, double posterHeight) =>
-      posterHeight + captionHeight(context) + context.spacing.hitInset * 2;
+  static double outerHeight(
+    BuildContext context,
+    double posterHeight, {
+    int titleLines = defaultTitleLines,
+  }) =>
+      posterHeight +
+      captionHeight(context, lines: titleLines) +
+      context.spacing.hitInset * 2;
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +116,7 @@ class PosterTile extends StatelessWidget {
               SizedBox(height: spacing.sm - 2),
               Text(
                 item.title,
-                maxLines: 1,
+                maxLines: titleLines,
                 overflow: TextOverflow.ellipsis,
                 style: context.texts.bodySmall?.copyWith(
                   fontWeight: FontWeight.w500,

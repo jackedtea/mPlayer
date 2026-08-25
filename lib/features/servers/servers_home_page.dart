@@ -149,7 +149,15 @@ class _ServersHomePageState extends ConsumerState<ServersHomePage> {
 /// A series goes to its episode list; anything playable goes to its detail
 /// screen, which is where the resume decision is made.
 void _open(BuildContext context, ServerItem item) {
-  if (item.kind == ServerItemKind.series) {
+  if (item.kind.isBrowsable) {
+    context.push(
+      Uri(
+        path: '/library',
+        queryParameters: <String, String>{'title': item.title},
+      ).toString(),
+      extra: item.id,
+    );
+  } else if (item.kind == ServerItemKind.series) {
     context.push('/library/series', extra: item.id);
   } else {
     context.push('/library/movie', extra: item.id);
@@ -288,11 +296,21 @@ class _RecentlyAddedShelf extends ConsumerWidget {
     final gap = (spacing.cardGap - inset * 2).clamp(0.0, double.infinity);
 
     final scope = viewId;
-    final latest = (scope == null
-            ? ref.watch(serverLatestProvider).value
-            : ref.watch(latestInViewProvider(scope)).value) ??
-        const <ServerItem>[];
-    if (latest.isEmpty) return const SizedBox.shrink();
+    final request = scope == null
+        ? ref.watch(serverLatestProvider)
+        : ref.watch(latestInViewProvider(scope));
+    final latest = request.value ?? const <ServerItem>[];
+
+    if (latest.isEmpty) {
+      // An empty shelf and a shelf that has not arrived look identical, and
+      // over a slow connection the second is what the user is actually
+      // looking at. Only the first is worth hiding.
+      if (!request.isLoading) return const SizedBox.shrink();
+      return SizedBox(
+        height: PosterTile.outerHeight(context, _posterHeight),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return SizedBox(
       height: PosterTile.outerHeight(context, _posterHeight),
@@ -320,10 +338,16 @@ class _LibraryGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
     final scheme = context.colors;
-    final views = ref.watch(serverViewsProvider).value ??
-        const <LibraryView>[];
+    final request = ref.watch(serverViewsProvider);
+    final views = request.value ?? const <LibraryView>[];
 
-    if (views.isEmpty) return const SizedBox.shrink();
+    if (views.isEmpty) {
+      if (!request.isLoading) return const SizedBox.shrink();
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Padding(
       padding: spacing.screenPadding(context.windowSize),

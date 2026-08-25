@@ -11,6 +11,7 @@ import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/poster_tile.dart';
+import 'library_view_settings.dart';
 import 'server_library.dart';
 
 /// Screen 1e — one library, as a poster grid with filters.
@@ -25,6 +26,10 @@ class LibraryGridPage extends ConsumerStatefulWidget {
   /// Which library to show. Null renders the empty state — the screen is
   /// always reached from a library tile, so a null id means the route was
   /// opened directly.
+  ///
+  /// A collection's id works here too: the server answers `/Items?parentId=`
+  /// with the collection's films exactly as it answers with a library's, so
+  /// one screen covers both and a box set is browsed rather than played.
   final String? viewId;
 
   @override
@@ -50,6 +55,11 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage> {
         ? const AsyncValue<List<ServerItem>>.data(<ServerItem>[])
         : ref.watch(libraryItemsProvider(LibraryQuery(viewId, _sort)));
 
+    final columns = columnsForWidth(
+      ref.watch(libraryColumnsProvider),
+      MediaQuery.sizeOf(context).width,
+    );
+
     final all = request.value ?? const <ServerItem>[];
     final items = (_unwatchedOnly ? all.where((i) => !i.played) : all)
         .map(libraryItemFrom)
@@ -66,8 +76,8 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage> {
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.grid_view_rounded),
-            tooltip: 'View',
-            onPressed: () => _notYet(context, 'View options'),
+            tooltip: l10n.gridSize,
+            onPressed: _pickColumns,
           ),
           IconButton(
             icon: const Icon(Icons.search_rounded),
@@ -115,42 +125,115 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage> {
             ),
           ),
           Expanded(
-            child: GridView.builder(
-              padding: EdgeInsets.symmetric(
-                horizontal: (spacing.screenHorizontal(context.windowSize) -
-                        spacing.hitInset)
-                    .clamp(0.0, double.infinity),
-              ),
-              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                // ~108 poster + the ink ring; wider windows get more columns.
-                maxCrossAxisExtent: 132,
-                mainAxisSpacing: spacing.sm,
-                crossAxisSpacing: 0,
-                // Fixed height, not an aspect ratio: the cell width varies
-                // with the window and would otherwise drag the height with it.
-                mainAxisExtent: PosterTile.outerHeight(context, 142),
-              ),
-              itemCount: items.length,
-              itemBuilder: (context, i) {
-                final entry = all.firstWhere((e) => e.id == items[i].id);
-                return PosterTile(
-                  item: items[i],
-                  artUrl: artUrlFor(ref, entry, maxWidth: 300),
-                  width: 108,
-                  posterHeight: 142,
-                  onTap: () => context.push(
-                    entry.kind == ServerItemKind.series
-                        ? '/library/series'
-                        : '/library/movie',
-                    extra: entry.id,
+            child: request.isLoading && all.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final gutter =
+                          (spacing.screenHorizontal(context.windowSize) -
+                                  spacing.hitInset)
+                              .clamp(0.0, double.infinity);
+                      // The poster is whatever a cell leaves after the ink
+                      // ring, so the column count is what the user asked for
+                      // and the artwork follows it, rather than the other way
+                      // round.
+                      final cell =
+                          (constraints.maxWidth - gutter * 2) / columns;
+                      final posterWidth =
+                          (cell - spacing.hitInset * 2).clamp(48.0, 400.0);
+                      // The design's poster is 108x142; keeping that ratio
+                      // means five columns look like three, only smaller.
+                      final posterHeight = posterWidth * 142 / 108;
+
+                      return GridView.builder(
+                        padding: EdgeInsets.fromLTRB(
+                          gutter,
+                          0,
+                          gutter,
+                          spacing.md + context.systemBottomInset,
+                        ),
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          mainAxisSpacing: spacing.sm,
+                          crossAxisSpacing: 0,
+                          // Fixed height, not an aspect ratio: the caption is
+                          // two lines of text, whose height does not scale
+                          // with the column width.
+                          mainAxisExtent:
+                              PosterTile.outerHeight(context, posterHeight),
+                        ),
+                        itemCount: items.length,
+                        itemBuilder: (context, i) {
+                          final entry =
+                              all.firstWhere((e) => e.id == items[i].id);
+                          return PosterTile(
+                            item: items[i],
+                            artUrl: artUrlFor(ref, entry, maxWidth: 300),
+                            width: posterWidth,
+                            posterHeight: posterHeight,
+                            onTap: () => _open(entry),
+                          );
+                        },
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
     );
+  }
+
+  /// Opens whatever [entry] is.
+  ///
+  /// A collection is browsed, not played: it has no runtime, no stream and no
+  /// resume point, and sending it to the movie screen is what drew a Play
+  /// button over a box set with nothing behind it.
+  void _open(ServerItem entry) {
+    if (entry.kind.isBrowsable) {
+      context.push(
+        Uri(
+          path: '/library',
+          queryParameters: <String, String>{'title': entry.title},
+        ).toString(),
+        extra: entry.id,
+      );
+      return;
+    }
+
+    context.push(
+      entry.kind == ServerItemKind.series ? '/library/series' : '/library/movie',
+      extra: entry.id,
+    );
+  }
+
+  Future<void> _pickColumns() async {
+    final l10n = AppLocalizations.of(context);
+    final current = ref.read(libraryColumnsProvider);
+
+    final chosen = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (var n = LibraryColumnsController.minColumns;
+                n <= LibraryColumnsController.maxColumns;
+                n++)
+              ListTile(
+                leading: const Icon(Icons.grid_view_rounded),
+                title: Text(l10n.gridColumns(n)),
+                trailing: n == current ? const Icon(Icons.check_rounded) : null,
+                onTap: () => Navigator.of(sheetContext).pop(n),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (chosen == null) return;
+    await ref.read(libraryColumnsProvider.notifier).set(chosen);
   }
 
   /// The library's own name, once the views have loaded.
@@ -231,8 +314,3 @@ class _MenuChip extends StatelessWidget {
   }
 }
 
-void _notYet(BuildContext context, String what) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$what — not implemented yet')),
-  );
-}

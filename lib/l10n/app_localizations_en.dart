@@ -922,6 +922,38 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get moreLikeThis => 'More like this';
+
+  @override
+  String get about => 'About';
+
+  @override
+  String get showMore => 'More';
+
+  @override
+  String get showLess => 'Less';
+
+  @override
+  String get studios => 'Studio';
+
+  @override
+  String get seriesStatus => 'Status';
+
+  @override
+  String get statusContinuing => 'Continuing';
+
+  @override
+  String get statusEnded => 'Ended';
+
+  @override
+  String get gridSize => 'Grid size';
+
+  @override
+  String gridColumns(int count) {
+    return '$count per row';
+  }
+
+  @override
   String get sortName => 'A–Z';
 
   @override

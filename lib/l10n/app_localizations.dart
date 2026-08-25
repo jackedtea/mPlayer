@@ -1772,6 +1772,66 @@ abstract class AppLocalizations {
   /// **'{time} left'**
   String timeLeft(String time);
 
+  /// No description provided for @moreLikeThis.
+  ///
+  /// In en, this message translates to:
+  /// **'More like this'**
+  String get moreLikeThis;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// No description provided for @showMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get showMore;
+
+  /// No description provided for @showLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get showLess;
+
+  /// No description provided for @studios.
+  ///
+  /// In en, this message translates to:
+  /// **'Studio'**
+  String get studios;
+
+  /// No description provided for @seriesStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get seriesStatus;
+
+  /// No description provided for @statusContinuing.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuing'**
+  String get statusContinuing;
+
+  /// No description provided for @statusEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get statusEnded;
+
+  /// No description provided for @gridSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid size'**
+  String get gridSize;
+
+  /// No description provided for @gridColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} per row'**
+  String gridColumns(int count);
+
   /// No description provided for @sortName.
   ///
   /// In en, this message translates to:

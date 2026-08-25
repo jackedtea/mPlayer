@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../app/desktop_window.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../cast/cast_device.dart';
@@ -53,6 +54,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   bool _chromeVisible = true;
   bool _fullscreen = false;
+
+  /// What was last handed to the platform, so a rebuild does not repeat a
+  /// channel call that changes nothing.
+  bool _immersiveApplied = false;
   Timer? _hideTimer;
   Timer? _sleepTimer;
 
@@ -139,6 +144,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   void dispose() {
     _leftForegroundTimer?.cancel();
     _lifecycle?.dispose();
+    // The rest of the app is not a video player: leaving the bars hidden
+    // would strand every screen after this one without a status bar.
+    if (!isDesktop) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     unawaited(_notificationCommands?.cancel());
     unawaited(ref.read(nowPlayingProvider.notifier).stop());
     _hideTimer?.cancel();
@@ -154,13 +164,38 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   void _restartHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(_chromeTimeout, () {
-      if (mounted) setState(() => _chromeVisible = false);
+      if (!mounted) return;
+      setState(() => _chromeVisible = false);
+      _applySystemUi();
     });
   }
 
   void _toggleChrome() {
     setState(() => _chromeVisible = !_chromeVisible);
     if (_chromeVisible) _restartHideTimer();
+    _applySystemUi();
+  }
+
+  /// Hides the status and navigation bars along with the chrome.
+  ///
+  /// One owner for the system bars, so the auto-hide timer and the fullscreen
+  /// button cannot disagree about whose turn it is: the bars are away
+  /// whenever the chrome is, and stay away while fullscreen is held.
+  ///
+  /// `immersiveSticky` rather than `immersive`: a swipe brings the bars back
+  /// for a moment and they leave again on their own, which is what a video
+  /// player wants — `immersive` hands them back permanently on the first
+  /// accidental edge swipe.
+  void _applySystemUi() {
+    if (isDesktop) return;
+
+    final immersive = _fullscreen || !_chromeVisible;
+    if (immersive == _immersiveApplied) return;
+    _immersiveApplied = immersive;
+
+    SystemChrome.setEnabledSystemUIMode(
+      immersive ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+    );
   }
 
   @override
@@ -321,6 +356,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       onLock: () {
                         ref.read(playerUiProvider.notifier).toggleLock();
                         setState(() => _chromeVisible = false);
+                        _applySystemUi();
                       },
                       onRotate: ref.read(playerUiProvider.notifier).cycleRotation,
                       onChapters: () => _showChapters(state, controller),
@@ -576,12 +612,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     try {
       await windowManager.setFullScreen(next);
     } catch (_) {
-      await SystemChrome.setEnabledSystemUIMode(
-        next ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
-      );
+      // Android and iOS have no OS window to resize; there the button means
+      // "keep the bars away", which `_applySystemUi` applies below.
     }
 
-    if (mounted) setState(() => _fullscreen = next);
+    if (!mounted) return;
+    setState(() => _fullscreen = next);
+    _applySystemUi();
   }
 
   /// Starts or cancels the countdown whenever the menu changes it.
@@ -610,7 +647,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     if (ui.locked) return KeyEventResult.handled;
 
     _restartHideTimer();
-    if (!_chromeVisible) setState(() => _chromeVisible = true);
+    if (!_chromeVisible) {
+      setState(() => _chromeVisible = true);
+      _applySystemUi();
+    }
 
     switch (event.logicalKey) {
       case LogicalKeyboardKey.space:

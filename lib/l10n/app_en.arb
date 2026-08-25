@@ -363,6 +363,22 @@
   "timeLeft": "{time} left",
   "@timeLeft": { "placeholders": { "time": { "type": "String" } } },
 
+  "cast": "Cast",
+  "moreLikeThis": "More like this",
+  "about": "About",
+  "showMore": "More",
+  "showLess": "Less",
+  "studios": "Studio",
+  "seriesStatus": "Status",
+  "statusContinuing": "Continuing",
+  "statusEnded": "Ended",
+
+  "gridSize": "Grid size",
+  "gridColumns": "{count} per row",
+  "@gridColumns": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
   "sortName": "A–Z",
   "sortDateAdded": "Recently added",
   "sortReleaseDate": "Release date",

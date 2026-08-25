@@ -78,6 +78,8 @@ class _FakeLibrary implements MediaLibrarySource {
   @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) => null;
   @override
+  Uri? personImageUrl(ServerPerson person, {int? maxWidth}) => null;
+  @override
   Future<List<ServerItem>> items(String viewId,
           {int startIndex = 0, int limit = 100, ServerSort sort = ServerSort.name}) async =>
       const <ServerItem>[];
@@ -87,6 +89,9 @@ class _FakeLibrary implements MediaLibrarySource {
   Future<List<ServerItem>> resumable({int limit = 12}) async => const <ServerItem>[];
   @override
   Future<List<ServerItem>> search(String query, {int limit = 40}) async =>
+      const <ServerItem>[];
+  @override
+  Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async =>
       const <ServerItem>[];
   @override
   Future<void> setFavourite(String itemId, {required bool favourite}) async {}

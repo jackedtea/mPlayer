@@ -120,6 +120,21 @@ final serverItemProvider =
   return source.item(itemId);
 });
 
+/// What the server suggests alongside an item.
+///
+/// A separate request from the item itself, so a server that has no `/Similar`
+/// route — or simply no opinion — costs the screen a shelf and nothing else.
+final similarItemsProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, itemId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  try {
+    return await source.similar(itemId);
+  } on ServerException {
+    return const <ServerItem>[];
+  }
+});
+
 /// A series' episodes, flattened across seasons in the order the server
 /// returns them — which is broadcast order, and what a viewer expects.
 final seriesEpisodesProvider =

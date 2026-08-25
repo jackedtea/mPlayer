@@ -312,6 +312,22 @@
   "timeLeft": "còn {time}",
   "@timeLeft": { "placeholders": { "time": { "type": "String" } } },
 
+  "cast": "Diễn viên",
+  "moreLikeThis": "Phim tương tự",
+  "about": "Giới thiệu",
+  "showMore": "Xem thêm",
+  "showLess": "Thu gọn",
+  "studios": "Hãng sản xuất",
+  "seriesStatus": "Trạng thái",
+  "statusContinuing": "Đang chiếu",
+  "statusEnded": "Đã kết thúc",
+
+  "gridSize": "Cỡ lưới",
+  "gridColumns": "{count} mỗi hàng",
+  "@gridColumns": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
   "sortName": "A–Z",
   "sortDateAdded": "Mới thêm",
   "sortReleaseDate": "Ngày phát hành",

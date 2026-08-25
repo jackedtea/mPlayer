@@ -75,6 +75,41 @@ Future<void> pumpControls(
 }
 
 void main() {
+  group('skip intro', () {
+    testWidgets('is a pill against the right edge, not a bar', (tester) async {
+      const width = 900.0;
+      await pumpControls(
+        tester,
+        const Size(width, 500),
+        state: PlaybackState(
+          media: media(),
+          duration: const Duration(minutes: 24),
+          position: const Duration(seconds: 30),
+          containerChapters: const <MediaChapter>[
+            MediaChapter(
+              title: 'Intro',
+              start: Duration.zero,
+              end: Duration(seconds: 90),
+              isIntro: true,
+            ),
+          ],
+        ),
+      );
+
+      final pill = find.text('Skip intro');
+      expect(pill, findsOneWidget);
+
+      // A Container with an alignment expands to whatever it is given, which
+      // once stretched this across the whole screen.
+      final box = tester.getRect(
+        find.ancestor(of: pill, matching: find.byType(Material)).first,
+      );
+      expect(box.width, lessThan(width / 3));
+      // And it sits at the right, where the design puts it.
+      expect(box.right, greaterThan(width * 0.6));
+    });
+  });
+
   group('buffered range', () {
     testWidgets('a partly buffered stream draws the read-ahead track',
         (tester) async {
