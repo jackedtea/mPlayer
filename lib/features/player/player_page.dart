@@ -13,6 +13,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/desktop_window.dart';
+import '../../app/system_ui.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/stream_preferences.dart';
@@ -176,11 +177,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
     // The rest of the app is not a video player: leaving the bars hidden
     // would strand every screen after this one without a status bar.
-    _guard(() {
-      if (!isDesktop) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      }
-    });
+    _guard(() => unawaited(restoreAppSystemUi()));
 
     super.dispose();
   }
@@ -227,9 +224,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     if (immersive == _immersiveApplied) return;
     _immersiveApplied = immersive;
 
-    SystemChrome.setEnabledSystemUIMode(
-      immersive ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
-    );
+    // Both sides live in `app/system_ui.dart` now. Coming back is not the
+    // mirror image of going away — restoring takes a different platform call
+    // from the one that hid the bars — and that asymmetry is exactly what
+    // this used to get wrong.
+    unawaited(immersive ? enterImmersiveUi() : restoreAppSystemUi());
   }
 
   @override
@@ -311,7 +310,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       // rotation lock.
       canPop: true,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) _playback.pause();
+        if (!didPop) return;
+        _playback.pause();
+        // Here as well as in dispose, for the same reason the pause is: this
+        // runs while the widget is unambiguously alive.
+        unawaited(restoreAppSystemUi());
       },
       child: Theme(
         // The player is always dark, whatever the app theme is.

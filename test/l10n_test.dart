@@ -18,6 +18,70 @@ Future<AppLocalizations> load(Locale locale) =>
     AppLocalizations.delegate.load(locale);
 
 void main() {
+  group('the ARBs themselves', () {
+    test('no key is defined twice', () {
+      // JSON tolerates a repeated key and `flutter gen-l10n` keeps the last
+      // one, silently. `unwatched` was defined as "Unwatched" for the library
+      // filter and again as "new" for an episode's meta line, so the filter
+      // chip on screen 1e read "new" — a wrong word with nothing anywhere
+      // reporting a problem.
+      for (final String path in <String>[
+        'lib/l10n/app_en.arb',
+        'lib/l10n/app_vi.arb',
+      ]) {
+        final source = File(path).readAsStringSync();
+
+        // Top-level keys only: `placeholders` legitimately repeats inside the
+        // `@key` metadata blocks.
+        final keys = <String>[];
+        var depth = 0;
+        var inString = false;
+        var escaped = false;
+        final buffer = StringBuffer();
+
+        for (var i = 0; i < source.length; i++) {
+          final c = source[i];
+
+          if (inString) {
+            if (escaped) {
+              escaped = false;
+            } else if (c == r'\') {
+              escaped = true;
+            } else if (c == '"') {
+              inString = false;
+              // A key is a string at depth 1 followed by a colon.
+              if (depth == 1) {
+                final rest = source.substring(i + 1).trimLeft();
+                if (rest.startsWith(':')) keys.add(buffer.toString());
+              }
+            } else {
+              buffer.write(c);
+            }
+            continue;
+          }
+
+          switch (c) {
+            case '"':
+              inString = true;
+              buffer.clear();
+            case '{' || '[':
+              depth++;
+            case '}' || ']':
+              depth--;
+          }
+        }
+
+        final seen = <String>{};
+        final duplicates = <String>[
+          for (final String key in keys)
+            if (!seen.add(key)) key,
+        ];
+
+        expect(duplicates, isEmpty, reason: '$path defines these twice');
+      }
+    });
+  });
+
   group('supported locales', () {
     test('ships exactly English and Vietnamese', () {
       expect(

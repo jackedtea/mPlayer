@@ -215,7 +215,7 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get unwatched => 'mới';
+  String get unwatched => 'Chưa xem';
 
   @override
   String unwatchedCount(int count) {
@@ -1026,6 +1026,33 @@ class AppLocalizationsVi extends AppLocalizations {
   String get noServersYet => 'Chưa có máy chủ nào.';
 
   @override
+  String get username => 'Tên đăng nhập';
+
+  @override
+  String get password => 'Mật khẩu';
+
+  @override
+  String get quickConnectInstead => 'Dùng Quick Connect';
+
+  @override
+  String get quickConnectHint => 'Duyệt từ một thiết bị đã đăng nhập';
+
+  @override
+  String get connect => 'Kết nối';
+
+  @override
+  String get getACode => 'Lấy mã';
+
+  @override
+  String get enterCodeInJellyfin => 'Nhập mã này trong Jellyfin';
+
+  @override
+  String get serverTab => 'Máy chủ';
+
+  @override
+  String get searchThisServer => 'Tìm trong máy chủ này';
+
+  @override
   String get moreLikeThis => 'Phim tương tự';
 
   @override
@@ -1073,6 +1100,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get watched => 'đã xem';
+
+  @override
+  String get episodeNew => 'mới';
 
   @override
   String seasonCount(int count) {

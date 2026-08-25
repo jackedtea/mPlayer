@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import '../../servers/server_registry.dart';
 import 'servers_list_page.dart';
 import 'add_server_sheet.dart';
@@ -37,11 +38,11 @@ class ServersEmptyPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Server'),
+        title: Text(AppLocalizations.of(context).serverTab),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Settings',
+            tooltip: AppLocalizations.of(context).settings,
             onPressed: () => context.push('/settings'),
           ),
           SizedBox(width: spacing.sm),
@@ -88,7 +89,9 @@ class ServersEmptyPage extends ConsumerWidget {
                     FilledButton.icon(
                       onPressed: () => AddServerSheet.show(context),
                       icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Add Jellyfin server'),
+                      label: Text(
+                        AppLocalizations.of(context).addJellyfinServer,
+                      ),
                     ),
                     SizedBox(height: spacing.sm),
                   ],

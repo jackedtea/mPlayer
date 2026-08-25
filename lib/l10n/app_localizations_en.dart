@@ -214,7 +214,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get unwatched => 'new';
+  String get unwatched => 'Unwatched';
 
   @override
   String unwatchedCount(int count) {
@@ -1025,6 +1025,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noServersYet => 'No servers yet.';
 
   @override
+  String get username => 'Username';
+
+  @override
+  String get password => 'Password';
+
+  @override
+  String get quickConnectInstead => 'Quick connect instead';
+
+  @override
+  String get quickConnectHint => 'Approve from another signed-in device';
+
+  @override
+  String get connect => 'Connect';
+
+  @override
+  String get getACode => 'Get a code';
+
+  @override
+  String get enterCodeInJellyfin => 'Enter this code in Jellyfin';
+
+  @override
+  String get serverTab => 'Server';
+
+  @override
+  String get searchThisServer => 'Search this server';
+
+  @override
   String get moreLikeThis => 'More like this';
 
   @override
@@ -1072,6 +1099,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get watched => 'watched';
+
+  @override
+  String get episodeNew => 'new';
 
   @override
   String seasonCount(int count) {

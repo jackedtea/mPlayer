@@ -325,11 +325,13 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                 keyboardType: TextInputType.url,
                 autocorrect: false,
                 enabled: _stage != _Stage.waitingForApproval,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   filled: true,
-                  labelText: 'Server address',
+                  labelText: AppLocalizations.of(context).serverAddress,
+                  // Not translated: an address is an address, and the design
+                  // uses this exact one as its example.
                   hintText: 'http://192.168.1.20:8096',
-                  border: UnderlineInputBorder(),
+                  border: const UnderlineInputBorder(),
                 ),
                 onChanged: (_) => _onAddressChanged(),
               ),
@@ -381,7 +383,9 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                   TextField(
                     controller: _username,
                     autocorrect: false,
-                    decoration: const InputDecoration(labelText: 'Username'),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context).username,
+                    ),
                     onChanged: (_) => setState(() {}),
                   ),
                   SizedBox(height: spacing.lg),
@@ -390,11 +394,11 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                     obscureText: _obscurePassword,
                     onSubmitted: (_) => _canSignIn ? _signIn() : null,
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: AppLocalizations.of(context).password,
                       suffixIcon: IconButton(
                         tooltip: _obscurePassword
-                            ? 'Show password'
-                            : 'Hide password',
+                            ? AppLocalizations.of(context).showPassword
+                            : AppLocalizations.of(context).hidePassword,
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_off_rounded
@@ -416,9 +420,12 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                     value: _quickConnect,
                     onChanged: (v) => setState(() => _quickConnect = v),
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Quick connect instead'),
-                    subtitle:
-                        const Text('Approve from another signed-in device'),
+                    title: Text(
+                      AppLocalizations.of(context).quickConnectInstead,
+                    ),
+                    subtitle: Text(
+                      AppLocalizations.of(context).quickConnectHint,
+                    ),
                   ),
               ],
 
@@ -428,7 +435,7 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                 children: <Widget>[
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(AppLocalizations.of(context).cancel),
                   ),
                   SizedBox(width: spacing.sm),
                   if (_stage == _Stage.signingIn ||
@@ -454,7 +461,9 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                       child: Text(
                         _signedInAlready
                             ? AppLocalizations.of(context).save
-                            : (_quickConnect ? 'Get a code' : 'Connect'),
+                            : (_quickConnect
+                                  ? AppLocalizations.of(context).getACode
+                                  : AppLocalizations.of(context).connect),
                       ),
                     ),
                 ],
@@ -523,7 +532,7 @@ class _DetectionLine extends StatelessWidget {
     }
 
     return Text(
-      'Enter an address to detect the server',
+      AppLocalizations.of(context).detectHint,
       style: context.texts.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
     );
   }
@@ -545,7 +554,7 @@ class _QuickConnectPanel extends StatelessWidget {
       child: Column(
         children: <Widget>[
           Text(
-            'Enter this code in Jellyfin',
+            AppLocalizations.of(context).enterCodeInJellyfin,
             style: context.texts.bodyMedium,
           ),
           SizedBox(height: spacing.md),

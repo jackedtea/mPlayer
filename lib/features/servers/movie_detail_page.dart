@@ -13,6 +13,8 @@ import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
 import 'detail_sections.dart';
+import 'item_action_row.dart';
+import 'media_info_sheet.dart';
 import 'server_library.dart';
 
 /// Screen 1f — movie detail.
@@ -69,18 +71,11 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
             seed: movie.title,
             artUrl: artUrlFor(ref, item, maxWidth: 900),
             height: 268,
-            actions: <Widget>[
-              CircleControl(
-                icon: Icons.cast_rounded,
-                tooltip: 'Cast',
-                onPressed: () => _notYet(context, 'Cast'),
-              ),
-              CircleControl(
-                icon: Icons.more_vert_rounded,
-                tooltip: 'More',
-                onPressed: () => _notYet(context, 'More'),
-              ),
-            ],
+            // No buttons up here any more. "More" held nothing that the
+            // action row below does not now hold outright, and casting needs
+            // a resolved stream and a position to start it from — it belongs
+            // in the player, which has both and has the remote to go with it.
+            //
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -96,9 +91,15 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _ActionRow(
-                  movie: movie,
+                ItemActionRow(
+                  item: item,
                   onPlay: () => playServerItem(context, ref, item.id),
+                  onStartOver: () =>
+                      playServerItem(context, ref, item.id, fromStart: true),
+                  playlistIds: <String>[item.id],
+                  onMediaInfo: () => showMediaInfo(context, item.id),
+                  // No shuffle: a film has no siblings to shuffle with, and
+                  // the action is left out rather than shown doing nothing.
                 ),
                 if (movie.isStarted) ...<Widget>[
                   SizedBox(height: spacing.lg),
@@ -123,14 +124,6 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
           // less curated, so they bury the four words that say what the film
           // is.
           TagStrip(tags: item.genres, padding: padding),
-          // Only when there is something in it. The rows come from the
-          // stream list, which arrives with the playback decision rather than
-          // with the item, so before a play this card is an empty box.
-          if (movie.info.isNotEmpty)
-            Padding(
-              padding: padding.copyWith(top: spacing.xl, bottom: 0),
-              child: _MediaInfoCard(rows: movie.info),
-            ),
           if (item.people.isNotEmpty) ...<Widget>[
             Padding(
               padding: padding.copyWith(top: spacing.xl, bottom: spacing.md),
@@ -165,7 +158,11 @@ class _MetaRow extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(Icons.star_rounded, size: 15, color: context.semantic.ratingStar),
+            Icon(
+              Icons.star_rounded,
+              size: 15,
+              color: context.semantic.ratingStar,
+            ),
             const SizedBox(width: 3),
             Text(movie.rating, style: style),
           ],
@@ -188,87 +185,6 @@ class _MetaRow extends StatelessWidget {
         Text('·', style: style),
         Text(movie.quality, style: style),
       ],
-    );
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.movie, required this.onPlay});
-
-  final MovieDetail movie;
-
-  /// Resolves the item through the server and opens the player.
-  final VoidCallback onPlay;
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final radii = context.radii;
-
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: SizedBox(
-            height: 56,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(radii.action),
-                ),
-              ),
-              onPressed: onPlay,
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(movie.resumeLabel ?? AppLocalizations.of(context).play),
-            ),
-          ),
-        ),
-        SizedBox(width: spacing.md),
-        _SquareAction(
-          icon: Icons.download_for_offline_rounded,
-          tooltip: 'Download',
-          onPressed: () => _notYet(context, 'Download'),
-        ),
-        SizedBox(width: spacing.md),
-        _SquareAction(
-          icon: Icons.bookmark_rounded,
-          tooltip: 'Bookmark',
-          onPressed: () => _notYet(context, 'Bookmark'),
-        ),
-      ],
-    );
-  }
-}
-
-class _SquareAction extends StatelessWidget {
-  const _SquareAction({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = context.colors;
-
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: scheme.primaryContainer,
-        borderRadius: BorderRadius.circular(context.radii.action),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: SizedBox(
-            width: 56,
-            height: 56,
-            child: Icon(icon, color: scheme.onPrimaryContainer),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -299,8 +215,9 @@ class _ProgressLine extends StatelessWidget {
         // disagree about where the user got to.
         Text(
           movie.resumeLabel ?? '',
-          style: context.texts.bodySmall
-              ?.copyWith(color: scheme.onSurfaceVariant),
+          style: context.texts.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -332,8 +249,9 @@ class _Overview extends StatelessWidget {
             text,
             maxLines: expanded ? null : 3,
             overflow: expanded ? null : TextOverflow.ellipsis,
-            style: context.texts.bodyMedium
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: context.texts.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           Text(
             expanded
@@ -348,62 +266,4 @@ class _Overview extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MediaInfoCard extends StatelessWidget {
-  const _MediaInfoCard({required this.rows});
-
-  final List<MediaInfoRow> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final scheme = context.colors;
-
-    return Container(
-      padding: EdgeInsets.all(spacing.lg),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: context.radii.cardAll,
-      ),
-      child: Column(
-        children: <Widget>[
-          for (final (int i, MediaInfoRow row) in rows.indexed) ...<Widget>[
-            if (i > 0) SizedBox(height: spacing.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                SizedBox(
-                  width: 84,
-                  child: Text(
-                    row.label,
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    row.value,
-                    style: context.texts.bodySmall?.copyWith(
-                      color: row.isSuccess
-                          ? context.semantic.success
-                          : scheme.onSurface,
-                      fontWeight:
-                          row.isSuccess ? FontWeight.w500 : FontWeight.w400,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-void _notYet(BuildContext context, String what) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$what — not implemented yet')),
-  );
 }

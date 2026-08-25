@@ -479,7 +479,7 @@ abstract class AppLocalizations {
   /// No description provided for @unwatched.
   ///
   /// In en, this message translates to:
-  /// **'new'**
+  /// **'Unwatched'**
   String get unwatched;
 
   /// No description provided for @unwatchedCount.
@@ -1964,6 +1964,60 @@ abstract class AppLocalizations {
   /// **'No servers yet.'**
   String get noServersYet;
 
+  /// No description provided for @username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get username;
+
+  /// No description provided for @password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get password;
+
+  /// No description provided for @quickConnectInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick connect instead'**
+  String get quickConnectInstead;
+
+  /// No description provided for @quickConnectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve from another signed-in device'**
+  String get quickConnectHint;
+
+  /// No description provided for @connect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get connect;
+
+  /// No description provided for @getACode.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a code'**
+  String get getACode;
+
+  /// No description provided for @enterCodeInJellyfin.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter this code in Jellyfin'**
+  String get enterCodeInJellyfin;
+
+  /// No description provided for @serverTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get serverTab;
+
+  /// No description provided for @searchThisServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Search this server'**
+  String get searchThisServer;
+
   /// No description provided for @moreLikeThis.
   ///
   /// In en, this message translates to:
@@ -2053,6 +2107,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'watched'**
   String get watched;
+
+  /// No description provided for @episodeNew.
+  ///
+  /// In en, this message translates to:
+  /// **'new'**
+  String get episodeNew;
 
   /// No description provided for @seasonCount.
   ///

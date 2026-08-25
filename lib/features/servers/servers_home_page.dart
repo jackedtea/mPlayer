@@ -105,12 +105,12 @@ class _ServersHomePageState extends ConsumerState<ServersHomePage> {
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.cast_rounded),
-            tooltip: 'Cast',
+            tooltip: AppLocalizations.of(context).cast,
             onPressed: () => _notYet(context, 'Cast'),
           ),
           IconButton(
             icon: const Icon(Icons.search_rounded),
-            tooltip: 'Search this server',
+            tooltip: AppLocalizations.of(context).searchThisServer,
             onPressed: () => context.go('/search'),
           ),
           Padding(

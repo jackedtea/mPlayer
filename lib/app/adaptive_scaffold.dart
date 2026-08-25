@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/player/open_local_video.dart';
 import '../l10n/app_localizations.dart';
+import 'system_ui.dart';
 import 'tokens.dart';
 
 /// One of the three top-level destinations.
@@ -75,6 +78,13 @@ class AdaptiveScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The shell *is* the app outside the player, so if it is on screen the
+    // system bars belong to the user again. Asserting it here rather than
+    // trusting the player's teardown makes this self-healing: whatever goes
+    // wrong on the way out of a film, arriving anywhere else puts the bars
+    // back. Free unless something actually left them hidden.
+    unawaited(restoreAppSystemUi());
+
     return switch (context.windowSize) {
       WindowSize.compact => _CompactShell(shell: navigationShell, onGo: _go),
       WindowSize.medium => _RailShell(shell: navigationShell, onGo: _go),

@@ -387,7 +387,9 @@ Episode episodeFrom(ServerItem item, AppLocalizations l10n) {
       else if (fraction > 0)
         remainingLabel(item, l10n)
       else
-        l10n.unwatched,
+        // "new", not "Unwatched": this sits in an episode's meta line after
+        // its runtime, where the filter chip's wording would read oddly.
+        l10n.episodeNew,
     ].where((s) => s.isNotEmpty).join(' · '),
     // A watched episode shows no bar: the tick already says so, and a full
     // bar under it says the same thing twice.

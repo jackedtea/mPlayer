@@ -81,7 +81,7 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage> {
           ),
           IconButton(
             icon: const Icon(Icons.search_rounded),
-            tooltip: 'Search',
+            tooltip: l10n.navSearch,
             onPressed: () => context.go('/search'),
           ),
         ],
@@ -95,7 +95,7 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage> {
               padding: spacing.screenPadding(context.windowSize),
               children: <Widget>[
                 FilterChip(
-                  label: const Text('Unwatched'),
+                  label: Text(l10n.unwatched),
                   selected: _unwatchedOnly,
                   onSelected: (v) => setState(() => _unwatchedOnly = v),
                 ),

@@ -124,13 +124,9 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
               seed: series.title,
               artUrl: artUrlFor(ref, item, maxWidth: 900),
               height: 196,
-              actions: <Widget>[
-                CircleControl(
-                  icon: Icons.more_vert_rounded,
-                  tooltip: 'More',
-                  onPressed: () => _notYet(context, 'More'),
-                ),
-              ],
+              // No "More" up here: everything it would have held is in the
+              // action row under the play button, spelled out rather than
+              // hidden behind three dots.
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -465,12 +461,6 @@ class _EpisodeThumb extends StatelessWidget {
       ),
     );
   }
-}
-
-void _notYet(BuildContext context, String what) {
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text('$what — not implemented yet')));
 }
 
 /// Everything about a series that is not one of its episodes.
