@@ -15,6 +15,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../app/desktop_window.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../servers/stream_preferences.dart';
 import '../../cast/cast_device.dart';
 import '../../sources/media_source.dart';
 import '../cast/cast_controller.dart';
@@ -38,11 +39,16 @@ import 'track_sheet.dart';
 /// the overlays (stats, lock). Nothing here talks to `media_kit` except the
 /// surface itself.
 class PlayerPage extends ConsumerStatefulWidget {
-  const PlayerPage({super.key, required this.media});
+  const PlayerPage({super.key, required this.media, this.queue});
 
   /// Already resolved by the caller, so the title and source line are known
   /// before the first frame decodes.
   final PlayableMedia media;
+
+  /// What to play after this, when the caller assembled a list of its own —
+  /// a shuffled series, a playlist. Null lets the player work its own queue
+  /// out from the folder [media] came from.
+  final PlaybackQueue? queue;
 
   @override
   ConsumerState<PlayerPage> createState() => _PlayerPageState();
@@ -94,8 +100,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       // Play what the caller resolved, then fill in the rest of its folder so
       // prev/next work — without making the first frame wait on a directory
       // listing that may cross the network.
-      _playback.openResolved(widget.media);
-      _playback.loadSiblingQueue(widget.media.ref);
+      final queue = widget.queue;
+      _playback.openResolved(widget.media, queue: queue);
+      // Only when the caller had no list of its own. Filling in siblings over
+      // a queue somebody deliberately assembled would replace it.
+      if (queue == null) _playback.loadSiblingQueue(widget.media.ref);
     });
     // The picture-in-picture window's own buttons. They run the same methods
     // the on-screen controls do, so the two cannot drift apart.
@@ -351,7 +360,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       },
                       onSubtitles: () => _pickSubtitle(state, controller),
                       onAudio: () => _pickAudio(state, controller),
-                      onQuality: () => _notImplemented('Quality selection'),
+                      onQuality: () => _pickQuality(state, controller),
+                      qualityLabel: () {
+                        final q = ref.watch(streamQualityProvider);
+                        return q.isOriginal
+                            ? AppLocalizations.of(context).qualityOriginal
+                            : q.label;
+                      }(),
                       onSpeed: () => _pickSpeed(state, controller),
                       onLock: () {
                         ref.read(playerUiProvider.notifier).toggleLock();
@@ -460,6 +475,46 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       ],
       onSelected: (o) {
         if (o.value != null) controller.setSpeed(o.value!);
+      },
+    );
+  }
+
+  Future<void> _pickQuality(
+    PlaybackState state,
+    PlaybackController controller,
+  ) async {
+    _restartHideTimer();
+
+    final l10n = AppLocalizations.of(context);
+    final current = ref.read(streamQualityProvider);
+
+    await TrackSheet.show(
+      context: context,
+      title: l10n.playbackQuality,
+      selectedId: current.id,
+      options: <TrackOption>[
+        for (final StreamQuality q in streamQualities)
+          TrackOption(
+            id: q.id,
+            label: q.isOriginal ? l10n.qualityOriginal : q.label,
+            detail: q.isOriginal ? l10n.qualityOriginalDetail : null,
+          ),
+      ],
+      onSelected: (option) async {
+        // `TrackOption.value` is a double, for the speed sheet it was written
+        // for; the id is what carries a quality.
+        final chosen = qualityById(option.id);
+        if (chosen.id == current.id) return;
+
+        // Read before the await: the film keeps running while the sheet is
+        // open, and reopening at a position from ten seconds ago is a visible
+        // jump backwards.
+        final resume = ref.read(playbackControllerProvider).position;
+
+        await ref.read(streamQualityProvider.notifier).set(chosen);
+        // The URL already playing encodes the decision the server made under
+        // the old cap, so the new one only takes effect on a fresh resolve.
+        await controller.reopenCurrent(at: resume);
       },
     );
   }

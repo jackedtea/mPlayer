@@ -146,6 +146,7 @@ ServerItem serverItemFromJson(Map<String, dynamic> json) {
     // The server dates the end rather than numbering the year, so it is the
     // one field here that has to be parsed out of a timestamp.
     endYear: DateTime.tryParse(json['EndDate'] as String? ?? '')?.year,
+    playlistEntryId: json['PlaylistItemId'] as String?,
   );
 }
 
@@ -243,6 +244,15 @@ ServerPlayback? playbackFromJson(
   final playSessionId = json['PlaySessionId'] as String?;
   final transcodingUrl = source['TranscodingUrl'] as String?;
 
+  final streams = <ServerStream>[
+    for (final Object? s in (source['MediaStreams'] as List?) ?? const <Object?>[])
+      if (s is Map<String, dynamic>) serverStreamFromJson(s),
+  ];
+  final defaultAudio = source['DefaultAudioStreamIndex'] as int?;
+  final defaultSubtitle = source['DefaultSubtitleStreamIndex'] as int?;
+  final transcodes = source['SupportsTranscoding'] as bool? ?? false;
+  final sourceId = source['Id'] as String? ?? itemId;
+
   if (transcodingUrl != null && transcodingUrl.isNotEmpty) {
     return ServerPlayback(
       // Relative to the server root, and it already carries its own query.
@@ -251,10 +261,15 @@ ServerPlayback? playbackFromJson(
       playSessionId: playSessionId,
       container: source['Container'] as String?,
       bitrate: source['Bitrate'] as int?,
+      streams: streams,
+      mediaSourceId: sourceId,
+      defaultAudioIndex: defaultAudio,
+      defaultSubtitleIndex: defaultSubtitle,
+      supportsTranscoding: transcodes,
     );
   }
 
-  final mediaSourceId = source['Id'] as String? ?? itemId;
+  final mediaSourceId = sourceId;
   final container = source['Container'] as String?;
 
   return ServerPlayback(
@@ -280,6 +295,112 @@ ServerPlayback? playbackFromJson(
     playSessionId: playSessionId,
     container: container,
     bitrate: source['Bitrate'] as int?,
+    streams: streams,
+    mediaSourceId: mediaSourceId,
+    defaultAudioIndex: defaultAudio,
+    defaultSubtitleIndex: defaultSubtitle,
+    supportsTranscoding: transcodes,
+  );
+}
+
+/// The body of a `PlaybackInfo` request.
+///
+/// A device profile is how a Jellyfin client says what it can and cannot
+/// play, and it is the **only** thing that makes a quality cap take effect:
+/// the server re-encodes when the file breaks one of these conditions, and
+/// with no profile at all it concludes the client can play anything and hands
+/// the file over untouched whatever the query said.
+///
+/// An empty body when nothing is capped, deliberately. "Original" means never
+/// re-encode, and the surest way to get that is to state no conditions the
+/// file could fail — a profile written to be permissive is still a list of
+/// codecs, and any file outside it would be transcoded against the user's
+/// wishes.
+Map<String, dynamic> deviceProfileFor(PlaybackCapabilities caps) {
+  if (caps.maxBitrate == null && caps.maxHeight == null) {
+    return const <String, dynamic>{};
+  }
+
+  return <String, dynamic>{
+    'DeviceProfile': <String, dynamic>{
+      if (caps.maxBitrate != null) ...<String, dynamic>{
+        'MaxStreamingBitrate': caps.maxBitrate,
+        'MaxStaticBitrate': caps.maxBitrate,
+      },
+      // What libmpv opens without help. Broad, because the point of a cap is
+      // the bitrate rather than the container — a 720p MKV the phone can
+      // decode should still be handed over whole.
+      'DirectPlayProfiles': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'Container': 'mp4,mkv,webm,avi,mov,ts,m4v,flv,wmv',
+          'Type': 'Video',
+          'VideoCodec': 'h264,hevc,vp8,vp9,av1,mpeg4,mpeg2video',
+          'AudioCodec': 'aac,ac3,eac3,mp3,opus,flac,vorbis,dts,truehd,pcm',
+        },
+      ],
+      // HLS, because a re-encode that can be seeked has to be segmented.
+      'TranscodingProfiles': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'Container': 'ts',
+          'Type': 'Video',
+          'VideoCodec': 'h264',
+          'AudioCodec': 'aac',
+          'Protocol': 'hls',
+          'Context': 'Streaming',
+          'MaxAudioChannels': '2',
+          'MinSegments': 1,
+          // Without this the server only cuts at key frames, and a seek lands
+          // wherever the previous one was rather than where it was asked for.
+          'BreakOnNonKeyFrames': true,
+        },
+      ],
+      'CodecProfiles': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'Type': 'Video',
+          'Conditions': <Map<String, dynamic>>[
+            if (caps.maxHeight != null)
+              <String, dynamic>{
+                'Condition': 'LessThanEqual',
+                'Property': 'Height',
+                'Value': '${caps.maxHeight}',
+                'IsRequired': true,
+              },
+            if (caps.maxBitrate != null)
+              <String, dynamic>{
+                'Condition': 'LessThanEqual',
+                'Property': 'VideoBitrate',
+                'Value': '${caps.maxBitrate}',
+                'IsRequired': true,
+              },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+/// One entry of `MediaStreams`.
+ServerStream serverStreamFromJson(Map<String, dynamic> json) {
+  return ServerStream(
+    index: json['Index'] as int? ?? -1,
+    type: switch (json['Type']) {
+      'Video' => ServerStreamType.video,
+      'Audio' => ServerStreamType.audio,
+      'Subtitle' => ServerStreamType.subtitle,
+      _ => ServerStreamType.unknown,
+    },
+    codec: json['Codec'] as String?,
+    language: json['Language'] as String?,
+    // `DisplayTitle` is the server's own assembled description and is better
+    // than anything reassembled here — it knows about commentary tracks,
+    // hearing-impaired flags and channel layouts this app does not model.
+    title: json['DisplayTitle'] as String? ?? json['Title'] as String?,
+    isDefault: json['IsDefault'] as bool? ?? false,
+    isForced: json['IsForced'] as bool? ?? false,
+    bitrate: json['BitRate'] as int?,
+    width: json['Width'] as int?,
+    height: json['Height'] as int?,
+    channels: json['Channels'] as int?,
   );
 }
 

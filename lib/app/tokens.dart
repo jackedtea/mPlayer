@@ -224,6 +224,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     required this.ratingStar,
     required this.divider,
     required this.scrimStrong,
+    required this.onPlayerPill,
   });
 
   /// "Direct play" labels and online status dots.
@@ -239,6 +240,13 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   /// Player chrome scrims and overlay badges.
   final Color scrimStrong;
 
+  /// Ink for the near-white pills over the video — "Skip intro".
+  ///
+  /// The same in both schemes on purpose: the pill stays light whatever the
+  /// app theme is, so a scheme role would turn the label pale blue in the
+  /// dark theme and unreadable against it.
+  final Color onPlayerPill;
+
   static const light = AppSemanticColors(
     success: Color(0xFF2E7D5B),
     onSuccess: Color(0xFFFFFFFF),
@@ -246,6 +254,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     ratingStar: Color(0xFFB98900),
     divider: Color(0xFFD3DBE3),
     scrimStrong: Color(0x8C000000), // rgba(0,0,0,.55)
+    onPlayerPill: Color(0xFF001E2E),
   );
 
   static const dark = AppSemanticColors(
@@ -255,6 +264,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     ratingStar: Color(0xFFE6C15A),
     divider: Color(0xFF2A3238),
     scrimStrong: Color(0x8C000000),
+    onPlayerPill: Color(0xFF001E2E),
   );
 
   @override
@@ -265,6 +275,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     Color? ratingStar,
     Color? divider,
     Color? scrimStrong,
+    Color? onPlayerPill,
   }) {
     return AppSemanticColors(
       success: success ?? this.success,
@@ -273,6 +284,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       ratingStar: ratingStar ?? this.ratingStar,
       divider: divider ?? this.divider,
       scrimStrong: scrimStrong ?? this.scrimStrong,
+      onPlayerPill: onPlayerPill ?? this.onPlayerPill,
     );
   }
 
@@ -286,6 +298,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       ratingStar: Color.lerp(ratingStar, other.ratingStar, t)!,
       divider: Color.lerp(divider, other.divider, t)!,
       scrimStrong: Color.lerp(scrimStrong, other.scrimStrong, t)!,
+      onPlayerPill: Color.lerp(onPlayerPill, other.onPlayerPill, t)!,
     );
   }
 }

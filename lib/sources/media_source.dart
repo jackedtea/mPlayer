@@ -5,6 +5,8 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../servers/media_library_source.dart';
+
 import '../core/models/library_models.dart';
 import '../core/models/media_models.dart';
 
@@ -114,6 +116,7 @@ class PlayableMedia {
     this.headers = const <String, String>{},
     this.startPosition = Duration.zero,
     this.chapters = const <MediaChapter>[],
+    this.serverStreams = const <ServerStream>[],
   });
 
   final MediaRef ref;
@@ -140,7 +143,30 @@ class PlayableMedia {
   /// tick per entry; an empty list simply draws none.
   final List<MediaChapter> chapters;
 
+  /// The tracks as the *server* described them, where one is involved.
+  ///
+  /// Kept beside the decoder's own list rather than merged into it: after a
+  /// transcode the file the decoder opened has one audio track, and only this
+  /// list still knows which of the original's the user chose.
+  final List<ServerStream> serverStreams;
+
   String get title => ref.title;
+
+  /// The same media, opened somewhere else.
+  ///
+  /// What "Start over" needs: the resume point comes back from the server
+  /// with the item, and the only thing that differs is where playback begins.
+  PlayableMedia startingAt(Duration position) => PlayableMedia(
+        ref: ref,
+        uri: uri,
+        kind: kind,
+        capabilities: capabilities,
+        sourceLine: sourceLine,
+        headers: headers,
+        startPosition: position,
+        chapters: chapters,
+        serverStreams: serverStreams,
+      );
 
   /// The chapter [position] falls in, or null outside any.
   MediaChapter? chapterAt(Duration position) {

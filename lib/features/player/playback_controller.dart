@@ -234,6 +234,38 @@ class PlaybackController extends Notifier<PlaybackState> {
     state = state.copyWith(volume: clamped);
   }
 
+  /// Opens the current item again, at [at].
+  ///
+  /// What a quality change needs: the URL the server hands out encodes the
+  /// decision it made, so a new cap only takes effect on a fresh
+  /// `PlaybackInfo`. Reopening rather than seeking, because there is nothing
+  /// to seek — the stream being played is a different stream afterwards.
+  ///
+  /// The position is passed in rather than read here: by the time this runs
+  /// the sheet has been open for a moment and the film has moved on.
+  Future<void> reopenCurrent({Duration? at}) async {
+    final media = state.media;
+    if (media == null) return;
+
+    final source = ref.read(mediaSourcesProvider)[media.ref.sourceId];
+    if (source == null) return;
+
+    final resume = at ?? state.position;
+    final queue = state.queue;
+
+    state = state.copyWith(buffering: true, clearError: true);
+
+    try {
+      final resolved = await source.resolve(media.ref);
+      await openResolved(
+        resolved.startingAt(resume),
+        queue: queue.isEmpty ? null : queue,
+      );
+    } on MediaSourceException catch (e) {
+      state = state.copyWith(buffering: false, error: e.message);
+    }
+  }
+
   /// Releases the backend but keeps the notifier alive, so leaving the player
   /// screen does not strand a decoder.
   Future<void> stop() async {

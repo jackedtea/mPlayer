@@ -48,6 +48,7 @@ const _routes = <String>[
   '/library',
   '/library/movie',
   '/library/series',
+  '/library/episode',
   '/browse?source=device',
   '/downloads',
 ];

@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import '../core/models/media_models.dart';
 import '../sources/media_source.dart';
 import 'media_library_source.dart';
+import 'stream_preferences.dart';
 
 /// A signed-in server, as something the **player** can open.
 ///
@@ -17,9 +18,17 @@ import 'media_library_source.dart';
 /// folder queue, resume points and casting all work against a server without
 /// knowing that a server is what they are talking to.
 class JellyfinMediaSource implements MediaSource, ProgressReporting {
-  JellyfinMediaSource(this.library);
+  JellyfinMediaSource(this.library, {StreamPreferences Function()? preferences})
+      : _preferences = preferences ?? _none;
 
   final MediaLibrarySource library;
+
+  /// Read at resolve time rather than captured at construction: the source
+  /// map is built once and resolves many times, and a quality picked in the
+  /// player has to reach the *next* file without rebuilding the map.
+  final StreamPreferences Function() _preferences;
+
+  static StreamPreferences _none() => const StreamPreferences();
 
   /// The session the server handed out for each item, kept so progress
   /// reports can quote it.
@@ -46,9 +55,24 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
   Future<PlayableMedia> resolve(MediaRef ref) async {
     try {
       final item = await library.item(ref.itemId);
+
+      final preferences = _preferences();
+      final quality = preferences.quality;
+      // Only if it was made for *this* item: the indexes are positions in one
+      // file's track list and mean something else in the next.
+      final choice = preferences.trackChoice?.itemId == ref.itemId
+          ? preferences.trackChoice
+          : null;
+
       final playback = await library.playback(
         ref.itemId,
-        const PlaybackCapabilities(),
+        PlaybackCapabilities(
+          maxBitrate: quality.maxBitrate,
+          maxHeight: quality.maxHeight,
+        ),
+        audioStreamIndex: choice?.audioStreamIndex,
+        subtitleStreamIndex: choice?.subtitleStreamIndex,
+        mediaSourceId: choice?.mediaSourceId,
       );
 
       final session = playback.playSessionId;
@@ -70,6 +94,9 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
         // collecting that from every device, not just this one.
         startPosition: item.position ?? Duration.zero,
         sourceLine: _sourceLine(playback),
+        // What the server actually produced, so the player can label its
+        // quality control with the truth rather than with what was asked for.
+        serverStreams: playback.streams,
       );
     } on ServerException catch (e) {
       // The player renders this inline; it must read as a sentence.

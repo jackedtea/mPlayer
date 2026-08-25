@@ -19,6 +19,7 @@ import '../../core/models/media_models.dart';
 import '../../l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
+import '../player/playback_state.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
 import '../../sources/media_source.dart';
@@ -153,8 +154,9 @@ final seriesEpisodesProvider =
 Future<void> playServerItem(
   BuildContext context,
   WidgetRef ref,
-  String itemId,
-) async {
+  String itemId, {
+  bool fromStart = false,
+}) async {
   final profile = ref.read(serverRegistryProvider).active;
   if (profile == null) return;
 
@@ -165,10 +167,79 @@ Future<void> playServerItem(
   final router = GoRouter.of(context);
 
   try {
-    final media = await source.resolve(
+    final resolved = await source.resolve(
       MediaRef(sourceId: profile.id, itemId: itemId, title: ''),
     );
+    // "Start over" is the one case where the server's resume point is not
+    // what the user asked for.
+    final media = fromStart ? resolved.startingAt(Duration.zero) : resolved;
     router.push('/player', extra: media);
+  } on MediaSourceException catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(e.message)));
+  }
+}
+
+/// What the server would send for an item, without playing it.
+///
+/// This is what makes an audio track selectable *before* the film starts: the
+/// track list comes from the server's playback decision, not from a decoder
+/// that has to open the file first. Asking costs a `PlaybackInfo` round trip
+/// and, on some servers, a transcode slot that is released when the session
+/// times out — so it is only requested by the screen that shows the pickers.
+final playbackInfoProvider =
+    FutureProvider.family<ServerPlayback?, String>((ref, itemId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return null;
+  try {
+    return await source.playback(itemId, const PlaybackCapabilities());
+  } on ServerException {
+    return null;
+  }
+});
+
+/// Plays [itemIds] in the order given, starting at [startIndex].
+///
+/// Only the first is resolved here. The rest are handed over as bare
+/// references and resolved when the player reaches them — resolving twenty
+/// episodes up front would mean twenty round trips before anything played,
+/// and twenty transcodes the user never asked to start.
+Future<void> playServerQueue(
+  BuildContext context,
+  WidgetRef ref,
+  List<String> itemIds, {
+  int startIndex = 0,
+}) async {
+  if (itemIds.isEmpty) return;
+
+  final profile = ref.read(serverRegistryProvider).active;
+  if (profile == null) return;
+
+  final source = ref.read(mediaSourcesProvider)[profile.id];
+  if (source == null) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final router = GoRouter.of(context);
+
+  final index = startIndex.clamp(0, itemIds.length - 1);
+
+  try {
+    final media = await source.resolve(
+      MediaRef(sourceId: profile.id, itemId: itemIds[index], title: ''),
+    );
+
+    router.push(
+      '/player',
+      extra: PlayerLaunch(
+        media: media,
+        queue: PlaybackQueue(
+          items: <MediaRef>[
+            for (final String id in itemIds)
+              MediaRef(sourceId: profile.id, itemId: id, title: ''),
+          ],
+          index: index,
+        ),
+      ),
+    );
   } on MediaSourceException catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(e.message)));
   }

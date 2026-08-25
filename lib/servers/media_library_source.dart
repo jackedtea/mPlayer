@@ -66,6 +66,7 @@ class ServerItem {
     this.studios = const <String>[],
     this.status,
     this.endYear,
+    this.playlistEntryId,
   });
 
   final String id;
@@ -124,6 +125,11 @@ class ServerItem {
   /// When a series finished. Null while it is still running, and null for a
   /// film, where [year] is the whole story.
   final int? endYear;
+
+  /// This item's identity *inside a playlist*, which is not its own id: the
+  /// same film can sit in a playlist twice, and a removal names the entry
+  /// rather than the film. Null everywhere outside a playlist listing.
+  final String? playlistEntryId;
 
   /// Seasons on a series, episodes on a season.
   final int? childCount;
@@ -188,6 +194,11 @@ class ServerPlayback {
     this.playSessionId,
     this.container,
     this.bitrate,
+    this.streams = const <ServerStream>[],
+    this.mediaSourceId,
+    this.defaultAudioIndex,
+    this.defaultSubtitleIndex,
+    this.supportsTranscoding = false,
   });
 
   final Uri uri;
@@ -205,6 +216,82 @@ class ServerPlayback {
 
   final String? container;
   final int? bitrate;
+
+  /// Every track in the file, as the server describes it.
+  ///
+  /// Known *before* a decoder has opened anything, which is the whole point:
+  /// it is what lets the user choose an audio track on the detail screen
+  /// rather than after the film has already started in the wrong language.
+  final List<ServerStream> streams;
+
+  /// Which of an item's files this is. A film with two rips has two, and the
+  /// index numbers only mean anything against the one they came from.
+  final String? mediaSourceId;
+
+  /// What the server would have picked. Null for subtitles means "none",
+  /// which is not the same as "the server did not say".
+  final int? defaultAudioIndex;
+  final int? defaultSubtitleIndex;
+
+  /// Whether the server is willing to re-encode. False makes the quality
+  /// control meaningless, so it is hidden rather than shown doing nothing.
+  final bool supportsTranscoding;
+
+  List<ServerStream> streamsOfType(ServerStreamType type) =>
+      streams.where((s) => s.type == type).toList();
+}
+
+enum ServerStreamType { video, audio, subtitle, unknown }
+
+/// One track inside a file, as the server reports it.
+@immutable
+class ServerStream {
+  const ServerStream({
+    required this.index,
+    required this.type,
+    this.codec,
+    this.language,
+    this.title,
+    this.isDefault = false,
+    this.isForced = false,
+    this.bitrate,
+    this.width,
+    this.height,
+    this.channels,
+  });
+
+  /// The server's own index, which is what a playback request quotes back.
+  /// Not a position in any list this app builds.
+  final int index;
+
+  final ServerStreamType type;
+  final String? codec;
+  final String? language;
+
+  /// The server's assembled description — "English - Dolby Digital - 5.1".
+  /// Worth preferring over anything reassembled here, because the server has
+  /// fields this app does not model.
+  final String? title;
+
+  final bool isDefault;
+  final bool isForced;
+
+  final int? bitrate;
+  final int? width;
+  final int? height;
+  final int? channels;
+
+  /// What to show when the server supplied no description of its own.
+  String get label {
+    final assembled = title;
+    if (assembled != null && assembled.trim().isNotEmpty) return assembled.trim();
+
+    return <String>[
+      if (language != null && language!.isNotEmpty) language!,
+      if (codec != null && codec!.isNotEmpty) codec!.toUpperCase(),
+      if (channels != null) '$channels ch',
+    ].join(' · ');
+  }
 }
 
 /// A catalog-level source: metadata, artwork, playback URLs and watch state,
@@ -254,7 +341,39 @@ abstract class MediaLibrarySource {
   Uri? personImageUrl(ServerPerson person, {int? maxWidth});
 
   /// How to play [itemId], given what this device can decode.
-  Future<ServerPlayback> playback(String itemId, PlaybackCapabilities caps);
+  ///
+  /// The stream indexes are the server's own, taken from a previous
+  /// [ServerPlayback]. Passing them is what makes a chosen audio track
+  /// survive a transcode: the server bakes the choice into the stream it
+  /// produces, and there is nothing for the player to select afterwards.
+  Future<ServerPlayback> playback(
+    String itemId,
+    PlaybackCapabilities caps, {
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+    String? mediaSourceId,
+  });
+
+  /// The playlists this user owns.
+  Future<List<ServerItem>> playlists();
+
+  /// What is in one playlist.
+  ///
+  /// The entries carry a `playlistEntryId` distinct from the item's own id,
+  /// which is what a removal has to quote.
+  Future<List<ServerItem>> playlistItems(String playlistId);
+
+  /// Adds [itemIds] to [playlistId].
+  Future<void> addToPlaylist(String playlistId, List<String> itemIds);
+
+  /// Removes [entryIds] from [playlistId].
+  ///
+  /// The ids are *playlist entry* ids, not item ids: the same film can sit in
+  /// a playlist twice and only one of them is meant to go.
+  Future<void> removeFromPlaylist(String playlistId, List<String> entryIds);
+
+  /// Creates a playlist holding [itemIds] and returns its id.
+  Future<String?> createPlaylist(String name, List<String> itemIds);
 
   /// Tells the server where playback got to. Called on start, periodically,
   /// and once on stop — the server is the authority on watch state when two

@@ -923,16 +923,99 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get cancel => 'Huỷ';
+
+  @override
+  String get create => 'Tạo';
+
+  @override
+  String get save => 'Lưu';
+
+  @override
+  String get addToPlaylist => 'Thêm vào danh sách phát';
+
+  @override
+  String get newPlaylist => 'Danh sách phát mới';
+
+  @override
+  String get playlistName => 'Tên';
+
+  @override
+  String get markWatched => 'Đánh dấu đã xem';
+
+  @override
+  String get markUnwatched => 'Đánh dấu chưa xem';
+
+  @override
+  String get addFavourite => 'Thêm vào yêu thích';
+
+  @override
+  String get removeFavourite => 'Bỏ khỏi yêu thích';
+
+  @override
+  String get shufflePlay => 'Phát ngẫu nhiên';
+
+  @override
+  String get downloadAll => 'Tải tất cả';
+
+  @override
+  String get mediaInfo => 'Thông tin media';
+
+  @override
+  String get startOver => 'Xem từ đầu';
+
+  @override
+  String get actionFailed => 'Máy chủ không thực hiện được.';
+
+  @override
+  String get audioTrack => 'Âm thanh';
+
+  @override
+  String get subtitleTrack => 'Phụ đề';
+
+  @override
+  String get subtitlesOff => 'Tắt';
+
+  @override
+  String get serverDefault => 'Mặc định của máy chủ';
+
+  @override
+  String get switchServer => 'Máy chủ';
+
+  @override
+  String get editServer => 'Sửa máy chủ';
+
+  @override
+  String get addServer => 'Thêm máy chủ';
+
+  @override
+  String get removeServer => 'Xoá máy chủ';
+
+  @override
+  String removeServerBody(Object name) {
+    return '$name sẽ bị quên, cùng với thông tin đăng nhập. Không có gì trên máy chủ bị xoá.';
+  }
+
+  @override
+  String get qualityOriginal => 'Gốc';
+
+  @override
+  String get qualityOriginalDetail =>
+      'Không mã hoá lại. Hình đẹp nhất, và là lựa chọn duy nhất không phụ thuộc CPU máy chủ.';
+
+  @override
+  String get playbackQuality => 'Chất lượng phát';
+
+  @override
+  String episodeOf(int season, int episode) {
+    return 'P${season}T$episode';
+  }
+
+  @override
   String get moreLikeThis => 'Phim tương tự';
 
   @override
   String get about => 'Giới thiệu';
-
-  @override
-  String get showMore => 'Xem thêm';
-
-  @override
-  String get showLess => 'Thu gọn';
 
   @override
   String get studios => 'Hãng sản xuất';

@@ -306,3 +306,16 @@ String formatDuration(Duration d) {
   }
   return '$minutes:$ss';
 }
+
+/// What `/player` is handed when the caller assembled the queue itself.
+///
+/// A shuffled series or a playlist is not something the player can work out
+/// from the file's neighbours, so it travels with the resolved item rather
+/// than being rediscovered.
+@immutable
+class PlayerLaunch {
+  const PlayerLaunch({required this.media, this.queue});
+
+  final PlayableMedia media;
+  final PlaybackQueue? queue;
+}

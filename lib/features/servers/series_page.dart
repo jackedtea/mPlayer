@@ -14,6 +14,7 @@ import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
 import '../../widgets/gradient_art.dart';
 import 'detail_sections.dart';
+import 'item_action_row.dart';
 import 'server_library.dart';
 
 /// Screen 1g — a series, its seasons as tabs, and the episode list.
@@ -37,6 +38,22 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
   void dispose() {
     _tabs?.dispose();
     super.dispose();
+  }
+
+  /// Plays whatever the viewer should see next.
+  ///
+  /// A series is not a stream: "Continue" on one has to resolve to an
+  /// episode. The part-watched one comes first, then the first unwatched,
+  /// then the very first — which is also what a fresh series does.
+  void _playNext(List<ServerItem> episodes, ServerItem series) {
+    if (episodes.isEmpty) return;
+
+    final started = episodes
+        .where((e) => (e.position ?? Duration.zero) > Duration.zero && !e.played)
+        .firstOrNull;
+    final unwatched = episodes.where((e) => !e.played).firstOrNull;
+
+    playServerItem(context, ref, (started ?? unwatched ?? episodes.first).id);
   }
 
   /// Rebuilt whenever the number of seasons changes, which is once: the
@@ -118,6 +135,25 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
               ),
             ),
           ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: spacing.screenPadding(context.windowSize)
+                  .copyWith(top: spacing.md, bottom: spacing.md),
+              child: ItemActionRow(
+                item: item,
+                seriesId: item.id,
+                // Continue where the series is, which is whichever episode
+                // the server is holding a position for — not the series
+                // itself, which has no stream of its own.
+                onPlay: () => _playNext(episodes, item),
+                shuffleFrom: episodes,
+                playlistIds: <String>[
+                  for (final ServerItem e in episodes) e.id,
+                ],
+                downloadsAll: true,
+              ),
+            ),
+          ),
           if ((item.overview ?? '').isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -178,7 +214,16 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                     final source = _episodeAt(episodes, series, s, i);
                     return _EpisodeRow(
                       episode: season.episodes[i],
+                      // The row opens the episode, where the tracks can be
+                      // chosen before anything starts; the glyph beside it
+                      // skips that for the common case of just watching.
                       onTap: source == null
+                          ? () {}
+                          : () => context.push(
+                                '/library/episode',
+                                extra: source.id,
+                              ),
+                      onPlay: source == null
                           ? () {}
                           : () => playServerItem(context, ref, source.id),
                     );
@@ -236,12 +281,19 @@ ServerItem? _episodeAt(
 }
 
 class _EpisodeRow extends StatelessWidget {
-  const _EpisodeRow({required this.episode, required this.onTap});
+  const _EpisodeRow({
+    required this.episode,
+    required this.onTap,
+    required this.onPlay,
+  });
 
   final Episode episode;
 
-  /// Resolves the episode through the server and opens the player.
+  /// Opens the episode's own screen.
   final VoidCallback onTap;
+
+  /// Resolves the episode through the server and opens the player.
+  final VoidCallback onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -290,9 +342,9 @@ class _EpisodeRow extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.download_for_offline_rounded),
-              tooltip: 'Download',
-              onPressed: () => _notYet(context, 'Download'),
+              icon: const Icon(Icons.play_arrow_rounded),
+              tooltip: AppLocalizations.of(context).play,
+              onPressed: onPlay,
             ),
           ],
         ),
@@ -454,7 +506,7 @@ class _Overview extends StatelessWidget {
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
           Text(
-            expanded ? l10n.showLess : l10n.showMore,
+            expanded ? l10n.less : l10n.more,
             style: context.texts.bodyMedium?.copyWith(
               color: scheme.primary,
               fontWeight: FontWeight.w500,

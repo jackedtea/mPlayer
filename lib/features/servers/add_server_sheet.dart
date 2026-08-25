@@ -11,6 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/tokens.dart';
 import '../../servers/jellyfin_source.dart';
 import '../../servers/media_library_source.dart';
+import '../../l10n/app_localizations.dart';
+import '../../servers/server_profile.dart';
 import '../../servers/server_registry.dart';
 
 /// Screen 1c, second frame — the modal "Add a server" bottom sheet.
@@ -19,14 +21,23 @@ import '../../servers/server_registry.dart';
 /// telling someone their address is wrong is far better than leaving them to
 /// wonder whether their password is.
 class AddServerSheet extends ConsumerStatefulWidget {
-  const AddServerSheet({super.key});
+  const AddServerSheet({super.key, this.editing});
 
-  static Future<void> show(BuildContext context) {
+  /// The server being changed, or null when one is being added.
+  ///
+  /// Editing keeps the profile's id, so the stored token and every resume
+  /// point written against this server survive a move to a new address. It
+  /// still goes through the whole probe-and-sign-in flow: an address or a
+  /// password that changed has to be proved before it replaces one that
+  /// works.
+  final ServerProfile? editing;
+
+  static Future<void> show(BuildContext context, {ServerProfile? editing}) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => const AddServerSheet(),
+      builder: (_) => AddServerSheet(editing: editing),
     );
   }
 
@@ -56,6 +67,21 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
   /// Bumped whenever the address changes, so a probe that finishes after the
   /// user has typed on cannot overwrite a newer answer.
   int _probeGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final editing = widget.editing;
+    if (editing == null) return;
+
+    // Prefilled, then probed straight away: the sheet opens on a server it
+    // already knows the address of, and making the user re-trigger detection
+    // by typing a character is busywork.
+    _address.text = editing.uri;
+    _username.text = editing.username;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onAddressChanged());
+  }
 
   @override
   void dispose() {
@@ -183,9 +209,14 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
   }
 
   Future<void> _finish(ServerInfo server, AuthResult result) async {
-    await ref
-        .read(serverRegistryProvider.notifier)
-        .add(info: server, auth: result);
+    final registry = ref.read(serverRegistryProvider.notifier);
+    final editing = widget.editing;
+
+    if (editing == null) {
+      await registry.add(info: server, auth: result);
+    } else {
+      await registry.updateProfile(editing.id, info: server, auth: result);
+    }
 
     if (mounted) Navigator.of(context).pop();
   }
@@ -215,14 +246,16 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Add a server',
+                  widget.editing == null
+                      ? AppLocalizations.of(context).addServer
+                      : AppLocalizations.of(context).editServer,
                   style: context.texts.headlineSmall,
                 ),
               ),
               SizedBox(height: spacing.xl - spacing.xs),
               TextField(
                 controller: _address,
-                autofocus: true,
+                autofocus: widget.editing == null,
                 keyboardType: TextInputType.url,
                 autocorrect: false,
                 enabled: _stage != _Stage.waitingForApproval,

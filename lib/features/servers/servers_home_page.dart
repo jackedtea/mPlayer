@@ -15,6 +15,7 @@ import '../../servers/server_registry.dart';
 import '../../widgets/continue_watching_card.dart';
 import '../../widgets/poster_tile.dart';
 import '../../widgets/section_header.dart';
+import 'server_switcher.dart';
 import 'server_library.dart';
 
 /// Screen 1d — the Server tab once a server is configured.
@@ -49,9 +50,28 @@ class _ServersHomePageState extends ConsumerState<ServersHomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
+        // Not a back button. When a server is configured this screen *is* the
+        // Server tab's root, so there was nothing under it to pop and the
+        // arrow did nothing at all — what it should have opened is the list
+        // of servers.
+        leading: Builder(
+          builder: (context) {
+            // Reached by a push (from search, say) there really is something
+            // to go back to; as the tab's root there is not, and the glyph
+            // has to say which of the two this is.
+            final canPop = context.canPop();
+            return IconButton(
+              icon: Icon(
+                canPop ? Icons.arrow_back_rounded : Icons.dns_rounded,
+              ),
+              tooltip: canPop
+                  ? AppLocalizations.of(context).actionBack
+                  : AppLocalizations.of(context).switchServer,
+              onPressed: () => canPop
+                  ? context.pop()
+                  : ServerSwitcherSheet.show(context),
+            );
+          },
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

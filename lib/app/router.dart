@@ -9,8 +9,10 @@ import 'package:go_router/go_router.dart';
 import '../features/browse/browser_page.dart';
 import '../features/downloads/downloads_page.dart';
 import '../features/playback/smoke_test_page.dart';
+import '../features/player/playback_state.dart';
 import '../features/player/player_page.dart';
 import '../features/search/search_page.dart';
+import '../features/servers/episode_page.dart';
 import '../features/servers/library_grid_page.dart';
 import '../features/servers/movie_detail_page.dart';
 import '../features/servers/series_page.dart';
@@ -138,6 +140,11 @@ GoRouter buildRouter() {
                 MovieDetailPage(itemId: state.extra as String?),
           ),
           GoRoute(
+            path: 'episode',
+            builder: (context, state) =>
+                EpisodePage(episodeId: state.extra as String?),
+          ),
+          GoRoute(
             path: 'series',
             builder: (context, state) =>
                 SeriesPage(seriesId: state.extra as String?),
@@ -167,11 +174,16 @@ GoRouter buildRouter() {
         path: '/player',
         parentNavigatorKey: _rootKey,
         builder: (context, state) {
-          final media = state.extra;
-          if (media is! PlayableMedia) {
+          // Either a bare resolved item, or one with the queue its caller
+          // assembled around it.
+          final extra = state.extra;
+          if (extra is PlayerLaunch) {
+            return PlayerPage(media: extra.media, queue: extra.queue);
+          }
+          if (extra is! PlayableMedia) {
             return const _MissingMediaPage();
           }
-          return PlayerPage(media: media);
+          return PlayerPage(media: extra);
         },
       ),
       // Kept from Phase 0 — proves the media_kit pipeline end to end on each

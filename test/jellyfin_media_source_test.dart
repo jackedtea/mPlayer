@@ -46,7 +46,13 @@ class _FakeLibrary implements MediaLibrarySource {
   }
 
   @override
-  Future<ServerPlayback> playback(String itemId, PlaybackCapabilities caps) async {
+  Future<ServerPlayback> playback(
+    String itemId,
+    PlaybackCapabilities caps, {
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+    String? mediaSourceId,
+  }) async {
     final failure = failWith;
     if (failure != null) throw failure;
     return playback_;
@@ -93,6 +99,19 @@ class _FakeLibrary implements MediaLibrarySource {
   @override
   Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async =>
       const <ServerItem>[];
+  @override
+  Future<List<ServerItem>> playlists() async => const <ServerItem>[];
+  @override
+  Future<List<ServerItem>> playlistItems(String playlistId) async =>
+      const <ServerItem>[];
+  @override
+  Future<void> addToPlaylist(String playlistId, List<String> itemIds) async {}
+  @override
+  Future<void> removeFromPlaylist(
+      String playlistId, List<String> entryIds) async {}
+  @override
+  Future<String?> createPlaylist(String name, List<String> itemIds) async =>
+      null;
   @override
   Future<void> setFavourite(String itemId, {required bool favourite}) async {}
   @override

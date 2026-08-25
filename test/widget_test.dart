@@ -174,7 +174,8 @@ void main() {
       await tester.tap(find.text('Add Jellyfin server'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Add a server'), findsOneWidget);
+      // The heading is translated now, so it reads as the ARB spells it.
+      expect(find.text('Add server'), findsOneWidget);
       expect(find.text('Enter an address to detect the server'), findsOneWidget);
 
       // Username and password are the path that always works, so they are

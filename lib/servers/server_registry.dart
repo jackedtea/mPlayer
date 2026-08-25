@@ -284,6 +284,39 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     return profile;
   }
 
+  /// Rewrites a server the user has already added, keeping its id.
+  ///
+  /// The id is what the token is filed under and what every resume point
+  /// names, so an edit must not mint a new one — moving a server to a new
+  /// address is the same server, and issuing a fresh id would strand its
+  /// watch history behind an entry nothing points at any more.
+  ///
+  /// A re-sign-in is part of the deal rather than an extra step: an address
+  /// or a password that changed has to be proved before it is stored, or the
+  /// app saves a profile it cannot use.
+  Future<void> updateProfile(
+    String profileId, {
+    required ServerInfo info,
+    required AuthResult auth,
+  }) async {
+    final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
+    if (profile == null) return;
+
+    final updated = profile.copyWith(
+      kind: info.kind,
+      name: info.name,
+      uri: info.uri,
+      userId: auth.userId,
+      username: auth.username,
+      serverId: auth.serverId,
+      lastUsed: DateTime.now(),
+    );
+
+    await _repository.writeToken(updated, auth.token);
+    await _replace(updated);
+    await activate(updated.id);
+  }
+
   /// Replaces the token after signing in again, keeping everything else.
   Future<void> refreshToken(String profileId, AuthResult auth) async {
     final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;

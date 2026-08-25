@@ -94,6 +94,7 @@ class ServerProfile {
       };
 
   ServerProfile copyWith({
+    ServerKind? kind,
     String? name,
     String? uri,
     String? userId,
@@ -103,7 +104,10 @@ class ServerProfile {
   }) {
     return ServerProfile(
       id: id,
-      kind: kind,
+      // Editable: a server reached at a new address may turn out to be an
+      // Emby where a Jellyfin used to be, and the dialect decides which
+      // routes the client calls.
+      kind: kind ?? this.kind,
       name: name ?? this.name,
       uri: uri ?? this.uri,
       userId: userId ?? this.userId,

@@ -20,6 +20,7 @@ import 'smb_source.dart';
 import 'source_config.dart';
 import 'webdav_source.dart';
 import '../servers/jellyfin_media_source.dart';
+import '../servers/stream_preferences.dart';
 import '../servers/server_registry.dart';
 
 /// Where configured shares are persisted.
@@ -150,7 +151,13 @@ final mediaSourcesProvider = Provider<Map<String, MediaSource>>(
 
     final library = ref.watch(serverRegistryProvider).source;
     if (library != null) {
-      drivers[library.profile.id] = JellyfinMediaSource(library);
+      drivers[library.profile.id] = JellyfinMediaSource(
+        library,
+        preferences: () => StreamPreferences(
+          quality: ref.read(streamQualityProvider),
+          trackChoice: ref.read(trackChoiceProvider),
+        ),
+      );
     }
     return drivers;
   },

@@ -35,6 +35,7 @@ class ControlsOverlay extends StatelessWidget {
     required this.onSubtitles,
     required this.onAudio,
     required this.onQuality,
+    this.qualityLabel,
     required this.onSpeed,
     required this.onLock,
     required this.onRotate,
@@ -70,6 +71,10 @@ class ControlsOverlay extends StatelessWidget {
   final VoidCallback onSubtitles;
   final VoidCallback onAudio;
   final VoidCallback onQuality;
+
+  /// What the quality pill reads. Null falls back to "Original", which is
+  /// also the default the setting starts on.
+  final String? qualityLabel;
   final VoidCallback onSpeed;
   final VoidCallback onLock;
   final VoidCallback onRotate;
@@ -405,10 +410,14 @@ class _SkipIntroPill extends StatelessWidget {
         // text is the only thing that should size it.
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          // A semantic token, not `onPrimaryContainer`: the pill's surface is
+          // white whatever the theme is, so the scheme role went pale blue in
+          // the dark theme — and anywhere at all under a custom accent — and
+          // left the label barely readable on it.
           child: Text(
             AppLocalizations.of(context).skipIntro,
             style: TextStyle(
-              color: context.colors.onPrimaryContainer,
+              color: context.semantic.onPlayerPill,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -741,7 +750,7 @@ class _ControlRow extends StatelessWidget {
           if (this_.media.capabilities.transcoding)
             _Pill(
               icon: Icons.hd_rounded,
-              label: l10n.original,
+              label: this_.qualityLabel ?? l10n.original,
               onTap: this_.onQuality,
             ),
           _Pill(

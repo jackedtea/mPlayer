@@ -922,16 +922,99 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get create => 'Create';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get addToPlaylist => 'Add to playlist';
+
+  @override
+  String get newPlaylist => 'New playlist';
+
+  @override
+  String get playlistName => 'Name';
+
+  @override
+  String get markWatched => 'Mark as watched';
+
+  @override
+  String get markUnwatched => 'Mark as unwatched';
+
+  @override
+  String get addFavourite => 'Add to favourites';
+
+  @override
+  String get removeFavourite => 'Remove from favourites';
+
+  @override
+  String get shufflePlay => 'Shuffle play';
+
+  @override
+  String get downloadAll => 'Download all';
+
+  @override
+  String get mediaInfo => 'Media info';
+
+  @override
+  String get startOver => 'Start over';
+
+  @override
+  String get actionFailed => 'The server would not do that.';
+
+  @override
+  String get audioTrack => 'Audio';
+
+  @override
+  String get subtitleTrack => 'Subtitles';
+
+  @override
+  String get subtitlesOff => 'Off';
+
+  @override
+  String get serverDefault => 'Server default';
+
+  @override
+  String get switchServer => 'Servers';
+
+  @override
+  String get editServer => 'Edit server';
+
+  @override
+  String get addServer => 'Add server';
+
+  @override
+  String get removeServer => 'Remove server';
+
+  @override
+  String removeServerBody(Object name) {
+    return '$name will be forgotten, along with its sign-in. Nothing on the server itself is deleted.';
+  }
+
+  @override
+  String get qualityOriginal => 'Original';
+
+  @override
+  String get qualityOriginalDetail =>
+      'Never re-encode. Best picture, and the only option that works offline of the the server\'s own CPU.';
+
+  @override
+  String get playbackQuality => 'Playback quality';
+
+  @override
+  String episodeOf(int season, int episode) {
+    return 'S${season}E$episode';
+  }
+
+  @override
   String get moreLikeThis => 'More like this';
 
   @override
   String get about => 'About';
-
-  @override
-  String get showMore => 'More';
-
-  @override
-  String get showLess => 'Less';
 
   @override
   String get studios => 'Studio';

@@ -194,6 +194,73 @@ class JellyfinSource implements MediaLibrarySource {
     return _itemsOf(json).map(serverItemFromJson).toList();
   }
 
+  // ---------------------------------------------------------- playlists
+
+  @override
+  Future<List<ServerItem>> playlists() async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      'recursive': 'true',
+      'includeItemTypes': 'Playlist',
+      'sortBy': 'SortName',
+      'fields': _fields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerItem>> playlistItems(String playlistId) async {
+    final json = await _get('/Playlists/$playlistId/Items', <String, String>{
+      'userId': _profile.userId,
+      'fields': _fields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<void> addToPlaylist(String playlistId, List<String> itemIds) async {
+    if (itemIds.isEmpty) return;
+    await _post(
+      '/Playlists/$playlistId/Items',
+      const <String, dynamic>{},
+      <String, String>{
+        'ids': itemIds.join(','),
+        'userId': _profile.userId,
+      },
+    );
+  }
+
+  @override
+  Future<void> removeFromPlaylist(
+    String playlistId,
+    List<String> entryIds,
+  ) async {
+    if (entryIds.isEmpty) return;
+    await _delete('/Playlists/$playlistId/Items', <String, String>{
+      'entryIds': entryIds.join(','),
+    });
+  }
+
+  @override
+  Future<String?> createPlaylist(String name, List<String> itemIds) async {
+    // In the body, not the query. Jellyfin 10.9 binds this route from JSON
+    // and answers a query-only request with "missing required properties
+    // including: 'Name'" — the one playlist route that does not take its
+    // arguments the way the others do.
+    final json = await _post('/Playlists', <String, dynamic>{
+      'Name': name,
+      'UserId': _profile.userId,
+      // Without this the server files it under music and the playlist never
+      // appears beside the video ones.
+      'MediaType': 'Video',
+      'Ids': itemIds,
+    });
+
+    return json['Id'] as String?;
+  }
+
   @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) =>
       imageUrlFor(item, base: _base, maxWidth: maxWidth);
@@ -207,15 +274,34 @@ class JellyfinSource implements MediaLibrarySource {
   @override
   Future<ServerPlayback> playback(
     String itemId,
-    PlaybackCapabilities caps,
-  ) async {
-    final json = await _get('/Items/$itemId/PlaybackInfo', <String, String>{
-      'userId': _profile.userId,
-      // Asked for rather than assumed: the server decides between handing the
-      // file over and re-encoding it, and these are what it decides from.
-      'maxStreamingBitrate': ?caps.maxBitrate?.toString(),
-      'startTimeTicks': '0',
-    });
+    PlaybackCapabilities caps, {
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+    String? mediaSourceId,
+  }) async {
+    // POST, not GET: the query parameters alone do **not** make the server
+    // re-encode. Verified against a live server — `maxStreamingBitrate=4000000`
+    // on its own comes back `SupportsDirectPlay: true` with no transcode URL,
+    // because with no device profile the server has been told nothing about
+    // what this client cannot play and assumes it can play everything. The
+    // cap only bites as a `CodecProfile` condition in the body.
+    final json = await _post(
+      '/Items/$itemId/PlaybackInfo',
+      deviceProfileFor(caps),
+      <String, String>{
+        'userId': _profile.userId,
+        // Sent as well as declared in the profile: different server versions
+        // read one or the other, and they agree here.
+        'maxStreamingBitrate': ?caps.maxBitrate?.toString(),
+        'startTimeTicks': '0',
+        // Quoted back from a previous answer. Only meaningful together with
+        // the media source they were numbered against, which is why that goes
+        // too.
+        'audioStreamIndex': ?audioStreamIndex?.toString(),
+        'subtitleStreamIndex': ?subtitleStreamIndex?.toString(),
+        'mediaSourceId': ?mediaSourceId,
+      },
+    );
 
     final playback = playbackFromJson(
       json,
@@ -269,7 +355,7 @@ class JellyfinSource implements MediaLibrarySource {
     final query = <String, String>{'userId': _profile.userId};
 
     return played
-        ? _post(path, const <String, dynamic>{}, query: query)
+        ? _post(path, const <String, dynamic>{}, query)
         : _delete(path, query);
   }
 
@@ -279,7 +365,7 @@ class JellyfinSource implements MediaLibrarySource {
     final query = <String, String>{'userId': _profile.userId};
 
     return favourite
-        ? _post(path, const <String, dynamic>{}, query: query)
+        ? _post(path, const <String, dynamic>{}, query)
         : _delete(path, query);
   }
 
@@ -325,18 +411,23 @@ class JellyfinSource implements MediaLibrarySource {
     throw const ServerException('The server sent something unreadable.');
   }
 
-  Future<void> _post(
-    String path,
-    Map<String, dynamic> body, {
+  /// Returns the decoded answer, or an empty map for the many Jellyfin
+  /// routes that reply `204 No Content`.
+  Future<Map<String, dynamic>> _post(
+    String path, [
+    Map<String, dynamic> body = const <String, dynamic>{},
     Map<String, String>? query,
-  }) async {
-    await _send(
+  ]) async {
+    final response = await _send(
       () => _dio.postUri<dynamic>(
         _url(path, query),
         data: body,
         options: Options(headers: _headers),
       ),
     );
+
+    final data = response.data;
+    return data is Map<String, dynamic> ? data : <String, dynamic>{};
   }
 
   Future<void> _delete(String path, Map<String, String> query) async {

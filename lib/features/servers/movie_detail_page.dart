@@ -336,8 +336,8 @@ class _Overview extends StatelessWidget {
           ),
           Text(
             expanded
-                ? AppLocalizations.of(context).showLess
-                : AppLocalizations.of(context).showMore,
+                ? AppLocalizations.of(context).less
+                : AppLocalizations.of(context).more,
             style: context.texts.bodyMedium?.copyWith(
               color: scheme.primary,
               fontWeight: FontWeight.w500,

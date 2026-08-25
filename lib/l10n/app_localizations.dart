@@ -1772,6 +1772,174 @@ abstract class AppLocalizations {
   /// **'{time} left'**
   String timeLeft(String time);
 
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @create.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get create;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @addToPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to playlist'**
+  String get addToPlaylist;
+
+  /// No description provided for @newPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'New playlist'**
+  String get newPlaylist;
+
+  /// No description provided for @playlistName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get playlistName;
+
+  /// No description provided for @markWatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as watched'**
+  String get markWatched;
+
+  /// No description provided for @markUnwatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as unwatched'**
+  String get markUnwatched;
+
+  /// No description provided for @addFavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favourites'**
+  String get addFavourite;
+
+  /// No description provided for @removeFavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from favourites'**
+  String get removeFavourite;
+
+  /// No description provided for @shufflePlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle play'**
+  String get shufflePlay;
+
+  /// No description provided for @downloadAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Download all'**
+  String get downloadAll;
+
+  /// No description provided for @mediaInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Media info'**
+  String get mediaInfo;
+
+  /// No description provided for @startOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Start over'**
+  String get startOver;
+
+  /// No description provided for @actionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The server would not do that.'**
+  String get actionFailed;
+
+  /// No description provided for @audioTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get audioTrack;
+
+  /// No description provided for @subtitleTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles'**
+  String get subtitleTrack;
+
+  /// No description provided for @subtitlesOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get subtitlesOff;
+
+  /// No description provided for @serverDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Server default'**
+  String get serverDefault;
+
+  /// No description provided for @switchServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Servers'**
+  String get switchServer;
+
+  /// No description provided for @editServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit server'**
+  String get editServer;
+
+  /// No description provided for @addServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add server'**
+  String get addServer;
+
+  /// No description provided for @removeServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove server'**
+  String get removeServer;
+
+  /// No description provided for @removeServerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will be forgotten, along with its sign-in. Nothing on the server itself is deleted.'**
+  String removeServerBody(Object name);
+
+  /// No description provided for @qualityOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get qualityOriginal;
+
+  /// No description provided for @qualityOriginalDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Never re-encode. Best picture, and the only option that works offline of the the server\'s own CPU.'**
+  String get qualityOriginalDetail;
+
+  /// No description provided for @playbackQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback quality'**
+  String get playbackQuality;
+
+  /// No description provided for @episodeOf.
+  ///
+  /// In en, this message translates to:
+  /// **'S{season}E{episode}'**
+  String episodeOf(int season, int episode);
+
   /// No description provided for @moreLikeThis.
   ///
   /// In en, this message translates to:
@@ -1783,18 +1951,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'About'**
   String get about;
-
-  /// No description provided for @showMore.
-  ///
-  /// In en, this message translates to:
-  /// **'More'**
-  String get showMore;
-
-  /// No description provided for @showLess.
-  ///
-  /// In en, this message translates to:
-  /// **'Less'**
-  String get showLess;
 
   /// No description provided for @studios.
   ///
