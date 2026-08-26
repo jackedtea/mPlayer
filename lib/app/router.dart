@@ -4,11 +4,13 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/browse/browser_page.dart';
 import '../features/downloads/downloads_page.dart';
 import '../features/playback/smoke_test_page.dart';
+import '../features/player/playback_controller.dart';
 import '../features/player/playback_state.dart';
 import '../features/player/player_page.dart';
 import '../features/search/search_page.dart';
@@ -190,10 +192,20 @@ GoRouter buildRouter() {
           if (extra is PlayerLaunch) {
             return PlayerPage(media: extra.media, queue: extra.queue);
           }
-          if (extra is! PlayableMedia) {
-            return const _MissingMediaPage();
+          if (extra is PlayableMedia) {
+            return PlayerPage(media: extra);
           }
-          return PlayerPage(media: extra);
+
+          // `extra` is the weakest thing this route stands on. It lives in the
+          // router's match list rather than in the URL, so anything that
+          // rebuilds this route from its location alone — a restoration, a
+          // router rebuilt under it — arrives here with nothing, and the
+          // screen used to answer that by telling the user to go and pick a
+          // file, however plainly a film was already playing.
+          //
+          // The controller remembers. If something is open, that is what this
+          // route is for.
+          return const _PlayerFromController();
         },
       ),
       // Kept from Phase 0 — proves the media_kit pipeline end to end on each
@@ -210,6 +222,24 @@ GoRouter buildRouter() {
 /// Reached only if `/player` is entered without a resolved handle — a cold
 /// deep link, or a restored route. Better than a black screen that never
 /// decodes.
+/// The player for whatever is already open.
+///
+/// Not a guess: the controller only holds media once something has been
+/// resolved and handed to the decoder, so reaching this with a non-null
+/// `media` means playback is genuinely under way and the route simply lost
+/// the argument it was pushed with.
+class _PlayerFromController extends ConsumerWidget {
+  const _PlayerFromController();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final media = ref.watch(playbackControllerProvider).media;
+    if (media == null) return const _MissingMediaPage();
+
+    return PlayerPage(media: media);
+  }
+}
+
 class _MissingMediaPage extends StatelessWidget {
   const _MissingMediaPage();
 

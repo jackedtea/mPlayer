@@ -83,7 +83,13 @@ class AdaptiveScaffold extends StatelessWidget {
     // trusting the player's teardown makes this self-healing: whatever goes
     // wrong on the way out of a film, arriving anywhere else puts the bars
     // back. Free unless something actually left them hidden.
-    unawaited(restoreAppSystemUi());
+    //
+    // Except while the player is up. The shell stays mounted underneath it and
+    // rebuilds whenever anything it watches changes, and every one of those
+    // rebuilds would otherwise hand the film's screen back to the system bars.
+    if (windowEdges.value != WindowEdges.none) {
+      unawaited(restoreAppSystemUi());
+    }
 
     return switch (context.windowSize) {
       WindowSize.compact => _CompactShell(shell: navigationShell, onGo: _go),

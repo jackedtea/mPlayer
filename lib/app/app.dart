@@ -199,16 +199,25 @@ class _InsetFromSystemBars extends StatelessWidget {
     return ValueListenableBuilder<WindowEdges>(
       valueListenable: windowEdges,
       builder: (context, edges, _) {
-        if (edges == WindowEdges.none) return child;
-
+        // **The same widgets in the same places, whatever the answer.**
+        //
+        // Returning a bare `child` for the player and a wrapped one otherwise
+        // changes the shape of the tree above the navigator, and Flutter can
+        // only reuse an element when the widget at that position keeps its
+        // type. So every claim tore the navigator down and built a new one —
+        // taking the route stack with it, which is why opening any video at
+        // all landed on "Nothing to play": the `/player` route was rebuilt
+        // without the media it had been pushed with.
+        //
+        // Only the flag changes now.
         return ColoredBox(
           color: Theme.of(context).colorScheme.surface,
           child: SafeArea(
-            // Bottom only. An `AppBar` already lays itself out below the
-            // status bar, and the screens without one want their backdrop up
-            // there — so a top inset would buy nothing and cost the design
-            // its artwork.
+            // An `AppBar` already lays itself out below the status bar, and
+            // the screens without one want their backdrop up there, so the
+            // top is never inset.
             top: false,
+            bottom: edges != WindowEdges.none,
             child: child,
           ),
         );
