@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
-import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show ValueNotifier, debugPrint, visibleForTesting;
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/services.dart';
 
@@ -26,6 +27,17 @@ bool _immersive = false;
 bool Function()? debugSystemUiApplies;
 
 bool get _applies => debugSystemUiApplies?.call() ?? !isDesktop;
+
+/// Whether the screen on top wants the window edge to edge.
+///
+/// False for everything but the player: the app is laid out *between* the
+/// system bars, not under them. Video is the exception the whole arrangement
+/// exists for — letterboxing a film to leave room for a navigation bar throws
+/// away the part of the screen the user came for.
+///
+/// A notifier rather than a route check because the wrapper that reads it sits
+/// above the navigator, where the current route is not visible.
+final fullBleedUi = ValueNotifier<bool>(false);
 
 /// Hides the status and navigation bars for fullscreen video.
 ///

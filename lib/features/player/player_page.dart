@@ -93,6 +93,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void initState() {
     super.initState();
+    // Video gets the whole window; every other screen is inset away from
+    // the system bars by the wrapper in `app.dart`.
+    fullBleedUi.value = true;
+
     _playback = ref.read(playbackControllerProvider.notifier);
     _playerUi = ref.read(playerUiProvider.notifier);
     _nowPlaying = ref.read(nowPlayingProvider.notifier);
@@ -177,6 +181,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
     // The rest of the app is not a video player: leaving the bars hidden
     // would strand every screen after this one without a status bar.
+    _guard(() => fullBleedUi.value = false);
     _guard(() => unawaited(restoreAppSystemUi()));
 
     super.dispose();
@@ -312,6 +317,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) return;
         _playback.pause();
+        fullBleedUi.value = false;
         // Here as well as in dispose, for the same reason the pause is: this
         // runs while the widget is unambiguously alive.
         unawaited(restoreAppSystemUi());

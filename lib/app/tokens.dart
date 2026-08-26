@@ -321,15 +321,13 @@ extension TokenAccess on BuildContext {
 extension SystemInsets on BuildContext {
   /// The height of the system navigation bar under this widget.
   ///
-  /// Needed because a scroll view insets itself against the system bars
-  /// *only while its own `padding` is null* — `BoxScrollView` reads the
-  /// media query when it has nothing else to use, and passing any padding at
-  /// all silently turns that off. Every list here passes one, which is how a
-  /// settings page ended up with its last row under the navigation bar.
-  ///
-  /// Zero inside the shell, where the [Scaffold] has already spent the inset
-  /// on its navigation bar and removed it from the body's media query, so
-  /// adding this is safe whether or not a screen sits in the shell.
+  /// Usually **zero now**: `app.dart` insets the whole app from both system
+  /// bars above the navigator, so by the time a screen builds there is no
+  /// bottom inset left to spend. Kept, and still added by the screens that
+  /// were adding it, because it is correct either way — a scroll view insets
+  /// itself against the bars *only while its own `padding` is null*, and
+  /// every list here passes one, so a screen that ever finds itself outside
+  /// that wrapper still clears the bar.
   double get systemBottomInset => MediaQuery.paddingOf(this).bottom;
 
   /// The status bar's height above this widget. Zero under an [AppBar],

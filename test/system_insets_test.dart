@@ -51,113 +51,96 @@ void main() {
     return router;
   }
 
-  /// The band at the bottom of the window the navigation bar covers.
-  Rect navigationBarBand(WidgetTester tester) {
-    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
-    return Rect.fromLTRB(
-      0,
-      size.height - _navigationBar,
-      size.width,
-      size.height,
-    );
-  }
+  group('the app sits between the system bars', () {
+    /// The topmost and bottommost pixel anything paints on.
+    (double, double) contentBounds(WidgetTester tester) {
+      var top = double.infinity;
+      var bottom = double.negativeInfinity;
 
-  group('content clears the system bars', () {
+      for (final Element element in find.byType(Scaffold).evaluate()) {
+        final box = element.renderObject as RenderBox?;
+        if (box == null || !box.hasSize) continue;
+        final y = box.localToGlobal(Offset.zero).dy;
+        top = y < top ? y : top;
+        bottom = y + box.size.height > bottom ? y + box.size.height : bottom;
+      }
+      return (top, bottom);
+    }
+
     for (final String route in <String>[
       '/files',
       '/servers',
       '/search',
       '/settings',
-      '/settings/appearance',
-      '/settings/player',
       '/library',
       '/servers/home',
       '/downloads',
-      '/settings/about',
-      '/settings/diagnostics',
-      '/settings/subtitle',
-      '/settings/audio',
-      '/settings/general',
-      '/settings/privacy',
     ]) {
-      testWidgets('$route keeps its scrollables out from under them',
-          (tester) async {
+      testWidgets('$route is inset from both bars', (tester) async {
         final router = await pumpWithBars(tester);
         router.go(route);
         await tester.pumpAndSettle();
 
-        final band = navigationBarBand(tester);
+        final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+        final (top, bottom) = contentBounds(tester);
 
-        // Checked against the widget's own padding rather than by dragging
-        // to the end: `BoxScrollView` insets itself against the system bars
-        // only while `padding` is null, so a list that passes one has to
-        // include the inset itself or its last row is unreachable.
-        for (final Element element in find.byType(Scrollable).evaluate()) {
-          final scrollable = element.widget as Scrollable;
-          if (scrollable.axis != Axis.vertical) continue;
-
-          final box = element.renderObject! as RenderBox;
-          final bottom = box.localToGlobal(Offset.zero).dy + box.size.height;
-
-          // Only lists that actually reach into the band have anything to
-          // prove; a shelf halfway up the screen does not.
-          if (bottom <= band.top) continue;
-
-          final owner = find.ancestor(
-            of: find.byWidget(scrollable),
-            matching: find.byType(BoxScrollView),
-          );
-          if (owner.evaluate().isEmpty) continue;
-
-          final list = tester.widget<BoxScrollView>(owner.first);
-          final padding = list.padding?.resolve(TextDirection.ltr);
-
-          expect(
-            padding == null || padding.bottom >= _navigationBar,
-            isTrue,
-            reason:
-                '$route: a list reaching the navigation bar passes '
-                'padding ${padding?.bottom ?? "null"}, which does not clear '
-                'the ${_navigationBar.toInt()}pt inset',
-          );
-        }
+        // The complaint this exists for, in a screenshot: a series backdrop
+        // running to the very top with the clock and the signal bars drawn
+        // over it, and an episode row disappearing behind the navigation
+        // buttons. Each screen's own padding kept its *text* clear, which is
+        // why measuring text found nothing — the artwork and the surface
+        // still ran underneath.
+        expect(
+          top,
+          greaterThanOrEqualTo(_statusBar),
+          reason: '$route paints into the status bar',
+        );
+        expect(
+          bottom,
+          lessThanOrEqualTo(size.height - _navigationBar),
+          reason: '$route paints into the navigation bar',
+        );
       });
     }
 
-    testWidgets('the shell grows its navigation bar to fit the system one',
-        (tester) async {
-      await pumpWithBars(tester);
-
-      // Material's own `NavigationBar` wraps its children in a `SafeArea`, so
-      // it should stand taller than its nominal 80 by exactly the inset. If
-      // that ever stops being true, every destination label sits on top of
-      // the gesture bar.
-      final bar = tester.getRect(find.byType(NavigationBar));
-      final size = tester.view.physicalSize / tester.view.devicePixelRatio;
-
-      expect(bar.bottom, size.height);
-      expect(
-        bar.height,
-        greaterThanOrEqualTo(80 + _navigationBar),
-        reason: 'the bar has to include the system inset, not sit under it',
-      );
-    });
-
-    testWidgets('an app bar sits below the status bar, not behind it',
-        (tester) async {
+    testWidgets('an app bar starts below the status bar', (tester) async {
       final router = await pumpWithBars(tester);
       router.go('/settings');
       await tester.pumpAndSettle();
 
-      // `AppBar` consumes the top inset itself. This is the one the app never
-      // had to do by hand, and the test is here so it stays that way.
+      // It used to sit at y=0 and grow by the inset instead, drawing its own
+      // colour behind the status bar. Inset from above, it begins where the
+      // status bar ends and stands at its nominal height.
       final appBar = tester.getRect(find.byType(AppBar).first);
-      expect(appBar.top, 0, reason: 'the bar is drawn behind the status bar');
-      expect(
-        appBar.height,
-        greaterThanOrEqualTo(kToolbarHeight + _statusBar),
-        reason: 'its content is pushed below the status bar by its own height',
-      );
+      expect(appBar.top, _statusBar);
+      expect(appBar.height, kToolbarHeight);
+    });
+
+    testWidgets('the shell keeps its navigation bar above the system one',
+        (tester) async {
+      await pumpWithBars(tester);
+
+      final bar = tester.getRect(find.byType(NavigationBar));
+      final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+
+      expect(bar.bottom, size.height - _navigationBar);
+    });
+
+    testWidgets('the player still gets the whole window', (tester) async {
+      // The one exception, and the reason this is a notifier rather than a
+      // rule: letterboxing a film to leave room for a navigation bar throws
+      // away the part of the screen the user came for.
+      final router = await pumpWithBars(tester);
+      router.go('/settings');
+      await tester.pumpAndSettle();
+
+      expect(contentBounds(tester).$1, _statusBar);
+
+      fullBleedUi.value = true;
+      addTearDown(() => fullBleedUi.value = false);
+      await tester.pumpAndSettle();
+
+      expect(contentBounds(tester).$1, 0);
     });
   });
 

@@ -21,6 +21,7 @@ import 'appearance_settings.dart';
 import 'desktop_window.dart';
 import 'locale_controller.dart';
 import 'router.dart';
+import 'system_ui.dart';
 import 'theme.dart';
 
 /// Root widget.
@@ -130,15 +131,21 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
       routerConfig: _router,
       // Wrapping the navigator rather than a screen: a file dropped anywhere
       // in the window should play, not only on the Files tab.
-      builder: (context, child) => isDesktop
-          ? DropTarget(
-              onDragDone: (details) {
-                final file = details.files.firstOrNull;
-                if (file != null) _openPath(file.path);
-              },
-              child: child ?? const SizedBox.shrink(),
-            )
-          : child ?? const SizedBox.shrink(),
+      builder: (context, child) {
+        final content = _InsetFromSystemBars(
+          child: child ?? const SizedBox.shrink(),
+        );
+
+        return isDesktop
+            ? DropTarget(
+                onDragDone: (details) {
+                  final file = details.files.firstOrNull;
+                  if (file != null) _openPath(file.path);
+                },
+                child: content,
+              )
+            : content;
+      },
     );
   }
 
@@ -163,4 +170,43 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
   }
 
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
+}
+
+/// Keeps the app between the status bar and the navigation bar.
+///
+/// The app is edge to edge — Android 15 gives it no choice — so without this
+/// the window extends under both bars and they are drawn on top of it. Every
+/// screen's own padding already keeps its *text* clear of them, but the
+/// surface, the artwork and the app bars still ran underneath, which is what
+/// reads as the bars sitting on top of the app.
+///
+/// One wrapper above the navigator rather than a `SafeArea` per screen: there
+/// are twenty-one routes and the next one added would be the one that forgets.
+///
+/// The inset strips are painted in the app's own surface colour, so the bars
+/// sit on the app rather than on whatever happens to be behind the window.
+///
+/// The player opts out through [fullBleedUi]: letterboxing a film to leave
+/// room for a navigation bar throws away the part of the screen the user came
+/// for.
+class _InsetFromSystemBars extends StatelessWidget {
+  const _InsetFromSystemBars({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: fullBleedUi,
+      builder: (context, fullBleed, _) {
+        if (fullBleed) return child;
+
+        return ColoredBox(
+          color: Theme.of(context).colorScheme.surface,
+          child: SafeArea(child: child),
+        );
+      },
+      child: child,
+    );
+  }
 }
