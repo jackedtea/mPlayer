@@ -90,11 +90,9 @@ void main() {
         // buttons. Each screen's own padding kept its *text* clear, which is
         // why measuring text found nothing — the artwork and the surface
         // still ran underneath.
-        expect(
-          top,
-          greaterThanOrEqualTo(_statusBar),
-          reason: '$route paints into the status bar',
-        );
+        // Nothing asserts a *top* inset: an `AppBar` lays itself out below
+        // the status bar on its own, and the screens without one want their
+        // backdrop up there. The bug was only ever at the bottom.
         expect(
           bottom,
           lessThanOrEqualTo(size.height - _navigationBar),
@@ -108,12 +106,13 @@ void main() {
       router.go('/settings');
       await tester.pumpAndSettle();
 
-      // It used to sit at y=0 and grow by the inset instead, drawing its own
-      // colour behind the status bar. Inset from above, it begins where the
-      // status bar ends and stands at its nominal height.
+      // `AppBar` consumes the top inset itself: it is drawn from y=0 and
+      // stands taller by the inset, so its *content* clears the status bar
+      // while its colour fills the strip behind it. This is the one the app
+      // never had to do by hand, and the test is here so it stays that way.
       final appBar = tester.getRect(find.byType(AppBar).first);
-      expect(appBar.top, _statusBar);
-      expect(appBar.height, kToolbarHeight);
+      expect(appBar.top, 0);
+      expect(appBar.height, greaterThanOrEqualTo(kToolbarHeight + _statusBar));
     });
 
     testWidgets('the shell keeps its navigation bar above the system one',
@@ -134,13 +133,50 @@ void main() {
       router.go('/settings');
       await tester.pumpAndSettle();
 
-      expect(contentBounds(tester).$1, _statusBar);
+      final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+      expect(
+        contentBounds(tester).$2,
+        lessThanOrEqualTo(size.height - _navigationBar),
+      );
 
-      fullBleedUi.value = true;
-      addTearDown(() => fullBleedUi.value = false);
+      final claim = claimWindowEdges(WindowEdges.none);
+      addTearDown(claim.release);
+      await tester.pumpAndSettle();
+
+      expect(contentBounds(tester).$2, size.height);
+    });
+
+    testWidgets('nothing is inset from the top', (tester) async {
+      // The design wants a detail screen's artwork running to the top edge
+      // under the status bar, and an `AppBar` handles its own inset — so a
+      // top inset would only cost the artwork.
+      final router = await pumpWithBars(tester);
+      router.go('/settings');
       await tester.pumpAndSettle();
 
       expect(contentBounds(tester).$1, 0);
+    });
+
+    testWidgets('a claim hands the window back to the one under it',
+        (tester) async {
+      // A detail screen opens the player; closing the player has to return
+      // the window to the detail screen, not to the general case.
+      expect(windowEdges.value, WindowEdges.bottomOnly);
+
+      final detail = claimWindowEdges(WindowEdges.bottomOnly);
+      final player = claimWindowEdges(WindowEdges.none);
+      expect(windowEdges.value, WindowEdges.none);
+
+      player.release();
+      expect(windowEdges.value, WindowEdges.bottomOnly);
+
+      // Releasing twice is what a `PopScope` and a `dispose` both doing it
+      // amounts to, and it must not walk the stack down an extra step.
+      player.release();
+      expect(windowEdges.value, WindowEdges.bottomOnly);
+
+      detail.release();
+      expect(windowEdges.value, WindowEdges.bottomOnly);
     });
   });
 

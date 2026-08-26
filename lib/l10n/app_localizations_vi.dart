@@ -1053,6 +1053,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get searchThisServer => 'Tìm trong máy chủ này';
 
   @override
+  String get nothingHere => 'Không có gì ở đây.';
+
+  @override
   String get moreLikeThis => 'Phim tương tự';
 
   @override

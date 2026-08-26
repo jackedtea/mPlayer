@@ -2018,6 +2018,12 @@ abstract class AppLocalizations {
   /// **'Search this server'**
   String get searchThisServer;
 
+  /// No description provided for @nothingHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here.'**
+  String get nothingHere;
+
   /// No description provided for @moreLikeThis.
   ///
   /// In en, this message translates to:

@@ -82,13 +82,12 @@ void main() {
       );
     }
 
-    // And the artwork at the top, the other half of the same report.
+    // The top is deliberately *not* inset here: a detail screen claims
+    // `WindowEdges.bottomOnly` so its backdrop runs to the top edge under the
+    // status bar, which is what the design asks for. Only the bottom is the
+    // bug — the list disappearing behind the navigation buttons.
     final backdrop = tester.getRect(find.byType(Scaffold).last);
-    expect(
-      backdrop.top,
-      greaterThanOrEqualTo(_statusBar),
-      reason: 'the backdrop is painting under the clock',
-    );
+    expect(backdrop.top, 0, reason: 'the backdrop should reach the top edge');
   });
 }
 
@@ -148,6 +147,10 @@ class _FakeSeriesServer implements MediaLibrarySource {
       const <ServerItem>[];
   @override
   Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async =>
+      const <ServerItem>[];
+  @override
+  Future<List<ServerItem>> personItems(String personId,
+          {int limit = 100}) async =>
       const <ServerItem>[];
   @override
   Future<List<ServerItem>> playlists() async => const <ServerItem>[];

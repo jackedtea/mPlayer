@@ -201,6 +201,25 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
+  Future<List<ServerItem>> personItems(
+    String personId, {
+    int limit = 100,
+  }) async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      'personIds': personId,
+      'recursive': 'true',
+      'includeItemTypes': 'Movie,Series',
+      'sortBy': 'PremiereDate,SortName',
+      'sortOrder': 'Descending',
+      'limit': '$limit',
+      'fields': _fields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
   Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async {
     final json = await _get('/Items/$itemId/Similar', <String, String>{
       'userId': _profile.userId,

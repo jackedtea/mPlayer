@@ -196,14 +196,21 @@ class _InsetFromSystemBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: fullBleedUi,
-      builder: (context, fullBleed, _) {
-        if (fullBleed) return child;
+    return ValueListenableBuilder<WindowEdges>(
+      valueListenable: windowEdges,
+      builder: (context, edges, _) {
+        if (edges == WindowEdges.none) return child;
 
         return ColoredBox(
           color: Theme.of(context).colorScheme.surface,
-          child: SafeArea(child: child),
+          child: SafeArea(
+            // Bottom only. An `AppBar` already lays itself out below the
+            // status bar, and the screens without one want their backdrop up
+            // there — so a top inset would buy nothing and cost the design
+            // its artwork.
+            top: false,
+            child: child,
+          ),
         );
       },
       child: child,

@@ -352,6 +352,10 @@ class _RecordingLibrary implements MediaLibrarySource {
   Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async =>
       const <ServerItem>[];
   @override
+  Future<List<ServerItem>> personItems(String personId,
+          {int limit = 100}) async =>
+      const <ServerItem>[];
+  @override
   Future<List<ServerItem>> playlists() async => const <ServerItem>[];
   @override
   Future<List<ServerItem>> playlistItems(String playlistId) async =>

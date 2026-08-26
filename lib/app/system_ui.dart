@@ -5,7 +5,10 @@
 
 import 'package:flutter/foundation.dart'
     show ValueNotifier, debugPrint, visibleForTesting;
-import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/material.dart'
+    show Colors, WidgetsBinding;
+import 'package:flutter/scheduler.dart'
+    show SchedulerBinding, SchedulerPhase;
 import 'package:flutter/services.dart';
 
 import 'desktop_window.dart' show isDesktop;
@@ -28,16 +31,69 @@ bool Function()? debugSystemUiApplies;
 
 bool get _applies => debugSystemUiApplies?.call() ?? !isDesktop;
 
-/// Whether the screen on top wants the window edge to edge.
+/// How much of the window the screen on top wants.
+enum WindowEdges {
+  /// Content clear of the navigation bar, and free to run to the top edge.
+  ///
+  /// The default for everything. Nothing needs a *top* inset: an [AppBar]
+  /// already lays itself out below the status bar, and the screens without
+  /// one are the detail screens, whose backdrop is meant to run under it —
+  /// that is the design. The bug was only ever at the bottom, where a list
+  /// disappeared behind the navigation buttons.
+  bottomOnly,
+
+  /// The whole window. Only the player: letterboxing a film to leave room for
+  /// a navigation bar throws away the part of the screen the user came for.
+  none,
+}
+
+/// What the wrapper in `app.dart` reads.
 ///
-/// False for everything but the player: the app is laid out *between* the
-/// system bars, not under them. Video is the exception the whole arrangement
-/// exists for — letterboxing a film to leave room for a navigation bar throws
-/// away the part of the screen the user came for.
+/// A notifier rather than a route check because that wrapper sits above the
+/// navigator, where the current route is not visible.
+final windowEdges = ValueNotifier<WindowEdges>(WindowEdges.bottomOnly);
+
+/// A screen's claim on the window, held for as long as the screen is.
 ///
-/// A notifier rather than a route check because the wrapper that reads it sits
-/// above the navigator, where the current route is not visible.
-final fullBleedUi = ValueNotifier<bool>(false);
+/// Restores whatever was in force before rather than resetting to a default,
+/// because these can nest.
+class WindowEdgesClaim {
+  WindowEdgesClaim._(this._previous);
+
+  final WindowEdges _previous;
+  bool _released = false;
+
+  void release() {
+    if (_released) return;
+    _released = true;
+    _setWindowEdges(_previous);
+  }
+}
+
+WindowEdgesClaim claimWindowEdges(WindowEdges edges) {
+  final claim = WindowEdgesClaim._(windowEdges.value);
+  _setWindowEdges(edges);
+  return claim;
+}
+
+/// Writes the notifier without doing it in the middle of a build.
+///
+/// Claims are made from `initState`, which runs *during* the build of the
+/// route being pushed — and the listener is above the navigator, so writing
+/// then asks the framework to rebuild an ancestor of the widget currently
+/// building. It refuses, the notification is dropped, and the screen renders
+/// with the previous screen's insets. Found by a test that measured the
+/// backdrop and got 48 where it expected 0.
+void _setWindowEdges(WindowEdges edges) {
+  if (SchedulerBinding.instance.schedulerPhase ==
+      SchedulerPhase.persistentCallbacks) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      windowEdges.value = edges;
+    });
+    return;
+  }
+  windowEdges.value = edges;
+}
 
 /// Hides the status and navigation bars for fullscreen video.
 ///

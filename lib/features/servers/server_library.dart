@@ -138,6 +138,18 @@ final libraryItemCountProvider =
   }
 });
 
+/// Everything one person appears in.
+final personItemsProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, personId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  try {
+    return await source.personItems(personId);
+  } on ServerException {
+    return const <ServerItem>[];
+  }
+});
+
 /// What the server suggests alongside an item.
 ///
 /// A separate request from the item itself, so a server that has no `/Similar`

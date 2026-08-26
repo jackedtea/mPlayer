@@ -416,6 +416,7 @@
   "enterCodeInJellyfin": "Enter this code in Jellyfin",
   "serverTab": "Server",
   "searchThisServer": "Search this server",
+  "nothingHere": "Nothing here.",
   "moreLikeThis": "More like this",
   "about": "About",
   "studios": "Studio",

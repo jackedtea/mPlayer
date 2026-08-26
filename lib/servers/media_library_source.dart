@@ -338,6 +338,12 @@ abstract class MediaLibrarySource {
 
   Future<List<ServerItem>> search(String query, {int limit = 40});
 
+  /// Everything [personId] appears in.
+  ///
+  /// Films and series only: an actor credited on forty episodes of one show
+  /// should read as that one show, not as forty rows of it.
+  Future<List<ServerItem>> personItems(String personId, {int limit = 100});
+
   /// What the server thinks resembles [itemId].
   ///
   /// Empty rather than an error when the server has no opinion — a shelf that

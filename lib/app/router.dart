@@ -14,6 +14,7 @@ import '../features/player/player_page.dart';
 import '../features/search/search_page.dart';
 import '../features/servers/episode_page.dart';
 import '../features/servers/library_grid_page.dart';
+import '../features/servers/person_page.dart';
 import '../features/servers/movie_detail_page.dart';
 import '../features/servers/series_page.dart';
 import '../features/servers/servers_empty_page.dart';
@@ -138,6 +139,15 @@ GoRouter buildRouter() {
             path: 'movie',
             builder: (context, state) =>
                 MovieDetailPage(itemId: state.extra as String?),
+          ),
+          GoRoute(
+            path: 'person',
+            // `extra` is the person's id; the name rides in the query because
+            // the screen needs it for its app bar before any request lands.
+            builder: (context, state) => PersonPage(
+              personId: state.extra as String?,
+              name: state.uri.queryParameters['name'] ?? '',
+            ),
           ),
           GoRoute(
             path: 'episode',

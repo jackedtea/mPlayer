@@ -78,6 +78,27 @@ const _identity = ClientIdentity(deviceId: 'dev1', deviceName: 'Test');
 }
 
 void main() {
+  group('a person and their work', () {
+    test('films and series, not the episodes they appear in', () async {
+      // An actor credited on forty episodes of one show has to read as that
+      // one show. Filtered in the request rather than afterwards, or the
+      // first page comes back as forty rows of the same series.
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
+      );
+
+      await source.personItems('p1');
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['personIds'], 'p1');
+      expect(query['recursive'], 'true');
+      expect(query['includeItemTypes'], 'Movie,Series');
+      // Newest first: a filmography read chronologically backwards is how
+      // every other client shows one.
+      expect(query['sortOrder'], 'Descending');
+    });
+  });
+
   group('counting a library', () {
     test('the server counts, and sends nothing back to be counted', () async {
       // `/UserViews` carries a `ChildCount` that is not the number of items

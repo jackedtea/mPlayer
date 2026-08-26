@@ -96,61 +96,79 @@ class PeopleStrip extends ConsumerWidget {
           final person = people[i];
           final url = source?.personImageUrl(person, maxWidth: 160);
 
+          // Only the people the server gave an id: a credit scraped without
+          // one has nothing to look up, and a face that does nothing when
+          // tapped is worse than one that plainly does not invite it.
+          final id = person.id;
+
           return SizedBox(
             width: 76,
-            child: Column(
-              children: <Widget>[
-                ClipOval(
-                  child: SizedBox(
-                    width: 64,
-                    height: 64,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: <Widget>[
-                        // The initial stays underneath rather than being
-                        // replaced: `RemoteArt` draws nothing while it loads
-                        // and nothing when there is no headshot, so this is
-                        // what the strip falls back to on both counts.
-                        ColoredBox(
-                          color: scheme.surfaceContainerHighest,
-                          child: Center(
-                            child: Text(
-                              person.name.isEmpty
-                                  ? '?'
-                                  : person.name.characters.first,
-                              style: TextStyle(
-                                fontSize: 22,
-                                color: scheme.onSurfaceVariant,
+            child: InkWell(
+              onTap: id == null || id.isEmpty
+                  ? null
+                  : () => context.push(
+                      Uri(
+                        path: '/library/person',
+                        queryParameters: <String, String>{'name': person.name},
+                      ).toString(),
+                      extra: id,
+                    ),
+              borderRadius: BorderRadius.circular(context.radii.card),
+              child: Column(
+                children: <Widget>[
+                  ClipOval(
+                    child: SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          // The initial stays underneath rather than being
+                          // replaced: `RemoteArt` draws nothing while it loads
+                          // and nothing when there is no headshot, so this is
+                          // what the strip falls back to on both counts.
+                          ColoredBox(
+                            color: scheme.surfaceContainerHighest,
+                            child: Center(
+                              child: Text(
+                                person.name.isEmpty
+                                    ? '?'
+                                    : person.name.characters.first,
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  color: scheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        RemoteArt(url: url),
-                      ],
+                          RemoteArt(url: url),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(height: spacing.sm - 2),
-                Text(
-                  person.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: context.texts.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: scheme.onSurface,
-                  ),
-                ),
-                if (person.role.isNotEmpty)
+                  SizedBox(height: spacing.sm - 2),
                   Text(
-                    person.role,
-                    maxLines: 1,
+                    person.name,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: context.texts.labelSmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
+                    style: context.texts.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: scheme.onSurface,
+                    ),
                   ),
-              ],
+                  if (person.role.isNotEmpty)
+                    Text(
+                      person.role,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: context.texts.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
             ),
           );
         },
@@ -175,8 +193,8 @@ class SimilarStrip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
-    final items = ref.watch(similarItemsProvider(itemId)).value ??
-        const <ServerItem>[];
+    final items =
+        ref.watch(similarItemsProvider(itemId)).value ?? const <ServerItem>[];
     if (items.isEmpty) return const SizedBox.shrink();
 
     return Column(

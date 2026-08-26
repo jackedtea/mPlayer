@@ -1052,6 +1052,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchThisServer => 'Search this server';
 
   @override
+  String get nothingHere => 'Nothing here.';
+
+  @override
   String get moreLikeThis => 'More like this';
 
   @override
