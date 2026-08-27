@@ -236,11 +236,47 @@ abstract class AppLocalizations {
   /// **'Network'**
   String get network;
 
-  /// No description provided for @openFileOrFolder.
+  /// No description provided for @openFile.
   ///
   /// In en, this message translates to:
-  /// **'Open a file or folder'**
-  String get openFileOrFolder;
+  /// **'Open a file'**
+  String get openFile;
+
+  /// No description provided for @selectMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Select more'**
+  String get selectMore;
+
+  /// No description provided for @partialAccessNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the videos you shared are listed.'**
+  String get partialAccessNotice;
+
+  /// No description provided for @noVideosOnDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'No videos found on this device yet.'**
+  String get noVideosOnDevice;
+
+  /// No description provided for @mediaAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow mPlayer to find your videos'**
+  String get mediaAccessTitle;
+
+  /// No description provided for @mediaAccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Android does not let apps browse storage directly, so the system media index is used instead.'**
+  String get mediaAccessBody;
+
+  /// No description provided for @videoCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 video} other{{count} videos}}'**
+  String videoCount(int count);
 
   /// No description provided for @addShareTitle.
   ///
@@ -1309,12 +1345,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not cast to that device.'**
   String get couldNotCast;
-
-  /// No description provided for @folders.
-  ///
-  /// In en, this message translates to:
-  /// **'Folders'**
-  String get folders;
 
   /// No description provided for @grantedFolder.
   ///

@@ -152,7 +152,7 @@ class _RailShell extends ConsumerWidget {
                 heroTag: 'rail-open-file',
                 onPressed: () => openLocalVideo(context, ref),
                 elevation: 0,
-                tooltip: AppLocalizations.of(context).openFileOrFolder,
+                tooltip: AppLocalizations.of(context).openFile,
                 child: const Icon(Icons.folder_open_rounded),
               ),
             ),

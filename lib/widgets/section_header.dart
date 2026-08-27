@@ -15,24 +15,35 @@ class SectionHeader extends StatelessWidget {
     required this.title,
     this.actionLabel,
     this.onAction,
+    this.trailing,
     this.bottomPadding,
-  });
+  }) : assert(
+          actionLabel == null || trailing == null,
+          'A header carries one action, not two.',
+        );
 
   final String title;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// Replaces the text action when the action is worth keeping but not worth
+  /// a word — Continue watching demotes "Clear" to an icon so it stops
+  /// competing with the "Add" links further down the screen.
+  final Widget? trailing;
+
   final double? bottomPadding;
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final style = context.texts.titleSmall?.copyWith(color: context.colors.primary);
+    final hasAction = actionLabel != null || trailing != null;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
         spacing.screenHorizontal(context.windowSize),
         0,
-        actionLabel == null ? spacing.screenHorizontal(context.windowSize) : spacing.sm,
+        hasAction ? spacing.sm : spacing.screenHorizontal(context.windowSize),
         bottomPadding ?? spacing.sm,
       ),
       child: Row(
@@ -43,6 +54,7 @@ class SectionHeader extends StatelessWidget {
               onPressed: onAction,
               child: Text(actionLabel!),
             ),
+          ?trailing,
         ],
       ),
     );

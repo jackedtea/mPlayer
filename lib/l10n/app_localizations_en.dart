@@ -80,7 +80,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get network => 'Network';
 
   @override
-  String get openFileOrFolder => 'Open a file or folder';
+  String get openFile => 'Open a file';
+
+  @override
+  String get selectMore => 'Select more';
+
+  @override
+  String get partialAccessNotice => 'Only the videos you shared are listed.';
+
+  @override
+  String get noVideosOnDevice => 'No videos found on this device yet.';
+
+  @override
+  String get mediaAccessTitle => 'Allow mPlayer to find your videos';
+
+  @override
+  String get mediaAccessBody =>
+      'Android does not let apps browse storage directly, so the system media index is used instead.';
+
+  @override
+  String videoCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count videos',
+      one: '1 video',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get addShareTitle => 'Add SMB or WebDAV';
@@ -661,9 +688,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get couldNotCast => 'Could not cast to that device.';
-
-  @override
-  String get folders => 'Folders';
 
   @override
   String get grantedFolder => 'Granted folder';

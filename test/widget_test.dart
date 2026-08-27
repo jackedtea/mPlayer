@@ -276,7 +276,7 @@ void main() {
       await pumpAppAt(tester, const Size(400, 800));
 
       expect(find.text('Continue watching'), findsNothing);
-      expect(find.widgetWithText(TextButton, 'Clear'), findsNothing);
+      expect(find.byIcon(Icons.delete_sweep_rounded), findsNothing);
     });
 
     testWidgets('clearing asks first, and says what it does not touch',
@@ -286,7 +286,7 @@ void main() {
 
       expect(find.text('Clip 0'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(TextButton, 'Clear'));
+      await tester.tap(find.byIcon(Icons.delete_sweep_rounded));
       await tester.pumpAndSettle();
 
       // "Clear" beside a shelf of films is easy to read as "delete the
@@ -307,7 +307,7 @@ void main() {
       seedResumePoints(2);
       await pumpAppAt(tester, const Size(400, 800));
 
-      await tester.tap(find.widgetWithText(TextButton, 'Clear'));
+      await tester.tap(find.byIcon(Icons.delete_sweep_rounded));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsOneWidget);
 

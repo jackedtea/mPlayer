@@ -52,9 +52,11 @@ class FilesPage extends ConsumerWidget {
         children: <Widget>[
           const _ContinueWatchingSection(),
           SizedBox(height: spacing.sectionGap),
-          const _ThisDeviceSection(),
-          SizedBox(height: spacing.sectionGap),
-          const _FoldersSection(),
+          // One "This device", not a media-index section and a granted-folders
+          // section side by side. That split is an Android storage detail, and
+          // reading it as two peers is the screen's main source of noise: both
+          // are folders on this phone, so both are rows in one list.
+          const _DeviceSection(),
           SizedBox(height: spacing.sectionGap),
           const _NetworkSection(),
         ],
@@ -66,7 +68,7 @@ class FilesPage extends ConsumerWidget {
           : FloatingActionButton(
               heroTag: 'storage-open-file',
               onPressed: () => openLocalVideo(context, ref),
-              tooltip: AppLocalizations.of(context).openFileOrFolder,
+              tooltip: AppLocalizations.of(context).openFile,
               child: const Icon(Icons.folder_open_rounded),
             ),
     );
@@ -123,9 +125,15 @@ class _ContinueWatchingSection extends ConsumerWidget {
         SectionHeader(
           title: AppLocalizations.of(context).continueWatching,
           // Only offered while there is something to clear, which is also
-          // the only time this section is drawn at all.
-          actionLabel: AppLocalizations.of(context).clearAll,
-          onAction: () => _clearContinueWatching(context, ref),
+          // the only time this section is drawn at all — and offered as an
+          // icon. Spelt out it sat level with the two "Add" links below it,
+          // which put the one destructive action on the screen among the
+          // invitations to add things.
+          trailing: IconButton(
+            icon: const Icon(Icons.delete_sweep_rounded),
+            tooltip: AppLocalizations.of(context).clearContinueWatchingTitle,
+            onPressed: () => _clearContinueWatching(context, ref),
+          ),
         ),
         SizedBox(
           height: ContinueWatchingCard.outerHeight(context),
@@ -186,25 +194,52 @@ Future<void> _clearContinueWatching(BuildContext context, WidgetRef ref) async {
   );
 }
 
-class _ThisDeviceSection extends ConsumerWidget {
-  const _ThisDeviceSection();
+/// Everything readable on this machine, as a single list.
+///
+/// Android splits its storage two ways: the media index knows about most
+/// videos, and whatever it missed — a folder with a `.nomedia` in it, a
+/// container MediaScanner would not classify — has to be handed over one
+/// folder at a time through the system picker. That is a platform detail, not
+/// a shape the screen should take, so both kinds arrive as rows in the same
+/// list and the picker is the last row of it.
+class _DeviceSection extends ConsumerWidget {
+  const _DeviceSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
-    final scheme = context.colors;
 
-    // Only Android needs the media index; every other platform can read the
-    // filesystem, and the browser opens there directly.
-    if (!MediaStoreSource.isSupported) {
-      return const _DesktopDeviceSection();
-    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SectionHeader(
+          title: AppLocalizations.of(context).thisDevice,
+          bottomPadding: spacing.xs + 2,
+        ),
+        // Only Android needs the media index; every other platform can read
+        // the filesystem, and the browser opens there directly.
+        if (MediaStoreSource.isSupported)
+          const _IndexedFolders()
+        else
+          const _DesktopFolders(),
+        // Granted folders stand on their own permission, so they are listed
+        // whether or not the media index was ever allowed.
+        if (SafSource.isSupported) const _GrantedFolders(),
+      ],
+    );
+  }
+}
 
+/// The folders Android's media index reports.
+class _IndexedFolders extends ConsumerWidget {
+  const _IndexedFolders();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final access = ref.watch(mediaAccessProvider).value ?? MediaAccess.none;
     if (access == MediaAccess.none) {
-      return _PermissionPrompt(
-        onGrant: () => _requestAccess(ref),
-      );
+      return _PermissionPrompt(onGrant: () => _requestAccess(ref));
     }
 
     final folders = ref.watch(mediaFoldersProvider);
@@ -212,50 +247,28 @@ class _ThisDeviceSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SectionHeader(
-          title: AppLocalizations.of(context).thisDevice,
-          // Partial access can be widened; full access has nothing to add.
-          actionLabel: access == MediaAccess.partial ? 'Select more' : null,
-          bottomPadding: spacing.xs + 2,
-          onAction: () => _requestAccess(ref),
-        ),
+        // Partial access is a state of this list, so it is reported on the
+        // list rather than in the section heading — one banner carrying both
+        // the explanation and the way out, instead of a heading action and a
+        // loose paragraph beneath it saying what that action was for.
         if (access == MediaAccess.partial)
-          _Message(
-            text: 'Showing only the videos you selected. '
-                'Tap "Select more" to share others.',
-          ),
+          _PartialAccessBanner(onSelectMore: () => _requestAccess(ref)),
         ...switch (folders) {
-          AsyncError(:final error) => <Widget>[
-              _Message(text: '$error'),
-            ],
+          AsyncError(:final error) => <Widget>[_Message(text: '$error')],
           AsyncData(:final value) when value.isEmpty => <Widget>[
-              const _Message(
-                text: 'No videos found on this device yet.',
-              ),
+              _Message(text: l10n.noVideosOnDevice),
             ],
           AsyncData(:final value) => <Widget>[
               for (final MediaFolder folder in value)
-                ListTile(
-                  contentPadding: spacing.screenPadding(context.windowSize),
-                  leading: CircleAvatar(
-                    radius: 20,
-                    backgroundColor: scheme.primaryContainer,
-                    child: Icon(
-                      Icons.folder_rounded,
-                      size: 22,
-                      color: scheme.onPrimaryContainer,
-                    ),
-                  ),
-                  title: Text(folder.name),
-                  subtitle: Text(
-                    '${folder.videoCount} videos · ${folder.path}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Icon(
-                    Icons.chevron_right_rounded,
-                    color: scheme.outline,
-                  ),
+                _FolderTile(
+                  icon: Icons.folder_rounded,
+                  title: folder.name,
+                  // The full path truncated into meaninglessness at this
+                  // width — `/storage/emulated/0/DCIM/Cam…` identifies
+                  // nothing. Two segments is what the user recognises; the
+                  // rest is the same prefix on every row.
+                  subtitle: '${l10n.videoCount(folder.videoCount)}'
+                      ' · ${_shortPath(folder.path)}',
                   onTap: () => context.push(
                     '/browse?source=${MediaStoreSource.sourceId}'
                     '&path=${Uri.encodeComponent(folder.id)}',
@@ -274,56 +287,29 @@ class _ThisDeviceSection extends ConsumerWidget {
   }
 }
 
-/// Shows the system dialog, then re-reads what was actually granted.
-Future<void> _requestAccess(WidgetRef ref) async {
-  await ref.read(mediaStoreSourceProvider).requestPermission();
-  ref
-    ..invalidate(mediaAccessProvider)
-    ..invalidate(mediaFoldersProvider);
-}
-
-/// Folders the user granted through the system picker.
-///
-/// The escape hatch for everything the media index cannot see: a folder with a
-/// `.nomedia` file in it, or containers MediaScanner refused to classify. Only
-/// shown on Android, where that limitation exists.
-class _FoldersSection extends ConsumerWidget {
-  const _FoldersSection();
+/// Folders the user granted through the system picker, and the row that grants
+/// another.
+class _GrantedFolders extends ConsumerWidget {
+  const _GrantedFolders();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!SafSource.isSupported) return const SizedBox.shrink();
-
-    final spacing = context.spacing;
-    final scheme = context.colors;
     final folders = ref.watch(safFoldersProvider).value ?? const <SafFolder>[];
+    final l10n = AppLocalizations.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SectionHeader(
-          title: AppLocalizations.of(context).folders,
-          actionLabel: 'Add',
-          bottomPadding: spacing.xs + 2,
-          onAction: () => _addFolder(context, ref),
-        ),
         for (final SafFolder folder in folders)
-          ListTile(
-            contentPadding: spacing.screenPadding(context.windowSize),
-            leading: CircleAvatar(
-              radius: 20,
-              backgroundColor: scheme.primaryContainer,
-              child: Icon(
-                Icons.folder_open_rounded,
-                size: 22,
-                color: scheme.onPrimaryContainer,
-              ),
-            ),
-            title: Text(folder.name),
-            subtitle: Text(AppLocalizations.of(context).grantedFolder),
+          _FolderTile(
+            // A different glyph from the indexed rows, because these behave
+            // differently: they can be handed back.
+            icon: Icons.folder_open_rounded,
+            title: folder.name,
+            subtitle: l10n.grantedFolder,
             trailing: IconButton(
               icon: const Icon(Icons.close_rounded),
-              tooltip: AppLocalizations.of(context).removeFolder,
+              tooltip: l10n.removeFolder,
               onPressed: () async {
                 await ref.read(safSourceProvider).release(folder.treeUri);
                 ref.invalidate(safFoldersProvider);
@@ -334,70 +320,198 @@ class _FoldersSection extends ConsumerWidget {
               '&path=${Uri.encodeComponent(folder.treeUri)}',
             ),
           ),
-        if (folders.isEmpty)
-          Padding(
-            padding: spacing.screenPadding(context.windowSize),
-            child: AddSourceTile(
-              title: AppLocalizations.of(context).addFolder,
-              subtitle: AppLocalizations.of(context).addFolderSubtitle,
-              onTap: () => _addFolder(context, ref),
-            ),
-          ),
+        // Closes the list as a row rather than as a dashed card under a
+        // heading that already said "Add". One invitation, at the end of the
+        // thing it adds to.
+        _AddFolderTile(onTap: () => _addFolder(ref)),
       ],
     );
   }
+}
 
-  Future<void> _addFolder(BuildContext context, WidgetRef ref) async {
-    final folder = await ref.read(safSourceProvider).pickFolder();
-    if (folder == null) return; // cancelled
-    ref.invalidate(safFoldersProvider);
-  }
+Future<void> _addFolder(WidgetRef ref) async {
+  final folder = await ref.read(safSourceProvider).pickFolder();
+  if (folder == null) return; // cancelled
+  ref.invalidate(safFoldersProvider);
+}
+
+/// Shows the system dialog, then re-reads what was actually granted.
+Future<void> _requestAccess(WidgetRef ref) async {
+  await ref.read(mediaStoreSourceProvider).requestPermission();
+  ref
+    ..invalidate(mediaAccessProvider)
+    ..invalidate(mediaFoldersProvider);
 }
 
 /// Windows, Linux and macOS read the filesystem directly — no media index,
 /// no permission prompt.
-class _DesktopDeviceSection extends ConsumerWidget {
-  const _DesktopDeviceSection();
+class _DesktopFolders extends ConsumerWidget {
+  const _DesktopFolders();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spacing = context.spacing;
-    final scheme = context.colors;
-    final folders = ref.watch(deviceFoldersProvider).value ??
-        const <DeviceFolder>[];
+    final folders =
+        ref.watch(deviceFoldersProvider).value ?? const <DeviceFolder>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SectionHeader(
-          title: AppLocalizations.of(context).thisDevice,
-          bottomPadding: spacing.xs + 2,
-        ),
         for (final DeviceFolder folder in folders)
-          ListTile(
-            contentPadding: spacing.screenPadding(context.windowSize),
-            leading: CircleAvatar(
-              radius: 20,
-              backgroundColor: scheme.primaryContainer,
-              child: Icon(
-                folder.icon,
-                size: 22,
-                color: scheme.onPrimaryContainer,
-              ),
-            ),
-            title: Text(folder.label),
-            subtitle: Text(
-              folder.subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
+          _FolderTile(
+            icon: folder.icon,
+            title: folder.label,
+            subtitle: folder.subtitle,
             onTap: () => context.push(
               '/browse?source=${LocalSource.sourceId}'
               '&path=${Uri.encodeComponent(folder.path)}',
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The last two segments of a path — `DCIM/Camera` out of
+/// `/storage/emulated/0/DCIM/Camera`. Reads both separators, so the same row
+/// works on Windows.
+String _shortPath(String path) {
+  final parts = <String>[
+    for (final String part in path.split(RegExp(r'[/\\]')))
+      if (part.isNotEmpty) part,
+  ];
+  if (parts.length <= 2) return parts.join('/');
+  return parts.sublist(parts.length - 2).join('/');
+}
+
+/// One folder row. Every list on this screen uses it, so the indexed folders,
+/// the granted ones and the desktop drives read as the same kind of thing.
+class _FolderTile extends StatelessWidget {
+  const _FolderTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  /// Defaults to the chevron; a granted folder puts its release button here.
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+
+    return ListTile(
+      contentPadding: context.spacing.screenPadding(context.windowSize),
+      leading: CircleAvatar(
+        radius: 20,
+        backgroundColor: scheme.primaryContainer,
+        child: Icon(icon, size: 22, color: scheme.onPrimaryContainer),
+      ),
+      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing:
+          trailing ?? Icon(Icons.chevron_right_rounded, color: scheme.outline),
+      onTap: onTap,
+    );
+  }
+}
+
+/// The row that hands another folder over.
+class _AddFolderTile extends StatelessWidget {
+  const _AddFolderTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+
+    return ListTile(
+      contentPadding: context.spacing.screenPadding(context.windowSize),
+      // Outlined rather than filled, so the invitation stays quieter than the
+      // folders it sits under.
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          border: Border.all(color: scheme.outlineVariant),
+          shape: BoxShape.circle,
+        ),
+        child:
+            Icon(Icons.add_rounded, size: 22, color: scheme.onSurfaceVariant),
+      ),
+      title: Text(
+        l10n.addFolder,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style:
+            context.texts.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+      ),
+      subtitle: Text(
+        l10n.addFolderSubtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.texts.bodySmall?.copyWith(color: scheme.outline),
+      ),
+      onTap: onTap,
+    );
+  }
+}
+
+/// Says why the list is short, and offers the way out in the same breath.
+class _PartialAccessBanner extends StatelessWidget {
+  const _PartialAccessBanner({required this.onSelectMore});
+
+  final VoidCallback onSelectMore;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+
+    return Padding(
+      padding: spacing.screenPadding(context.windowSize),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(
+          spacing.md,
+          spacing.xs,
+          spacing.xs,
+          spacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: context.radii.cardAll,
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              Icons.info_outline_rounded,
+              size: 20,
+              color: scheme.onSurfaceVariant,
+            ),
+            SizedBox(width: spacing.md),
+            Expanded(
+              child: Text(
+                AppLocalizations.of(context).partialAccessNotice,
+                style: context.texts.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ),
+            SizedBox(width: spacing.xs),
+            TextButton(
+              onPressed: onSelectMore,
+              child: Text(AppLocalizations.of(context).selectMore),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -412,46 +526,34 @@ class _PermissionPrompt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
+    final l10n = AppLocalizations.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        SectionHeader(
-          title: AppLocalizations.of(context).thisDevice,
-          bottomPadding: spacing.xs + 2,
+    return Padding(
+      padding: spacing.screenPadding(context.windowSize),
+      child: Container(
+        padding: EdgeInsets.all(spacing.lg),
+        decoration: BoxDecoration(
+          color: context.colors.surfaceContainerLow,
+          borderRadius: context.radii.cardAll,
         ),
-        Padding(
-          padding: spacing.screenPadding(context.windowSize),
-          child: Container(
-            padding: EdgeInsets.all(spacing.lg),
-            decoration: BoxDecoration(
-              color: context.colors.surfaceContainerLow,
-              borderRadius: context.radii.cardAll,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(l10n.mediaAccessTitle, style: context.texts.bodyLarge),
+            SizedBox(height: spacing.xs),
+            Text(
+              l10n.mediaAccessBody,
+              style: context.texts.bodySmall
+                  ?.copyWith(color: context.colors.onSurfaceVariant),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Allow mPlayer to find your videos',
-                  style: context.texts.bodyLarge,
-                ),
-                SizedBox(height: spacing.xs),
-                Text(
-                  'Android does not let apps browse storage directly, so the '
-                  'system media index is used instead.',
-                  style: context.texts.bodySmall
-                      ?.copyWith(color: context.colors.onSurfaceVariant),
-                ),
-                SizedBox(height: spacing.md),
-                FilledButton(
-                  onPressed: onGrant,
-                  child: Text(AppLocalizations.of(context).allowAccess),
-                ),
-              ],
+            SizedBox(height: spacing.md),
+            FilledButton(
+              onPressed: onGrant,
+              child: Text(l10n.allowAccess),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -507,11 +609,16 @@ class _NetworkSection extends ConsumerWidget {
                 ),
                 SizedBox(height: spacing.sm),
               ],
-              AddSourceTile(
-                title: AppLocalizations.of(context).addShareTitle,
-                subtitle: AppLocalizations.of(context).addShareSubtitle,
-                onTap: () => SourceSheet.showAdd(context),
-              ),
+              // The dashed card is the empty state, not a permanent footer.
+              // Once there is a share to look at, the heading's "Add" is the
+              // whole of the invitation and the card was only repeating it at
+              // four times the height.
+              if (registry.configs.isEmpty)
+                AddSourceTile(
+                  title: AppLocalizations.of(context).addShareTitle,
+                  subtitle: AppLocalizations.of(context).addShareSubtitle,
+                  onTap: () => SourceSheet.showAdd(context),
+                ),
             ],
           ),
         ),

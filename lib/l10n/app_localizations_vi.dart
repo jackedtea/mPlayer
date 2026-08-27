@@ -80,7 +80,33 @@ class AppLocalizationsVi extends AppLocalizations {
   String get network => 'Mạng';
 
   @override
-  String get openFileOrFolder => 'Mở tệp hoặc thư mục';
+  String get openFile => 'Mở tệp';
+
+  @override
+  String get selectMore => 'Chọn thêm';
+
+  @override
+  String get partialAccessNotice => 'Chỉ hiện những video bạn đã chia sẻ.';
+
+  @override
+  String get noVideosOnDevice => 'Chưa tìm thấy video nào trên thiết bị này.';
+
+  @override
+  String get mediaAccessTitle => 'Cho phép mPlayer tìm video của bạn';
+
+  @override
+  String get mediaAccessBody =>
+      'Android không cho ứng dụng duyệt bộ nhớ trực tiếp, nên chỉ mục media của hệ thống được dùng thay thế.';
+
+  @override
+  String videoCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count video',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get addShareTitle => 'Thêm SMB hoặc WebDAV';
@@ -662,9 +688,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get couldNotCast => 'Không truyền được tới thiết bị đó.';
-
-  @override
-  String get folders => 'Thư mục';
 
   @override
   String get grantedFolder => 'Thư mục đã cấp quyền';
