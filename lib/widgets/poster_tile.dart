@@ -49,9 +49,17 @@ class PosterTile extends StatelessWidget {
   static double outerWidth(BuildContext context, double width) =>
       width + context.spacing.hitInset * 2;
 
-  /// Caption line, rounded up per line and scaled with the user's text size —
-  /// same reasoning as `ContinueWatchingCard.captionHeight`.
-  static double captionHeight(
+  /// The caption's text alone, without the gap above it.
+  ///
+  /// Rounded up per line and scaled with the user's text size — same
+  /// reasoning as `ContinueWatchingCard.captionHeight`.
+  ///
+  /// Reserved, not measured: the box is this tall whether the title fills it
+  /// or not. A caption that shrank to fit a one-line title would hand the
+  /// spare height to the artwork above it, and a row of posters would come
+  /// out at two different sizes depending on how long each title happened to
+  /// be — which is exactly what it used to do.
+  static double titleHeight(
     BuildContext context, {
     int lines = defaultTitleLines,
   }) {
@@ -59,8 +67,15 @@ class PosterTile extends StatelessWidget {
     final style = context.texts.bodySmall;
     final line = (scaler.scale(style?.fontSize ?? 12) * (style?.height ?? 16 / 12))
         .ceilToDouble();
-    return (context.spacing.sm - 2) + line * lines;
+    return line * lines;
   }
+
+  /// The caption and the gap above it.
+  static double captionHeight(
+    BuildContext context, {
+    int lines = defaultTitleLines,
+  }) =>
+      (context.spacing.sm - 2) + titleHeight(context, lines: lines);
 
   /// Footprint including the ink ring. Grids must pass this as
   /// `mainAxisExtent`: deriving cell height from an aspect ratio makes it
@@ -114,13 +129,21 @@ class PosterTile extends StatelessWidget {
                 ),
               ),
               SizedBox(height: spacing.sm - 2),
-              Text(
-                item.title,
-                maxLines: titleLines,
-                overflow: TextOverflow.ellipsis,
-                style: context.texts.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: context.colors.onSurface,
+              // A fixed box, not a `Text` left to size itself. The artwork
+              // above is `Expanded`, so whatever the caption does not take it
+              // does — and a one-line title therefore grew its poster taller
+              // than its two-line neighbour's, leaving every grid row ragged.
+              SizedBox(
+                height: titleHeight(context, lines: titleLines),
+                width: double.infinity,
+                child: Text(
+                  item.title,
+                  maxLines: titleLines,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: context.colors.onSurface,
+                  ),
                 ),
               ),
             ],
