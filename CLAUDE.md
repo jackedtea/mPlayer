@@ -459,7 +459,8 @@ publishes a GitHub release and posts to Telegram. Runs on push to `main` or `dev
 manually on any branch.
 
 - **`main` is the only production branch**; every other ref builds as a dev channel —
-  application id gets `.dev` (so both installs coexist), version name and artifact name
+  application id gets `.canary` and the app names itself **mPlayer (Dev)** (so both
+  installs coexist and are told apart in the launcher), version name and artifact name
   get `-dev-<short-sha>`, and the release is marked prerelease.
 - Signing comes from repository secrets: `KEYSTORE` / `KEYSTORE_PASSWORD` / `KEY_ALIAS` /
   `KEY_PASSWORD` on main, the `*_DEV` set elsewhere. The keystore is base64 in the secret,

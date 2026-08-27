@@ -53,7 +53,7 @@ jobs:
             TAG="dev-${SHORT_SHA}"
             RELEASE_NAME="mPlayer ${VERSION}-dev.${SHORT_SHA}"
             ARTIFACT_BASE="mPlayer-${VERSION}-dev-${SHORT_SHA}"
-            APP_ID_SUFFIX=".dev"
+            APP_ID_SUFFIX=".canary"
             VERSION_NAME_SUFFIX="-dev-${SHORT_SHA}"
           else
             TAG="v${VERSION}"
@@ -298,7 +298,7 @@ jobs:
             echo "**Commit** \`${{ needs.prepare.outputs.short_sha }}\` on \`${GITHUB_REF_NAME}\`"
             echo ""
             if [ "${{ needs.prepare.outputs.is_dev }}" = "true" ]; then
-              echo "Dev build — application id ends in \`.dev\`, so it installs alongside a release build."
+              echo "Dev build — application id ends in \`.canary\` and the app calls itself **mPlayer (Dev)**, so it installs and reads alongside a release build."
             fi
             if [ "${{ needs.android.outputs.signed }}" != "true" ]; then
               echo ""

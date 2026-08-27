@@ -491,7 +491,7 @@ Explicitly deprioritised. It applies **only** to raw file sources — media serv
 - [ ] Flatpak manifest (optional)
 - [x] CI: `.github/workflows/release.yml` builds Android, Windows and Linux, publishes a
       GitHub release and posts to Telegram. `main` is the only production branch; every
-      other ref ships as a dev channel with a `.dev` application id
+      other ref ships as a dev channel with a `.canary` application id
 - [ ] Version bump + changelog process
 - [ ] Crash/error reporting decision (self-hosted vs none — avoid third-party telemetry by default)
 

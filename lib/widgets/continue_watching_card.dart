@@ -29,6 +29,7 @@ class ContinueWatchingCard extends StatelessWidget {
     super.key,
     required this.item,
     this.onTap,
+    this.onPlay,
     this.width = 200,
     this.artHeight = 112,
     this.artUrl,
@@ -40,6 +41,14 @@ class ContinueWatchingCard extends StatelessWidget {
   /// the frame the user actually stopped on says more than a poster.
   final Uri? artUrl;
   final VoidCallback? onTap;
+
+  /// What the play glyph in the middle of the artwork does.
+  ///
+  /// Null makes it do whatever [onTap] does, which is right where the card as
+  /// a whole already resumes — the Files shelf. Where the card opens a detail
+  /// screen instead, this is what stops a play button from doing something
+  /// that is plainly not playing.
+  final VoidCallback? onPlay;
   final double width;
   final double artHeight;
 
@@ -111,17 +120,23 @@ class ContinueWatchingCard extends StatelessWidget {
                     if (item.thumbnailPath != null)
                       _Thumbnail(path: item.thumbnailPath!, width: width),
                     Center(
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.86),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.play_arrow_rounded,
-                          size: 22,
-                          color: scheme.primary,
+                      child: GestureDetector(
+                        // Its own hit target, above the card's. A glyph this
+                        // size and this central is read as a button, and a
+                        // button that says play has to play.
+                        onTap: onPlay ?? onTap,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.86),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.play_arrow_rounded,
+                            size: 22,
+                            color: scheme.primary,
+                          ),
                         ),
                       ),
                     ),

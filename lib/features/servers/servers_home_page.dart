@@ -286,7 +286,11 @@ class _CardShelf extends ConsumerWidget {
         itemBuilder: (context, i) => ContinueWatchingCard(
           item: resumeItemFrom(resolved[i], l10n, serverLabel: serverName),
           artUrl: artUrlFor(ref, resolved[i], maxWidth: 400),
+          // The card opens the item; the glyph in the middle of it resumes.
+          // These shelves exist to carry on watching, so the play button has
+          // to be the short way there rather than a third tap into it.
           onTap: () => _open(context, resolved[i]),
+          onPlay: () => playServerItem(context, ref, resolved[i].id),
         ),
       ),
     );
