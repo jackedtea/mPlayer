@@ -10,6 +10,7 @@ import 'package:mplayer/app/theme.dart';
 import 'package:mplayer/l10n/app_localizations.dart';
 import 'package:mplayer/core/models/media_models.dart';
 import 'package:mplayer/features/player/controls_overlay.dart';
+import 'package:mplayer/features/player/stable_insets.dart';
 import 'package:mplayer/features/player/playback_state.dart';
 import 'package:mplayer/features/player/player_ui_state.dart';
 import 'package:mplayer/sources/media_source.dart';
@@ -30,9 +31,12 @@ Future<void> pumpControls(
   Size size, {
   PlaybackState state = const PlaybackState(),
   bool transcoding = false,
+  double bottomInset = 0,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
+  tester.view.padding = FakeViewPadding(bottom: bottomInset);
+  tester.view.viewPadding = FakeViewPadding(bottom: bottomInset);
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
@@ -42,7 +46,8 @@ Future<void> pumpControls(
       // harness has to supply them the way the real app does.
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
+      home: StableInsets(
+        child: Scaffold(
         body: ControlsOverlay(
           media: media(transcoding: transcoding),
           state: state,
@@ -67,6 +72,7 @@ Future<void> pumpControls(
           onMore: () {},
           onSkipIntro: (_) {},
           notImplemented: (_) {},
+        ),
         ),
       ),
     ),
@@ -277,6 +283,53 @@ void main() {
     testWidgets('appears when the source can transcode', (tester) async {
       await pumpControls(tester, const Size(400, 900), transcoding: true);
       expect(find.byIcon(Icons.hd_rounded), findsOneWidget);
+    });
+  });
+
+  group('a navigation bar that comes and goes', () {
+    testWidgets('does not move the controls', (tester) async {
+      // Sticky immersion slides the bar in on a swipe and out again by
+      // itself, and Android reports the bottom inset going to full height and
+      // back each time. The control row is laid out against that inset and
+      // the Skip intro pill sits on top of the row, so both used to jump up
+      // the screen and drop back while the film played.
+      final intro = PlaybackState(
+        media: media(),
+        position: const Duration(seconds: 20),
+        duration: const Duration(minutes: 24),
+        containerChapters: const <MediaChapter>[
+          MediaChapter(
+            title: 'Opening',
+            start: Duration.zero,
+            end: Duration(seconds: 90),
+            isIntro: true,
+          ),
+        ],
+      );
+
+      // Opened with the bar showing, which is how the player is reached.
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: intro,
+        bottomInset: 56,
+      );
+      final shown = tester.getRect(find.text('Skip intro'));
+
+      // Immersion takes it away.
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: intro,
+        bottomInset: 0,
+      );
+      final hidden = tester.getRect(find.text('Skip intro'));
+
+      expect(
+        hidden,
+        shown,
+        reason: 'the pill moved when the navigation bar did',
+      );
     });
   });
 }

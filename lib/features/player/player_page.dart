@@ -336,120 +336,129 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
           ),
           extensions: Theme.of(context).extensions.values,
         ),
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: Focus(
-            autofocus: true,
-            onKeyEvent: (_, event) => _handleKey(event, controller, ui),
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                _VideoSurface(controller: controller, fit: ui.aspect.boxFit),
+        // Every overlay on this screen, not just the controls.
+        //
+        // Sticky immersion makes the navigation bar come and go on its own,
+        // and Android reports the inset going to full height and back each
+        // time. Anything laid out against it moves with it — the control row,
+        // the Skip intro pill above that, the locked overlay, the stats
+        // panel. Holding the inset still here means none of them can.
+        child: StableInsets(
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: Focus(
+              autofocus: true,
+              onKeyEvent: (_, event) => _handleKey(event, controller, ui),
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  _VideoSurface(controller: controller, fit: ui.aspect.boxFit),
 
-                // Gestures sit above the video and below the chrome, and go
-                // inert entirely while locked.
-                GestureLayer(
-                  // Locked ignores everything; the settings switch turns off the
-                  // brightness and volume drags without locking the screen.
-                  enabled: !ui.locked,
-                  gesturesEnabled: settings.swipeGestures,
-                  state: state,
-                  onTap: _toggleChrome,
-                  onSeekBy: controller.skip,
-                  onSeekTo: controller.seek,
-                  onVolume: controller.setVolume,
-                  skipBack: settings.skipBack,
-                  skipForward: settings.skipForward,
-                ),
-
-                if (state.error != null) _ErrorOverlay(message: state.error!),
-                // Only where the transport is not already showing one: the
-                // controls sit dead centre, and with the chrome up its
-                // play/pause slot becomes the spinner instead. Two would
-                // overlap, which is what made loading look like a stuck button.
-                if (state.buffering &&
-                    state.error == null &&
-                    (!_chromeVisible || ui.locked))
-                  const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
+                  // Gestures sit above the video and below the chrome, and go
+                  // inert entirely while locked.
+                  GestureLayer(
+                    // Locked ignores everything; the settings switch turns off the
+                    // brightness and volume drags without locking the screen.
+                    enabled: !ui.locked,
+                    gesturesEnabled: settings.swipeGestures,
+                    state: state,
+                    onTap: _toggleChrome,
+                    onSeekBy: controller.skip,
+                    onSeekTo: controller.seek,
+                    onVolume: controller.setVolume,
+                    skipBack: settings.skipBack,
+                    skipForward: settings.skipForward,
                   ),
 
-                if (ui.statsVisible) StatsOverlay(state: state),
+                  if (state.error != null) _ErrorOverlay(message: state.error!),
+                  // Only where the transport is not already showing one: the
+                  // controls sit dead centre, and with the chrome up its
+                  // play/pause slot becomes the spinner instead. Two would
+                  // overlap, which is what made loading look like a stuck button.
+                  if (state.buffering &&
+                      state.error == null &&
+                      (!_chromeVisible || ui.locked))
+                    const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
 
-                if (!ui.locked)
-                  AnimatedOpacity(
-                    opacity: _chromeVisible ? 1 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: IgnorePointer(
-                      ignoring: !_chromeVisible,
-                      // Sticky immersion makes the navigation bar come and go
-                      // on its own, and the controls must not move each time
-                      // it does.
-                      child: StableInsets(
-                        child: ControlsOverlay(
-                          media: widget.media,
-                          state: state,
-                          ui: ui,
-                          dragProgress: _dragProgress,
-                          onInteraction: _restartHideTimer,
-                          onPlayPause: () {
-                            _restartHideTimer();
-                            controller.playOrPause();
-                          },
-                          onSkip: controller.skip,
-                          onPrevious: () {
-                            _restartHideTimer();
-                            controller.playPrevious();
-                          },
-                          onNext: () {
-                            _restartHideTimer();
-                            controller.playNext();
-                          },
-                          onScrubStart: (v) =>
-                              setState(() => _dragProgress = v),
-                          onScrubUpdate: (v) =>
-                              setState(() => _dragProgress = v),
-                          onScrubEnd: (v) {
-                            setState(() => _dragProgress = null);
-                            controller.seek(state.duration * v);
-                          },
-                          onSubtitles: () => _pickSubtitle(state, controller),
-                          onAudio: () => _pickAudio(state, controller),
-                          onQuality: () => _pickQuality(state, controller),
-                          qualityLabel: () {
-                            final q = ref.watch(streamQualityProvider);
-                            return q.isOriginal
-                                ? AppLocalizations.of(context).qualityOriginal
-                                : q.label;
-                          }(),
-                          onSpeed: () => _pickSpeed(state, controller),
-                          onLock: () {
-                            ref.read(playerUiProvider.notifier).toggleLock();
-                            setState(() => _chromeVisible = false);
-                            _applySystemUi();
-                          },
-                          onRotate: ref
-                              .read(playerUiProvider.notifier)
-                              .cycleRotation,
-                          onChapters: () => _showChapters(state, controller),
-                          onFullscreen: _toggleFullscreen,
-                          onMore: () => MoreMenu.show(context),
-                          onPip: pip.supported ? _enterPip : null,
-                          onCast: _pickCastDevice,
-                          // The same amounts the gestures use; the buttons used
-                          // to be fixed at 10 and 30 seconds regardless.
-                          skipBack: settings.skipBack,
-                          skipForward: settings.skipForward,
-                          onSkipIntro: (chapter) =>
-                              controller.seek(chapter.end),
-                          notImplemented: _notImplemented,
+                  if (ui.statsVisible) StatsOverlay(state: state),
+
+                  if (!ui.locked)
+                    AnimatedOpacity(
+                      opacity: _chromeVisible ? 1 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: IgnorePointer(
+                        ignoring: !_chromeVisible,
+                        // Sticky immersion makes the navigation bar come and go
+                        // on its own, and the controls must not move each time
+                        // it does.
+                        child: StableInsets(
+                          child: ControlsOverlay(
+                            media: widget.media,
+                            state: state,
+                            ui: ui,
+                            dragProgress: _dragProgress,
+                            onInteraction: _restartHideTimer,
+                            onPlayPause: () {
+                              _restartHideTimer();
+                              controller.playOrPause();
+                            },
+                            onSkip: controller.skip,
+                            onPrevious: () {
+                              _restartHideTimer();
+                              controller.playPrevious();
+                            },
+                            onNext: () {
+                              _restartHideTimer();
+                              controller.playNext();
+                            },
+                            onScrubStart: (v) =>
+                                setState(() => _dragProgress = v),
+                            onScrubUpdate: (v) =>
+                                setState(() => _dragProgress = v),
+                            onScrubEnd: (v) {
+                              setState(() => _dragProgress = null);
+                              controller.seek(state.duration * v);
+                            },
+                            onSubtitles: () => _pickSubtitle(state, controller),
+                            onAudio: () => _pickAudio(state, controller),
+                            onQuality: () => _pickQuality(state, controller),
+                            qualityLabel: () {
+                              final q = ref.watch(streamQualityProvider);
+                              return q.isOriginal
+                                  ? AppLocalizations.of(context).qualityOriginal
+                                  : q.label;
+                            }(),
+                            onSpeed: () => _pickSpeed(state, controller),
+                            onLock: () {
+                              ref.read(playerUiProvider.notifier).toggleLock();
+                              setState(() => _chromeVisible = false);
+                              _applySystemUi();
+                            },
+                            onRotate: ref
+                                .read(playerUiProvider.notifier)
+                                .cycleRotation,
+                            onChapters: () => _showChapters(state, controller),
+                            onFullscreen: _toggleFullscreen,
+                            onMore: () => MoreMenu.show(context),
+                            onPip: pip.supported ? _enterPip : null,
+                            onCast: _pickCastDevice,
+                            // The same amounts the gestures use; the buttons used
+                            // to be fixed at 10 and 30 seconds regardless.
+                            skipBack: settings.skipBack,
+                            skipForward: settings.skipForward,
+                            onSkipIntro: (chapter) =>
+                                controller.seek(chapter.end),
+                            notImplemented: _notImplemented,
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                if (ui.locked) _LockedOverlay(state: state),
-              ],
+                  if (ui.locked) _LockedOverlay(state: state),
+                ],
+              ),
             ),
           ),
         ),
