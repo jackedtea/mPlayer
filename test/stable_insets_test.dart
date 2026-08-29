@@ -105,11 +105,48 @@ void main() {
     final key = GlobalKey();
     addTearDown(tester.view.reset);
 
-    recordSystemInsets(const EdgeInsets.only(bottom: 56));
+    recordSystemInsets(
+      const EdgeInsets.only(bottom: 56),
+      Orientation.portrait,
+    );
 
     setBars(tester, 0);
     await tester.pumpWidget(harness(key));
 
     expect(MediaQuery.of(key.currentContext!).padding.bottom, 56);
+  });
+
+  testWidgets('turning the phone does not carry the bottom inset across',
+      (tester) async {
+    // Upright the navigation bar runs along the bottom; on its side it runs
+    // down an edge and there is no bottom inset at all. Remembering one
+    // largest reading across both left a film in landscape reserving a bar
+    // that was not there, and the control row floated that far above the
+    // bottom of the screen.
+    final key = GlobalKey();
+    addTearDown(tester.view.reset);
+
+    // Upright first, which is how the app is usually opened.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(400, 900);
+    tester.view.padding = const FakeViewPadding(bottom: 56);
+    tester.view.viewPadding = const FakeViewPadding(bottom: 56);
+    await tester.pumpWidget(harness(key));
+    expect(MediaQuery.of(key.currentContext!).padding.bottom, 56);
+
+    // Turned: the bar has moved to the right edge.
+    tester.view.physicalSize = const Size(900, 400);
+    tester.view.padding = const FakeViewPadding(right: 56);
+    tester.view.viewPadding = const FakeViewPadding(right: 56);
+    await tester.pumpWidget(harness(key));
+
+    final landscape = MediaQuery.of(key.currentContext!).padding;
+    expect(
+      landscape.bottom,
+      0,
+      reason: 'the portrait bar leaked into landscape and pushed the '
+          'controls up off the bottom of the screen',
+    );
+    expect(landscape.right, 56);
   });
 }

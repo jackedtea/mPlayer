@@ -4,36 +4,45 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'dart:math' as math;
-
 import 'dart:ui' show ViewPadding;
 
 import 'package:flutter/material.dart';
 
-/// The largest system-bar inset this app has seen since it started.
+/// The largest system-bar inset seen **in each orientation** since launch.
 ///
-/// The bars are a fixed size; only their *visibility* changes, and a hidden
-/// bar is reported as no inset at all. So the largest reading is the true
-/// size, and it is worth keeping app-wide rather than per-screen: the player
-/// is often opened *after* immersion has already begun, and a screen that
-/// only ever saw zero would lay its controls against the very edge and then
-/// jump the first time a bar appeared.
-EdgeInsets _known = EdgeInsets.zero;
+/// Two entries, not one, because the bars move when the phone turns: upright
+/// the navigation bar runs along the bottom, on its side it runs down an edge
+/// and the bottom inset is nothing at all. Remembering a single largest
+/// reading across both meant a film watched in landscape kept a bottom inset
+/// it did not have, and the control row floated a navigation bar's height
+/// above where it belonged.
+///
+/// Largest *within* an orientation is still right: the bars are a fixed size
+/// there and only their visibility changes, and a hidden bar is reported as
+/// no inset at all.
+final Map<Orientation, EdgeInsets> _known = <Orientation, EdgeInsets>{};
 
 /// Notes what the bars measure while they are showing.
 ///
 /// Called from the wrapper in `app.dart`, which sits above its own
 /// `SafeArea` and therefore still sees the real numbers.
-void recordSystemInsets(EdgeInsets insets) {
-  _known = EdgeInsets.fromLTRB(
-    math.max(_known.left, insets.left),
-    math.max(_known.top, insets.top),
-    math.max(_known.right, insets.right),
-    math.max(_known.bottom, insets.bottom),
+void recordSystemInsets(EdgeInsets insets, Orientation orientation) {
+  final seen = _known[orientation] ?? EdgeInsets.zero;
+
+  _known[orientation] = EdgeInsets.fromLTRB(
+    math.max(seen.left, insets.left),
+    math.max(seen.top, insets.top),
+    math.max(seen.right, insets.right),
+    math.max(seen.bottom, insets.bottom),
   );
 }
 
+/// What the bars occupy when shown, in [orientation].
+EdgeInsets knownSystemInsets(Orientation orientation) =>
+    _known[orientation] ?? EdgeInsets.zero;
+
 @visibleForTesting
-void debugResetKnownSystemInsets() => _known = EdgeInsets.zero;
+void debugResetKnownSystemInsets() => _known.clear();
 
 /// Holds the system-bar padding still while the bars come and go.
 ///
@@ -47,9 +56,9 @@ void debugResetKnownSystemInsets() => _known = EdgeInsets.zero;
 /// `app.dart` insets every screen but the player, and on the player's first
 /// build that wrapper has not yet been told to stop — its `SafeArea` has
 /// already eaten the bottom inset, so a media query read here answers zero.
-/// Recording that zero as the truth was the whole bug: the real inset then
-/// arrived a frame later and moved everything. `View.of` reports what the
-/// window actually has, and no ancestor widget can mask it.
+/// Recording that zero as the truth was a bug in its own right: the real
+/// inset then arrived a frame later and moved everything. `View.of` reports
+/// what the window actually has, and no ancestor widget can mask it.
 class StableInsets extends StatefulWidget {
   const StableInsets({super.key, required this.child});
 
@@ -65,6 +74,7 @@ class _StableInsetsState extends State<StableInsets> {
     final media = MediaQuery.of(context);
     final view = View.of(context);
     final ratio = view.devicePixelRatio;
+    final orientation = media.orientation;
 
     EdgeInsets fromView(ViewPadding padding) => EdgeInsets.fromLTRB(
           padding.left / ratio,
@@ -73,15 +83,17 @@ class _StableInsetsState extends State<StableInsets> {
           padding.bottom / ratio,
         );
 
-    // Everything anyone has seen: the window's own padding now, the largest
-    // reading since launch, and whatever the inherited query still carries.
-    recordSystemInsets(fromView(view.viewPadding));
-    recordSystemInsets(fromView(view.padding));
-    recordSystemInsets(media.viewPadding);
-    recordSystemInsets(media.padding);
+    // Everything anyone has seen *in this orientation*: the window's own
+    // padding now, and whatever the inherited query still carries.
+    recordSystemInsets(fromView(view.viewPadding), orientation);
+    recordSystemInsets(fromView(view.padding), orientation);
+    recordSystemInsets(media.viewPadding, orientation);
+    recordSystemInsets(media.padding, orientation);
+
+    final stable = knownSystemInsets(orientation);
 
     return MediaQuery(
-      data: media.copyWith(padding: _known, viewPadding: _known),
+      data: media.copyWith(padding: stable, viewPadding: stable),
       child: widget.child,
     );
   }

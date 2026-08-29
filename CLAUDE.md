@@ -458,15 +458,23 @@ Linux is not covered by that tool — its icons live in `linux/packaging/icons/h
 publishes a GitHub release and posts to Telegram. Runs on push to `main` or `dev`, or
 manually on any branch. **There has never been a macOS job.**
 
-**The Windows job is temporarily switched off** — `if: false` on the job, which is left
-whole so turning it back on is that one line. Two things had to move with it, and both
-have to move back:
+**The Windows and Linux jobs are temporarily switched off** — `if: false` on each, and
+both jobs are left whole so turning one back on is that one line. Three things moved with
+them, and all three are worth keeping even after they come back:
 
-- `release` cannot simply `needs:` a skipped job, or it skips too, so it checks the
-  results by name instead. `windows` is deliberately not among them: skipped is a fine
-  outcome for it and failed is not, and it cannot fail while it does not run.
-- The release-notes table only prints the Windows row when that job succeeded. A row
+- `release` cannot simply `needs:` a skipped job, or it skips too, so it checks results by
+  name instead. Only `prepare` and `android` are named: a desktop build that did not run
+  must not stop a release, and it cannot fail while it does not run.
+- The release-notes table prints a platform's row only when that job succeeded. A row
   naming a file nobody can download is worse than no row.
+- The Telegram message builds its download links the same way. `notify` lists `windows`
+  and `linux` in `needs` purely so it can *read* their results — its own `if` already
+  tolerates them skipping, and deliberately still fires when a build fails, because a
+  silent pipeline is worse than a noisy one.
+
+Watch for a **second `if:` further down a job**: `notify` already had one, and adding
+another produced a duplicate YAML key where the later silently wins. The workflow parses
+clean now; a duplicate-key scan is the way to check after editing it.
 
 - **`main` is the only production branch**; every other ref builds as a dev channel —
   application id gets `.canary` and the app names itself **mPlayer (Dev)** (so both

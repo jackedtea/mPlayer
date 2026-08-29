@@ -204,8 +204,9 @@ class _InsetFromSystemBars extends StatelessWidget {
         // place in the tree that still sees what the bars measure. The player
         // lays its controls out against the largest reading rather than
         // against whatever the bars happen to be doing at the moment.
-        recordSystemInsets(MediaQuery.viewPaddingOf(context));
-        recordSystemInsets(MediaQuery.paddingOf(context));
+        final orientation = MediaQuery.orientationOf(context);
+        recordSystemInsets(MediaQuery.viewPaddingOf(context), orientation);
+        recordSystemInsets(MediaQuery.paddingOf(context), orientation);
 
         // **The same widgets in the same places, whatever the answer.**
         //

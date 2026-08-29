@@ -245,6 +245,9 @@ jobs:
     name: Linux bundle
     needs: prepare
     runs-on: ubuntu-22.04
+    # TEMPORARILY DISABLED, like `windows` above. Flip to `true` to bring
+    # Linux bundles back; the job is left whole so that is the only edit.
+    if: false
     steps:
       - uses: actions/checkout@v5
 
@@ -296,7 +299,6 @@ jobs:
       always()
       && needs.prepare.result == 'success'
       && needs.android.result == 'success'
-      && needs.linux.result == 'success'
     outputs:
       url: ${{ steps.publish.outputs.url }}
     steps:
@@ -332,14 +334,18 @@ jobs:
             if [ "${{ needs.windows.result }}" = "success" ]; then
               echo "| \`${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip\` | Windows x64 |"
             fi
-            echo "| \`${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz\` | Linux x64 |"
+            if [ "${{ needs.linux.result }}" = "success" ]; then
+              echo "| \`${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz\` | Linux x64 |"
+            fi
             echo ""
             echo "Android ships one APK per architecture — take \`arm64-v8a\` unless the"
             echo "device is an older 32-bit phone (\`armeabi-v7a\`) or an emulator"
             echo "(\`x86_64\`)."
-            echo ""
-            echo "The Linux bundle links libmpv from the system: install \`libmpv2\` (or"
-            echo "\`mpv\`) before running it."
+            if [ "${{ needs.linux.result }}" = "success" ]; then
+              echo ""
+              echo "The Linux bundle links libmpv from the system: install \`libmpv2\`"
+              echo "(or \`mpv\`) before running it."
+            fi
             echo "RELEASE_NOTES_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -362,7 +368,9 @@ jobs:
   # ---------------------------------------------------------------------------
   notify:
     name: Notify Telegram
-    needs: [prepare, android, release]
+    # `windows` and `linux` are here only so their results can be read when
+    # composing the message; the `if` below already tolerates them skipping.
+    needs: [prepare, android, release, windows, linux]
     runs-on: ubuntu-latest
     # Reports failures too — a silent pipeline is worse than a noisy one.
     if: always() && needs.prepare.result == 'success'
@@ -421,6 +429,8 @@ jobs:
             --arg apk_x64 "$DL/$BASE-android-x86_64.apk" \
             --arg win "$DL/$BASE-windows-x64.zip" \
             --arg linux "$DL/$BASE-linux-x64.tar.gz" \
+            --arg has_win "${{ needs.windows.result }}" \
+            --arg has_linux "${{ needs.linux.result }}" \
             --arg notes "$NOTES_URL" \
             --arg run "$RUN_URL" \
             '
@@ -429,12 +439,18 @@ jobs:
              # One direct link per artefact. Tapping a platform in Telegram
              # should start that download, not open a release page to hunt
              # through on a phone.
+             # Only the platforms that were actually built. A link to a
+             # file the release does not contain is a 404 on someone's phone,
+             # which is worse than the line not being there.
              def downloads:
                "📱 Android " + link($apk_arm64; "arm64-v8a")
                  + " · " + link($apk_arm32; "armeabi-v7a")
                  + " · " + link($apk_x64; "x86_64") + "\n"
-               + "🪟 " + link($win; "Windows x64") + "\n"
-               + "🐧 " + link($linux; "Linux x64") + "\n\n"
+               + (if $has_win == "success"
+                    then "🪟 " + link($win; "Windows x64") + "\n" else "" end)
+               + (if $has_linux == "success"
+                    then "🐧 " + link($linux; "Linux x64") + "\n" else "" end)
+               + "\n"
                + link($notes; "Release notes") + " · " + link($run; "Logs");
 
              {
