@@ -194,6 +194,13 @@ jobs:
     name: Windows EXE
     needs: prepare
     runs-on: windows-latest
+    # TEMPORARILY DISABLED. Flip to `true` to bring Windows builds back; the
+    # job is left whole rather than deleted so that is the only edit needed.
+    #
+    # `if: false` on the job rather than an `env` switch at the top of the
+    # file: a job-level `if` cannot see the `env` context, only `github`,
+    # `needs`, `vars` and `inputs`.
+    if: false
     steps:
       - uses: actions/checkout@v5
 
@@ -281,6 +288,15 @@ jobs:
     name: Publish release
     needs: [prepare, android, windows, linux]
     runs-on: ubuntu-latest
+    # A skipped job would otherwise skip everything downstream of it, so the
+    # results are checked by name instead. `windows` is deliberately absent
+    # from the list: skipped is a fine outcome for it, failed is not — and it
+    # cannot fail while it does not run.
+    if: >-
+      always()
+      && needs.prepare.result == 'success'
+      && needs.android.result == 'success'
+      && needs.linux.result == 'success'
     outputs:
       url: ${{ steps.publish.outputs.url }}
     steps:
@@ -311,7 +327,11 @@ jobs:
             echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-arm64-v8a.apk\` | Android · 64-bit ARM |"
             echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-armeabi-v7a.apk\` | Android · 32-bit ARM |"
             echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-x86_64.apk\` | Android · x86_64 |"
-            echo "| \`${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip\` | Windows x64 |"
+            # Only when the build actually ran: a row naming a file nobody
+            # can download is worse than no row.
+            if [ "${{ needs.windows.result }}" = "success" ]; then
+              echo "| \`${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip\` | Windows x64 |"
+            fi
             echo "| \`${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz\` | Linux x64 |"
             echo ""
             echo "Android ships one APK per architecture — take \`arm64-v8a\` unless the"

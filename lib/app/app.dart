@@ -225,6 +225,22 @@ class _InsetFromSystemBars extends StatelessWidget {
             // the screens without one want their backdrop up there, so the
             // top is never inset.
             top: false,
+
+            // **All three of the others, together.** `SafeArea` insets left
+            // and right by default, and in landscape that is where the bars
+            // live — the navigation bar runs down the right edge and the
+            // cutout eats the left. So the player, which asks for the whole
+            // window, was still being squeezed in from both sides: a strip of
+            // this widget's own surface colour showing down the left, and the
+            // whole picture sliding sideways every time the navigation bar
+            // appeared on the right.
+            //
+            // Naming only `top` and `bottom` and leaving the sides to their
+            // defaults is what hid it: in portrait the sides are zero, so
+            // nothing looked wrong until a film was watched the way films are
+            // watched.
+            left: edges != WindowEdges.none,
+            right: edges != WindowEdges.none,
             bottom: edges != WindowEdges.none,
             child: child,
           ),

@@ -456,7 +456,17 @@ Linux is not covered by that tool — its icons live in `linux/packaging/icons/h
 
 `.github/workflows/release.yml` builds Android APKs, a Windows zip and a Linux tarball,
 publishes a GitHub release and posts to Telegram. Runs on push to `main` or `dev`, or
-manually on any branch.
+manually on any branch. **There has never been a macOS job.**
+
+**The Windows job is temporarily switched off** — `if: false` on the job, which is left
+whole so turning it back on is that one line. Two things had to move with it, and both
+have to move back:
+
+- `release` cannot simply `needs:` a skipped job, or it skips too, so it checks the
+  results by name instead. `windows` is deliberately not among them: skipped is a fine
+  outcome for it and failed is not, and it cannot fail while it does not run.
+- The release-notes table only prints the Windows row when that job succeeded. A row
+  naming a file nobody can download is worse than no row.
 
 - **`main` is the only production branch**; every other ref builds as a dev channel —
   application id gets `.canary` and the app names itself **mPlayer (Dev)** (so both

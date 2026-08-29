@@ -180,6 +180,64 @@ void main() {
     });
   });
 
+  group('landscape, where the bars move to the sides', () {
+    // The screenshot that found this: a film playing with a white strip down
+    // the left and the navigation buttons down the right, the whole picture
+    // sliding sideways whenever those buttons appeared.
+    //
+    // `SafeArea` insets left and right *by default*. Naming only `top` and
+    // `bottom` and leaving the sides alone reads as harmless in portrait,
+    // where the sides are zero — and squeezes the player from both edges the
+    // moment the phone is turned, which is how films are watched.
+    const sideBar = 56.0;
+
+    Future<void> pumpLandscape(WidgetTester tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(900, 400);
+      tester.view.padding =
+          const FakeViewPadding(left: 48, right: sideBar);
+      tester.view.viewPadding =
+          const FakeViewPadding(left: 48, right: sideBar);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ProviderScope(child: MPlayerApp(router: buildRouter())),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Rect content(WidgetTester tester) =>
+        tester.getRect(find.byType(Scaffold).first);
+
+    testWidgets('the player fills the window edge to edge', (tester) async {
+      await pumpLandscape(tester);
+
+      final claim = claimWindowEdges(WindowEdges.none);
+      addTearDown(claim.release);
+      await tester.pumpAndSettle();
+
+      final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+      final rect = content(tester);
+
+      expect(rect.left, 0, reason: 'a strip of surface showed down the left');
+      expect(
+        rect.right,
+        size.width,
+        reason: 'the picture was squeezed in from the navigation bar',
+      );
+    });
+
+    testWidgets('every other screen still clears them', (tester) async {
+      await pumpLandscape(tester);
+
+      final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+      final rect = content(tester);
+
+      expect(rect.left, 48);
+      expect(rect.right, size.width - sideBar);
+    });
+  });
+
   group('leaving the player', () {
     late List<String> modes;
     late List<Object?> overlays;
