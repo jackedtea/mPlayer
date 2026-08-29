@@ -21,6 +21,7 @@ import 'appearance_settings.dart';
 import 'desktop_window.dart';
 import 'locale_controller.dart';
 import 'router.dart';
+import '../features/player/stable_insets.dart';
 import 'system_ui.dart';
 import 'theme.dart';
 
@@ -199,6 +200,13 @@ class _InsetFromSystemBars extends StatelessWidget {
     return ValueListenableBuilder<WindowEdges>(
       valueListenable: windowEdges,
       builder: (context, edges, _) {
+        // Noted here, above this widget's own `SafeArea`, which is the last
+        // place in the tree that still sees what the bars measure. The player
+        // lays its controls out against the largest reading rather than
+        // against whatever the bars happen to be doing at the moment.
+        recordSystemInsets(MediaQuery.viewPaddingOf(context));
+        recordSystemInsets(MediaQuery.paddingOf(context));
+
         // **The same widgets in the same places, whatever the answer.**
         //
         // Returning a bare `child` for the player and a wrapped one otherwise
