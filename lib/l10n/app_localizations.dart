@@ -884,6 +884,66 @@ abstract class AppLocalizations {
   /// **'Only where the server marks an intro chapter'**
   String get autoSkipIntroSub;
 
+  /// No description provided for @serverSegments.
+  ///
+  /// In en, this message translates to:
+  /// **'Server segments'**
+  String get serverSegments;
+
+  /// No description provided for @serverSegmentsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'What to do when a Jellyfin server marks part of an episode'**
+  String get serverSegmentsSub;
+
+  /// No description provided for @segmentIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening titles'**
+  String get segmentIntro;
+
+  /// No description provided for @segmentOutro.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing credits'**
+  String get segmentOutro;
+
+  /// No description provided for @segmentRecap.
+  ///
+  /// In en, this message translates to:
+  /// **'Recap'**
+  String get segmentRecap;
+
+  /// No description provided for @segmentPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get segmentPreview;
+
+  /// No description provided for @segmentCommercial.
+  ///
+  /// In en, this message translates to:
+  /// **'Advert'**
+  String get segmentCommercial;
+
+  /// No description provided for @segmentActionNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Do nothing'**
+  String get segmentActionNothing;
+
+  /// No description provided for @segmentActionAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Offer to skip'**
+  String get segmentActionAsk;
+
+  /// No description provided for @segmentActionSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip automatically'**
+  String get segmentActionSkip;
+
   /// No description provided for @screenAndGestures.
   ///
   /// In en, this message translates to:
@@ -1141,6 +1201,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skip intro'**
   String get skipIntro;
+
+  /// No description provided for @skipCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip credits'**
+  String get skipCredits;
+
+  /// No description provided for @skipRecap.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip recap'**
+  String get skipRecap;
+
+  /// No description provided for @skipPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip preview'**
+  String get skipPreview;
+
+  /// No description provided for @skipAdvert.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip advert'**
+  String get skipAdvert;
 
   /// No description provided for @lockPlayer.
   ///

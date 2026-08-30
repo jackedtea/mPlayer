@@ -433,6 +433,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoSkipIntroSub => 'Only where the server marks an intro chapter';
 
   @override
+  String get serverSegments => 'Server segments';
+
+  @override
+  String get serverSegmentsSub =>
+      'What to do when a Jellyfin server marks part of an episode';
+
+  @override
+  String get segmentIntro => 'Opening titles';
+
+  @override
+  String get segmentOutro => 'Closing credits';
+
+  @override
+  String get segmentRecap => 'Recap';
+
+  @override
+  String get segmentPreview => 'Preview';
+
+  @override
+  String get segmentCommercial => 'Advert';
+
+  @override
+  String get segmentActionNothing => 'Do nothing';
+
+  @override
+  String get segmentActionAsk => 'Offer to skip';
+
+  @override
+  String get segmentActionSkip => 'Skip automatically';
+
+  @override
   String get screenAndGestures => 'Screen & gestures';
 
   @override
@@ -567,6 +598,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skipIntro => 'Skip intro';
+
+  @override
+  String get skipCredits => 'Skip credits';
+
+  @override
+  String get skipRecap => 'Skip recap';
+
+  @override
+  String get skipPreview => 'Skip preview';
+
+  @override
+  String get skipAdvert => 'Skip advert';
 
   @override
   String get lockPlayer => 'Lock player';

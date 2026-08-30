@@ -87,11 +87,18 @@ class MediaChapter {
     required this.start,
     required this.end,
     this.isIntro = false,
+    this.imageUri,
   });
 
   final String title;
   final Duration start;
   final Duration end;
+
+  /// The still the source generated for this chapter, where it has one.
+  ///
+  /// Only ever set on a server chapter — a container carries titles and
+  /// timestamps and no pictures.
+  final Uri? imageUri;
 
   /// Drives the "Skip intro" pill, which appears only while playback is
   /// inside this chapter.
@@ -117,6 +124,9 @@ class PlayableMedia {
     this.startPosition = Duration.zero,
     this.chapters = const <MediaChapter>[],
     this.serverStreams = const <ServerStream>[],
+    this.segments = const <MediaSegment>[],
+    this.trickplay,
+    this.externalSubtitles = const <ExternalSubtitle>[],
   });
 
   final MediaRef ref;
@@ -150,6 +160,21 @@ class PlayableMedia {
   /// list still knows which of the original's the user chose.
   final List<ServerStream> serverStreams;
 
+  /// The stretches a server has labelled — intro, outro, recap, and so on.
+  ///
+  /// Empty for everything but a server, and empty on a server that has never
+  /// had a detection plugin run over the item. What makes "Skip intro" mean
+  /// something rather than guess: a chapter named "Intro" is a rip's opinion,
+  /// a segment is the server's.
+  final List<MediaSegment> segments;
+
+  /// The scrubber preview sheets, where the server generated them.
+  final ServerTrickplay? trickplay;
+
+  /// Subtitles the server keeps as files of their own, which the decoder
+  /// would otherwise never see.
+  final List<ExternalSubtitle> externalSubtitles;
+
   String get title => ref.title;
 
   /// The same media, opened somewhere else.
@@ -166,7 +191,18 @@ class PlayableMedia {
         startPosition: position,
         chapters: chapters,
         serverStreams: serverStreams,
+        segments: segments,
+        trickplay: trickplay,
+        externalSubtitles: externalSubtitles,
       );
+
+  /// The labelled stretch [position] falls in, or null outside any.
+  MediaSegment? segmentAt(Duration position) {
+    for (final MediaSegment s in segments) {
+      if (s.contains(position)) return s;
+    }
+    return null;
+  }
 
   /// The chapter [position] falls in, or null outside any.
   MediaChapter? chapterAt(Duration position) {

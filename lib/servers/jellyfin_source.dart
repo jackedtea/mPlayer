@@ -146,10 +146,42 @@ class JellyfinSource implements MediaLibrarySource {
   Future<ServerItem> item(String itemId) async {
     final json = await _get('/Items/$itemId', <String, String>{
       'userId': _profile.userId,
-      'fields': _fields,
+      'fields': _detailFields,
     });
 
-    return serverItemFromJson(json);
+    return serverItemFromJson(json, base: _base, token: _token);
+  }
+
+  @override
+  Uri? chapterImageUrl(String itemId, ServerChapter chapter, {int? maxWidth}) =>
+      chapterImageUrlFor(
+        chapter,
+        base: _base,
+        itemId: itemId,
+        maxWidth: maxWidth,
+      );
+
+  @override
+  Future<List<MediaSegment>> segments(String itemId) async {
+    // Jellyfin 10.10 and later only, and Emby has nothing like it. An older
+    // server answers 404, which `_get` would turn into a sentence about a
+    // refused request — so this is the one call that swallows its failure:
+    // no segments is the correct answer for most items on most servers, and
+    // it must not stop a film from playing.
+    if (_profile.kind != ServerKind.jellyfin) return const <MediaSegment>[];
+
+    try {
+      final json = await _get('/MediaSegments/$itemId', <String, String>{
+        'includeSegmentTypes': supportedSegmentKinds
+            .map((k) => k.wireName)
+            .join(','),
+      });
+
+      return mediaSegmentsFromJson(json);
+    } catch (e) {
+      debugPrint('No media segments for $itemId: $e');
+      return const <MediaSegment>[];
+    }
   }
 
   @override
@@ -420,6 +452,14 @@ class JellyfinSource implements MediaLibrarySource {
   // items' worth of words the app throws away.
   static const _fields = 'Overview,ProductionYear,Genres,People,ChildCount,'
       'PrimaryImageAspectRatio,Studios,Status,EndDate';
+
+  /// What the detail fetch asks for on top of [_fields].
+  ///
+  /// Kept off the listings deliberately: a chapter list is dozens of entries
+  /// with a title and a tag each, and a trickplay manifest is one more map
+  /// again — a hundred-poster grid would carry both a hundred times over for
+  /// something only the player ever reads.
+  static const _detailFields = '$_fields,Chapters,Trickplay';
 
   Uri _url(String path, [Map<String, String>? query]) {
     return _base.replace(

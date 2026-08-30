@@ -8,6 +8,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../servers/media_library_source.dart';
 import '../player/playback_controller.dart';
 import 'player_settings.dart';
 import '../../l10n/app_localizations.dart';
@@ -90,6 +91,17 @@ class PlayerSettingsPage extends ConsumerWidget {
           value: settings.autoSkipIntro,
           onChanged: (v) => save(settings.copyWith(autoSkipIntro: v)),
         ),
+        // Jellyfin 10.10 and later. Shown whatever is configured: a setting
+        // that appears only once a server happens to be signed in is a
+        // setting nobody finds, and the rows are harmless with none.
+        SettingsSection(title: AppLocalizations.of(context).serverSegments),
+        SettingsNote(AppLocalizations.of(context).serverSegmentsSub),
+        for (final MediaSegmentKind kind in supportedSegmentKinds)
+          SettingsValueRow(
+            title: segmentKindLabel(context, kind),
+            value: segmentActionLabel(context, settings.actionFor(kind)),
+            onTap: () => _pickSegmentAction(context, settings, kind, save),
+          ),
         SettingsSection(title: AppLocalizations.of(context).screenAndGestures),
         // Both are Android behaviours with no desktop equivalent, so the rows
         // are absent rather than present and inert.
@@ -157,6 +169,44 @@ class PlayerSettingsPage extends ConsumerWidget {
     await save(settings.copyWith(hardwareDecoding: chosen));
   }
 
+  Future<void> _pickSegmentAction(
+    BuildContext context,
+    PlayerSettings settings,
+    MediaSegmentKind kind,
+    Future<void> Function(PlayerSettings) save,
+  ) async {
+    final chosen = await showModalBottomSheet<SegmentAction>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (final SegmentAction action in SegmentAction.values)
+              ListTile(
+                title: Text(segmentActionLabel(sheetContext, action)),
+                trailing: action == settings.actionFor(kind)
+                    ? const Icon(Icons.check_rounded)
+                    : null,
+                onTap: () => Navigator.of(sheetContext).pop(action),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (chosen == null) return;
+
+    await save(
+      settings.copyWith(
+        segmentActions: <MediaSegmentKind, SegmentAction>{
+          ...settings.segmentActions,
+          kind: chosen,
+        },
+      ),
+    );
+  }
+
   Future<void> _pickSkip(
     BuildContext context,
     Duration current,
@@ -187,6 +237,33 @@ class PlayerSettingsPage extends ConsumerWidget {
     if (chosen == null) return;
     await save(Duration(seconds: chosen));
   }
+}
+
+/// What each kind of segment is called on the settings page.
+///
+/// The viewer's words, not the server's: "Closing credits" rather than
+/// "Outro", and "Advert" rather than "Commercial". Nobody scanning a settings
+/// list should have to learn a schema to use it.
+String segmentKindLabel(BuildContext context, MediaSegmentKind kind) {
+  final l10n = AppLocalizations.of(context);
+  return switch (kind) {
+    MediaSegmentKind.intro => l10n.segmentIntro,
+    MediaSegmentKind.outro => l10n.segmentOutro,
+    MediaSegmentKind.recap => l10n.segmentRecap,
+    MediaSegmentKind.preview => l10n.segmentPreview,
+    MediaSegmentKind.commercial => l10n.segmentCommercial,
+    // Never listed — `supportedSegmentKinds` is what the page iterates.
+    MediaSegmentKind.unknown => l10n.segmentIntro,
+  };
+}
+
+String segmentActionLabel(BuildContext context, SegmentAction action) {
+  final l10n = AppLocalizations.of(context);
+  return switch (action) {
+    SegmentAction.nothing => l10n.segmentActionNothing,
+    SegmentAction.askToSkip => l10n.segmentActionAsk,
+    SegmentAction.skip => l10n.segmentActionSkip,
+  };
 }
 
 /// "+250 ms", "0 ms". The sign is always shown for a non-zero value: which

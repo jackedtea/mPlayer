@@ -13,15 +13,20 @@ import 'package:mplayer/features/player/controls_overlay.dart';
 import 'package:mplayer/features/player/stable_insets.dart';
 import 'package:mplayer/features/player/playback_state.dart';
 import 'package:mplayer/features/player/player_ui_state.dart';
+import 'package:mplayer/servers/media_library_source.dart';
 import 'package:mplayer/sources/media_source.dart';
 
-PlayableMedia media({bool transcoding = false}) {
+PlayableMedia media({
+  bool transcoding = false,
+  List<MediaSegment> segments = const <MediaSegment>[],
+}) {
   return PlayableMedia(
     ref: const MediaRef(sourceId: 'device', itemId: '/a.mkv', title: 'Clip'),
     uri: Uri.parse('file:///a.mkv'),
     kind: SourceKind.device,
     capabilities: SourceCapabilities(transcoding: transcoding),
     sourceLine: 'Device',
+    segments: segments,
   );
 }
 
@@ -32,6 +37,7 @@ Future<void> pumpControls(
   PlaybackState state = const PlaybackState(),
   bool transcoding = false,
   double bottomInset = 0,
+  MediaSegment? skipSegment,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
@@ -71,6 +77,8 @@ Future<void> pumpControls(
           onFullscreen: () {},
           onMore: () {},
           onSkipIntro: (_) {},
+          skipSegment: skipSegment,
+          onSkipSegment: (_) {},
           notImplemented: (_) {},
         ),
         ),
@@ -330,6 +338,88 @@ void main() {
         shown,
         reason: 'the pill moved when the navigation bar did',
       );
+    });
+  });
+
+  group('server segments', () {
+    /// An episode whose opening titles the server has actually marked.
+    PlaybackState segmented({
+      Duration position = const Duration(seconds: 30),
+      MediaSegmentKind kind = MediaSegmentKind.intro,
+    }) {
+      return PlaybackState(
+        media: media(
+          segments: <MediaSegment>[
+            MediaSegment(
+              kind: kind,
+              start: Duration.zero,
+              end: const Duration(seconds: 90),
+            ),
+          ],
+        ),
+        duration: const Duration(minutes: 24),
+        position: position,
+      );
+    }
+
+    testWidgets('an offered segment draws a pill worded for its kind',
+        (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: segmented(kind: MediaSegmentKind.outro),
+        skipSegment: const MediaSegment(
+          kind: MediaSegmentKind.outro,
+          start: Duration.zero,
+          end: Duration(seconds: 90),
+        ),
+      );
+
+      // "Skip credits", not "Skip outro": nobody watching a film calls the
+      // closing titles an outro.
+      expect(find.text('Skip credits'), findsOneWidget);
+      expect(find.text('Skip intro'), findsNothing);
+    });
+
+    testWidgets('a segment set to do nothing draws no pill', (tester) async {
+      // The page filters on the setting; with nothing offered the chrome has
+      // nothing to show, even though a segment is playing.
+      await pumpControls(tester, const Size(900, 500), state: segmented());
+
+      expect(find.text('Skip intro'), findsNothing);
+    });
+
+    testWidgets('the container heuristic stands down where segments exist',
+        (tester) async {
+      // Two opinions about the same question would otherwise put two pills on
+      // the screen.
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: PlaybackState(
+          media: media(
+            segments: const <MediaSegment>[
+              MediaSegment(
+                kind: MediaSegmentKind.intro,
+                start: Duration.zero,
+                end: Duration(seconds: 90),
+              ),
+            ],
+          ),
+          duration: const Duration(minutes: 24),
+          position: const Duration(seconds: 30),
+          containerChapters: const <MediaChapter>[
+            MediaChapter(
+              title: 'Intro',
+              start: Duration.zero,
+              end: Duration(seconds: 90),
+              isIntro: true,
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('Skip intro'), findsNothing);
     });
   });
 }

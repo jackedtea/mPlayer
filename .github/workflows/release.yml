@@ -440,8 +440,14 @@ jobs:
              # should start that download, not open a release page to hunt
              # through on a phone.
              # Only the platforms that were actually built. A link to a
-             # file the release does not contain is a 404 on someone's phone,
-             # which is worse than the line not being there.
+             # file the release does not contain is a 404 on a phone, which
+             # is worse than the line not being there.
+             #
+             # NO APOSTROPHES ANYWHERE IN THIS PROGRAM. The whole thing is a
+             # single-quoted shell argument, so one closes the string early
+             # and jq is left with no program at all — it exits 3 with
+             # "Top-level program not given", which says nothing about where
+             # the quote was. A comment is what did it once already.
              def downloads:
                "📱 Android " + link($apk_arm64; "arm64-v8a")
                  + " · " + link($apk_arm32; "armeabi-v7a")

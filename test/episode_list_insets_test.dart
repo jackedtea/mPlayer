@@ -128,6 +128,12 @@ class _FakeSeriesServer implements MediaLibrarySource {
   @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) => null;
   @override
+  Future<List<MediaSegment>> segments(String itemId) async =>
+      const <MediaSegment>[];
+  @override
+  Uri? chapterImageUrl(String itemId, ServerChapter chapter, {int? maxWidth}) =>
+      null;
+  @override
   Uri? personImageUrl(ServerPerson person, {int? maxWidth}) => null;
   @override
   Future<int> itemCount(String viewId) async => 0;

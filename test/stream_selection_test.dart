@@ -328,6 +328,12 @@ class _RecordingLibrary implements MediaLibrarySource {
 
   // Nothing below is exercised here.
   @override
+  Future<List<MediaSegment>> segments(String itemId) async =>
+      const <MediaSegment>[];
+  @override
+  Uri? chapterImageUrl(String itemId, ServerChapter chapter, {int? maxWidth}) =>
+      null;
+  @override
   Future<List<ServerItem>> episodes(String seriesId, {String? seasonId}) async =>
       const <ServerItem>[];
   @override

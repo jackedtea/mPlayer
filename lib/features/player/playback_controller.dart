@@ -14,11 +14,13 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/resume_repository.dart';
+import '../../servers/media_library_source.dart';
 import '../settings/player_settings.dart';
 import '../../sources/local_source.dart';
 import '../../sources/media_source.dart';
 import '../../sources/source_registry.dart';
 import 'playback_state.dart';
+import 'segment_skipper.dart';
 import 'smart_subtitles.dart';
 
 /// Hand-written, per the project's no-codegen rule for Riverpod.
@@ -45,6 +47,17 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   /// Guards against re-reading the chapter list on every duration tick.
   bool _chaptersLoaded = false;
+
+  /// Where the position stream last reported, so [_applySegments] can tell a
+  /// second of playback from a seek. Null until the first tick of a file.
+  Duration? _lastPosition;
+
+  /// The segments already seeked past on this file.
+  ///
+  /// An auto-skip lands on the segment's end, which is one millisecond from
+  /// still being inside it; without this a rounding error or a rewind to just
+  /// before the end can bounce the viewer out a second time.
+  final Set<MediaSegment> _skipped = <MediaSegment>{};
 
   /// Smart subtitles run once per file, on the first real track list. Rerunning
   /// on every later one would undo a track the user picked by hand.
@@ -116,6 +129,8 @@ class PlaybackController extends Notifier<PlaybackState> {
     // Otherwise a second file inherits the first one's chapter list.
     _chaptersLoaded = false;
     _smartSubtitlesApplied = false;
+    _lastPosition = null;
+    _skipped.clear();
     // A new file gets its own still straight away rather than waiting out
     // the previous one's interval.
     _lastThumbnail = DateTime.fromMillisecondsSinceEpoch(0);
@@ -144,7 +159,55 @@ class PlaybackController extends Notifier<PlaybackState> {
       );
     } catch (e) {
       state = state.copyWith(buffering: false, error: 'Playback failed: $e');
+      return;
     }
+
+    // After the open, not before: `sub-files-append` is read when a file is
+    // loaded, so appending first would attach this file's subtitles to
+    // whatever was already playing.
+    await _loadServerSubtitles(media.externalSubtitles);
+  }
+
+  /// Hands libmpv the subtitle files a server keeps beside the video.
+  ///
+  /// Appended without being selected. Which one to show is smart subtitles'
+  /// decision or the user's, and a server that holds six languages would
+  /// otherwise leave whichever it listed last on the screen.
+  Future<void> _loadServerSubtitles(List<ExternalSubtitle> subtitles) async {
+    if (subtitles.isEmpty) return;
+
+    final platform = _player?.platform;
+    if (platform is! NativePlayer) return;
+
+    for (final ExternalSubtitle subtitle in subtitles) {
+      try {
+        await platform.setProperty('sub-files-append', subtitle.uri.toString());
+      } catch (e) {
+        // One unreadable subtitle must not cost the user the other five, and
+        // it costs them nothing they can see: the track simply is not listed.
+        debugPrint('Could not attach ${subtitle.label}: $e');
+      }
+    }
+  }
+
+  /// Acts on the stretch [now] has just entered, if the user asked for it.
+  ///
+  /// The rule itself lives in [segmentToSkip], where it can be tested against
+  /// a table of positions rather than against a decoder.
+  Future<void> _applySegments(Duration? previous, Duration now) async {
+    final settings = ref.read(playerSettingsProvider);
+
+    final segment = segmentToSkip(
+      segments: state.segments,
+      previous: previous,
+      now: now,
+      actionFor: settings.actionFor,
+      alreadySkipped: _skipped,
+    );
+    if (segment == null) return;
+
+    _skipped.add(segment);
+    await seek(segment.end);
   }
 
   /// Reads the folder [mediaRef] came from and turns it into the playlist.
@@ -357,7 +420,10 @@ class PlaybackController extends Notifier<PlaybackState> {
     final s = player.stream;
     _subs.addAll(<StreamSubscription<void>>[
       s.position.listen((v) {
+        final previous = _lastPosition;
+        _lastPosition = v;
         state = state.copyWith(position: v);
+        unawaited(_applySegments(previous, v));
         unawaited(_recordProgress());
       }),
       s.duration.listen((v) {

@@ -38,7 +38,7 @@ statically analysed and has its pure logic unit-tested; none of it has run on ha
 Also open:
 
 1. **The quality pill** is hidden, not stubbed: it only appears for a source that
-   advertises `SourceCapabilities.transcoding`, and none does until Phase 4.
+   advertises `SourceCapabilities.transcoding`, which is now true of a Jellyfin source.
 2. English literals remain only in the sample-data screens; see Localisation.
 3. Dropped on purpose, so nobody picks them up again by accident: **NFS** (no viable
    pure-Dart client — it would mean hand-written RPC/XDR or a native build per
@@ -307,17 +307,70 @@ Two independent sources, and the distinction matters:
   from libmpv's `chapter-list/*` properties once the duration is known, so **local files
   do get chapters and ticks**. `getProperty` returns `""` for a missing property, so a
   file without them yields a count of 0 and stays silent.
-- **Source** — a server supplies its own list *with intro segments marked*.
+- **Source** — a server supplies its own list, with a still per chapter where it has
+  generated them (`MediaChapter.imageUri`, drawn in the chapters sheet).
   `SourceCapabilities.chapters` refers only to this. False there does **not** mean the
   media is chapterless.
 
-`PlaybackState.chapters` prefers the source list when it is non-empty, because only it
-carries reliable `isIntro`. Container chapters fall back to a title heuristic
-(`_looksLikeIntro`) — a false positive costs the user one ignorable pill.
+`PlaybackState.chapters` prefers the source list when it is non-empty. Container chapters
+fall back to a title heuristic (`_looksLikeIntro`) — a false positive costs the user one
+ignorable pill. **A server chapter never goes through that heuristic**: a server that
+knows what an intro is says so through media segments instead, and letting a chapter
+called "Opening" claim it too would put two pills on the screen.
 
-Next are design build steps 4–5: the SMB/WebDAV drivers behind the browser (1b), then the
-Jellyfin client that replaces `core/sample_library.dart` and finally fills in chapters,
-watch-state reporting and transcode control.
+## Media segments, trickplay, external subtitles
+
+The three things `refs/jellyfin-android` does with a Jellyfin server that a chapter list
+alone cannot. All of them ride on the **detail fetch** (`JellyfinSource.item`), which is
+the only request that asks for `_detailFields` — `Chapters` and `Trickplay` are deliberately
+off the listing field list, or a hundred-poster grid would carry both a hundred times over.
+
+### Media segments (`/MediaSegments/{id}`, Jellyfin 10.10+)
+
+A chapter says *where* something is; a segment says **what** it is. Five kinds are acted
+on — intro, outro, preview, recap, commercial — each with a per-kind action in Player
+settings: do nothing, offer to skip, skip automatically. Intro and outro default to
+*offer*, matching jellyfin-android's own defaults.
+
+- **Emby is never asked** and a 404 is swallowed: `segments()` is the one call that
+  returns an empty list rather than a `ServerException`, because no segments is the
+  correct answer for most items on most servers and must not stop a film playing.
+- **A start of zero is real.** `ticksToDuration` reads zero as "the server did not say",
+  which is right for a runtime and would silently drop the commonest intro there is —
+  hence `ticksToPosition` beside it. Using the wrong one is invisible in testing against
+  an episode whose titles start at 1:04.
+- **The skip rule is a pure function**, `features/player/segment_skipper.dart`, for the
+  same reason `smartSelection` is one. Its clauses each exist to stop the player fighting
+  its user: a skip fires only when playback *runs into* a segment (a jump larger than
+  `maximumPlaybackStep` is a scrubber, not a second of playback), only once per segment,
+  and never for a stretch under a second — where the seek stalls the decoder for longer
+  than the thing being skipped lasted.
+- `PlaybackState.currentIntro` returns null the moment `segments` is non-empty. That is
+  what keeps the container heuristic and the server's own answer from both drawing a pill.
+
+### Trickplay
+
+The scrubber preview, from the server's **sprite sheets**: one image holds
+`tileWidth × tileHeight` thumbnails, one every `interval` ms, so a scrub across a
+two-hour film costs a handful of requests rather than a thousand. `ServerTrickplay.tileFor`
+turns a position into a sheet URL and a rectangle inside it, and `_TrickplayTileImage`
+paints that rectangle through a canvas — no widget crops a source rect without first
+laying the whole sheet out. The **widest** advertised resolution is chosen: a preview
+blown up from 160px is a smear, and the sheets are fetched one per scrub either way.
+
+This is not the locally-generated scrubber thumbnail that was dropped on purpose; the
+server has already done the work.
+
+### External subtitles
+
+A subtitle stream with `DeliveryMethod: External` is a file of its own that nothing would
+ever fetch — a direct play hands the video over untouched and the sidecar simply never
+travels with it. `externalSubtitlesFrom` resolves those against the server root with the
+token in the query (libmpv fetches them itself and cannot be handed a header), and the
+controller appends each with `sub-files-append` **after** the open, without selecting one:
+which to show is smart subtitles' decision or the user's. `DeliveryMethod` is checked as
+well as `DeliveryUrl`, because the URL survives on a stream the server has since decided
+to burn in — acting on it then draws subtitles twice.
 
 ## Layout rules learned the hard way
 
@@ -528,6 +581,14 @@ Four things that are easy to get wrong and are already handled:
    libmpv fetches it itself and cannot be handed a header.
 
 ## Reference material
+
+`../refs/jellyfin-android` (GPL-2.0) — the official Android client. Kotlin, and a
+WebView around a native player rather than anything to port, but it is the **reference for
+what a Jellyfin client is expected to do**: media segments, trickplay, the device profile,
+the quality ladder. Media segments and trickplay above follow its behaviour deliberately,
+including its defaults — read `player/mediasegments/` and `player/ui/TrickplayHelper.kt`.
+Still missing from mPlayer next to it: offline downloads, a server switcher, and the
+Android Auto media-browse tree.
 
 `../refs/plezy` (see its LICENSE) — a shipping Flutter client for Plex, Jellyfin and Emby
 on the same Flutter version. The best reference for anything Jellyfin: points 2 and 3

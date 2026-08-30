@@ -372,6 +372,14 @@ code path is complete and unit-tested; neither has been run against a real NAS.
 - [ ] `EmbySource`: same surface; Emby and Jellyfin diverged enough that a shared base plus two subclasses is right — mirror `refs/.../lib/services/media_server_service_base.dart` (837 lines)
 - [x] Quick-connect / device ID handling
 - [ ] Multi-server support with a server switcher
+- [x] Media segments (`/MediaSegments/{id}`, Jellyfin 10.10+) — intro/outro/preview/recap/
+      commercial, a per-kind action in Player settings (nothing / offer / skip), the skip
+      pill in the player, and `features/player/segment_skipper.dart` as the pure rule
+- [x] Server chapters, with the stills the server generated, drawn in the chapters sheet
+- [x] Trickplay — scrubber preview from the server's sprite sheets, `ServerTrickplay`
+- [x] External subtitles (`DeliveryMethod: External`) appended to libmpv after the open
+- [ ] Offline downloads of server items — still parked; see `refs/jellyfin-android`'s
+      `downloads/` for the shape of it
 - [ ] Transcode settings (max bitrate, resolution cap, force direct play) — the quality
       pill appears now that a source advertises transcoding, but choosing a bitrate is
       still inert

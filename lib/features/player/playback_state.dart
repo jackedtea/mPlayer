@@ -5,6 +5,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../../servers/media_library_source.dart';
 import '../../sources/media_source.dart';
 
 /// The folder a file was opened from, as a playlist.
@@ -230,8 +231,27 @@ class PlaybackState {
     return null;
   }
 
+  /// What the source says about this file, stretch by stretch.
+  ///
+  /// Empty for a local file, an SMB share and any server that has never had a
+  /// segment plugin run over the item.
+  List<MediaSegment> get segments => media?.segments ?? const <MediaSegment>[];
+
+  /// The labelled stretch playing right now, if any.
+  MediaSegment? get currentSegment {
+    for (final MediaSegment s in segments) {
+      if (s.contains(position)) return s;
+    }
+    return null;
+  }
+
   /// The intro chapter currently playing, if any — the skip pill's trigger.
+  ///
+  /// Stands down entirely once the source supplies segments. A title
+  /// heuristic and a server's own answer are two opinions about the same
+  /// question, and letting both speak puts two pills on the screen.
   MediaChapter? get currentIntro {
+    if (segments.isNotEmpty) return null;
     final chapter = chapterAt(position);
     return chapter != null && chapter.isIntro ? chapter : null;
   }

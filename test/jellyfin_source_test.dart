@@ -419,4 +419,93 @@ void main() {
       );
     });
   });
+
+  group('media segments', () {
+    test('are asked for by type, and read back in order', () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{
+          'Items': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'Type': 'Intro',
+              'StartTicks': 0,
+              'EndTicks': 900000000,
+            },
+          ],
+        }),
+      );
+
+      final segments = await source.segments('item-1');
+
+      expect(adapter.requests.single.uri.path, '/MediaSegments/item-1');
+      // The filter is sent as well as checked on the way back: a server that
+      // grows a sixth type should not start producing pills nobody labelled.
+      expect(
+        adapter.requests.single.uri.queryParameters['includeSegmentTypes'],
+        'Intro,Outro,Preview,Recap,Commercial',
+      );
+      expect(segments.single.kind, MediaSegmentKind.intro);
+    });
+
+    test('a server too old for the endpoint reports none, not an error',
+        () async {
+      // Media segments arrived in Jellyfin 10.10. A 404 here is the ordinary
+      // answer from anything older, and it must not stop a film playing.
+      final (source, _) = sourceWith(
+        (_) => _json(<String, dynamic>{}, status: 404),
+      );
+
+      expect(await source.segments('item-1'), isEmpty);
+    });
+
+    test('Emby is never asked at all', () async {
+      final adapter = _FakeAdapter(
+        (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
+      );
+      final dio = Dio(BaseOptions(validateStatus: (_) => true))
+        ..httpClientAdapter = adapter;
+
+      final emby = JellyfinSource(
+        profile: const ServerProfile(
+          id: 'p2',
+          kind: ServerKind.emby,
+          name: 'Emby',
+          uri: 'https://emby.home.lan',
+          userId: 'u1',
+          username: 'nam',
+        ),
+        token: 'tok',
+        identity: _identity,
+        client: dio,
+      );
+
+      expect(await emby.segments('item-1'), isEmpty);
+      // Emby has no such route; calling it would be one wasted round trip
+      // per press of Play.
+      expect(adapter.requests, isEmpty);
+    });
+  });
+
+  group('the detail fetch', () {
+    test('asks for the chapters and trickplay only the player reads',
+        () async {
+      // A hundred-poster grid carrying both a hundred times over is the
+      // reason these are off the listing field list.
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{'Id': 'item-1', 'Name': 'Dune'}),
+      );
+
+      await source.item('item-1');
+      final detailFields =
+          adapter.requests.single.uri.queryParameters['fields']!;
+      expect(detailFields, contains('Chapters'));
+      expect(detailFields, contains('Trickplay'));
+
+      adapter.requests.clear();
+      await source.items('view-1');
+      expect(
+        adapter.requests.single.uri.queryParameters['fields'],
+        isNot(contains('Chapters')),
+      );
+    });
+  });
 }

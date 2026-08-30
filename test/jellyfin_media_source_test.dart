@@ -26,11 +26,13 @@ class _FakeLibrary implements MediaLibrarySource {
     required this.item_,
     required this.playback_,
     this.failWith,
+    this.segments_ = const <MediaSegment>[],
   });
 
   final ServerItem item_;
   final ServerPlayback playback_;
   final ServerException? failWith;
+  final List<MediaSegment> segments_;
 
   final List<(String, Duration, bool)> progress = <(String, Duration, bool)>[];
   final List<(String, Duration, String?)> stops = <(String, Duration, String?)>[];
@@ -76,6 +78,18 @@ class _FakeLibrary implements MediaLibrarySource {
   }) async {
     stops.add((itemId, position, playSessionId));
   }
+
+  @override
+  Future<List<MediaSegment>> segments(String itemId) async => segments_;
+
+  @override
+  Uri? chapterImageUrl(String itemId, ServerChapter chapter, {int? maxWidth}) =>
+      chapter.imageTag == null
+          ? null
+          : Uri.parse(
+              'https://media.home.lan/Items/$itemId/Images/Chapter/'
+              '\${chapter.index}?tag=\${chapter.imageTag}',
+            );
 
   // Nothing below is exercised here.
   @override
@@ -245,9 +259,105 @@ void main() {
       await source.reportStopped('a1', position: const Duration(minutes: 1));
     });
   });
+  group('what the player is told about a server file', () {
+    test('segments, chapters and trickplay all arrive with the handle',
+        () async {
+      final library = _FakeLibrary(
+        item_: ServerItem(
+          id: 'a1',
+          title: 'Tomozaki',
+          runtime: const Duration(minutes: 24),
+          chapters: const <ServerChapter>[
+            ServerChapter(
+              index: 0,
+              title: 'Cold open',
+              start: Duration.zero,
+              imageTag: 'aaa',
+            ),
+            ServerChapter(
+              index: 1,
+              title: 'Titles',
+              start: Duration(seconds: 90),
+            ),
+          ],
+          trickplay: ServerTrickplay(
+            width: 320,
+            height: 180,
+            tileWidth: 10,
+            tileHeight: 10,
+            interval: 10000,
+            thumbnailCount: 144,
+            tileUrl: (i) => Uri.parse('https://media.home.lan/tile/$i.jpg'),
+          ),
+        ),
+        playback_: ServerPlayback(
+          uri: Uri.parse('https://media.home.lan/Videos/a1/stream'),
+          isDirectPlay: true,
+          externalSubtitles: <ExternalSubtitle>[
+            ExternalSubtitle(
+              uri: Uri.parse('https://media.home.lan/sub.srt'),
+              label: 'English - SRT',
+              index: 2,
+            ),
+          ],
+        ),
+        segments_: const <MediaSegment>[
+          MediaSegment(
+            kind: MediaSegmentKind.intro,
+            start: Duration(seconds: 90),
+            end: Duration(seconds: 180),
+          ),
+        ],
+      );
+
+      final media = await JellyfinMediaSource(library).resolve(
+        const MediaRef(sourceId: 'p1', itemId: 'a1', title: ''),
+      );
+
+      expect(media.segments.single.kind, MediaSegmentKind.intro);
+      expect(media.trickplay, isNotNull);
+      expect(media.externalSubtitles.single.label, 'English - SRT');
+
+      // A chapter runs until the next one begins, and the last one to the
+      // end of the film.
+      expect(media.chapters, hasLength(2));
+      expect(media.chapters.first.end, const Duration(seconds: 90));
+      expect(media.chapters.last.end, const Duration(minutes: 24));
+      expect(media.chapters.first.imageUri, isNotNull);
+      // Most servers extract no chapter stills at all, and a row without one
+      // is the normal case rather than a broken image.
+      expect(media.chapters.last.imageUri, isNull);
+    });
+
+    test('a server chapter never claims to be an intro on its own', () async {
+      // The title heuristic is for containers, where a name is the only
+      // signal there is. A server says so through its segments instead, and
+      // letting a chapter called "Opening" claim it too puts two pills on
+      // the screen.
+      final library = _FakeLibrary(
+        item_: const ServerItem(
+          id: 'a1',
+          title: 'Tomozaki',
+          runtime: Duration(minutes: 24),
+          chapters: <ServerChapter>[
+            ServerChapter(index: 0, title: 'Opening', start: Duration.zero),
+          ],
+        ),
+        playback_: ServerPlayback(
+          uri: Uri.parse('https://media.home.lan/Videos/a1/stream'),
+          isDirectPlay: true,
+        ),
+      );
+
+      final media = await JellyfinMediaSource(library).resolve(
+        const MediaRef(sourceId: 'p1', itemId: 'a1', title: ''),
+      );
+
+      expect(media.chapters.single.isIntro, isFalse);
+    });
+  });
 }
 
-/// Fails every report, the way a server that has gone away would.
 class _ThrowingLibrary extends _FakeLibrary {
   _ThrowingLibrary()
       : super(

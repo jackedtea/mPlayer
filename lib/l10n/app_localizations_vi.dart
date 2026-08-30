@@ -433,6 +433,37 @@ class AppLocalizationsVi extends AppLocalizations {
   String get autoSkipIntroSub => 'Chỉ khi máy chủ đánh dấu chương intro';
 
   @override
+  String get serverSegments => 'Phân đoạn từ máy chủ';
+
+  @override
+  String get serverSegmentsSub =>
+      'Cần làm gì khi máy chủ Jellyfin đánh dấu một phần của tập phim';
+
+  @override
+  String get segmentIntro => 'Nhạc mở đầu';
+
+  @override
+  String get segmentOutro => 'Credit cuối phim';
+
+  @override
+  String get segmentRecap => 'Tóm tắt tập trước';
+
+  @override
+  String get segmentPreview => 'Giới thiệu tập sau';
+
+  @override
+  String get segmentCommercial => 'Quảng cáo';
+
+  @override
+  String get segmentActionNothing => 'Không làm gì';
+
+  @override
+  String get segmentActionAsk => 'Hỏi trước khi bỏ qua';
+
+  @override
+  String get segmentActionSkip => 'Tự động bỏ qua';
+
+  @override
   String get screenAndGestures => 'Màn hình & cử chỉ';
 
   @override
@@ -567,6 +598,18 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get skipIntro => 'Bỏ qua intro';
+
+  @override
+  String get skipCredits => 'Bỏ qua credit';
+
+  @override
+  String get skipRecap => 'Bỏ qua tóm tắt';
+
+  @override
+  String get skipPreview => 'Bỏ qua giới thiệu';
+
+  @override
+  String get skipAdvert => 'Bỏ qua quảng cáo';
 
   @override
   String get lockPlayer => 'Khoá trình phát';

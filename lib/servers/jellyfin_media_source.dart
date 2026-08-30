@@ -49,6 +49,13 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
         // which is what makes the quality control mean anything.
         transcoding: true,
         reportsWatchState: true,
+        // A server extracts its own chapter list, stills and all. Whether a
+        // given item has one is a different question, answered by the list
+        // coming back empty.
+        chapters: true,
+        // Subtitles the server keeps beside the video, handed to the player
+        // as URLs rather than found on a disk it cannot see.
+        externalSubtitles: true,
       );
 
   @override
@@ -64,6 +71,11 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
           ? preferences.trackChoice
           : null;
 
+      // Fetched alongside the playback resolve rather than after it: the
+      // call is independent of everything the resolve decides, and waiting
+      // for it in series would add a round trip to every press of Play.
+      final segmentsFuture = library.segments(ref.itemId);
+
       final playback = await library.playback(
         ref.itemId,
         PlaybackCapabilities(
@@ -74,6 +86,8 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
         subtitleStreamIndex: choice?.subtitleStreamIndex,
         mediaSourceId: choice?.mediaSourceId,
       );
+
+      final segments = await segmentsFuture;
 
       final session = playback.playSessionId;
       if (session != null) _sessions[ref.itemId] = session;
@@ -97,6 +111,10 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
         // What the server actually produced, so the player can label its
         // quality control with the truth rather than with what was asked for.
         serverStreams: playback.streams,
+        chapters: _chaptersOf(item),
+        segments: segments,
+        trickplay: item.trickplay,
+        externalSubtitles: playback.externalSubtitles,
       );
     } on ServerException catch (e) {
       // The player renders this inline; it must read as a sentence.
@@ -135,6 +153,39 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
     } catch (e) {
       debugPrint('Could not report the stop: $e');
     }
+  }
+
+  /// The server's chapter list, with an end derived from the neighbour.
+  ///
+  /// `isIntro` stays false on every one of them. The player's title
+  /// heuristic exists for containers, where a name is the only signal there
+  /// is; a server that knows what an intro is says so through
+  /// [MediaLibrarySource.segments] instead, and letting a chapter called
+  /// "Opening" claim to be one as well would put two pills on the screen.
+  List<MediaChapter> _chaptersOf(ServerItem item) {
+    final chapters = item.chapters;
+    if (chapters.isEmpty) return const <MediaChapter>[];
+
+    // The last chapter runs to the end of the film; with no runtime there is
+    // nothing to run to, so it gets its own start and draws as a tick alone.
+    final runtime = item.runtime ?? chapters.last.start;
+
+    return <MediaChapter>[
+      for (var i = 0; i < chapters.length; i++)
+        MediaChapter(
+          title: chapters[i].title,
+          start: chapters[i].start,
+          end: i + 1 < chapters.length ? chapters[i + 1].start : runtime,
+          imageUri: library.chapterImageUrl(
+            item.id,
+            chapters[i],
+            // Wide enough for the sheet's thumbnail on a 3x screen, and far
+            // short of the full frame the server would otherwise send for
+            // every chapter at once.
+            maxWidth: 480,
+          ),
+        ),
+    ];
   }
 
   /// "Jellyfin · direct play" / "Jellyfin · transcoding · 8.0 Mbps".

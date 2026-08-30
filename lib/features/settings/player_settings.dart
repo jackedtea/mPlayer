@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../servers/media_library_source.dart';
+
 /// How mpv should pick a decoder.
 enum HardwareDecoding {
   auto('Auto (safe)', 'auto-safe'),
@@ -38,6 +40,49 @@ enum GaplessAudio {
   final String mpvValue;
 }
 
+/// What to do when playback reaches a stretch the server has labelled.
+///
+/// Three states rather than a switch because skipping silently and offering
+/// to skip are genuinely different products: one is for a viewer rewatching a
+/// series who never wants to see the titles again, the other for someone who
+/// would rather be asked.
+enum SegmentAction {
+  /// Leave it alone. Nothing appears and nothing seeks.
+  nothing,
+
+  /// Show a pill for as long as the segment lasts; seek only if it is
+  /// pressed.
+  askToSkip,
+
+  /// Seek past it the moment playback runs into it.
+  ///
+  /// **Only when playing into it**, never when the user seeks in. Someone who
+  /// drags the scrubber into the opening titles meant to be there, and
+  /// bouncing them straight back out is a player fighting its user.
+  skip,
+}
+
+/// What each kind of segment does, out of the box.
+///
+/// Intro and outro ask; the rest do nothing. The two the user has an opinion
+/// about are the two worth interrupting for, and a recap or a preview seeking
+/// itself away on a first watch is a scene the viewer never got to decide
+/// about.
+const defaultSegmentActions = <MediaSegmentKind, SegmentAction>{
+  MediaSegmentKind.intro: SegmentAction.askToSkip,
+  MediaSegmentKind.outro: SegmentAction.askToSkip,
+  MediaSegmentKind.preview: SegmentAction.nothing,
+  MediaSegmentKind.recap: SegmentAction.nothing,
+  MediaSegmentKind.commercial: SegmentAction.nothing,
+};
+
+/// A segment shorter than this is never seeked past.
+///
+/// A one-second jump costs a decoder more than it saves the viewer: the
+/// picture stalls, the audio re-syncs, and the thing being skipped was over
+/// before either finished.
+const minimumSkippableSegment = Duration(seconds: 1);
+
 /// Everything the Player, Audio and Subtitle settings pages control.
 ///
 /// One object rather than a scattering of keys so the player reads a single
@@ -52,6 +97,7 @@ class PlayerSettings {
     this.skipForward = const Duration(seconds: 30),
     this.autoPlayNext = true,
     this.autoSkipIntro = false,
+    this.segmentActions = defaultSegmentActions,
     this.swipeGestures = true,
     this.pipOnLeave = false,
     this.backgroundAudio = false,
@@ -77,6 +123,7 @@ class PlayerSettings {
       skipForward: Duration(seconds: json['skipForwardSeconds'] as int? ?? 30),
       autoPlayNext: json['autoPlayNext'] as bool? ?? true,
       autoSkipIntro: json['autoSkipIntro'] as bool? ?? false,
+      segmentActions: _segmentActionsFromJson(json['segmentActions']),
       swipeGestures: json['swipeGestures'] as bool? ?? true,
       pipOnLeave: json['pipOnLeave'] as bool? ?? false,
       backgroundAudio: json['backgroundAudio'] as bool? ?? false,
@@ -104,6 +151,18 @@ class PlayerSettings {
   final Duration skipForward;
   final bool autoPlayNext;
   final bool autoSkipIntro;
+
+  /// What to do about each kind of server-supplied segment.
+  ///
+  /// Separate from [autoSkipIntro], which governs the *container* heuristic —
+  /// a chapter a rip happened to name "Opening". The two never both fire on
+  /// one file: a source that supplies segments supplies the authority with
+  /// them, and the heuristic stands down.
+  final Map<MediaSegmentKind, SegmentAction> segmentActions;
+
+  /// What to do with a segment of [kind], defaulting to leaving it alone.
+  SegmentAction actionFor(MediaSegmentKind kind) =>
+      segmentActions[kind] ?? SegmentAction.nothing;
 
   /// Brightness and volume drags. Off makes the player ignore them entirely.
   final bool swipeGestures;
@@ -190,6 +249,11 @@ class PlayerSettings {
         'skipForwardSeconds': skipForward.inSeconds,
         'autoPlayNext': autoPlayNext,
         'autoSkipIntro': autoSkipIntro,
+        'segmentActions': <String, String>{
+          for (final MapEntry<MediaSegmentKind, SegmentAction> e
+              in segmentActions.entries)
+            e.key.name: e.value.name,
+        },
         'swipeGestures': swipeGestures,
         'pipOnLeave': pipOnLeave,
         'backgroundAudio': backgroundAudio,
@@ -211,6 +275,7 @@ class PlayerSettings {
     Duration? skipForward,
     bool? autoPlayNext,
     bool? autoSkipIntro,
+    Map<MediaSegmentKind, SegmentAction>? segmentActions,
     bool? swipeGestures,
     bool? pipOnLeave,
     bool? backgroundAudio,
@@ -232,6 +297,7 @@ class PlayerSettings {
       skipForward: skipForward ?? this.skipForward,
       autoPlayNext: autoPlayNext ?? this.autoPlayNext,
       autoSkipIntro: autoSkipIntro ?? this.autoSkipIntro,
+      segmentActions: segmentActions ?? this.segmentActions,
       swipeGestures: swipeGestures ?? this.swipeGestures,
       pipOnLeave: pipOnLeave ?? this.pipOnLeave,
       backgroundAudio: backgroundAudio ?? this.backgroundAudio,
@@ -252,6 +318,24 @@ class PlayerSettings {
       gapless: gapless ?? this.gapless,
     );
   }
+}
+
+/// Restores the action map, falling back per key rather than wholesale.
+///
+/// A stored map written before a segment kind existed is missing that key,
+/// not corrupt — dropping the whole map for it would silently reset choices
+/// the user made about the other four.
+Map<MediaSegmentKind, SegmentAction> _segmentActionsFromJson(Object? raw) {
+  if (raw is! Map) return defaultSegmentActions;
+
+  return <MediaSegmentKind, SegmentAction>{
+    for (final MediaSegmentKind kind in supportedSegmentKinds)
+      kind: SegmentAction.values.firstWhere(
+        (a) => a.name == raw[kind.name],
+        orElse: () =>
+            defaultSegmentActions[kind] ?? SegmentAction.nothing,
+      ),
+  };
 }
 
 final playerSettingsProvider =

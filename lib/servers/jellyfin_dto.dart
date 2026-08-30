@@ -28,6 +28,22 @@ Duration? ticksToDuration(Object? ticks) {
   return Duration(milliseconds: value ~/ ticksPerMillisecond);
 }
 
+/// The same conversion, for a **position** rather than a length.
+///
+/// [ticksToDuration] reads zero as "the server did not say", which is right
+/// for a runtime and wrong here: a segment or a chapter starting at 0:00 is
+/// the commonest one there is, and treating it as missing drops the opening
+/// titles — exactly the thing the user wanted skipped.
+Duration? ticksToPosition(Object? ticks) {
+  final value = switch (ticks) {
+    final int i => i,
+    final num n => n.toInt(),
+    _ => null,
+  };
+  if (value == null || value < 0) return null;
+  return Duration(milliseconds: value ~/ ticksPerMillisecond);
+}
+
 int durationToTicks(Duration duration) =>
     duration.inMilliseconds * ticksPerMillisecond;
 
@@ -90,7 +106,16 @@ String _meaningful(String value) =>
     value.replaceAll(_controlCharacters, '').trim();
 
 /// One `BaseItemDto` from any of the item endpoints.
-ServerItem serverItemFromJson(Map<String, dynamic> json) {
+///
+/// [base] and [token] are only needed to build the URLs behind the chapter
+/// stills and the trickplay sheets, which only the detail fetch asks for.
+/// A listing calls this without them and gets the same item minus two fields
+/// it would have thrown away.
+ServerItem serverItemFromJson(
+  Map<String, dynamic> json, {
+  Uri? base,
+  String? token,
+}) {
   final userData = json['UserData'] as Map<String, dynamic>?;
 
   return ServerItem(
@@ -147,6 +172,171 @@ ServerItem serverItemFromJson(Map<String, dynamic> json) {
     // one field here that has to be parsed out of a timestamp.
     endYear: DateTime.tryParse(json['EndDate'] as String? ?? '')?.year,
     playlistEntryId: json['PlaylistItemId'] as String?,
+    chapters: serverChaptersFromJson(json),
+    trickplay: base == null
+        ? null
+        : trickplayFromJson(json, base: base, token: token ?? ''),
+  );
+}
+
+/// The `Chapters` field, numbered as the image route expects.
+///
+/// The index is the whole reason this keeps a counter: a chapter still is
+/// fetched as `/Items/{id}/Images/Chapter/{n}`, so a chapter that lost its
+/// position in the list loses its picture with it.
+List<ServerChapter> serverChaptersFromJson(Map<String, dynamic> json) {
+  final raw = json['Chapters'];
+  if (raw is! List) return const <ServerChapter>[];
+
+  final chapters = <ServerChapter>[];
+  for (var i = 0; i < raw.length; i++) {
+    final entry = raw[i];
+    if (entry is! Map) continue;
+
+    final start = ticksToPosition(entry['StartPositionTicks']);
+    if (start == null) continue;
+
+    final name = (entry['Name'] as String?)?.trim();
+    chapters.add(
+      ServerChapter(
+        index: i,
+        // Jellyfin generates "Chapter 1" itself for a file whose container
+        // named nothing, but an empty string does turn up.
+        title: name == null || name.isEmpty ? 'Chapter ${i + 1}' : name,
+        start: start,
+        imageTag: entry['ImageTag'] as String?,
+      ),
+    );
+  }
+
+  // A container can list them out of order; the scrubber and the sheet both
+  // assume otherwise, and `end` is derived from the neighbour.
+  chapters.sort((a, b) => a.start.compareTo(b.start));
+  return chapters;
+}
+
+/// The `Trickplay` field, or null where the server has generated nothing.
+///
+/// Its shape is two maps deep — media source id, then thumbnail width — and
+/// both keys are strings the client has to pick from rather than values it
+/// can ask for. The **widest** resolution wins: a preview blown up from 160px
+/// is a smear, and the sheets are fetched one per scrub either way.
+ServerTrickplay? trickplayFromJson(
+  Map<String, dynamic> json, {
+  required Uri base,
+  required String token,
+}) {
+  final itemId = json['Id'] as String?;
+  final bySource = json['Trickplay'];
+  if (itemId == null || itemId.isEmpty || bySource is! Map) return null;
+
+  for (final Object? sourceKey in bySource.keys) {
+    final byWidth = bySource[sourceKey];
+    if (byWidth is! Map || byWidth.isEmpty) continue;
+
+    Map? widest;
+    var widestWidth = -1;
+    for (final Object? info in byWidth.values) {
+      if (info is! Map) continue;
+      final width = info['Width'] as int? ?? 0;
+      if (width > widestWidth) {
+        widest = info;
+        widestWidth = width;
+      }
+    }
+    if (widest == null || widestWidth <= 0) continue;
+
+    final height = widest['Height'] as int? ?? 0;
+    final tileWidth = widest['TileWidth'] as int? ?? 0;
+    final tileHeight = widest['TileHeight'] as int? ?? 0;
+    final interval = widest['Interval'] as int? ?? 0;
+    if (height <= 0 || tileWidth <= 0 || tileHeight <= 0 || interval <= 0) {
+      continue;
+    }
+
+    final mediaSourceId = sourceKey is String ? sourceKey : itemId;
+
+    return ServerTrickplay(
+      width: widestWidth,
+      height: height,
+      tileWidth: tileWidth,
+      tileHeight: tileHeight,
+      interval: interval,
+      thumbnailCount: widest['ThumbnailCount'] as int? ?? 0,
+      tileUrl: (int index) => base.replace(
+        pathSegments: <String>[
+          ...base.pathSegments.where((s) => s.isNotEmpty),
+          'Videos',
+          itemId,
+          'Trickplay',
+          '$widestWidth',
+          '$index.jpg',
+        ],
+        queryParameters: <String, String>{
+          'mediaSourceId': mediaSourceId,
+          // Fetched by the image loader, which sends no Authorization
+          // header — the same reason the direct-play URL carries one.
+          if (token.isNotEmpty) 'api_key': token,
+        },
+      ),
+    );
+  }
+
+  return null;
+}
+
+/// One `MediaSegmentDto` from `/MediaSegments/{itemId}`.
+///
+/// A segment whose type this app does not act on is dropped here rather than
+/// carried as `unknown`: everything downstream would have to check for it,
+/// and there is nothing sensible to label a pill with.
+List<MediaSegment> mediaSegmentsFromJson(Map<String, dynamic> json) {
+  final items = json['Items'];
+  if (items is! List) return const <MediaSegment>[];
+
+  final segments = <MediaSegment>[];
+  for (final Object? entry in items) {
+    if (entry is! Map) continue;
+
+    final kind = MediaSegmentKind.fromWire(entry['Type'] as String?);
+    if (!supportedSegmentKinds.contains(kind)) continue;
+
+    final start = ticksToPosition(entry['StartTicks']);
+    final end = ticksToPosition(entry['EndTicks']);
+    // A segment that ends before it begins is not a segment; seeking to its
+    // end would jump the user backwards.
+    if (start == null || end == null || end <= start) continue;
+
+    segments.add(MediaSegment(kind: kind, start: start, end: end));
+  }
+
+  segments.sort((a, b) => a.start.compareTo(b.start));
+  return segments;
+}
+
+/// A chapter still, or null where the server generated none.
+Uri? chapterImageUrlFor(
+  ServerChapter chapter, {
+  required Uri base,
+  required String itemId,
+  int? maxWidth,
+}) {
+  final tag = chapter.imageTag;
+  if (tag == null || tag.isEmpty) return null;
+
+  return base.replace(
+    pathSegments: <String>[
+      ...base.pathSegments.where((s) => s.isNotEmpty),
+      'Items',
+      itemId,
+      'Images',
+      'Chapter',
+      '${chapter.index}',
+    ],
+    queryParameters: <String, String>{
+      'tag': tag,
+      if (maxWidth != null) 'maxWidth': '$maxWidth',
+    },
   );
 }
 
@@ -247,6 +437,8 @@ ServerPlayback? playbackFromJson(
     for (final Object? s in (source['MediaStreams'] as List?) ?? const <Object?>[])
       if (s is Map<String, dynamic>) serverStreamFromJson(s),
   ];
+  final externalSubtitles =
+      externalSubtitlesFrom(streams, base: base, token: token);
   final defaultAudio = source['DefaultAudioStreamIndex'] as int?;
   final defaultSubtitle = source['DefaultSubtitleStreamIndex'] as int?;
   final transcodes = source['SupportsTranscoding'] as bool? ?? false;
@@ -265,6 +457,7 @@ ServerPlayback? playbackFromJson(
       defaultAudioIndex: defaultAudio,
       defaultSubtitleIndex: defaultSubtitle,
       supportsTranscoding: transcodes,
+      externalSubtitles: externalSubtitles,
     );
   }
 
@@ -299,6 +492,7 @@ ServerPlayback? playbackFromJson(
     defaultAudioIndex: defaultAudio,
     defaultSubtitleIndex: defaultSubtitle,
     supportsTranscoding: transcodes,
+    externalSubtitles: externalSubtitles,
   );
 }
 
@@ -400,7 +594,53 @@ ServerStream serverStreamFromJson(Map<String, dynamic> json) {
     width: json['Width'] as int?,
     height: json['Height'] as int?,
     channels: json['Channels'] as int?,
+    // Present on subtitles the server keeps beside the video rather than
+    // inside it. `DeliveryMethod` is checked too: the field survives on a
+    // stream the server has since decided to burn in or to mux into an HLS
+    // playlist, and fetching it then would add a second copy of subtitles
+    // already on screen.
+    deliveryUrl: json['DeliveryMethod'] == 'External'
+        ? json['DeliveryUrl'] as String?
+        : null,
   );
+}
+
+/// The subtitle files a [ServerPlayback] has to load by hand.
+///
+/// Relative URLs as they arrive, resolved here against the server root and
+/// given the token: the player hands them to libmpv, which fetches them
+/// itself and cannot be given a header.
+List<ExternalSubtitle> externalSubtitlesFrom(
+  List<ServerStream> streams, {
+  required Uri base,
+  required String token,
+}) {
+  final subtitles = <ExternalSubtitle>[];
+
+  for (final ServerStream stream in streams) {
+    if (stream.type != ServerStreamType.subtitle || !stream.isExternal) {
+      continue;
+    }
+
+    final resolved = base.resolve(stream.deliveryUrl!);
+    subtitles.add(
+      ExternalSubtitle(
+        uri: token.isEmpty
+            ? resolved
+            : resolved.replace(
+                queryParameters: <String, String>{
+                  ...resolved.queryParameters,
+                  'api_key': token,
+                },
+              ),
+        label: stream.label,
+        language: stream.language,
+        index: stream.index,
+      ),
+    );
+  }
+
+  return subtitles;
 }
 
 /// Artwork for an item, or null when it has none.

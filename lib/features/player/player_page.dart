@@ -16,6 +16,7 @@ import '../../app/desktop_window.dart';
 import '../../app/system_ui.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../servers/media_library_source.dart';
 import '../../servers/stream_preferences.dart';
 import '../../cast/cast_device.dart';
 import '../../sources/media_source.dart';
@@ -477,6 +478,16 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                               skipForward: settings.skipForward,
                               onSkipIntro: (chapter) =>
                                   controller.seek(chapter.end),
+                              // Only the segments the user asked to be asked
+                              // about: one set to skip has already seeked
+                              // itself, and one set to nothing wants none.
+                              skipSegment: _offeredSegment(state, settings),
+                              // A millisecond past the end, so a rounding
+                              // error cannot land the playhead back inside
+                              // the segment it was just asked to leave.
+                              onSkipSegment: (segment) => controller.seek(
+                                segment.end + const Duration(milliseconds: 1),
+                              ),
                               notImplemented: _notImplemented,
                             ),
                           ),
@@ -492,6 +503,21 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         ),
       ),
     );
+  }
+
+  /// The segment the pill should offer, or null.
+  ///
+  /// Only `askToSkip` reaches the screen. `skip` has already seeked past it
+  /// in the controller — showing a pill for a stretch that is about to
+  /// disappear is a button that flickers and cannot be pressed — and
+  /// `nothing` means the viewer said they want to watch it.
+  MediaSegment? _offeredSegment(PlaybackState state, PlayerSettings settings) {
+    final segment = state.currentSegment;
+    if (segment == null) return null;
+
+    return settings.actionFor(segment.kind) == SegmentAction.askToSkip
+        ? segment
+        : null;
   }
 
   // ---------------------------------------------------------------- sheets
@@ -639,6 +665,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             label: c.title,
             detail: formatDuration(c.start),
             value: c.start.inMilliseconds.toDouble(),
+            thumbnail: c.imageUri,
           ),
       ],
       onSelected: (o) {

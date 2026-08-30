@@ -149,9 +149,32 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = context.colors.primaryContainer;
 
+    final thumbnail = option.thumbnail;
+
     return ListTile(
       onTap: onTap,
       contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.xl),
+      // 16:9 at the height of a two-line tile, so the rows stay the size the
+      // sheet already is: a chapter list that suddenly doubles in height on
+      // a server and not on a local file reads as two different sheets.
+      leading: thumbnail == null
+          ? null
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(context.radii.thumb),
+              child: Container(
+                width: 64,
+                height: 36,
+                color: Colors.white.withValues(alpha: 0.08),
+                child: Image.network(
+                  thumbnail.toString(),
+                  fit: BoxFit.cover,
+                  // A still that will not load leaves the placeholder behind
+                  // it; the chapter is still selectable, which is the point
+                  // of the row.
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
       title: Text(
         option.label,
         style: TextStyle(color: selected ? accent : Colors.white),
@@ -177,6 +200,7 @@ class TrackOption {
     this.detail,
     this.track,
     this.value,
+    this.thumbnail,
   });
 
   factory TrackOption.fromTrack(MediaTrack track) => TrackOption(
@@ -199,4 +223,11 @@ class TrackOption {
 
   /// Set for value rows such as speed.
   final double? value;
+
+  /// A still to draw beside the row.
+  ///
+  /// Only a server chapter has one — a container carries titles and
+  /// timestamps and no pictures — so a row without it is the normal case,
+  /// not a missing image.
+  final Uri? thumbnail;
 }

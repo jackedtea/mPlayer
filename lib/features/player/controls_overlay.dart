@@ -3,11 +3,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../servers/media_library_source.dart';
 import '../../sources/media_source.dart';
 import 'playback_state.dart';
 import 'player_ui_state.dart';
@@ -47,6 +50,8 @@ class ControlsOverlay extends StatelessWidget {
     this.skipBack = const Duration(seconds: 10),
     this.skipForward = const Duration(seconds: 30),
     required this.onSkipIntro,
+    this.skipSegment,
+    required this.onSkipSegment,
     required this.notImplemented,
   });
 
@@ -91,6 +96,15 @@ class ControlsOverlay extends StatelessWidget {
   /// picker that can never fill.
   final VoidCallback? onCast;
   final ValueChanged<MediaChapter> onSkipIntro;
+
+  /// The stretch the viewer is being *offered* a way past, or null.
+  ///
+  /// Already filtered by the page against the user's per-kind setting: a
+  /// segment set to skip itself never reaches here, and one set to be left
+  /// alone never had a pill to begin with.
+  final MediaSegment? skipSegment;
+
+  final ValueChanged<MediaSegment> onSkipSegment;
   final void Function(String) notImplemented;
 
   /// The amounts from Player settings. The transport buttons used to be fixed
@@ -102,6 +116,8 @@ class ControlsOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final intro = state.currentIntro;
+    final segment = skipSegment;
+    final trickplay = media.trickplay;
 
     return Stack(
       fit: StackFit.expand,
@@ -115,16 +131,36 @@ class ControlsOverlay extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              // Only inside a chapter the source marked as an intro.
-              if (intro != null)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: context.spacing.lg,
-                      bottom: context.spacing.sm,
-                    ),
-                    child: _SkipIntroPill(onTap: () => onSkipIntro(intro)),
+              // Only while the scrubber is being dragged, and only where the
+              // server generated the sheets to draw from.
+              if (trickplay != null &&
+                  dragProgress != null &&
+                  state.duration > Duration.zero)
+                _TrickplayStrip(
+                  trickplay: trickplay,
+                  position: state.duration * dragProgress!,
+                  chapter: state.chapterAt(state.duration * dragProgress!),
+                  // The thumb travels the full width, so the preview lines up
+                  // with it by riding the same fraction and clamping itself
+                  // at the ends.
+                  fraction: dragProgress!,
+                ),
+
+              // A segment the server labelled wins over a chapter the
+              // container merely named; `currentIntro` already stands down
+              // when there are segments, so at most one of these is non-null.
+              if (segment != null)
+                _PillSlot(
+                  child: _SkipPill(
+                    label: _segmentLabel(context, segment.kind),
+                    onTap: () => onSkipSegment(segment),
+                  ),
+                )
+              else if (intro != null)
+                _PillSlot(
+                  child: _SkipPill(
+                    label: AppLocalizations.of(context).skipIntro,
+                    onTap: () => onSkipIntro(intro),
                   ),
                 ),
               _BottomBar(this_: this),
@@ -132,6 +168,46 @@ class ControlsOverlay extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// What the pill for a segment reads.
+///
+/// "Skip credits" rather than "Skip outro": nobody watching a film calls the
+/// closing titles an outro, and the wire name is the server's vocabulary,
+/// not the viewer's.
+String _segmentLabel(BuildContext context, MediaSegmentKind kind) {
+  final l10n = AppLocalizations.of(context);
+  return switch (kind) {
+    MediaSegmentKind.intro => l10n.skipIntro,
+    MediaSegmentKind.outro => l10n.skipCredits,
+    MediaSegmentKind.recap => l10n.skipRecap,
+    MediaSegmentKind.preview => l10n.skipPreview,
+    MediaSegmentKind.commercial => l10n.skipAdvert,
+    // Never reached: an unknown kind is dropped while parsing rather than
+    // carried this far.
+    MediaSegmentKind.unknown => l10n.skipIntro,
+  };
+}
+
+/// Where every skip pill sits: bottom right, clear of the scrubber.
+class _PillSlot extends StatelessWidget {
+  const _PillSlot({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: EdgeInsets.only(
+          right: context.spacing.lg,
+          bottom: context.spacing.sm,
+        ),
+        child: child,
+      ),
     );
   }
 }
@@ -391,9 +467,10 @@ class _TransportSpinner extends StatelessWidget {
   }
 }
 
-class _SkipIntroPill extends StatelessWidget {
-  const _SkipIntroPill({required this.onTap});
+class _SkipPill extends StatelessWidget {
+  const _SkipPill({required this.label, required this.onTap});
 
+  final String label;
   final VoidCallback onTap;
 
   @override
@@ -415,7 +492,7 @@ class _SkipIntroPill extends StatelessWidget {
           // the dark theme — and anywhere at all under a custom accent — and
           // left the label barely readable on it.
           child: Text(
-            AppLocalizations.of(context).skipIntro,
+            label,
             style: TextStyle(
               color: context.semantic.onPlayerPill,
               fontSize: 14,
@@ -426,6 +503,200 @@ class _SkipIntroPill extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// The frame under the scrubber while it is being dragged.
+///
+/// A server generates these as **sprite sheets** — one image holding a
+/// hundred thumbnails — so a scrub across a two-hour film costs a handful of
+/// requests instead of a thousand. The cost of that is that the frame wanted
+/// is a rectangle inside a much larger picture, which is why this paints
+/// through a canvas rather than showing an `Image`: there is no widget that
+/// crops a source rect without first laying the whole sheet out.
+class _TrickplayStrip extends StatelessWidget {
+  const _TrickplayStrip({
+    required this.trickplay,
+    required this.position,
+    required this.chapter,
+    required this.fraction,
+  });
+
+  final ServerTrickplay trickplay;
+  final Duration position;
+  final MediaChapter? chapter;
+
+  /// 0..1 along the scrubber, which is where the thumb is.
+  final double fraction;
+
+  /// Tall enough to read a face in, short enough to leave the film visible.
+  static const _height = 84.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = trickplay.tileFor(position);
+    if (tile == null) return const SizedBox.shrink();
+
+    final width = _height * trickplay.width / trickplay.height;
+
+    return Padding(
+      // The same inset the scrubber's own track sits at, so the preview and
+      // the thumb agree about where the ends are.
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.lg + 7),
+      child: SizedBox(
+        height: _height + 26,
+        width: double.infinity,
+        child: Align(
+          // `Alignment` runs -1..1 and clamps at the edges by itself, which
+          // is exactly the behaviour wanted at the ends of the film.
+          alignment: Alignment(fraction * 2 - 1, 0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(context.radii.thumb),
+                child: Container(
+                  width: width,
+                  height: _height,
+                  color: Colors.black,
+                  child: _TrickplayTileImage(tile: tile),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                // The chapter name earns its place here: it is the one label
+                // that says *what* is at this position rather than when.
+                chapter == null
+                    ? formatDuration(position)
+                    : '${formatDuration(position)} · ${chapter!.title}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  shadows: <Shadow>[Shadow(blurRadius: 4)],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Loads one sheet and paints the single frame wanted out of it.
+///
+/// The sheet is held across rebuilds and only re-fetched when the tile index
+/// changes, so dragging within one sheet — a hundred thumbnails, minutes of
+/// film — costs nothing after the first frame.
+class _TrickplayTileImage extends StatefulWidget {
+  const _TrickplayTileImage({required this.tile});
+
+  final TrickplayTile tile;
+
+  @override
+  State<_TrickplayTileImage> createState() => _TrickplayTileImageState();
+}
+
+class _TrickplayTileImageState extends State<_TrickplayTileImage> {
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  ui.Image? _sheet;
+  Uri? _loaded;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_TrickplayTileImage old) {
+    super.didUpdateWidget(old);
+    if (old.tile.url != widget.tile.url) _resolve();
+  }
+
+  void _resolve() {
+    if (_loaded == widget.tile.url) return;
+    _loaded = widget.tile.url;
+
+    _detach();
+
+    final stream = NetworkImage(widget.tile.url.toString())
+        .resolve(createLocalImageConfiguration(context));
+    final listener = ImageStreamListener(
+      (image, _) {
+        if (!mounted) {
+          image.image.dispose();
+          return;
+        }
+        setState(() {
+          _sheet?.dispose();
+          _sheet = image.image;
+        });
+      },
+      // A sheet that will not load leaves the last frame on screen rather
+      // than flashing a placeholder; the scrub itself still works.
+      onError: (_, _) {},
+    );
+
+    _stream = stream..addListener(listener);
+    _listener = listener;
+  }
+
+  void _detach() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _detach();
+    _sheet?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sheet = _sheet;
+    if (sheet == null) return const SizedBox.expand();
+
+    return CustomPaint(
+      painter: _TrickplayTilePainter(sheet: sheet, tile: widget.tile),
+      size: Size.infinite,
+    );
+  }
+}
+
+class _TrickplayTilePainter extends CustomPainter {
+  _TrickplayTilePainter({required this.sheet, required this.tile});
+
+  final ui.Image sheet;
+  final TrickplayTile tile;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawImageRect(
+      sheet,
+      Rect.fromLTWH(
+        tile.left.toDouble(),
+        tile.top.toDouble(),
+        tile.width.toDouble(),
+        tile.height.toDouble(),
+      ),
+      Offset.zero & size,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TrickplayTilePainter old) =>
+      old.sheet != sheet || old.tile != tile;
 }
 
 class _BottomBar extends StatelessWidget {

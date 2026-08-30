@@ -66,6 +66,8 @@ class ServerItem {
     this.status,
     this.endYear,
     this.playlistEntryId,
+    this.chapters = const <ServerChapter>[],
+    this.trickplay,
   });
 
   final String id;
@@ -137,6 +139,16 @@ class ServerItem {
   /// Seasons on a series, episodes on a season.
   final int? childCount;
 
+  /// The server's own chapter list, with the stills it generated.
+  ///
+  /// Empty unless the request asked for it, which only the detail fetch does:
+  /// a hundred-item listing carrying a chapter list each is a hundred times
+  /// the payload for something no card draws.
+  final List<ServerChapter> chapters;
+
+  /// The scrubber preview sheets, where the server has generated them.
+  final ServerTrickplay? trickplay;
+
   bool get isStarted => position != null && position! > Duration.zero;
 
   /// 0..1, or null when there is nothing to draw a bar from.
@@ -202,6 +214,7 @@ class ServerPlayback {
     this.defaultAudioIndex,
     this.defaultSubtitleIndex,
     this.supportsTranscoding = false,
+    this.externalSubtitles = const <ExternalSubtitle>[],
   });
 
   final Uri uri;
@@ -240,6 +253,13 @@ class ServerPlayback {
   /// control meaningless, so it is hidden rather than shown doing nothing.
   final bool supportsTranscoding;
 
+  /// The subtitles that arrive as files of their own, already resolved
+  /// against the server root and carrying the token.
+  ///
+  /// These are the ones a direct play would otherwise lose: the video is
+  /// handed over untouched and the sidecar simply never travels with it.
+  final List<ExternalSubtitle> externalSubtitles;
+
   List<ServerStream> streamsOfType(ServerStreamType type) =>
       streams.where((s) => s.type == type).toList();
 }
@@ -261,6 +281,7 @@ class ServerStream {
     this.width,
     this.height,
     this.channels,
+    this.deliveryUrl,
   });
 
   /// The server's own index, which is what a playback request quotes back.
@@ -284,6 +305,16 @@ class ServerStream {
   final int? height;
   final int? channels;
 
+  /// Where this track is fetched from, when it is **not** inside the video.
+  ///
+  /// Set on subtitles the server keeps as separate files. Relative to the
+  /// server root as it arrives; [ServerPlayback.externalSubtitles] is the
+  /// resolved form the player can actually open.
+  final String? deliveryUrl;
+
+  /// A track the decoder will never find on its own.
+  bool get isExternal => deliveryUrl != null && deliveryUrl!.isNotEmpty;
+
   /// What to show when the server supplied no description of its own.
   String get label {
     final assembled = title;
@@ -295,6 +326,232 @@ class ServerStream {
       if (channels != null) '$channels ch',
     ].join(' · ');
   }
+}
+
+/// A stretch of a file the server has labelled as something other than the
+/// programme itself.
+///
+/// Not a chapter. A chapter says *where* something is; a segment says **what**
+/// it is, and that is the whole difference — "Skip intro" needs a server that
+/// knows the opening titles run from 1:04 to 2:34, not a rip whose author
+/// happened to name a chapter "Intro".
+///
+/// Jellyfin 10.10 and later. An older server answers 404 and the client
+/// reports no segments, which is not an error: everything else still works.
+enum MediaSegmentKind {
+  intro,
+  outro,
+  preview,
+  recap,
+  commercial,
+
+  /// A type this app has never heard of. Never acted on — a segment nobody
+  /// can label is a segment nobody should be silently seeking past.
+  unknown;
+
+  /// The server's own spelling, which is what the request filters on.
+  String get wireName => switch (this) {
+        MediaSegmentKind.intro => 'Intro',
+        MediaSegmentKind.outro => 'Outro',
+        MediaSegmentKind.preview => 'Preview',
+        MediaSegmentKind.recap => 'Recap',
+        MediaSegmentKind.commercial => 'Commercial',
+        MediaSegmentKind.unknown => 'Unknown',
+      };
+
+  static MediaSegmentKind fromWire(String? name) => switch (name) {
+        'Intro' => MediaSegmentKind.intro,
+        'Outro' => MediaSegmentKind.outro,
+        'Preview' => MediaSegmentKind.preview,
+        'Recap' => MediaSegmentKind.recap,
+        'Commercial' => MediaSegmentKind.commercial,
+        _ => MediaSegmentKind.unknown,
+      };
+}
+
+/// The kinds this app asks for and is willing to act on.
+///
+/// Sent as the request filter as well as checked on the way back: a server
+/// that grows a sixth type should not start producing a pill labelled with an
+/// enum name.
+const supportedSegmentKinds = <MediaSegmentKind>[
+  MediaSegmentKind.intro,
+  MediaSegmentKind.outro,
+  MediaSegmentKind.preview,
+  MediaSegmentKind.recap,
+  MediaSegmentKind.commercial,
+];
+
+@immutable
+class MediaSegment {
+  const MediaSegment({
+    required this.kind,
+    required this.start,
+    required this.end,
+  });
+
+  final MediaSegmentKind kind;
+
+  /// Zero is ordinary here and means the file opens on it. This is why
+  /// positions are parsed differently from runtimes — a runtime of zero is a
+  /// missing value, a start of zero is the first frame.
+  final Duration start;
+
+  final Duration end;
+
+  Duration get length => end - start;
+
+  bool contains(Duration position) => position >= start && position < end;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MediaSegment &&
+      other.kind == kind &&
+      other.start == start &&
+      other.end == end;
+
+  @override
+  int get hashCode => Object.hash(kind, start, end);
+}
+
+/// A chapter as the *server* holds it, with the artwork it generated for it.
+///
+/// Distinct from the player's `MediaChapter`, which is also fed by the
+/// container: only a server chapter has a picture to show.
+@immutable
+class ServerChapter {
+  const ServerChapter({
+    required this.index,
+    required this.title,
+    required this.start,
+    this.imageTag,
+  });
+
+  /// Its position in the server's list, which is what the image route is
+  /// numbered by — not an id.
+  final int index;
+
+  final String title;
+  final Duration start;
+
+  /// Null on every chapter of an item the server has not extracted stills
+  /// for, which is the default until trickplay or chapter images are enabled.
+  final String? imageTag;
+}
+
+/// The sprite sheets a server generates so a client can preview a scrub.
+///
+/// One image holds [tileWidth] × [tileHeight] thumbnails, one every
+/// [interval] milliseconds, so the frame for a position is an offset inside a
+/// tile rather than a request of its own. That is the whole point: a scrub
+/// across a two-hour film costs a handful of images instead of a thousand.
+@immutable
+class ServerTrickplay {
+  const ServerTrickplay({
+    required this.width,
+    required this.height,
+    required this.tileWidth,
+    required this.tileHeight,
+    required this.interval,
+    required this.thumbnailCount,
+    required this.tileUrl,
+  });
+
+  /// One thumbnail's pixel size.
+  final int width;
+  final int height;
+
+  /// How many thumbnails a sheet holds, across and down.
+  final int tileWidth;
+  final int tileHeight;
+
+  /// Milliseconds between thumbnails.
+  final int interval;
+
+  final int thumbnailCount;
+
+  /// The sheet holding thumbnail number *n*, ready to fetch.
+  final Uri Function(int tileIndex) tileUrl;
+
+  /// How many thumbnails one sheet holds.
+  int get perTile => tileWidth * tileHeight;
+
+  /// Which thumbnail covers [position], or null when it falls outside what
+  /// the server generated.
+  TrickplayTile? tileFor(Duration position) {
+    if (interval <= 0 || perTile <= 0) return null;
+
+    final thumbnail = position.inMilliseconds ~/ interval;
+    if (thumbnail < 0 || (thumbnailCount > 0 && thumbnail >= thumbnailCount)) {
+      return null;
+    }
+
+    final offset = thumbnail % perTile;
+    return TrickplayTile(
+      url: tileUrl(thumbnail ~/ perTile),
+      // Where in the sheet this frame sits, in pixels.
+      left: (offset % tileWidth) * width,
+      top: (offset ~/ tileWidth) * height,
+      width: width,
+      height: height,
+    );
+  }
+}
+
+/// One frame, named as a rectangle inside a sheet.
+@immutable
+class TrickplayTile {
+  const TrickplayTile({
+    required this.url,
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+  });
+
+  final Uri url;
+  final int left;
+  final int top;
+  final int width;
+  final int height;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TrickplayTile &&
+      other.url == url &&
+      other.left == left &&
+      other.top == top;
+
+  @override
+  int get hashCode => Object.hash(url, left, top);
+}
+
+/// A subtitle the server keeps as a file of its own rather than inside the
+/// video.
+///
+/// The player has to be told about these explicitly. An embedded track
+/// arrives with the stream and the decoder finds it; an external one is a
+/// second URL that nothing would ever fetch on its own, and the user is left
+/// looking at a subtitle picker missing the language they came for.
+@immutable
+class ExternalSubtitle {
+  const ExternalSubtitle({
+    required this.uri,
+    required this.label,
+    this.language,
+    this.index,
+  });
+
+  final Uri uri;
+
+  /// The server's own description — "English - SRT".
+  final String label;
+
+  final String? language;
+
+  /// The stream index it was numbered under, so a choice made on the detail
+  /// screen can still be matched to the track mpv ends up publishing.
+  final int? index;
 }
 
 /// A catalog-level source: metadata, artwork, playback URLs and watch state,
@@ -356,6 +613,13 @@ abstract class MediaLibrarySource {
   /// A person's headshot, or null when the server holds none.
   Uri? personImageUrl(ServerPerson person, {int? maxWidth});
 
+  /// The still the server generated for a chapter, or null where it has none.
+  ///
+  /// Takes the item as well as the chapter because the route is numbered
+  /// rather than identified: a chapter still is the *n*th image of an item,
+  /// and the chapter alone does not say whose.
+  Uri? chapterImageUrl(String itemId, ServerChapter chapter, {int? maxWidth});
+
   /// How to play [itemId], given what this device can decode.
   ///
   /// The stream indexes are the server's own, taken from a previous
@@ -406,6 +670,14 @@ abstract class MediaLibrarySource {
     required Duration position,
     String? playSessionId,
   });
+
+  /// The labelled stretches of [itemId] — intro, outro, recap and the rest.
+  ///
+  /// Empty rather than an error for a server too old to have the endpoint:
+  /// media segments arrived in Jellyfin 10.10, and an item nobody has run a
+  /// detection plugin over has none either. Neither is a failure worth
+  /// showing anyone.
+  Future<List<MediaSegment>> segments(String itemId);
 
   Future<void> setPlayed(String itemId, {required bool played});
 
