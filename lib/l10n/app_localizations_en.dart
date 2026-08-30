@@ -982,6 +982,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nextFile => 'Next';
 
   @override
+  String get nextEpisode => 'Next episode';
+
+  @override
+  String get nextVideo => 'Next video';
+
+  @override
   String get loading => 'Loading';
 
   @override

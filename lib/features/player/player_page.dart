@@ -407,90 +407,88 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                     if (ui.statsVisible) StatsOverlay(state: state),
 
                     if (!ui.locked)
-                      AnimatedOpacity(
-                        opacity: _chromeVisible ? 1 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: IgnorePointer(
-                          ignoring: !_chromeVisible,
-                          // Sticky immersion makes the navigation bar come and go
-                          // on its own, and the controls must not move each time
-                          // it does.
-                          child: StableInsets(
-                            child: ControlsOverlay(
-                              media: widget.media,
-                              state: state,
-                              ui: ui,
-                              dragProgress: _dragProgress,
-                              onInteraction: _restartHideTimer,
-                              onPlayPause: () {
-                                _restartHideTimer();
-                                controller.playOrPause();
-                              },
-                              onSkip: controller.skip,
-                              onPrevious: () {
-                                _restartHideTimer();
-                                controller.playPrevious();
-                              },
-                              onNext: () {
-                                _restartHideTimer();
-                                controller.playNext();
-                              },
-                              onScrubStart: (v) =>
-                                  setState(() => _dragProgress = v),
-                              onScrubUpdate: (v) =>
-                                  setState(() => _dragProgress = v),
-                              onScrubEnd: (v) {
-                                setState(() => _dragProgress = null);
-                                controller.seek(state.duration * v);
-                              },
-                              onSubtitles: () =>
-                                  _pickSubtitle(state, controller),
-                              onAudio: () => _pickAudio(state, controller),
-                              onQuality: () => _pickQuality(state, controller),
-                              qualityLabel: () {
-                                final q = ref.watch(streamQualityProvider);
-                                return q.isOriginal
-                                    ? AppLocalizations.of(
-                                        context,
-                                      ).qualityOriginal
-                                    : q.label;
-                              }(),
-                              onSpeed: () => _pickSpeed(state, controller),
-                              onLock: () {
-                                ref
-                                    .read(playerUiProvider.notifier)
-                                    .toggleLock();
-                                setState(() => _chromeVisible = false);
-                                _applySystemUi();
-                              },
-                              onRotate: ref
-                                  .read(playerUiProvider.notifier)
-                                  .cycleRotation,
-                              onChapters: () =>
-                                  _showChapters(state, controller),
-                              onFullscreen: _toggleFullscreen,
-                              onMore: () => MoreMenu.show(context),
-                              onPip: pip.supported ? _enterPip : null,
-                              onCast: _pickCastDevice,
-                              // The same amounts the gestures use; the buttons used
-                              // to be fixed at 10 and 30 seconds regardless.
-                              skipBack: settings.skipBack,
-                              skipForward: settings.skipForward,
-                              onSkipIntro: (chapter) =>
-                                  controller.seek(chapter.end),
-                              // Only the segments the user asked to be asked
-                              // about: one set to skip has already seeked
-                              // itself, and one set to nothing wants none.
-                              skipSegment: _offeredSegment(state, settings),
-                              // A millisecond past the end, so a rounding
-                              // error cannot land the playhead back inside
-                              // the segment it was just asked to leave.
-                              onSkipSegment: (segment) => controller.seek(
-                                segment.end + const Duration(milliseconds: 1),
-                              ),
-                              notImplemented: _notImplemented,
-                            ),
+                      // The fade is the overlay's own business now: the skip
+                      // and next-episode pills stay up after the controls have
+                      // gone, which is when they are most use.
+                      //
+                      // Sticky immersion makes the navigation bar come and go
+                      // on its own, and the controls must not move each time
+                      // it does.
+                      StableInsets(
+                        child: ControlsOverlay(
+                          chromeVisible: _chromeVisible,
+                          media: widget.media,
+                          state: state,
+                          ui: ui,
+                          dragProgress: _dragProgress,
+                          onInteraction: _restartHideTimer,
+                          onPlayPause: () {
+                            _restartHideTimer();
+                            controller.playOrPause();
+                          },
+                          onSkip: controller.skip,
+                          onPrevious: () {
+                            _restartHideTimer();
+                            controller.playPrevious();
+                          },
+                          onNext: () {
+                            _restartHideTimer();
+                            controller.playNext();
+                          },
+                          onScrubStart: (v) =>
+                              setState(() => _dragProgress = v),
+                          onScrubUpdate: (v) =>
+                              setState(() => _dragProgress = v),
+                          onScrubEnd: (v) {
+                            setState(() => _dragProgress = null);
+                            controller.seek(state.duration * v);
+                          },
+                          onSubtitles: () =>
+                              _pickSubtitle(state, controller),
+                          onAudio: () => _pickAudio(state, controller),
+                          onQuality: () => _pickQuality(state, controller),
+                          qualityLabel: () {
+                            final q = ref.watch(streamQualityProvider);
+                            return q.isOriginal
+                                ? AppLocalizations.of(
+                                    context,
+                                  ).qualityOriginal
+                                : q.label;
+                          }(),
+                          onSpeed: () => _pickSpeed(state, controller),
+                          onLock: () {
+                            ref
+                                .read(playerUiProvider.notifier)
+                                .toggleLock();
+                            setState(() => _chromeVisible = false);
+                            _applySystemUi();
+                          },
+                          onRotate: ref
+                              .read(playerUiProvider.notifier)
+                              .cycleRotation,
+                          onChapters: () =>
+                              _showChapters(state, controller),
+                          onFullscreen: _toggleFullscreen,
+                          onMore: () => MoreMenu.show(context),
+                          onPip: pip.supported ? _enterPip : null,
+                          onCast: _pickCastDevice,
+                          // The same amounts the gestures use; the buttons used
+                          // to be fixed at 10 and 30 seconds regardless.
+                          skipBack: settings.skipBack,
+                          skipForward: settings.skipForward,
+                          onSkipIntro: (chapter) =>
+                              controller.seek(chapter.end),
+                          // Only the segments the user asked to be asked
+                          // about: one set to skip has already seeked
+                          // itself, and one set to nothing wants none.
+                          skipSegment: _offeredSegment(state, settings),
+                          // A millisecond past the end, so a rounding
+                          // error cannot land the playhead back inside
+                          // the segment it was just asked to leave.
+                          onSkipSegment: (segment) => controller.seek(
+                            segment.end + const Duration(milliseconds: 1),
                           ),
+                          notImplemented: _notImplemented,
                         ),
                       ),
 

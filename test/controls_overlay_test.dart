@@ -38,6 +38,8 @@ Future<void> pumpControls(
   bool transcoding = false,
   double bottomInset = 0,
   MediaSegment? skipSegment,
+  bool chromeVisible = true,
+  VoidCallback? onNext,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
@@ -63,7 +65,8 @@ Future<void> pumpControls(
           onPlayPause: () {},
           onSkip: (_) {},
           onPrevious: () {},
-          onNext: () {},
+          onNext: onNext ?? () {},
+          chromeVisible: chromeVisible,
           onScrubStart: (_) {},
           onScrubUpdate: (_) {},
           onScrubEnd: (_) {},
@@ -88,7 +91,174 @@ Future<void> pumpControls(
   await tester.pump();
 }
 
+/// A file two thirds of the way through a three-episode run.
+PlaybackState _episode({
+  required Duration position,
+  Duration duration = const Duration(minutes: 24),
+  bool hasNext = true,
+  bool isSeries = true,
+}) {
+  return PlaybackState(
+    media: media(),
+    duration: duration,
+    position: position,
+    queue: PlaybackQueue(
+      items: <MediaRef>[
+        const MediaRef(sourceId: 'p1', itemId: 'e1', title: 'One'),
+        const MediaRef(sourceId: 'p1', itemId: 'e2', title: 'Two'),
+      ],
+      index: hasNext ? 0 : 1,
+      isSeries: isSeries,
+    ),
+  );
+}
+
 void main() {
+  group('the next episode pill', () {
+    testWidgets('appears in the last fifteen seconds', (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _episode(position: const Duration(minutes: 23, seconds: 50)),
+      );
+
+      expect(find.text('Next episode'), findsOneWidget);
+    });
+
+    testWidgets('is not up while the episode is still running', (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _episode(position: const Duration(minutes: 23, seconds: 40)),
+      );
+
+      expect(find.text('Next episode'), findsNothing);
+    });
+
+    testWidgets('the last episode of a run has nothing to offer',
+        (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _episode(
+          position: const Duration(minutes: 23, seconds: 55),
+          hasNext: false,
+        ),
+      );
+
+      expect(find.text('Next episode'), findsNothing);
+    });
+
+    testWidgets('a folder of videos is not promised an episode',
+        (tester) async {
+      // The queue is whatever shared a directory; calling the next file an
+      // episode would be a guess about somebody's media library.
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _episode(
+          position: const Duration(minutes: 23, seconds: 55),
+          isSeries: false,
+        ),
+      );
+
+      expect(find.text('Next video'), findsOneWidget);
+      expect(find.text('Next episode'), findsNothing);
+    });
+
+    testWidgets('nothing is offered before the duration is known',
+        (tester) async {
+      // Position and duration are both zero for a moment after a file opens,
+      // which would otherwise read as "no time left".
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _episode(position: Duration.zero, duration: Duration.zero),
+      );
+
+      expect(find.text('Next episode'), findsNothing);
+    });
+
+    testWidgets('steps to the next file when pressed', (tester) async {
+      var stepped = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _episode(position: const Duration(minutes: 23, seconds: 55)),
+        onNext: () => stepped++,
+      );
+
+      await tester.tap(find.text('Next episode'));
+      await tester.pump();
+
+      expect(stepped, 1);
+    });
+
+    testWidgets('outlives the controls it sits above', (tester) async {
+      // The end of an episode is exactly when nobody has touched the screen
+      // for twenty minutes, so a pill that goes with the chrome is a button
+      // nobody will ever see.
+      var stepped = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _episode(position: const Duration(minutes: 23, seconds: 55)),
+        chromeVisible: false,
+        onNext: () => stepped++,
+      );
+
+      final pill = find.text('Next episode');
+      expect(pill, findsOneWidget);
+      // Nothing is fading it out: the pill hangs off the layout the chrome
+      // leaves behind rather than off the chrome itself. (The page route
+      // contributes fades of its own, at full opacity.)
+      final fades = tester.widgetList<FadeTransition>(
+        find.ancestor(of: pill, matching: find.byType(FadeTransition)),
+      );
+      expect(fades.every((f) => f.opacity.value == 1.0), isTrue);
+
+      // And it can still be pressed, which an invisible layer over the top
+      // would quietly prevent.
+      await tester.tap(pill);
+      await tester.pump();
+      expect(stepped, 1);
+
+      // The controls under it really are gone, though.
+      expect(
+        tester
+            .widget<FadeTransition>(
+              find
+                  .ancestor(
+                    of: find.byIcon(Icons.fullscreen_rounded),
+                    matching: find.byType(FadeTransition),
+                  )
+                  .first,
+            )
+            .opacity
+            .value,
+        0.0,
+      );
+    });
+
+    testWidgets('takes the slot from the skip-credits pill', (tester) async {
+      // Both live bottom right, and the one that ends with the viewer
+      // watching the next episode is the better offer.
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _episode(position: const Duration(minutes: 23, seconds: 55)),
+        skipSegment: const MediaSegment(
+          kind: MediaSegmentKind.outro,
+          start: Duration(minutes: 23),
+          end: Duration(minutes: 24),
+        ),
+      );
+
+      expect(find.text('Next episode'), findsOneWidget);
+      expect(find.text('Skip credits'), findsNothing);
+    });
+  });
+
   group('skip intro', () {
     testWidgets('is a pill against the right edge, not a bar', (tester) async {
       const width = 900.0;

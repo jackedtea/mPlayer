@@ -14,10 +14,22 @@ import '../../sources/media_source.dart';
 /// rest of that folder, which is what every other video player does.
 @immutable
 class PlaybackQueue {
-  const PlaybackQueue({this.items = const <MediaRef>[], this.index = 0});
+  const PlaybackQueue({
+    this.items = const <MediaRef>[],
+    this.index = 0,
+    this.isSeries = false,
+  });
 
   final List<MediaRef> items;
   final int index;
+
+  /// Whether the run is the episodes of one series rather than whatever
+  /// videos happen to share a folder.
+  ///
+  /// Only the label of the end-of-file prompt turns on it: "Next episode" is
+  /// a promise about what comes next, and a folder of unrelated films must
+  /// not make it.
+  final bool isSeries;
 
   bool get isEmpty => items.isEmpty;
 
@@ -32,7 +44,7 @@ class PlaybackQueue {
 
   PlaybackQueue? stepTo(int next) {
     if (next < 0 || next >= items.length) return null;
-    return PlaybackQueue(items: items, index: next);
+    return PlaybackQueue(items: items, index: next, isSeries: isSeries);
   }
 
   /// Human position, e.g. "3 of 10".
@@ -266,6 +278,23 @@ class PlaybackState {
     final left = duration - position;
     return left.isNegative ? Duration.zero : left;
   }
+
+  /// How close to the end the prompt for the next episode appears.
+  ///
+  /// Long enough to be read and pressed over the closing titles, short enough
+  /// that it is not sitting on the picture through a scene the viewer is
+  /// still watching.
+  static const nextUpWindow = Duration(seconds: 15);
+
+  /// Whether the "Next episode" prompt belongs on screen.
+  ///
+  /// Held off until a duration is known: at the moment a file opens, position
+  /// and duration are both zero, and a prompt that flashes up before the
+  /// episode has started reads as a bug. Shown whatever the auto-play setting
+  /// says — it is how a viewer leaves the credits early, not a substitute for
+  /// the roll-on.
+  bool get nextUpDue =>
+      queue.hasNext && duration > Duration.zero && remaining <= nextUpWindow;
 
   PlaybackState copyWith({
     PlayableMedia? media,

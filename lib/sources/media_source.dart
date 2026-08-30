@@ -287,6 +287,22 @@ abstract interface class ProgressReporting {
   Future<void> reportStopped(String itemId, {required Duration position});
 }
 
+/// A source that knows what plays *after* an item without a folder to list.
+///
+/// Servers are the reason this exists: a Jellyfin library has no directory
+/// the player could read, so the run of episodes a tap on "Play" belongs to
+/// has to be asked for by name. Implementing it is what gives an episode
+/// prev/next and "Auto-play next episode"; a source that leaves it out simply
+/// plays the one file.
+abstract interface class QueueableSource implements MediaSource {
+  /// The items belonging beside [mediaRef], in play order, with the index of
+  /// [mediaRef] itself.
+  ///
+  /// Returns an empty list where the item has no run to belong to — a film,
+  /// or an episode the server files under no series.
+  Future<({List<MediaRef> items, int index})> siblingsOf(MediaRef mediaRef);
+}
+
 abstract interface class BrowsableSource implements MediaSource {
   /// Path shown as the breadcrumb root, e.g. `smb://nas/media`.
   String get rootLabel;

@@ -1874,6 +1874,18 @@ abstract class AppLocalizations {
   /// **'Next'**
   String get nextFile;
 
+  /// No description provided for @nextEpisode.
+  ///
+  /// In en, this message translates to:
+  /// **'Next episode'**
+  String get nextEpisode;
+
+  /// No description provided for @nextVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Next video'**
+  String get nextVideo;
+
   /// No description provided for @loading.
   ///
   /// In en, this message translates to:

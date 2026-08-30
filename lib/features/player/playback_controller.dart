@@ -48,6 +48,11 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Guards against re-reading the chapter list on every duration tick.
   bool _chaptersLoaded = false;
 
+  /// Held while a step is in flight, so the end of a file cannot be acted on
+  /// twice — the closing report the step waits on takes long enough that a
+  /// second `completed` would otherwise skip an episode.
+  bool _stepping = false;
+
   /// Where the position stream last reported, so [_applySegments] can tell a
   /// second of playback from a seek. Null until the first tick of a file.
   Duration? _lastPosition;
@@ -210,27 +215,42 @@ class PlaybackController extends Notifier<PlaybackState> {
     await seek(segment.end);
   }
 
-  /// Reads the folder [mediaRef] came from and turns it into the playlist.
+  /// Works out what [mediaRef] plays alongside and turns it into the
+  /// playlist.
+  ///
+  /// Two shapes of answer, because sources come in two shapes: a folder to
+  /// list, or a server that has to be asked which episodes belong to the
+  /// series. Without the second, an episode opened from a library plays alone
+  /// — no prev/next, and nothing for "Auto-play next episode" to roll on to.
   ///
   /// Runs *after* playback has started, deliberately: the file the user asked
-  /// for should begin immediately rather than waiting on a directory listing
-  /// that may cross a network. Prev/next simply appear a moment later.
+  /// for should begin immediately rather than waiting on a listing that may
+  /// cross a network. Prev/next simply appear a moment later.
   ///
-  /// Failure is silent by design — a folder that cannot be listed costs the
+  /// Failure is silent by design — a listing that cannot be read costs the
   /// user the step buttons, not their video.
   Future<void> loadSiblingQueue(MediaRef mediaRef) async {
     final source = ref.read(mediaSourcesProvider)[mediaRef.sourceId];
-    if (source is! BrowsableSource) return;
 
     try {
-      final siblings = await siblingVideosOf(source, mediaRef);
-      if (siblings.items.length <= 1) return;
+      final ({List<MediaRef> items, int index})? siblings = switch (source) {
+        final BrowsableSource s => await siblingVideosOf(s, mediaRef),
+        final QueueableSource s => await s.siblingsOf(mediaRef),
+        _ => null,
+      };
+      if (siblings == null || siblings.items.length <= 1) return;
 
       state = state.copyWith(
-        queue: PlaybackQueue(items: siblings.items, index: siblings.index),
+        queue: PlaybackQueue(
+          items: siblings.items,
+          index: siblings.index,
+          // Only a server answers with a series; a folder holds whatever it
+          // holds, and the prompt says so.
+          isSeries: source is QueueableSource,
+        ),
       );
     } catch (e) {
-      debugPrint('Could not read the folder for a playlist: $e');
+      debugPrint('Could not read the siblings for a playlist: $e');
     }
   }
 
@@ -241,18 +261,31 @@ class PlaybackController extends Notifier<PlaybackState> {
   Future<void> playNext() => _step(1);
 
   Future<void> _step(int delta) async {
+    if (_stepping) return;
+
     final next = state.queue.stepTo(state.queue.index + delta);
     if (next == null) return;
 
     final source = ref.read(mediaSourcesProvider)[next.current!.sourceId];
     if (source == null) return;
 
-    await _openAt(next, source);
+    _stepping = true;
+    try {
+      await _openAt(next, source);
+    } finally {
+      _stepping = false;
+    }
   }
 
   Future<void> _openAt(PlaybackQueue queue, MediaSource source) async {
     final mediaRef = queue.current;
     if (mediaRef == null) return;
+
+    // The episode being stepped away from is done with, and nothing else
+    // will say so: the teardown that normally reports it only runs when the
+    // player closes, so a binge would otherwise leave a session open on the
+    // server for every episode it rolled through.
+    await _closeCurrent();
 
     state = state.copyWith(queue: queue, buffering: true, clearError: true);
 
@@ -342,29 +375,38 @@ class PlaybackController extends Notifier<PlaybackState> {
     // audio thread left running underneath it.
     await _player?.pause();
 
-    // Force a final write: the throttle would otherwise drop the last few
-    // seconds, which is exactly the position the user will resume from.
-    // Awaited, unlike the periodic writes — it grabs a frame off the player,
-    // and tearing the player down underneath that would lose the still.
-    // Bounded, because none of it is worth holding the decoder open for: a
-    // server that has gone away must cost the user a progress report, not a
-    // player that never closes.
-    try {
-      await Future<void>(() async {
-        await _recordProgress(force: true);
-        // Before the teardown: the session has to be closed while there is
-        // still something to close it with.
-        await _reportStopped();
-      }).timeout(const Duration(seconds: 5));
-    } catch (e) {
-      debugPrint('Gave up on the closing report: $e');
-    }
+    await _closeCurrent();
 
     await _teardownAsync();
     state = const PlaybackState();
 
     // The Continue-watching shelf is built from what was just written.
     ref.invalidate(resumePointsProvider);
+  }
+
+  /// Files the closing report for whatever is playing now.
+  ///
+  /// Force a final write: the throttle would otherwise drop the last few
+  /// seconds, which is exactly the position the user will resume from.
+  /// Awaited, unlike the periodic writes — it grabs a frame off the player,
+  /// and tearing the player down underneath that would lose the still. The
+  /// server report goes second and while there is still a session to close:
+  /// it is what ends the transcode and what marks a finished episode watched.
+  ///
+  /// Bounded, because none of it is worth holding anything open for: a server
+  /// that has gone away must cost the user a progress report, not a player
+  /// that never closes or a next episode that never starts.
+  Future<void> _closeCurrent() async {
+    if (state.media == null) return;
+
+    try {
+      await Future<void>(() async {
+        await _recordProgress(force: true);
+        await _reportStopped();
+      }).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('Gave up on the closing report: $e');
+    }
   }
 
   Player _ensurePlayer() {

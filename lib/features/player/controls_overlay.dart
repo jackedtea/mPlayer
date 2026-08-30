@@ -53,6 +53,7 @@ class ControlsOverlay extends StatelessWidget {
     this.skipSegment,
     required this.onSkipSegment,
     required this.notImplemented,
+    this.chromeVisible = true,
   });
 
   final PlayableMedia media;
@@ -113,6 +114,16 @@ class ControlsOverlay extends StatelessWidget {
   final Duration skipBack;
   final Duration skipForward;
 
+  /// Whether the controls themselves are up.
+  ///
+  /// The fade lives *inside* the overlay rather than around it because the
+  /// pills must outlast it: the end of an episode is exactly when nobody has
+  /// touched the screen for twenty minutes, and a "Next episode" button that
+  /// only exists while the scrubber is up is a button nobody will see. Faded
+  /// rather than removed, so the pill keeps the position the bottom bar
+  /// gives it and does not jump down the screen when the chrome goes.
+  final bool chromeVisible;
+
   @override
   Widget build(BuildContext context) {
     final intro = state.currentIntro;
@@ -122,10 +133,25 @@ class ControlsOverlay extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        const _Scrim(top: true, opacity: 0.60, height: 140),
-        const _Scrim(top: false, opacity: 0.80, height: 210),
-        Align(alignment: Alignment.topCenter, child: _TopBar(this_: this)),
-        Center(child: _Transport(this_: this)),
+        _Fade(
+          visible: chromeVisible,
+          child: const _Scrim(top: true, opacity: 0.60, height: 140),
+        ),
+        _Fade(
+          visible: chromeVisible,
+          child: const _Scrim(top: false, opacity: 0.80, height: 210),
+        ),
+        _Fade(
+          visible: chromeVisible,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: _TopBar(this_: this),
+          ),
+        ),
+        _Fade(
+          visible: chromeVisible,
+          child: Center(child: _Transport(this_: this)),
+        ),
         Align(
           alignment: Alignment.bottomCenter,
           child: Column(
@@ -146,10 +172,24 @@ class ControlsOverlay extends StatelessWidget {
                   fraction: dragProgress!,
                 ),
 
+              // In the last stretch of a file with something to follow it,
+              // the offer is the next episode itself rather than a way past
+              // the credits — the two would sit in the same slot, and the one
+              // that ends with the viewer watching the next episode wins.
+              if (state.nextUpDue)
+                _PillSlot(
+                  child: _SkipPill(
+                    label: state.queue.isSeries
+                        ? AppLocalizations.of(context).nextEpisode
+                        : AppLocalizations.of(context).nextVideo,
+                    icon: Icons.skip_next_rounded,
+                    onTap: onNext,
+                  ),
+                )
               // A segment the server labelled wins over a chapter the
               // container merely named; `currentIntro` already stands down
               // when there are segments, so at most one of these is non-null.
-              if (segment != null)
+              else if (segment != null)
                 _PillSlot(
                   child: _SkipPill(
                     label: _segmentLabel(context, segment.kind),
@@ -163,7 +203,10 @@ class ControlsOverlay extends StatelessWidget {
                     onTap: () => onSkipIntro(intro),
                   ),
                 ),
-              _BottomBar(this_: this),
+              _Fade(
+                visible: chromeVisible,
+                child: _BottomBar(this_: this),
+              ),
             ],
           ),
         ),
@@ -189,6 +232,26 @@ String _segmentLabel(BuildContext context, MediaSegmentKind kind) {
     // carried this far.
     MediaSegmentKind.unknown => l10n.skipIntro,
   };
+}
+
+/// Takes one layer of the chrome out of sight without taking it out of the
+/// layout, and out of reach while it is gone.
+class _Fade extends StatelessWidget {
+  const _Fade({required this.visible, required this.child});
+
+  final bool visible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: visible ? 1 : 0,
+      duration: const Duration(milliseconds: 200),
+      // An invisible control that still swallows taps would cost the viewer
+      // the tap-to-show gesture over the whole bottom of the screen.
+      child: IgnorePointer(ignoring: !visible, child: child),
+    );
+  }
 }
 
 /// Where every skip pill sits: bottom right, clear of the scrubber.
@@ -468,10 +531,15 @@ class _TransportSpinner extends StatelessWidget {
 }
 
 class _SkipPill extends StatelessWidget {
-  const _SkipPill({required this.label, required this.onTap});
+  const _SkipPill({required this.label, required this.onTap, this.icon});
 
   final String label;
   final VoidCallback onTap;
+
+  /// Drawn before the label where the pill offers something other than a way
+  /// past a stretch of the file — the arrow is what makes "Next episode" read
+  /// as a transport control at a glance.
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -491,13 +559,22 @@ class _SkipPill extends StatelessWidget {
           // white whatever the theme is, so the scheme role went pale blue in
           // the dark theme — and anywhere at all under a custom accent — and
           // left the label barely readable on it.
-          child: Text(
-            label,
-            style: TextStyle(
-              color: context.semantic.onPlayerPill,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (icon != null) ...<Widget>[
+                Icon(icon, size: 18, color: context.semantic.onPlayerPill),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: context.semantic.onPlayerPill,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ),

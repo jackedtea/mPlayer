@@ -17,7 +17,8 @@ import 'stream_preferences.dart';
 /// resolves against. Registering one of these means the player, the
 /// folder queue, resume points and casting all work against a server without
 /// knowing that a server is what they are talking to.
-class JellyfinMediaSource implements MediaSource, ProgressReporting {
+class JellyfinMediaSource
+    implements MediaSource, QueueableSource, ProgressReporting {
   JellyfinMediaSource(this.library, {StreamPreferences Function()? preferences})
       : _preferences = preferences ?? _none;
 
@@ -36,6 +37,13 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
   /// Without it a report is filed against no session, and a transcode the
   /// user walked away from is never torn down.
   final Map<String, String> _sessions = <String, String>{};
+
+  /// The series each played episode belongs to, remembered from the resolve
+  /// that already fetched it.
+  ///
+  /// Saves the queue a second round trip for the item the player just opened,
+  /// which is the only item it ever asks about.
+  final Map<String, String> _series = <String, String>{};
 
   @override
   String get id => library.profile.id;
@@ -92,6 +100,9 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
       final session = playback.playSessionId;
       if (session != null) _sessions[ref.itemId] = session;
 
+      final series = item.seriesId;
+      if (series != null) _series[ref.itemId] = series;
+
       return PlayableMedia(
         ref: MediaRef(
           sourceId: id,
@@ -118,6 +129,47 @@ class JellyfinMediaSource implements MediaSource, ProgressReporting {
       );
     } on ServerException catch (e) {
       // The player renders this inline; it must read as a sentence.
+      throw MediaSourceException(e.message);
+    }
+  }
+
+  /// The other episodes of the series [mediaRef] belongs to, in play order.
+  ///
+  /// The whole series rather than the season: the episode after a finale is
+  /// the next season's opener, and stopping at a season boundary is exactly
+  /// the point in a binge where auto-play should not give up.
+  ///
+  /// A film returns nothing — it has no run to step through, and the player
+  /// reads the empty list as "no playlist" rather than as an error.
+  @override
+  Future<({List<MediaRef> items, int index})> siblingsOf(
+    MediaRef mediaRef,
+  ) async {
+    const ({List<MediaRef> items, int index}) none = (
+      items: <MediaRef>[],
+      index: 0,
+    );
+
+    try {
+      final seriesId = _series[mediaRef.itemId] ??
+          (await library.item(mediaRef.itemId)).seriesId;
+      if (seriesId == null) return none;
+
+      final episodes = await library.episodes(seriesId);
+
+      final items = <MediaRef>[
+        for (final ServerItem e in episodes)
+          MediaRef(sourceId: id, itemId: e.id, title: e.title),
+      ];
+
+      // A server that answered with a list the played episode is not in has
+      // told us nothing usable; a queue positioned at the wrong index would
+      // send "next" to the wrong episode.
+      final index = items.indexWhere((m) => m.itemId == mediaRef.itemId);
+      if (index < 0) return none;
+
+      return (items: items, index: index);
+    } on ServerException catch (e) {
       throw MediaSourceException(e.message);
     }
   }

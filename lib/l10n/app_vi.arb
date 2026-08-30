@@ -374,6 +374,8 @@
 
   "previousFile": "Trước",
   "nextFile": "Tiếp",
+  "nextEpisode": "Tập tiếp theo",
+  "nextVideo": "Video tiếp theo",
   "loading": "Đang tải",
   "aspectRatioValue": "Tỉ lệ khung hình: {mode}",
   "@aspectRatioValue": { "placeholders": { "mode": { "type": "String" } } },

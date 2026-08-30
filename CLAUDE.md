@@ -94,6 +94,10 @@ over adding near-duplicates.
 `sources/` holds the drivers. `MediaSource` resolves an item for playback;
 `BrowsableSource` adds `listDirectory` and is what screen 1b talks to — a Jellyfin
 library is browsed by collection, not by path, so it will never implement it.
+`QueueableSource` is how a server answers the question a folder listing answers for
+everyone else — what plays after this item. `JellyfinMediaSource` returns the episodes
+of the series, which is what gives an episode prev/next, the end-of-file prompt and
+auto-play next.
 
 | Kind | Driver | State |
 |---|---|---|

@@ -983,6 +983,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get nextFile => 'Tiếp';
 
   @override
+  String get nextEpisode => 'Tập tiếp theo';
+
+  @override
+  String get nextVideo => 'Video tiếp theo';
+
+  @override
   String get loading => 'Đang tải';
 
   @override

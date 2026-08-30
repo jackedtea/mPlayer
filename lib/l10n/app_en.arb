@@ -425,6 +425,8 @@
 
   "previousFile": "Previous",
   "nextFile": "Next",
+  "nextEpisode": "Next episode",
+  "nextVideo": "Next video",
   "loading": "Loading",
   "aspectRatioValue": "Aspect ratio: {mode}",
   "@aspectRatioValue": { "placeholders": { "mode": { "type": "String" } } },
