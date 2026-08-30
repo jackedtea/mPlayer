@@ -512,6 +512,432 @@ abstract class AppLocalizations {
   /// **'Movies'**
   String get tabMovies;
 
+  /// No description provided for @settingsAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Server administration'**
+  String get settingsAdmin;
+
+  /// No description provided for @justNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get justNow;
+
+  /// No description provided for @minutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}m ago'**
+  String minutesAgo(int count);
+
+  /// No description provided for @hoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}h ago'**
+  String hoursAgo(int count);
+
+  /// No description provided for @daysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}d ago'**
+  String daysAgo(int count);
+
+  /// No description provided for @settingsAdminSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions, tasks, users, plugins'**
+  String get settingsAdminSub;
+
+  /// No description provided for @adminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Administration'**
+  String get adminTitle;
+
+  /// No description provided for @adminNotAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'This account is not an administrator.'**
+  String get adminNotAdmin;
+
+  /// No description provided for @adminNoServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to a server first.'**
+  String get adminNoServer;
+
+  /// No description provided for @adminServerSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get adminServerSection;
+
+  /// No description provided for @adminSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Active sessions'**
+  String get adminSessions;
+
+  /// No description provided for @adminNoSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is connected.'**
+  String get adminNoSessions;
+
+  /// No description provided for @adminIdleSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected, not playing'**
+  String get adminIdleSession;
+
+  /// No description provided for @adminStopPlayback.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop playback'**
+  String get adminStopPlayback;
+
+  /// No description provided for @adminSendMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a message'**
+  String get adminSendMessage;
+
+  /// No description provided for @adminMessageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Message to {device}'**
+  String adminMessageTitle(String device);
+
+  /// No description provided for @adminMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should it say?'**
+  String get adminMessageHint;
+
+  /// No description provided for @adminMessageSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Message sent.'**
+  String get adminMessageSent;
+
+  /// No description provided for @adminPlaybackStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback stopped.'**
+  String get adminPlaybackStopped;
+
+  /// No description provided for @adminTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled tasks'**
+  String get adminTasks;
+
+  /// No description provided for @adminNoTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'This server lists no tasks.'**
+  String get adminNoTasks;
+
+  /// No description provided for @adminRunTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get adminRunTask;
+
+  /// No description provided for @adminStopTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get adminStopTask;
+
+  /// No description provided for @adminTaskStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} started.'**
+  String adminTaskStarted(String name);
+
+  /// No description provided for @adminTaskStopping.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is being stopped.'**
+  String adminTaskStopping(String name);
+
+  /// No description provided for @adminTaskNeverRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Never run'**
+  String get adminTaskNeverRun;
+
+  /// No description provided for @adminTaskLastRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Last run {when}'**
+  String adminTaskLastRun(String when);
+
+  /// No description provided for @adminTaskLastFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last run failed'**
+  String get adminTaskLastFailed;
+
+  /// No description provided for @adminScanLibraries.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan all libraries'**
+  String get adminScanLibraries;
+
+  /// No description provided for @adminScanStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Library scan started.'**
+  String get adminScanStarted;
+
+  /// No description provided for @adminUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Users'**
+  String get adminUsers;
+
+  /// No description provided for @adminNoUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'No accounts on this server.'**
+  String get adminNoUsers;
+
+  /// No description provided for @adminUserAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Administrator'**
+  String get adminUserAdmin;
+
+  /// No description provided for @adminUserDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get adminUserDisabled;
+
+  /// No description provided for @adminUserEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get adminUserEnable;
+
+  /// No description provided for @adminUserDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get adminUserDisable;
+
+  /// No description provided for @adminUserEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can sign in again.'**
+  String adminUserEnabled(String name);
+
+  /// No description provided for @adminUserNowDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} can no longer sign in.'**
+  String adminUserNowDisabled(String name);
+
+  /// No description provided for @adminDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get adminDevices;
+
+  /// No description provided for @adminNoDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No devices have signed in.'**
+  String get adminNoDevices;
+
+  /// No description provided for @adminForgetDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget this device'**
+  String get adminForgetDevice;
+
+  /// No description provided for @adminDeviceForgotten.
+  ///
+  /// In en, this message translates to:
+  /// **'Device forgotten.'**
+  String get adminDeviceForgotten;
+
+  /// No description provided for @adminActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity log'**
+  String get adminActivity;
+
+  /// No description provided for @adminNoActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been logged yet.'**
+  String get adminNoActivity;
+
+  /// No description provided for @adminPlugins.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get adminPlugins;
+
+  /// No description provided for @adminNoPlugins.
+  ///
+  /// In en, this message translates to:
+  /// **'No plugins are installed.'**
+  String get adminNoPlugins;
+
+  /// No description provided for @adminPluginEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get adminPluginEnable;
+
+  /// No description provided for @adminPluginDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get adminPluginDisable;
+
+  /// No description provided for @adminPluginUninstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall'**
+  String get adminPluginUninstall;
+
+  /// No description provided for @adminPluginRestartPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a restart'**
+  String get adminPluginRestartPending;
+
+  /// No description provided for @adminPluginBroken.
+  ///
+  /// In en, this message translates to:
+  /// **'Not working'**
+  String get adminPluginBroken;
+
+  /// No description provided for @adminPluginSuperceded.
+  ///
+  /// In en, this message translates to:
+  /// **'Superseded'**
+  String get adminPluginSuperceded;
+
+  /// No description provided for @adminPluginUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Not supported'**
+  String get adminPluginUnsupported;
+
+  /// No description provided for @adminPluginChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} updated. Some changes need a restart.'**
+  String adminPluginChanged(String name);
+
+  /// No description provided for @adminPluginRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} uninstalled.'**
+  String adminPluginRemoved(String name);
+
+  /// No description provided for @adminUninstallPluginQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall {name}?'**
+  String adminUninstallPluginQuestion(String name);
+
+  /// No description provided for @adminUninstallPluginBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Its settings stay on the server, but it stops working until it is installed again.'**
+  String get adminUninstallPluginBody;
+
+  /// No description provided for @adminRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename server'**
+  String get adminRename;
+
+  /// No description provided for @adminRenameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Server name'**
+  String get adminRenameHint;
+
+  /// No description provided for @adminRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Server renamed.'**
+  String get adminRenamed;
+
+  /// No description provided for @adminRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart server'**
+  String get adminRestart;
+
+  /// No description provided for @adminRestartQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart {name}?'**
+  String adminRestartQuestion(String name);
+
+  /// No description provided for @adminRestartBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone watching is cut off. The server comes back on its own.'**
+  String get adminRestartBody;
+
+  /// No description provided for @adminRestarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart requested.'**
+  String get adminRestarting;
+
+  /// No description provided for @adminShutdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Shut down server'**
+  String get adminShutdown;
+
+  /// No description provided for @adminShutdownQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Shut down {name}?'**
+  String adminShutdownQuestion(String name);
+
+  /// No description provided for @adminShutdownBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone watching is cut off, and nothing here can start it again - someone has to start it at the machine.'**
+  String get adminShutdownBody;
+
+  /// No description provided for @adminShuttingDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Shutdown requested.'**
+  String get adminShuttingDown;
+
+  /// No description provided for @adminCannotRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'This server cannot restart itself.'**
+  String get adminCannotRestart;
+
+  /// No description provided for @actionSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get actionSend;
+
+  /// No description provided for @actionRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get actionRun;
+
   /// No description provided for @tabShows.
   ///
   /// In en, this message translates to:

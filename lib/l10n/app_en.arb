@@ -105,6 +105,119 @@
   "recentlyAdded": "Recently added",
   "libraries": "Libraries",
   "tabMovies": "Movies",
+  "settingsAdmin": "Server administration",
+  "justNow": "just now",
+  "minutesAgo": "{count}m ago",
+  "@minutesAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "hoursAgo": "{count}h ago",
+  "@hoursAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "daysAgo": "{count}d ago",
+  "@daysAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "settingsAdminSub": "Sessions, tasks, users, plugins",
+  "adminTitle": "Administration",
+  "adminNotAdmin": "This account is not an administrator.",
+  "adminNoServer": "Sign in to a server first.",
+  "adminServerSection": "Server",
+  "adminSessions": "Active sessions",
+  "adminNoSessions": "Nobody is connected.",
+  "adminIdleSession": "Connected, not playing",
+  "adminStopPlayback": "Stop playback",
+  "adminSendMessage": "Send a message",
+  "adminMessageTitle": "Message to {device}",
+  "@adminMessageTitle": {
+    "placeholders": { "device": { "type": "String" } }
+  },
+  "adminMessageHint": "What should it say?",
+  "adminMessageSent": "Message sent.",
+  "adminPlaybackStopped": "Playback stopped.",
+  "adminTasks": "Scheduled tasks",
+  "adminNoTasks": "This server lists no tasks.",
+  "adminRunTask": "Run now",
+  "adminStopTask": "Stop",
+  "adminTaskStarted": "{name} started.",
+  "@adminTaskStarted": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminTaskStopping": "{name} is being stopped.",
+  "@adminTaskStopping": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminTaskNeverRun": "Never run",
+  "adminTaskLastRun": "Last run {when}",
+  "@adminTaskLastRun": {
+    "placeholders": { "when": { "type": "String" } }
+  },
+  "adminTaskLastFailed": "Last run failed",
+  "adminScanLibraries": "Scan all libraries",
+  "adminScanStarted": "Library scan started.",
+  "adminUsers": "Users",
+  "adminNoUsers": "No accounts on this server.",
+  "adminUserAdmin": "Administrator",
+  "adminUserDisabled": "Disabled",
+  "adminUserEnable": "Enable",
+  "adminUserDisable": "Disable",
+  "adminUserEnabled": "{name} can sign in again.",
+  "@adminUserEnabled": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminUserNowDisabled": "{name} can no longer sign in.",
+  "@adminUserNowDisabled": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminDevices": "Devices",
+  "adminNoDevices": "No devices have signed in.",
+  "adminForgetDevice": "Forget this device",
+  "adminDeviceForgotten": "Device forgotten.",
+  "adminActivity": "Activity log",
+  "adminNoActivity": "Nothing has been logged yet.",
+  "adminPlugins": "Plugins",
+  "adminNoPlugins": "No plugins are installed.",
+  "adminPluginEnable": "Enable",
+  "adminPluginDisable": "Disable",
+  "adminPluginUninstall": "Uninstall",
+  "adminPluginRestartPending": "Needs a restart",
+  "adminPluginBroken": "Not working",
+  "adminPluginSuperceded": "Superseded",
+  "adminPluginUnsupported": "Not supported",
+  "adminPluginChanged": "{name} updated. Some changes need a restart.",
+  "@adminPluginChanged": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminPluginRemoved": "{name} uninstalled.",
+  "@adminPluginRemoved": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminUninstallPluginQuestion": "Uninstall {name}?",
+  "@adminUninstallPluginQuestion": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminUninstallPluginBody": "Its settings stay on the server, but it stops working until it is installed again.",
+  "adminRename": "Rename server",
+  "adminRenameHint": "Server name",
+  "adminRenamed": "Server renamed.",
+  "adminRestart": "Restart server",
+  "adminRestartQuestion": "Restart {name}?",
+  "@adminRestartQuestion": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminRestartBody": "Everyone watching is cut off. The server comes back on its own.",
+  "adminRestarting": "Restart requested.",
+  "adminShutdown": "Shut down server",
+  "adminShutdownQuestion": "Shut down {name}?",
+  "@adminShutdownQuestion": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminShutdownBody": "Everyone watching is cut off, and nothing here can start it again - someone has to start it at the machine.",
+  "adminShuttingDown": "Shutdown requested.",
+  "adminCannotRestart": "This server cannot restart itself.",
+  "actionSend": "Send",
+  "actionRun": "Run",
   "tabShows": "Shows",
   "tabItems": "All",
   "tabSuggestions": "Suggestions",

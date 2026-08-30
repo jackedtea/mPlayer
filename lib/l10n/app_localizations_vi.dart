@@ -239,6 +239,250 @@ class AppLocalizationsVi extends AppLocalizations {
   String get tabMovies => 'Phim lẻ';
 
   @override
+  String get settingsAdmin => 'Quản trị máy chủ';
+
+  @override
+  String get justNow => 'vừa xong';
+
+  @override
+  String minutesAgo(int count) {
+    return '$count phút trước';
+  }
+
+  @override
+  String hoursAgo(int count) {
+    return '$count giờ trước';
+  }
+
+  @override
+  String daysAgo(int count) {
+    return '$count ngày trước';
+  }
+
+  @override
+  String get settingsAdminSub => 'Phiên phát, tác vụ, người dùng, plugin';
+
+  @override
+  String get adminTitle => 'Quản trị';
+
+  @override
+  String get adminNotAdmin => 'Tài khoản này không phải quản trị viên.';
+
+  @override
+  String get adminNoServer => 'Hãy đăng nhập vào một máy chủ trước.';
+
+  @override
+  String get adminServerSection => 'Máy chủ';
+
+  @override
+  String get adminSessions => 'Phiên đang hoạt động';
+
+  @override
+  String get adminNoSessions => 'Không có ai đang kết nối.';
+
+  @override
+  String get adminIdleSession => 'Đã kết nối, chưa phát gì';
+
+  @override
+  String get adminStopPlayback => 'Dừng phát';
+
+  @override
+  String get adminSendMessage => 'Gửi tin nhắn';
+
+  @override
+  String adminMessageTitle(String device) {
+    return 'Nhắn tới $device';
+  }
+
+  @override
+  String get adminMessageHint => 'Nội dung tin nhắn?';
+
+  @override
+  String get adminMessageSent => 'Đã gửi tin nhắn.';
+
+  @override
+  String get adminPlaybackStopped => 'Đã dừng phát.';
+
+  @override
+  String get adminTasks => 'Tác vụ theo lịch';
+
+  @override
+  String get adminNoTasks => 'Máy chủ này không liệt kê tác vụ nào.';
+
+  @override
+  String get adminRunTask => 'Chạy ngay';
+
+  @override
+  String get adminStopTask => 'Dừng';
+
+  @override
+  String adminTaskStarted(String name) {
+    return 'Đã bắt đầu $name.';
+  }
+
+  @override
+  String adminTaskStopping(String name) {
+    return 'Đang dừng $name.';
+  }
+
+  @override
+  String get adminTaskNeverRun => 'Chưa chạy lần nào';
+
+  @override
+  String adminTaskLastRun(String when) {
+    return 'Chạy lần cuối $when';
+  }
+
+  @override
+  String get adminTaskLastFailed => 'Lần chạy trước thất bại';
+
+  @override
+  String get adminScanLibraries => 'Quét toàn bộ thư viện';
+
+  @override
+  String get adminScanStarted => 'Đã bắt đầu quét thư viện.';
+
+  @override
+  String get adminUsers => 'Người dùng';
+
+  @override
+  String get adminNoUsers => 'Máy chủ này chưa có tài khoản nào.';
+
+  @override
+  String get adminUserAdmin => 'Quản trị viên';
+
+  @override
+  String get adminUserDisabled => 'Đã tắt';
+
+  @override
+  String get adminUserEnable => 'Bật';
+
+  @override
+  String get adminUserDisable => 'Tắt';
+
+  @override
+  String adminUserEnabled(String name) {
+    return '$name đã có thể đăng nhập lại.';
+  }
+
+  @override
+  String adminUserNowDisabled(String name) {
+    return '$name không đăng nhập được nữa.';
+  }
+
+  @override
+  String get adminDevices => 'Thiết bị';
+
+  @override
+  String get adminNoDevices => 'Chưa có thiết bị nào đăng nhập.';
+
+  @override
+  String get adminForgetDevice => 'Quên thiết bị này';
+
+  @override
+  String get adminDeviceForgotten => 'Đã quên thiết bị.';
+
+  @override
+  String get adminActivity => 'Nhật ký hoạt động';
+
+  @override
+  String get adminNoActivity => 'Chưa có gì được ghi lại.';
+
+  @override
+  String get adminPlugins => 'Plugin';
+
+  @override
+  String get adminNoPlugins => 'Chưa cài plugin nào.';
+
+  @override
+  String get adminPluginEnable => 'Bật';
+
+  @override
+  String get adminPluginDisable => 'Tắt';
+
+  @override
+  String get adminPluginUninstall => 'Gỡ cài đặt';
+
+  @override
+  String get adminPluginRestartPending => 'Cần khởi động lại';
+
+  @override
+  String get adminPluginBroken => 'Không hoạt động';
+
+  @override
+  String get adminPluginSuperceded => 'Đã có bản thay thế';
+
+  @override
+  String get adminPluginUnsupported => 'Không được hỗ trợ';
+
+  @override
+  String adminPluginChanged(String name) {
+    return 'Đã cập nhật $name. Một số thay đổi cần khởi động lại.';
+  }
+
+  @override
+  String adminPluginRemoved(String name) {
+    return 'Đã gỡ $name.';
+  }
+
+  @override
+  String adminUninstallPluginQuestion(String name) {
+    return 'Gỡ $name?';
+  }
+
+  @override
+  String get adminUninstallPluginBody =>
+      'Cấu hình của nó vẫn nằm trên máy chủ, nhưng nó ngừng hoạt động cho tới khi được cài lại.';
+
+  @override
+  String get adminRename => 'Đổi tên máy chủ';
+
+  @override
+  String get adminRenameHint => 'Tên máy chủ';
+
+  @override
+  String get adminRenamed => 'Đã đổi tên máy chủ.';
+
+  @override
+  String get adminRestart => 'Khởi động lại máy chủ';
+
+  @override
+  String adminRestartQuestion(String name) {
+    return 'Khởi động lại $name?';
+  }
+
+  @override
+  String get adminRestartBody =>
+      'Mọi người đang xem sẽ bị ngắt. Máy chủ sẽ tự chạy lại.';
+
+  @override
+  String get adminRestarting => 'Đã yêu cầu khởi động lại.';
+
+  @override
+  String get adminShutdown => 'Tắt máy chủ';
+
+  @override
+  String adminShutdownQuestion(String name) {
+    return 'Tắt $name?';
+  }
+
+  @override
+  String get adminShutdownBody =>
+      'Mọi người đang xem sẽ bị ngắt, và không có gì ở đây bật lại được - phải có người bật trực tiếp tại máy.';
+
+  @override
+  String get adminShuttingDown => 'Đã yêu cầu tắt máy chủ.';
+
+  @override
+  String get adminCannotRestart => 'Máy chủ này không tự khởi động lại được.';
+
+  @override
+  String get actionSend => 'Gửi';
+
+  @override
+  String get actionRun => 'Chạy';
+
+  @override
   String get tabShows => 'Phim bộ';
 
   @override

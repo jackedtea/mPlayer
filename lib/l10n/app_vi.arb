@@ -81,6 +81,119 @@
   "recentlyAdded": "Mới thêm",
   "libraries": "Thư viện",
   "tabMovies": "Phim lẻ",
+  "settingsAdmin": "Quản trị máy chủ",
+  "justNow": "vừa xong",
+  "minutesAgo": "{count} phút trước",
+  "@minutesAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "hoursAgo": "{count} giờ trước",
+  "@hoursAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "daysAgo": "{count} ngày trước",
+  "@daysAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "settingsAdminSub": "Phiên phát, tác vụ, người dùng, plugin",
+  "adminTitle": "Quản trị",
+  "adminNotAdmin": "Tài khoản này không phải quản trị viên.",
+  "adminNoServer": "Hãy đăng nhập vào một máy chủ trước.",
+  "adminServerSection": "Máy chủ",
+  "adminSessions": "Phiên đang hoạt động",
+  "adminNoSessions": "Không có ai đang kết nối.",
+  "adminIdleSession": "Đã kết nối, chưa phát gì",
+  "adminStopPlayback": "Dừng phát",
+  "adminSendMessage": "Gửi tin nhắn",
+  "adminMessageTitle": "Nhắn tới {device}",
+  "@adminMessageTitle": {
+    "placeholders": { "device": { "type": "String" } }
+  },
+  "adminMessageHint": "Nội dung tin nhắn?",
+  "adminMessageSent": "Đã gửi tin nhắn.",
+  "adminPlaybackStopped": "Đã dừng phát.",
+  "adminTasks": "Tác vụ theo lịch",
+  "adminNoTasks": "Máy chủ này không liệt kê tác vụ nào.",
+  "adminRunTask": "Chạy ngay",
+  "adminStopTask": "Dừng",
+  "adminTaskStarted": "Đã bắt đầu {name}.",
+  "@adminTaskStarted": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminTaskStopping": "Đang dừng {name}.",
+  "@adminTaskStopping": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminTaskNeverRun": "Chưa chạy lần nào",
+  "adminTaskLastRun": "Chạy lần cuối {when}",
+  "@adminTaskLastRun": {
+    "placeholders": { "when": { "type": "String" } }
+  },
+  "adminTaskLastFailed": "Lần chạy trước thất bại",
+  "adminScanLibraries": "Quét toàn bộ thư viện",
+  "adminScanStarted": "Đã bắt đầu quét thư viện.",
+  "adminUsers": "Người dùng",
+  "adminNoUsers": "Máy chủ này chưa có tài khoản nào.",
+  "adminUserAdmin": "Quản trị viên",
+  "adminUserDisabled": "Đã tắt",
+  "adminUserEnable": "Bật",
+  "adminUserDisable": "Tắt",
+  "adminUserEnabled": "{name} đã có thể đăng nhập lại.",
+  "@adminUserEnabled": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminUserNowDisabled": "{name} không đăng nhập được nữa.",
+  "@adminUserNowDisabled": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminDevices": "Thiết bị",
+  "adminNoDevices": "Chưa có thiết bị nào đăng nhập.",
+  "adminForgetDevice": "Quên thiết bị này",
+  "adminDeviceForgotten": "Đã quên thiết bị.",
+  "adminActivity": "Nhật ký hoạt động",
+  "adminNoActivity": "Chưa có gì được ghi lại.",
+  "adminPlugins": "Plugin",
+  "adminNoPlugins": "Chưa cài plugin nào.",
+  "adminPluginEnable": "Bật",
+  "adminPluginDisable": "Tắt",
+  "adminPluginUninstall": "Gỡ cài đặt",
+  "adminPluginRestartPending": "Cần khởi động lại",
+  "adminPluginBroken": "Không hoạt động",
+  "adminPluginSuperceded": "Đã có bản thay thế",
+  "adminPluginUnsupported": "Không được hỗ trợ",
+  "adminPluginChanged": "Đã cập nhật {name}. Một số thay đổi cần khởi động lại.",
+  "@adminPluginChanged": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminPluginRemoved": "Đã gỡ {name}.",
+  "@adminPluginRemoved": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminUninstallPluginQuestion": "Gỡ {name}?",
+  "@adminUninstallPluginQuestion": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminUninstallPluginBody": "Cấu hình của nó vẫn nằm trên máy chủ, nhưng nó ngừng hoạt động cho tới khi được cài lại.",
+  "adminRename": "Đổi tên máy chủ",
+  "adminRenameHint": "Tên máy chủ",
+  "adminRenamed": "Đã đổi tên máy chủ.",
+  "adminRestart": "Khởi động lại máy chủ",
+  "adminRestartQuestion": "Khởi động lại {name}?",
+  "@adminRestartQuestion": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminRestartBody": "Mọi người đang xem sẽ bị ngắt. Máy chủ sẽ tự chạy lại.",
+  "adminRestarting": "Đã yêu cầu khởi động lại.",
+  "adminShutdown": "Tắt máy chủ",
+  "adminShutdownQuestion": "Tắt {name}?",
+  "@adminShutdownQuestion": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "adminShutdownBody": "Mọi người đang xem sẽ bị ngắt, và không có gì ở đây bật lại được - phải có người bật trực tiếp tại máy.",
+  "adminShuttingDown": "Đã yêu cầu tắt máy chủ.",
+  "adminCannotRestart": "Máy chủ này không tự khởi động lại được.",
+  "actionSend": "Gửi",
+  "actionRun": "Chạy",
   "tabShows": "Phim bộ",
   "tabItems": "Tất cả",
   "tabSuggestions": "Gợi ý",

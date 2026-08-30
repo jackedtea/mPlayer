@@ -381,6 +381,9 @@ code path is complete and unit-tested; neither has been run against a real NAS.
 - [x] Library screen tabs (1e) — Movies/Shows, Suggestions, Favourites, Collections,
       Playlists, with `LibraryBrowse` separating a library from a box-set or playlist
       drill-down; shelves shared with 1d through `features/servers/shelves.dart`
+- [x] Server administration — `servers/server_admin.dart` + `jellyfin_admin*.dart` and
+      `features/admin/`: dashboard with live sessions (stop, message), scheduled tasks,
+      library scan, users and devices, activity log, plugins, rename/restart/shut down
 - [ ] Offline downloads of server items — still parked; see `refs/jellyfin-android`'s
       `downloads/` for the shape of it
 - [ ] Transcode settings (max bitrate, resolution cap, force direct play) — the quality

@@ -828,6 +828,10 @@ class JellyfinAuth {
       userId: data['Id'] as String? ?? '',
       username: data['Name'] as String? ?? '',
       serverId: data['ServerId'] as String? ?? server.serverId,
+      // Re-read on every validate rather than trusted from the stored
+      // profile: an administrator can be demoted, and a client still drawing
+      // the admin section afterwards is a row of screens that 403 on open.
+      isAdministrator: isAdministratorIn(data),
     );
   }
 
@@ -984,6 +988,7 @@ class JellyfinAuth {
       userId: user['Id'] as String? ?? '',
       username: user['Name'] as String? ?? fallbackUsername,
       serverId: data['ServerId'] as String? ?? server.serverId,
+      isAdministrator: isAdministratorIn(user),
     );
   }
 
@@ -1026,10 +1031,24 @@ class AuthResult {
     required this.userId,
     required this.username,
     required this.serverId,
+    this.isAdministrator = false,
   });
 
   final String token;
   final String userId;
   final String username;
   final String serverId;
+
+  /// Whether this account may use the administration screens.
+  ///
+  /// Read from the user's `Policy`, not guessed at. Every admin route answers
+  /// 403 to anyone else, so hiding the screens from a non-admin is a courtesy
+  /// rather than the security boundary — the server is that.
+  final bool isAdministrator;
+}
+
+/// `Policy.IsAdministrator` from a user object, however it is nested.
+bool isAdministratorIn(Map<Object?, Object?>? user) {
+  final policy = user?['Policy'];
+  return policy is Map && policy['IsAdministrator'] == true;
 }

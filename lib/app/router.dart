@@ -7,6 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/admin/admin_activity_page.dart';
+import '../features/admin/admin_dashboard_page.dart';
+import '../features/admin/admin_plugins_page.dart';
+import '../features/admin/admin_tasks_page.dart';
+import '../features/admin/admin_users_page.dart';
 import '../features/browse/browser_page.dart';
 import '../features/downloads/downloads_page.dart';
 import '../features/playback/smoke_test_page.dart';
@@ -122,6 +127,37 @@ GoRouter buildRouter() {
         path: '/servers/home',
         parentNavigatorKey: _rootKey,
         builder: (context, state) => const ServersHomePage(),
+      ),
+      // Administration. Above the shell like the library screens, because it
+      // is reached from Settings and replaces the whole window rather than
+      // living inside a tab.
+      //
+      // Every screen behind these guards itself: the route being reachable is
+      // not permission, and a link pasted by someone who is not an
+      // administrator lands on a sentence saying so rather than on a blank
+      // dashboard that 403s in the background.
+      GoRoute(
+        path: '/admin',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const AdminDashboardPage(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'tasks',
+            builder: (context, state) => const AdminTasksPage(),
+          ),
+          GoRoute(
+            path: 'users',
+            builder: (context, state) => const AdminUsersPage(),
+          ),
+          GoRoute(
+            path: 'activity',
+            builder: (context, state) => const AdminActivityPage(),
+          ),
+          GoRoute(
+            path: 'plugins',
+            builder: (context, state) => const AdminPluginsPage(),
+          ),
+        ],
       ),
       GoRoute(
         path: '/library',

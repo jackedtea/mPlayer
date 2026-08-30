@@ -4,23 +4,32 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../admin/admin_providers.dart';
 
 /// Screen 1l — the settings index.
 ///
 /// Section order is fixed by the design: Appearance, General, Player, Audio,
 /// Subtitle, About. Each destination page arrives with build step 7; the rows
 /// exist now so the shell is navigable and the order is locked in.
-class SettingsIndexPage extends StatelessWidget {
+class SettingsIndexPage extends ConsumerWidget {
   const SettingsIndexPage({super.key});
 
   /// Order is fixed by the design. `route` is null for the one section that
   /// has no page yet; it follows the same section+tile pattern and is built
   /// when its settings actually exist.
-  static List<_SettingsEntry> _entriesFor(AppLocalizations l10n) {
+  ///
+  /// [isAdministrator] adds one row at the end. It is absent rather than
+  /// disabled for anyone else: a permanently greyed row inviting a user to
+  /// administer a server they cannot is worse than no row.
+  static List<_SettingsEntry> _entriesFor(
+    AppLocalizations l10n, {
+    bool isAdministrator = false,
+  }) {
     return <_SettingsEntry>[
       _SettingsEntry(
         title: l10n.settingsAppearance,
@@ -58,14 +67,25 @@ class SettingsIndexPage extends StatelessWidget {
         icon: Icons.info_rounded,
         route: 'about',
       ),
+      if (isAdministrator)
+        _SettingsEntry(
+          title: l10n.settingsAdmin,
+          subtitle: l10n.settingsAdminSub,
+          icon: Icons.admin_panel_settings_rounded,
+          // Outside `/settings`, because it belongs to the server rather than
+          // to this installation — every other row here changes something on
+          // this device only.
+          path: '/admin',
+        ),
     ];
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
     final scheme = context.colors;
     final l10n = AppLocalizations.of(context);
+    final isAdministrator = ref.watch(isAdministratorProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -78,7 +98,8 @@ class SettingsIndexPage extends StatelessWidget {
       ),
       body: ListView(
         children: <Widget>[
-          for (final _SettingsEntry e in _entriesFor(l10n))
+          for (final _SettingsEntry e
+              in _entriesFor(l10n, isAdministrator: isAdministrator))
             ListTile(
               contentPadding: spacing.screenPadding(context.windowSize),
               minVerticalPadding: spacing.lg,
@@ -90,13 +111,13 @@ class SettingsIndexPage extends StatelessWidget {
               title: Text(e.title),
               subtitle: Text(e.subtitle),
               trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
-              onTap: e.route == null
+              onTap: e.destination == null
                   ? () => ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(l10n.notImplemented(e.title)),
                         ),
                       )
-                  : () => context.push('/settings/${e.route}'),
+                  : () => context.push(e.destination!),
             ),
           Padding(
             padding: EdgeInsets.symmetric(
@@ -129,12 +150,21 @@ class _SettingsEntry {
     required this.subtitle,
     required this.icon,
     this.route,
+    this.path,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
 
-  /// Relative to `/settings`; null means the page does not exist yet.
+  /// Relative to `/settings`; null means the page does not exist yet, or that
+  /// [path] names it instead.
   final String? route;
+
+  /// A destination outside `/settings` — the administration section is the
+  /// only one, because it changes the server rather than this installation.
+  final String? path;
+
+  /// Where the row goes, or null when it goes nowhere yet.
+  String? get destination => path ?? (route == null ? null : '/settings/$route');
 }

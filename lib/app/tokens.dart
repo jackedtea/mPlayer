@@ -222,6 +222,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     required this.onSuccess,
     required this.offline,
     required this.ratingStar,
+    required this.warning,
     required this.divider,
     required this.scrimStrong,
     required this.onPlayerPill,
@@ -235,6 +236,16 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   final Color offline;
 
   final Color ratingStar;
+
+  /// Something that is not yet an error but wants looking at — a plugin
+  /// waiting on a restart, a warning in the server's activity log.
+  ///
+  /// Material 3 has `error` and nothing between it and normal, so this is one
+  /// of the few roles the scheme genuinely has no slot for. Amber rather than
+  /// a paler red: red at any strength reads as "broken", and a plugin that
+  /// merely needs a restart is not.
+  final Color warning;
+
   final Color divider;
 
   /// Player chrome scrims and overlay badges.
@@ -252,6 +263,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     onSuccess: Color(0xFFFFFFFF),
     offline: Color(0xFFC1C7CE),
     ratingStar: Color(0xFFB98900),
+    warning: Color(0xFF8A5B00),
     divider: Color(0xFFD3DBE3),
     scrimStrong: Color(0x8C000000), // rgba(0,0,0,.55)
     onPlayerPill: Color(0xFF001E2E),
@@ -262,6 +274,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     onSuccess: Color(0xFF00382A),
     offline: Color(0xFF404A50),
     ratingStar: Color(0xFFE6C15A),
+    warning: Color(0xFFE0A93B),
     divider: Color(0xFF2A3238),
     scrimStrong: Color(0x8C000000),
     onPlayerPill: Color(0xFF001E2E),
@@ -273,6 +286,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     Color? onSuccess,
     Color? offline,
     Color? ratingStar,
+    Color? warning,
     Color? divider,
     Color? scrimStrong,
     Color? onPlayerPill,
@@ -282,6 +296,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       onSuccess: onSuccess ?? this.onSuccess,
       offline: offline ?? this.offline,
       ratingStar: ratingStar ?? this.ratingStar,
+      warning: warning ?? this.warning,
       divider: divider ?? this.divider,
       scrimStrong: scrimStrong ?? this.scrimStrong,
       onPlayerPill: onPlayerPill ?? this.onPlayerPill,
@@ -296,6 +311,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       onSuccess: Color.lerp(onSuccess, other.onSuccess, t)!,
       offline: Color.lerp(offline, other.offline, t)!,
       ratingStar: Color.lerp(ratingStar, other.ratingStar, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
       divider: Color.lerp(divider, other.divider, t)!,
       scrimStrong: Color.lerp(scrimStrong, other.scrimStrong, t)!,
       onPlayerPill: Color.lerp(onPlayerPill, other.onPlayerPill, t)!,

@@ -239,6 +239,250 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabMovies => 'Movies';
 
   @override
+  String get settingsAdmin => 'Server administration';
+
+  @override
+  String get justNow => 'just now';
+
+  @override
+  String minutesAgo(int count) {
+    return '${count}m ago';
+  }
+
+  @override
+  String hoursAgo(int count) {
+    return '${count}h ago';
+  }
+
+  @override
+  String daysAgo(int count) {
+    return '${count}d ago';
+  }
+
+  @override
+  String get settingsAdminSub => 'Sessions, tasks, users, plugins';
+
+  @override
+  String get adminTitle => 'Administration';
+
+  @override
+  String get adminNotAdmin => 'This account is not an administrator.';
+
+  @override
+  String get adminNoServer => 'Sign in to a server first.';
+
+  @override
+  String get adminServerSection => 'Server';
+
+  @override
+  String get adminSessions => 'Active sessions';
+
+  @override
+  String get adminNoSessions => 'Nobody is connected.';
+
+  @override
+  String get adminIdleSession => 'Connected, not playing';
+
+  @override
+  String get adminStopPlayback => 'Stop playback';
+
+  @override
+  String get adminSendMessage => 'Send a message';
+
+  @override
+  String adminMessageTitle(String device) {
+    return 'Message to $device';
+  }
+
+  @override
+  String get adminMessageHint => 'What should it say?';
+
+  @override
+  String get adminMessageSent => 'Message sent.';
+
+  @override
+  String get adminPlaybackStopped => 'Playback stopped.';
+
+  @override
+  String get adminTasks => 'Scheduled tasks';
+
+  @override
+  String get adminNoTasks => 'This server lists no tasks.';
+
+  @override
+  String get adminRunTask => 'Run now';
+
+  @override
+  String get adminStopTask => 'Stop';
+
+  @override
+  String adminTaskStarted(String name) {
+    return '$name started.';
+  }
+
+  @override
+  String adminTaskStopping(String name) {
+    return '$name is being stopped.';
+  }
+
+  @override
+  String get adminTaskNeverRun => 'Never run';
+
+  @override
+  String adminTaskLastRun(String when) {
+    return 'Last run $when';
+  }
+
+  @override
+  String get adminTaskLastFailed => 'Last run failed';
+
+  @override
+  String get adminScanLibraries => 'Scan all libraries';
+
+  @override
+  String get adminScanStarted => 'Library scan started.';
+
+  @override
+  String get adminUsers => 'Users';
+
+  @override
+  String get adminNoUsers => 'No accounts on this server.';
+
+  @override
+  String get adminUserAdmin => 'Administrator';
+
+  @override
+  String get adminUserDisabled => 'Disabled';
+
+  @override
+  String get adminUserEnable => 'Enable';
+
+  @override
+  String get adminUserDisable => 'Disable';
+
+  @override
+  String adminUserEnabled(String name) {
+    return '$name can sign in again.';
+  }
+
+  @override
+  String adminUserNowDisabled(String name) {
+    return '$name can no longer sign in.';
+  }
+
+  @override
+  String get adminDevices => 'Devices';
+
+  @override
+  String get adminNoDevices => 'No devices have signed in.';
+
+  @override
+  String get adminForgetDevice => 'Forget this device';
+
+  @override
+  String get adminDeviceForgotten => 'Device forgotten.';
+
+  @override
+  String get adminActivity => 'Activity log';
+
+  @override
+  String get adminNoActivity => 'Nothing has been logged yet.';
+
+  @override
+  String get adminPlugins => 'Plugins';
+
+  @override
+  String get adminNoPlugins => 'No plugins are installed.';
+
+  @override
+  String get adminPluginEnable => 'Enable';
+
+  @override
+  String get adminPluginDisable => 'Disable';
+
+  @override
+  String get adminPluginUninstall => 'Uninstall';
+
+  @override
+  String get adminPluginRestartPending => 'Needs a restart';
+
+  @override
+  String get adminPluginBroken => 'Not working';
+
+  @override
+  String get adminPluginSuperceded => 'Superseded';
+
+  @override
+  String get adminPluginUnsupported => 'Not supported';
+
+  @override
+  String adminPluginChanged(String name) {
+    return '$name updated. Some changes need a restart.';
+  }
+
+  @override
+  String adminPluginRemoved(String name) {
+    return '$name uninstalled.';
+  }
+
+  @override
+  String adminUninstallPluginQuestion(String name) {
+    return 'Uninstall $name?';
+  }
+
+  @override
+  String get adminUninstallPluginBody =>
+      'Its settings stay on the server, but it stops working until it is installed again.';
+
+  @override
+  String get adminRename => 'Rename server';
+
+  @override
+  String get adminRenameHint => 'Server name';
+
+  @override
+  String get adminRenamed => 'Server renamed.';
+
+  @override
+  String get adminRestart => 'Restart server';
+
+  @override
+  String adminRestartQuestion(String name) {
+    return 'Restart $name?';
+  }
+
+  @override
+  String get adminRestartBody =>
+      'Everyone watching is cut off. The server comes back on its own.';
+
+  @override
+  String get adminRestarting => 'Restart requested.';
+
+  @override
+  String get adminShutdown => 'Shut down server';
+
+  @override
+  String adminShutdownQuestion(String name) {
+    return 'Shut down $name?';
+  }
+
+  @override
+  String get adminShutdownBody =>
+      'Everyone watching is cut off, and nothing here can start it again - someone has to start it at the machine.';
+
+  @override
+  String get adminShuttingDown => 'Shutdown requested.';
+
+  @override
+  String get adminCannotRestart => 'This server cannot restart itself.';
+
+  @override
+  String get actionSend => 'Send';
+
+  @override
+  String get actionRun => 'Run';
+
+  @override
   String get tabShows => 'Shows';
 
   @override

@@ -618,6 +618,60 @@ with the server home (1d) — the two screens draw the same rows from different 
 the ink-inset arithmetic in them is not worth having twice. `openServerItem` in
 `server_library.dart` is likewise the one place that decides where tapping an item goes.
 
+## Administration
+
+`lib/servers/server_admin.dart` (types + interface), `jellyfin_admin_dto.dart` (pure
+parsing) and `jellyfin_admin.dart` (the client), behind five screens in
+`lib/features/admin/`: a dashboard with the sessions on it, and Tasks, Users & devices,
+Activity and Plugins under it.
+
+**It is a separate client from `JellyfinSource`, and the reason is 403.** For the
+catalogue, every rejection means the session is gone and the answer is to sign in again.
+Here, an account that is signed in perfectly well is refused for not being an
+administrator — and sending that user to a password prompt sends them somewhere that
+cannot help them. That one difference in `_send` is why the plumbing is not shared.
+
+Five things that are easy to get wrong and are already handled:
+
+1. **`/Users/{id}/Policy` and `/System/Configuration` are replaced, not patched.** Both
+   are read, changed and written **whole**. Posting `{IsDisabled: true}` alone strips
+   every library grant and parental limit the account has; posting `{ServerName: …}` alone
+   resets every other server setting to its default. `setUserDisabled` refuses outright
+   when the server will not describe the account, rather than guessing at a policy.
+2. **Plugins are addressed by id *and* version** on enable, disable and uninstall — a
+   server can hold two versions of one plugin and only one of them is meant to change.
+3. **`isAdministrator` is re-read on every validate**, not trusted from the stored
+   profile. An administrator can be demoted, and a stale `true` is a section whose every
+   screen answers 403.
+4. **A restart or a shutdown kills the connection because it *worked*.** The server
+   answers and is gone before the socket closes.
+5. **`CanSelfShutdown` was dropped from `/System/Info` in 10.9**, so it falls back to
+   `CanSelfRestart`. A server in a container can do neither — the process *is* the
+   container — and both menu items are then **absent rather than disabled**, because an
+   item that explains why it does nothing is an item nobody wanted.
+
+The guard lives in one place, `AdminScaffold`, so all five screens carry it identically —
+and it distinguishes "no server signed in" from "not an administrator", because the two
+have different answers. It is a **courtesy, not the security boundary**: the server is
+that. `runAdminAction` is the single path every button takes, so a failure always reaches
+the user as the sentence the client wrote, the affected providers are always invalidated,
+and a success always says so — an action whose only feedback is a list that looks
+identical afterwards leaves the user pressing it again.
+
+Sessions are **not polled on a timer**: a list refreshing itself every few seconds is a
+request every few seconds, on a phone, to answer a question that is rarely urgent. Pull to
+refresh gives the same information at the moment it is wanted. Note that `AdminList` builds
+its empty state as a scrollable — `RefreshIndicator` needs one that reaches its edge, and a
+`Column` holding one line of text silently cannot be pulled.
+
+Deliberately **not** built: installing plugins from a repository (browsing remote packages
+and checking versions against the server's ABI is a job for the machine it runs on), and
+the rest of `/System/Configuration` beyond the server name — Jellyfin's configuration is
+some eighty fields, and a small screen is where a setup gets broken rather than fixed.
+
+`AppSemanticColors.warning` was added for this: M3 has `error` and nothing between it and
+normal, and a plugin waiting on a restart is not broken.
+
 ## Test doubles
 
 `test/fake_library_source.dart` is a `MediaLibrarySource` that answers nothing; tests

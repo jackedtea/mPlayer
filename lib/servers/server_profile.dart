@@ -33,6 +33,7 @@ class ServerProfile {
     required this.username,
     this.serverId = '',
     this.lastUsed,
+    this.isAdministrator = false,
   });
 
   factory ServerProfile.fromJson(Map<String, dynamic> json) {
@@ -48,6 +49,7 @@ class ServerProfile {
       userId: json['userId'] as String? ?? '',
       username: json['username'] as String? ?? '',
       serverId: json['serverId'] as String? ?? '',
+      isAdministrator: json['isAdministrator'] as bool? ?? false,
       lastUsed: switch (json['lastUsed']) {
         final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
         _ => null,
@@ -80,6 +82,14 @@ class ServerProfile {
 
   final DateTime? lastUsed;
 
+  /// Whether this account may use the administration screens.
+  ///
+  /// Cached from the last sign-in or token validation so the Settings list can
+  /// be drawn before any request lands. Re-read on every validate — an
+  /// administrator can be demoted, and a stale `true` here is a section whose
+  /// every screen answers 403.
+  final bool isAdministrator;
+
   String get credentialKey => 'server_token_$id';
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -90,6 +100,7 @@ class ServerProfile {
         'userId': userId,
         'username': username,
         'serverId': serverId,
+        'isAdministrator': isAdministrator,
         'lastUsed': lastUsed?.millisecondsSinceEpoch,
       };
 
@@ -101,6 +112,7 @@ class ServerProfile {
     String? username,
     String? serverId,
     DateTime? lastUsed,
+    bool? isAdministrator,
   }) {
     return ServerProfile(
       id: id,
@@ -113,6 +125,7 @@ class ServerProfile {
       userId: userId ?? this.userId,
       username: username ?? this.username,
       serverId: serverId ?? this.serverId,
+      isAdministrator: isAdministrator ?? this.isAdministrator,
       lastUsed: lastUsed ?? this.lastUsed,
     );
   }

@@ -13,8 +13,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'jellyfin_admin.dart';
 import 'jellyfin_source.dart';
 import 'media_library_source.dart';
+import 'server_admin.dart';
 import 'server_profile.dart';
 
 /// Where signed-in servers are persisted.
@@ -271,6 +273,7 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
       userId: auth.userId,
       username: auth.username,
       serverId: auth.serverId,
+      isAdministrator: auth.isAdministrator,
       lastUsed: DateTime.now(),
     );
 
@@ -319,6 +322,7 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
       userId: auth.userId,
       username: auth.username,
       serverId: auth.serverId,
+      isAdministrator: auth.isAdministrator,
       lastUsed: DateTime.now(),
     );
 
@@ -335,6 +339,10 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     final updated = profile.copyWith(
       userId: auth.userId,
       username: auth.username,
+      // Re-read every time rather than kept: an administrator can be demoted
+      // between one sign-in and the next, and a stale `true` here is an admin
+      // section whose every screen answers 403.
+      isAdministrator: auth.isAdministrator,
       lastUsed: DateTime.now(),
     );
 
@@ -387,6 +395,27 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     return ClientIdentity(
       deviceId: await _repository.deviceId(),
       deviceName: _deviceName(),
+    );
+  }
+
+  /// An administration client for the active server, or null.
+  ///
+  /// Null covers three different situations and all three mean the same thing
+  /// to a caller: nothing is signed in, the token cannot be read, or the
+  /// account is not an administrator. Built on demand rather than kept in
+  /// state — the admin screens are opened rarely, and holding a second HTTP
+  /// client open for every session that never visits them is waste.
+  Future<ServerAdmin?> admin() async {
+    final profile = state.active;
+    if (profile == null || !profile.isAdministrator) return null;
+
+    final token = await _repository.readToken(profile);
+    if (token == null || token.isEmpty) return null;
+
+    return JellyfinAdmin(
+      profile: profile,
+      token: token,
+      identity: await identity(),
     );
   }
 

@@ -52,6 +52,14 @@ const _routes = <String>[
   '/library/person',
   '/browse?source=device',
   '/downloads',
+  // With nothing signed in these draw their guard rather than a dashboard,
+  // which is exactly the state worth pumping: an administration screen opened
+  // by someone who is not one must still lay out.
+  '/admin',
+  '/admin/tasks',
+  '/admin/users',
+  '/admin/activity',
+  '/admin/plugins',
 ];
 
 /// Stand-in directory listing.
