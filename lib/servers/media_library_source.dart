@@ -52,6 +52,9 @@ class ServerItem {
     this.favourite = false,
     this.imageTag,
     this.imageOwnerId,
+    this.backdropTag,
+    this.backdropOwnerId,
+    this.originalTitle,
     this.seriesId,
     this.seriesTitle,
     this.seasonNumber,
@@ -95,6 +98,23 @@ class ServerItem {
   /// series', and then the tag and the id have to travel together — asking
   /// this item for a tag that belongs to its series returns nothing.
   final String? imageOwnerId;
+
+  /// The wide artwork behind a detail header, where the server holds one.
+  ///
+  /// Separate from [imageTag] because they are different pictures: the
+  /// primary image of a series is its portrait poster, and stretching that
+  /// across the top of the screen crops it to a chin and a shoulder.
+  final String? backdropTag;
+
+  /// Which item [backdropTag] belongs to — an episode borrows its series'
+  /// backdrop the same way it borrows the poster.
+  final String? backdropOwnerId;
+
+  /// The title in the language it was made in, where that is not [title].
+  ///
+  /// Only the detail fetch asks for it: a grid draws one title per poster,
+  /// and the second one is what the detail header shows under the first.
+  final String? originalTitle;
 
   final String? seriesId;
   final String? seriesTitle;
@@ -554,6 +574,56 @@ class ExternalSubtitle {
   final int? index;
 }
 
+
+/// Why a server put a shelf of items in front of the user.
+///
+/// The *reason*, not a sentence. Jellyfin hands back "SimilarToRecentlyPlayed"
+/// and the film it was reasoning from; turning that into "Because you watched
+/// Dune" needs a locale and a phrasing decision, and neither belongs behind an
+/// HTTP client — the screen does it.
+enum SuggestionKind {
+  similarToRecentlyPlayed,
+  similarToLiked,
+  directorFromRecentlyPlayed,
+  actorFromRecentlyPlayed,
+  likedDirector,
+  likedActor,
+
+  /// A reason this app has no wording for. The shelf still draws, titled
+  /// with the subject alone — the films are the point, and dropping them
+  /// because the label is unfamiliar helps nobody.
+  unknown;
+
+  static SuggestionKind fromWire(String? name) => switch (name) {
+        'SimilarToRecentlyPlayed' => SuggestionKind.similarToRecentlyPlayed,
+        'SimilarToLikedItem' => SuggestionKind.similarToLiked,
+        'HasDirectorFromRecentlyPlayed' =>
+          SuggestionKind.directorFromRecentlyPlayed,
+        'HasActorFromRecentlyPlayed' => SuggestionKind.actorFromRecentlyPlayed,
+        'HasLikedDirector' => SuggestionKind.likedDirector,
+        'HasLikedActor' => SuggestionKind.likedActor,
+        _ => SuggestionKind.unknown,
+      };
+}
+
+/// One row of suggestions, and the server's reason for it.
+@immutable
+class ServerShelf {
+  const ServerShelf({
+    required this.kind,
+    required this.items,
+    this.subject = '',
+  });
+
+  final SuggestionKind kind;
+
+  /// What the reason is *about* — the film watched, the director liked. Empty
+  /// where the server named nobody, which some recommendation types do.
+  final String subject;
+
+  final List<ServerItem> items;
+}
+
 /// A catalog-level source: metadata, artwork, playback URLs and watch state,
 /// already assembled by something else.
 ///
@@ -588,10 +658,35 @@ abstract class MediaLibrarySource {
   Future<List<ServerItem>> episodes(String seriesId, {String? seasonId});
 
   /// What the user was watching, most recent first.
-  Future<List<ServerItem>> resumable({int limit = 12});
+  ///
+  /// [viewId] narrows it to one library, which is what a library's own
+  /// Suggestions tab wants: a film left half-watched has no place on a shelf
+  /// inside the shows library.
+  Future<List<ServerItem>> resumable({int limit = 12, String? viewId});
 
   /// The next unwatched episode of each series in progress.
-  Future<List<ServerItem>> nextUp({int limit = 12});
+  Future<List<ServerItem>> nextUp({int limit = 12, String? viewId});
+
+  /// What the user has starred inside [viewId].
+  ///
+  /// The same item types the grid lists, deliberately. A favourited episode
+  /// exists and is not returned: every tile here opens a detail screen, and
+  /// there is none that an episode on its own belongs on.
+  Future<List<ServerItem>> favourites(String viewId);
+
+  /// The box sets drawing on [viewId].
+  ///
+  /// A collection is not *inside* a library — it lives in its own folder and
+  /// points at items across several. Asked for by parent anyway, because that
+  /// is how the server answers "which collections does this library feed".
+  Future<List<ServerItem>> collections(String viewId);
+
+  /// What the server suggests from [viewId], as titled rows.
+  ///
+  /// Empty rather than an error wherever the server has no opinion — a fresh
+  /// account with no watch history has nothing to reason from, and neither
+  /// does a library the server offers no recommendations for.
+  Future<List<ServerShelf>> suggestions(String viewId);
 
   Future<List<ServerItem>> search(String query, {int limit = 40});
 
@@ -609,6 +704,11 @@ abstract class MediaLibrarySource {
 
   /// Artwork, or null when the item has none.
   Uri? imageUrl(ServerItem item, {int? maxWidth});
+
+  /// The wide artwork behind a detail header, or null where the server holds
+  /// none — which is common enough that every caller has to have a poster to
+  /// fall back on.
+  Uri? backdropUrl(ServerItem item, {int? maxWidth});
 
   /// A person's headshot, or null when the server holds none.
   Uri? personImageUrl(ServerPerson person, {int? maxWidth});

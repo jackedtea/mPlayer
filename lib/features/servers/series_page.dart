@@ -11,7 +11,7 @@ import '../../app/tokens.dart';
 import '../../core/models/library_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
-import '../../widgets/backdrop_header.dart';
+import '../../widgets/detail_header.dart';
 import '../../widgets/gradient_art.dart';
 import '../../widgets/remote_art.dart';
 import 'detail_sections.dart';
@@ -120,35 +120,32 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => <Widget>[
           SliverToBoxAdapter(
-            child: BackdropHeader(
+            child: DetailHeader(
               seed: series.title,
-              artUrl: artUrlFor(ref, item, maxWidth: 900),
-              height: 196,
-              // No "More" up here: everything it would have held is in the
-              // action row under the play button, spelled out rather than
-              // hidden behind three dots.
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(series.title, style: context.texts.headlineMedium),
-                  SizedBox(height: spacing.xs),
+              title: item.title,
+              originalTitle: item.originalTitle,
+              // The seasons and the unwatched count, which the old header
+              // carried under the title and this one carries under the facts:
+              // the tabs say how many seasons there are, but only after the
+              // episodes have arrived.
+              caption: series.summary,
+              backdropUrl: backdropUrlFor(ref, item, maxWidth: 1000),
+              posterUrl: artUrlFor(ref, item, maxWidth: 400),
+              facts: <Widget>[
+                if (_yearRange(item).isNotEmpty)
                   Text(
-                    series.summary,
-                    style: context.texts.bodySmall?.copyWith(
+                    _yearRange(item),
+                    style: context.texts.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: spacing
-                  .screenPadding(context.windowSize)
-                  .copyWith(top: spacing.md, bottom: spacing.md),
-              child: ItemActionRow(
+                if ((item.certificate ?? '').isNotEmpty)
+                  CertificateBox(certificate: item.certificate!),
+                if (item.rating != null) RatingLabel(rating: item.rating!),
+              ],
+              // No "More" up here either: everything it would have held is
+              // in the row itself, or one tap into its overflow.
+              actionBar: ItemActionIcons(
                 item: item,
                 seriesId: item.id,
                 // Continue where the series is, which is whichever episode
@@ -166,7 +163,9 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
           if ((item.overview ?? '').isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: spacing.screenPadding(context.windowSize),
+                padding: spacing
+                    .screenPadding(context.windowSize)
+                    .copyWith(top: spacing.lg),
                 child: _Overview(
                   text: item.overview!,
                   expanded: _overviewExpanded,
@@ -262,6 +261,19 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
       ),
     );
   }
+}
+
+/// "2023 - 2026", or "2023" for a series that has not ended.
+///
+/// The server only dates the end of a series that has one, so a continuing
+/// one is a single year rather than an open range — "2023 -" reads as a
+/// missing number.
+String _yearRange(ServerItem item) {
+  final start = item.year;
+  if (start == null) return '';
+
+  final end = item.endYear;
+  return end == null || end == start ? '$start' : '$start - $end';
 }
 
 /// Keeps the season tabs pinned while the episode list scrolls under them.

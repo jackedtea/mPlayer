@@ -378,6 +378,9 @@ code path is complete and unit-tested; neither has been run against a real NAS.
 - [x] Server chapters, with the stills the server generated, drawn in the chapters sheet
 - [x] Trickplay — scrubber preview from the server's sprite sheets, `ServerTrickplay`
 - [x] External subtitles (`DeliveryMethod: External`) appended to libmpv after the open
+- [x] Library screen tabs (1e) — Movies/Shows, Suggestions, Favourites, Collections,
+      Playlists, with `LibraryBrowse` separating a library from a box-set or playlist
+      drill-down; shelves shared with 1d through `features/servers/shelves.dart`
 - [ ] Offline downloads of server items — still parked; see `refs/jellyfin-android`'s
       `downloads/` for the shape of it
 - [ ] Transcode settings (max bitrate, resolution cap, force direct play) — the quality

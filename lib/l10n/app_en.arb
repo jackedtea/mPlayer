@@ -104,6 +104,35 @@
   "nextUp": "Next up",
   "recentlyAdded": "Recently added",
   "libraries": "Libraries",
+  "tabMovies": "Movies",
+  "tabShows": "Shows",
+  "tabItems": "All",
+  "tabSuggestions": "Suggestions",
+  "tabFavourites": "Favourites",
+  "tabCollections": "Collections",
+  "tabPlaylists": "Playlists",
+  "noFavourites": "Nothing starred in this library yet.",
+  "noCollections": "No collections draw on this library.",
+  "noPlaylists": "No playlists on this server yet.",
+  "noSuggestions": "Nothing to suggest yet — watch something and come back.",
+  "emptyPlaylist": "This playlist is empty.",
+  "becauseYouWatched": "Because you watched {title}",
+  "@becauseYouWatched": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "becauseYouLike": "Because you like {title}",
+  "@becauseYouLike": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "directedBy": "Directed by {name}",
+  "@directedBy": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "starring": "Starring {name}",
+  "@starring": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "suggestedForYou": "Suggested for you",
   "itemCount": "{count} items",
   "@itemCount": {
     "placeholders": { "count": { "type": "int" } }

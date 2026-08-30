@@ -236,6 +236,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraries => 'Libraries';
 
   @override
+  String get tabMovies => 'Movies';
+
+  @override
+  String get tabShows => 'Shows';
+
+  @override
+  String get tabItems => 'All';
+
+  @override
+  String get tabSuggestions => 'Suggestions';
+
+  @override
+  String get tabFavourites => 'Favourites';
+
+  @override
+  String get tabCollections => 'Collections';
+
+  @override
+  String get tabPlaylists => 'Playlists';
+
+  @override
+  String get noFavourites => 'Nothing starred in this library yet.';
+
+  @override
+  String get noCollections => 'No collections draw on this library.';
+
+  @override
+  String get noPlaylists => 'No playlists on this server yet.';
+
+  @override
+  String get noSuggestions =>
+      'Nothing to suggest yet — watch something and come back.';
+
+  @override
+  String get emptyPlaylist => 'This playlist is empty.';
+
+  @override
+  String becauseYouWatched(String title) {
+    return 'Because you watched $title';
+  }
+
+  @override
+  String becauseYouLike(String title) {
+    return 'Because you like $title';
+  }
+
+  @override
+  String directedBy(String name) {
+    return 'Directed by $name';
+  }
+
+  @override
+  String starring(String name) {
+    return 'Starring $name';
+  }
+
+  @override
+  String get suggestedForYou => 'Suggested for you';
+
+  @override
   String itemCount(int count) {
     return '$count items';
   }

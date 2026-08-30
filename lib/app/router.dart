@@ -132,9 +132,12 @@ GoRouter buildRouter() {
         // `title` in the query is what a collection passes: its name is not
         // in `/UserViews`, so the screen cannot look it up the way it looks up
         // a library's.
+        // `browse` says whether this is a library — which carries the tab
+        // bar — or a drill-down into one box set or playlist, which does not.
         builder: (context, state) => LibraryGridPage(
           viewId: state.extra as String?,
           title: state.uri.queryParameters['title'] ?? 'Library',
+          browse: LibraryBrowse.fromQuery(state.uri.queryParameters['browse']),
         ),
         routes: <RouteBase>[
           GoRoute(

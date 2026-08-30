@@ -12,10 +12,9 @@ import '../../core/models/library_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
-import '../../widgets/continue_watching_card.dart';
-import '../../widgets/poster_tile.dart';
 import '../../widgets/section_header.dart';
 import 'server_library.dart';
+import 'shelves.dart';
 
 /// Screen 1d — the Server tab once a server is configured.
 ///
@@ -159,26 +158,6 @@ class _ServersHomePageState extends ConsumerState<ServersHomePage> {
   }
 }
 
-/// Opens whatever the card stands for.
-///
-/// A series goes to its episode list; anything playable goes to its detail
-/// screen, which is where the resume decision is made.
-void _open(BuildContext context, ServerItem item) {
-  if (item.kind.isBrowsable) {
-    context.push(
-      Uri(
-        path: '/library',
-        queryParameters: <String, String>{'title': item.title},
-      ).toString(),
-      extra: item.id,
-    );
-  } else if (item.kind == ServerItemKind.series) {
-    context.push('/library/series', extra: item.id);
-  } else {
-    context.push('/library/movie', extra: item.id);
-  }
-}
-
 /// "media.home.lan · minh" — the scheme and port are noise in an app bar.
 String _hostLine(String uri, String username) {
   final host = Uri.tryParse(uri)?.host ?? uri;
@@ -231,7 +210,7 @@ class _ResumeShelf extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _CardShelf(items: ref.watch(serverResumeProvider));
+    return ServerCardShelf(items: ref.watch(serverResumeProvider));
   }
 }
 
@@ -241,59 +220,7 @@ class _NextUpShelf extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _CardShelf(items: ref.watch(serverNextUpProvider));
-  }
-}
-
-/// A row of resume cards, or nothing at all.
-///
-/// An empty shelf renders as zero height rather than as an empty state: two
-/// "nothing here" panels stacked above each other on a fresh server is worse
-/// than a home screen that simply starts at Recently added.
-class _CardShelf extends ConsumerWidget {
-  const _CardShelf({required this.items});
-
-  final AsyncValue<List<ServerItem>> items;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final spacing = context.spacing;
-    final inset = spacing.hitInset;
-    final side = (spacing.screenHorizontal(context.windowSize) - inset)
-        .clamp(0.0, double.infinity);
-    final gap = (spacing.cardGap - inset * 2).clamp(0.0, double.infinity);
-
-    final resolved = items.value ?? const <ServerItem>[];
-    if (resolved.isEmpty) {
-      return items.isLoading
-          ? SizedBox(
-              height: ContinueWatchingCard.outerHeight(context),
-              child: const Center(child: CircularProgressIndicator()),
-            )
-          : const SizedBox.shrink();
-    }
-
-    final l10n = AppLocalizations.of(context);
-    final serverName = ref.watch(serverRegistryProvider).active?.name ?? '';
-
-    return SizedBox(
-      height: ContinueWatchingCard.outerHeight(context),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: side),
-        itemCount: resolved.length,
-        separatorBuilder: (_, _) => SizedBox(width: gap),
-        itemBuilder: (context, i) => ContinueWatchingCard(
-          item: resumeItemFrom(resolved[i], l10n, serverLabel: serverName),
-          artUrl: artUrlFor(ref, resolved[i], maxWidth: 400),
-          // The card opens the item; the glyph in the middle of it resumes.
-          // These shelves exist to carry on watching, so the play button has
-          // to be the short way there rather than a third tap into it.
-          onTap: () => _open(context, resolved[i]),
-          onPlay: () => playServerItem(context, ref, resolved[i].id),
-        ),
-      ),
-    );
+    return ServerCardShelf(items: ref.watch(serverNextUpProvider));
   }
 }
 
@@ -303,49 +230,13 @@ class _RecentlyAddedShelf extends ConsumerWidget {
   /// Null means every library, which is what the "All" chip selects.
   final String? viewId;
 
-  static const _posterWidth = 104.0;
-  static const _posterHeight = 156.0;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spacing = context.spacing;
-    final inset = spacing.hitInset;
-    final side = (spacing.screenHorizontal(context.windowSize) - inset)
-        .clamp(0.0, double.infinity);
-    final gap = (spacing.cardGap - inset * 2).clamp(0.0, double.infinity);
-
     final scope = viewId;
-    final request = scope == null
-        ? ref.watch(serverLatestProvider)
-        : ref.watch(latestInViewProvider(scope));
-    final latest = request.value ?? const <ServerItem>[];
-
-    if (latest.isEmpty) {
-      // An empty shelf and a shelf that has not arrived look identical, and
-      // over a slow connection the second is what the user is actually
-      // looking at. Only the first is worth hiding.
-      if (!request.isLoading) return const SizedBox.shrink();
-      return SizedBox(
-        height: PosterTile.outerHeight(context, _posterHeight),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return SizedBox(
-      height: PosterTile.outerHeight(context, _posterHeight),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: side),
-        itemCount: latest.length,
-        separatorBuilder: (_, _) => SizedBox(width: gap),
-        itemBuilder: (context, i) => PosterTile(
-          item: libraryItemFrom(latest[i]),
-          artUrl: artUrlFor(ref, latest[i], maxWidth: 300),
-          width: _posterWidth,
-          posterHeight: _posterHeight,
-          onTap: () => _open(context, latest[i]),
-        ),
-      ),
+    return ServerPosterShelf(
+      items: scope == null
+          ? ref.watch(serverLatestProvider)
+          : ref.watch(latestInViewProvider(scope)),
     );
   }
 }

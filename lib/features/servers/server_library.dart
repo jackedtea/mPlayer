@@ -106,6 +106,69 @@ final latestInViewProvider =
   return source.items(viewId, limit: 20, sort: ServerSort.dateAdded);
 });
 
+/// What the user has starred inside one library.
+final libraryFavouritesProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.favourites(viewId);
+});
+
+/// The box sets one library feeds.
+final libraryCollectionsProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.collections(viewId);
+});
+
+/// The server's own recommendation rows for one library.
+///
+/// Movies only, and empty for everything else — there is no
+/// `/Shows/Recommendations`, so a shows library's Suggestions tab is built
+/// from Next up and Recently added instead.
+final librarySuggestionsProvider =
+    FutureProvider.family<List<ServerShelf>, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerShelf>[];
+  return source.suggestions(viewId);
+});
+
+/// What the user was watching *inside one library*.
+final resumeInViewProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.resumable(viewId: viewId);
+});
+
+/// The next unwatched episode of each series in progress in one library.
+final nextUpInViewProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.nextUp(viewId: viewId);
+});
+
+/// Every playlist this user owns.
+///
+/// Not scoped to a library, because a playlist is not: it holds whatever was
+/// put in it, from wherever. The tab shows the same list under every library,
+/// which is the truth rather than a filter that would hide most of it.
+final serverPlaylistsProvider = FutureProvider<List<ServerItem>>((ref) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.playlists();
+});
+
+/// What is inside one playlist, in the order it was put there.
+final playlistItemsProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, playlistId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.playlistItems(playlistId);
+});
+
 final serverSearchProvider =
     FutureProvider.family<List<ServerItem>, String>((ref, query) async {
   final source = ref.watch(activeServerProvider);
@@ -173,6 +236,50 @@ final seriesEpisodesProvider =
   if (source == null) return const <ServerItem>[];
   return source.episodes(seriesId);
 });
+
+/// Opens whatever [item] stands for.
+///
+/// A collection is browsed, not played: it has no runtime, no stream and no
+/// resume point, and sending it to the movie screen is what drew a Play
+/// button over a box set with nothing behind it. A series goes to its episode
+/// list; everything else to the detail screen, which is where the resume
+/// decision is made.
+void openServerItem(BuildContext context, ServerItem item) {
+  if (item.kind.isBrowsable) {
+    context.push(
+      Uri(
+        path: '/library',
+        queryParameters: <String, String>{
+          'title': item.title,
+          // A drill-down, not a library: the tabs belong to a library view
+          // and mean nothing inside one box set.
+          'browse': 'collection',
+        },
+      ).toString(),
+      extra: item.id,
+    );
+  } else if (item.kind == ServerItemKind.series) {
+    context.push('/library/series', extra: item.id);
+  } else {
+    context.push('/library/movie', extra: item.id);
+  }
+}
+
+/// Opens a playlist as a grid of what is in it.
+void openServerPlaylist(BuildContext context, ServerItem playlist) {
+  context.push(
+    Uri(
+      path: '/library',
+      queryParameters: <String, String>{
+        'title': playlist.title,
+        // A playlist is not listed by `parentId` — its order is its own, and
+        // only `/Playlists/{id}/Items` preserves it.
+        'browse': 'playlist',
+      },
+    ).toString(),
+    extra: playlist.id,
+  );
+}
 
 /// Resolves a server item and hands it to the player.
 ///
@@ -283,6 +390,13 @@ Future<void> playServerQueue(
 /// data a library grid costs.
 Uri? artUrlFor(WidgetRef ref, ServerItem item, {int? maxWidth}) {
   return ref.watch(activeServerProvider)?.imageUrl(item, maxWidth: maxWidth);
+}
+
+/// The wide artwork behind a detail header, or null where the server holds
+/// none — the header falls back to the gradient rather than to the poster,
+/// which is the wrong shape for the space.
+Uri? backdropUrlFor(WidgetRef ref, ServerItem item, {int? maxWidth}) {
+  return ref.watch(activeServerProvider)?.backdropUrl(item, maxWidth: maxWidth);
 }
 
 /// A poster tile in a grid or a shelf.

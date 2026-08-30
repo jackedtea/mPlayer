@@ -580,6 +580,52 @@ Four things that are easy to get wrong and are already handled:
    was decided. The direct-play URL carries the token as `api_key` in the query, because
    libmpv fetches it itself and cannot be handed a header.
 
+## The library screen's tabs
+
+Screen 1e carries a scrolling `TabBar`: **Movies/Shows · Suggestions · Favourites ·
+Collections · Playlists**, in the order Jellyfin's own clients use. The design's 1e
+predates them and describes the grid alone; the tabs are an addition, built out of stock
+M3 the way 1g's season tabs already are.
+
+- The **first tab is named after what the library holds** — `CollectionType` decides
+  between Movies, Shows and All. "All" over a shelf of films says less than "Movies" does.
+- **Tabs belong to a library view, not to everything the screen can show.**
+  `LibraryBrowse` distinguishes a library from a drill-down into one box set
+  (`?browse=collection`) or one playlist (`?browse=playlist`), and a drill-down draws no
+  tab bar: four of the five could never fill. A playlist also cannot be listed by
+  `parentId` — only `/Playlists/{id}/Items` keeps the order it was put in.
+- **Suggestions is four shelves, not a grid**: Continue watching and Next up scoped to
+  this library (`resumable`/`nextUp` take a `viewId` for exactly this — a film left
+  half-watched has no place inside the shows library), Recently added, then the server's
+  own `/Movies/Recommendations` rows. That route is movies-only; there is no
+  `/Shows/Recommendations`, so a shows library gets the first three and nothing is
+  missing that could have been there.
+- **A recommendation's reason and its subject travel separately** — `SimilarToRecentlyPlayed`
+  plus `Dune` — so "Because you watched Dune" is assembled on the screen, where there is a
+  locale to assemble it in. `_shelfTitle` falls back to a plain heading when the server
+  named no subject, rather than a sentence with a hole in it.
+- **Playlists are not scoped to a library** and the tab does not pretend they are: a
+  playlist holds whatever was put in it, from wherever, so the same list appears under
+  every library.
+- **Favourites lists the same item types the grid does** (Movie, Series, Video, BoxSet).
+  A favourited *episode* is real and deliberately absent: every tile here opens a detail
+  screen and there is none an episode on its own belongs on.
+- Each empty tab **says what is missing**. Blank space where a grid should be reads as a
+  failure, and four tabs that can each be legitimately empty is four chances to look broken.
+
+`features/servers/shelves.dart` holds `ServerCardShelf` and `ServerPosterShelf`, shared
+with the server home (1d) — the two screens draw the same rows from different queries, and
+the ink-inset arithmetic in them is not worth having twice. `openServerItem` in
+`server_library.dart` is likewise the one place that decides where tapping an item goes.
+
+## Test doubles
+
+`test/fake_library_source.dart` is a `MediaLibrarySource` that answers nothing; tests
+`extend` it and override the two or three methods they are about. Before it, four test
+files each carried sixty lines of "returns an empty list" stub and **every method added to
+the interface broke all of them at once** — which is what adding media segments and the
+library tabs did in turn.
+
 ## Reference material
 
 `../refs/jellyfin-android` (GPL-2.0) — the official Android client. Kotlin, and a

@@ -215,6 +215,22 @@ void main() {
       expect(item.episodeNumber, 10);
     });
 
+    test('the original title is kept, and blank counts as absent', () {
+      final named = serverItemFromJson(<String, dynamic>{
+        'Id': 's1',
+        'Name': 'The Angel Next Door Spoils Me Rotten',
+        'OriginalTitle': 'お隣の天使様にいつの間にか駄目人間にされていた件',
+      });
+      final blank = serverItemFromJson(<String, dynamic>{
+        'Id': 's2',
+        'Name': 'A Series',
+        'OriginalTitle': '   ',
+      });
+
+      expect(named.originalTitle, 'お隣の天使様にいつの間にか駄目人間にされていた件');
+      expect(blank.originalTitle, isNull);
+    });
+
     test('an item with no name is identified by its id, not left blank', () {
       final item = serverItemFromJson(<String, dynamic>{'Id': 'x9', 'Name': '  '});
 
@@ -258,6 +274,44 @@ void main() {
       final item = serverItemFromJson(<String, dynamic>{'Id': 'n1'});
 
       expect(imageUrlFor(item, base: _base), isNull);
+    });
+
+    test('a series backdrop is a different picture from its poster', () {
+      final item = serverItemFromJson(<String, dynamic>{
+        'Id': 's1',
+        'Type': 'Series',
+        'ImageTags': <String, dynamic>{'Primary': 'poster'},
+        'BackdropImageTags': <dynamic>['wide'],
+      });
+
+      final url = backdropImageUrlFor(item, base: _base, maxWidth: 900);
+      // Indexed as well as tagged: the route is the *n*th picture of an item.
+      expect(url.toString(), contains('/Items/s1/Images/Backdrop/0'));
+      expect(url!.queryParameters['tag'], 'wide');
+      expect(imageUrlFor(item, base: _base)!.queryParameters['tag'], 'poster');
+    });
+
+    test('an episode borrows its series backdrop, named by the server', () {
+      final item = serverItemFromJson(<String, dynamic>{
+        'Id': 'e1',
+        'Type': 'Episode',
+        // The parent here is the season, and the picture is the series'.
+        'ParentId': 'season1',
+        'ParentBackdropImageTags': <dynamic>['wide'],
+        'ParentBackdropItemId': 's1',
+      });
+
+      final url = backdropImageUrlFor(item, base: _base);
+      expect(url.toString(), contains('/Items/s1/Images/Backdrop/0'));
+    });
+
+    test('no backdrop means null, so the header can fall back', () {
+      final item = serverItemFromJson(<String, dynamic>{
+        'Id': 'n1',
+        'ImageTags': <String, dynamic>{'Primary': 'poster'},
+      });
+
+      expect(backdropImageUrlFor(item, base: _base), isNull);
     });
 
     test('a reverse-proxy prefix is kept in the image URL', () {

@@ -5,23 +5,16 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fake_library_source.dart';
+
 import 'package:mplayer/core/models/media_models.dart';
 import 'package:mplayer/servers/jellyfin_media_source.dart';
 import 'package:mplayer/servers/media_library_source.dart';
-import 'package:mplayer/servers/server_profile.dart';
 import 'package:mplayer/sources/media_source.dart';
 
-const _profile = ServerProfile(
-  id: 'p1',
-  kind: ServerKind.jellyfin,
-  name: 'Home',
-  uri: 'https://media.home.lan',
-  userId: 'u1',
-  username: 'nam',
-);
 
 /// A server that answers from fields instead of a network.
-class _FakeLibrary implements MediaLibrarySource {
+class _FakeLibrary extends FakeLibrarySource {
   _FakeLibrary({
     required this.item_,
     required this.playback_,
@@ -36,9 +29,6 @@ class _FakeLibrary implements MediaLibrarySource {
 
   final List<(String, Duration, bool)> progress = <(String, Duration, bool)>[];
   final List<(String, Duration, String?)> stops = <(String, Duration, String?)>[];
-
-  @override
-  ServerProfile get profile => _profile;
 
   @override
   Future<ServerItem> item(String itemId) async {
@@ -88,58 +78,8 @@ class _FakeLibrary implements MediaLibrarySource {
           ? null
           : Uri.parse(
               'https://media.home.lan/Items/$itemId/Images/Chapter/'
-              '\${chapter.index}?tag=\${chapter.imageTag}',
+              '${chapter.index}?tag=${chapter.imageTag}',
             );
-
-  // Nothing below is exercised here.
-  @override
-  Future<List<ServerItem>> episodes(String seriesId, {String? seasonId}) async =>
-      const <ServerItem>[];
-  @override
-  Uri? imageUrl(ServerItem item, {int? maxWidth}) => null;
-  @override
-  Uri? personImageUrl(ServerPerson person, {int? maxWidth}) => null;
-  @override
-  Future<List<ServerItem>> items(String viewId,
-          {int startIndex = 0, int limit = 100, ServerSort sort = ServerSort.name}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> nextUp({int limit = 12}) async => const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> resumable({int limit = 12}) async => const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> search(String query, {int limit = 40}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> personItems(String personId,
-          {int limit = 100}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> playlists() async => const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> playlistItems(String playlistId) async =>
-      const <ServerItem>[];
-  @override
-  Future<void> addToPlaylist(String playlistId, List<String> itemIds) async {}
-  @override
-  Future<void> removeFromPlaylist(
-      String playlistId, List<String> entryIds) async {}
-  @override
-  Future<String?> createPlaylist(String name, List<String> itemIds) async =>
-      null;
-  @override
-  Future<void> setFavourite(String itemId, {required bool favourite}) async {}
-  @override
-  Future<void> setPlayed(String itemId, {required bool played}) async {}
-  @override
-  Future<List<LibraryView>> views() async => const <LibraryView>[];
-  @override
-  Future<int> itemCount(String viewId) async => 0;
-  @override
-  Future<void> dispose() async {}
 }
 
 void main() {

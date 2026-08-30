@@ -124,6 +124,113 @@ class ItemActionRow extends ConsumerWidget {
   }
 }
 
+/// The same actions as [ItemActionRow], drawn as one centred row of glyphs.
+///
+/// What the series header uses. A full-width filled button and a scrolling
+/// strip of labelled chips is the right shape under a wide backdrop with the
+/// title on it; under a poster with the title beside it there is no full
+/// width to fill, and the row reads as a toolbar for the thing above it.
+///
+/// Everything past [visible] goes into the overflow menu rather than off the
+/// edge, so the row stays the same width whatever the server supports.
+class ItemActionIcons extends ConsumerWidget {
+  const ItemActionIcons({
+    super.key,
+    required this.item,
+    required this.onPlay,
+    this.shuffleFrom = const <ServerItem>[],
+    this.playlistIds = const <String>[],
+    this.seriesId,
+    this.downloadsAll = false,
+    this.onMediaInfo,
+    this.visible = 4,
+  });
+
+  final ServerItem item;
+
+  /// Resume where the server says the user got to.
+  final VoidCallback onPlay;
+
+  final List<ServerItem> shuffleFrom;
+  final List<String> playlistIds;
+  final String? seriesId;
+  final bool downloadsAll;
+  final Future<void> Function()? onMediaInfo;
+
+  /// How many actions are drawn as glyphs before the overflow menu.
+  final int visible;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+
+    final started = (item.position ?? Duration.zero) > Duration.zero;
+    final actions = itemActionsFor(
+      context,
+      ref,
+      item: item,
+      seriesId: seriesId,
+      shuffleFrom: shuffleFrom,
+      playlistIds: playlistIds,
+      downloadsAll: downloadsAll,
+      onMediaInfo: onMediaInfo,
+    );
+
+    final shown = actions.take(visible).toList();
+    final rest = actions.skip(visible).toList();
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: spacing.sm,
+      runSpacing: spacing.xs,
+      children: <Widget>[
+        // Play carries no label here, so it carries the tooltip instead: the
+        // difference between starting a series and resuming one is the only
+        // thing the row cannot say in a glyph.
+        IconButton(
+          icon: const Icon(Icons.play_arrow_rounded),
+          iconSize: 30,
+          color: scheme.onSurface,
+          tooltip: started ? l10n.continueWatching : l10n.play,
+          onPressed: onPlay,
+        ),
+        for (final ItemAction action in shown)
+          IconButton(
+            icon: Icon(action.icon),
+            iconSize: 26,
+            color: action.selected ? scheme.primary : scheme.onSurface,
+            tooltip: action.label,
+            onPressed: () => action.onSelected(),
+          ),
+        if (rest.isNotEmpty)
+          PopupMenuButton<int>(
+            icon: const Icon(Icons.more_vert_rounded),
+            iconSize: 26,
+            color: scheme.surfaceContainerHigh,
+            tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+            onSelected: (i) => rest[i].onSelected(),
+            itemBuilder: (context) => <PopupMenuEntry<int>>[
+              for (final (int i, ItemAction action) in rest.indexed)
+                PopupMenuItem<int>(
+                  value: i,
+                  child: Row(
+                    children: <Widget>[
+                      Icon(action.icon, size: 20),
+                      SizedBox(width: spacing.md),
+                      Expanded(child: Text(action.label)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
 class _Chip extends StatelessWidget {
   const _Chip({required this.action});
 

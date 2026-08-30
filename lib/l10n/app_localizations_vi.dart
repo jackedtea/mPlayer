@@ -236,6 +236,67 @@ class AppLocalizationsVi extends AppLocalizations {
   String get libraries => 'Thư viện';
 
   @override
+  String get tabMovies => 'Phim lẻ';
+
+  @override
+  String get tabShows => 'Phim bộ';
+
+  @override
+  String get tabItems => 'Tất cả';
+
+  @override
+  String get tabSuggestions => 'Gợi ý';
+
+  @override
+  String get tabFavourites => 'Yêu thích';
+
+  @override
+  String get tabCollections => 'Bộ sưu tập';
+
+  @override
+  String get tabPlaylists => 'Danh sách phát';
+
+  @override
+  String get noFavourites =>
+      'Chưa có mục nào được đánh dấu trong thư viện này.';
+
+  @override
+  String get noCollections => 'Không có bộ sưu tập nào lấy từ thư viện này.';
+
+  @override
+  String get noPlaylists => 'Máy chủ này chưa có danh sách phát nào.';
+
+  @override
+  String get noSuggestions =>
+      'Chưa có gì để gợi ý — xem gì đó rồi quay lại nhé.';
+
+  @override
+  String get emptyPlaylist => 'Danh sách phát này trống.';
+
+  @override
+  String becauseYouWatched(String title) {
+    return 'Vì bạn đã xem $title';
+  }
+
+  @override
+  String becauseYouLike(String title) {
+    return 'Vì bạn thích $title';
+  }
+
+  @override
+  String directedBy(String name) {
+    return 'Đạo diễn bởi $name';
+  }
+
+  @override
+  String starring(String name) {
+    return 'Có sự tham gia của $name';
+  }
+
+  @override
+  String get suggestedForYou => 'Gợi ý cho bạn';
+
+  @override
   String itemCount(int count) {
     return '$count mục';
   }

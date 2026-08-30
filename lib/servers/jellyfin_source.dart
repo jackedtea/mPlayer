@@ -196,11 +196,14 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
-  Future<List<ServerItem>> resumable({int limit = 12}) async {
+  Future<List<ServerItem>> resumable({int limit = 12, String? viewId}) async {
     final json = await _get('/UserItems/Resume', <String, String>{
       'userId': _profile.userId,
       'limit': '$limit',
       'mediaTypes': 'Video',
+      // Omitted, not sent empty: a blank parent is read as "no items under
+      // the empty library" by some versions rather than as "anywhere".
+      'parentId': ?viewId,
       'fields': _fields,
     });
 
@@ -208,14 +211,89 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
-  Future<List<ServerItem>> nextUp({int limit = 12}) async {
+  Future<List<ServerItem>> nextUp({int limit = 12, String? viewId}) async {
     final json = await _get('/Shows/NextUp', <String, String>{
       'userId': _profile.userId,
       'limit': '$limit',
+      'parentId': ?viewId,
       'fields': _fields,
     });
 
     return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerItem>> favourites(String viewId) async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      'parentId': viewId,
+      'recursive': 'true',
+      // The same types the grid lists. A favourited episode is real and is
+      // deliberately not here: every tile opens a detail screen, and there
+      // is none an episode on its own belongs on.
+      'includeItemTypes': 'Movie,Series,Video,BoxSet',
+      'isFavorite': 'true',
+      'sortBy': 'SortName',
+      'sortOrder': 'Ascending',
+      'fields': _fields,
+      'imageTypeLimit': '1',
+      'enableImageTypes': 'Primary',
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerItem>> collections(String viewId) async {
+    // A box set does not live *inside* a library — it sits in its own folder
+    // and points at items across several. Asking by parent anyway is how the
+    // server answers "which collections does this library feed", which is
+    // the question the tab is really asking.
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      'parentId': viewId,
+      'recursive': 'true',
+      'includeItemTypes': 'BoxSet',
+      'sortBy': 'SortName',
+      'sortOrder': 'Ascending',
+      'fields': _fields,
+      'imageTypeLimit': '1',
+      'enableImageTypes': 'Primary',
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerShelf>> suggestions(String viewId) async {
+    // Movies only — there is no `/Shows/Recommendations`, and a shows
+    // library's Suggestions tab is built from Next up and Recently added
+    // instead. A server with no watch history to reason from answers with an
+    // empty list, which is a legitimate answer rather than a failure.
+    try {
+      final response = await _send(
+        () => _dio.getUri<dynamic>(
+          _url('/Movies/Recommendations', <String, String>{
+            'userId': _profile.userId,
+            'parentId': viewId,
+            'categoryLimit': '4',
+            'itemLimit': '12',
+            'fields': _fields,
+            'imageTypeLimit': '1',
+            'enableImageTypes': 'Primary',
+          }),
+          options: Options(headers: _headers),
+        ),
+      );
+
+      // This route answers with a bare array, which `_get` would have to
+      // wrap in an `Items` key that means something else here.
+      final data = response.data;
+      return data is List ? serverShelvesFromJson(data) : const <ServerShelf>[];
+    } catch (e) {
+      debugPrint('No recommendations for $viewId: $e');
+      return const <ServerShelf>[];
+    }
   }
 
   @override
@@ -332,6 +410,10 @@ class JellyfinSource implements MediaLibrarySource {
   @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) =>
       imageUrlFor(item, base: _base, maxWidth: maxWidth);
+
+  @override
+  Uri? backdropUrl(ServerItem item, {int? maxWidth}) =>
+      backdropImageUrlFor(item, base: _base, maxWidth: maxWidth);
 
   @override
   Uri? personImageUrl(ServerPerson person, {int? maxWidth}) =>
@@ -453,13 +535,17 @@ class JellyfinSource implements MediaLibrarySource {
   static const _fields = 'Overview,ProductionYear,Genres,People,ChildCount,'
       'PrimaryImageAspectRatio,Studios,Status,EndDate';
 
+  // `OriginalTitle` is detail-only for the same reason: a grid draws one
+  // title per poster, and the second one only ever appears under the first
+  // on the detail header.
+
   /// What the detail fetch asks for on top of [_fields].
   ///
   /// Kept off the listings deliberately: a chapter list is dozens of entries
   /// with a title and a tag each, and a trickplay manifest is one more map
   /// again — a hundred-poster grid would carry both a hundred times over for
   /// something only the player ever reads.
-  static const _detailFields = '$_fields,Chapters,Trickplay';
+  static const _detailFields = '$_fields,Chapters,Trickplay,OriginalTitle';
 
   Uri _url(String path, [Map<String, String>? query]) {
     return _base.replace(

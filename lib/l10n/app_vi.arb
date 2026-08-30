@@ -80,6 +80,35 @@
   "nextUp": "Tiếp theo",
   "recentlyAdded": "Mới thêm",
   "libraries": "Thư viện",
+  "tabMovies": "Phim lẻ",
+  "tabShows": "Phim bộ",
+  "tabItems": "Tất cả",
+  "tabSuggestions": "Gợi ý",
+  "tabFavourites": "Yêu thích",
+  "tabCollections": "Bộ sưu tập",
+  "tabPlaylists": "Danh sách phát",
+  "noFavourites": "Chưa có mục nào được đánh dấu trong thư viện này.",
+  "noCollections": "Không có bộ sưu tập nào lấy từ thư viện này.",
+  "noPlaylists": "Máy chủ này chưa có danh sách phát nào.",
+  "noSuggestions": "Chưa có gì để gợi ý — xem gì đó rồi quay lại nhé.",
+  "emptyPlaylist": "Danh sách phát này trống.",
+  "becauseYouWatched": "Vì bạn đã xem {title}",
+  "@becauseYouWatched": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "becauseYouLike": "Vì bạn thích {title}",
+  "@becauseYouLike": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "directedBy": "Đạo diễn bởi {name}",
+  "@directedBy": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "starring": "Có sự tham gia của {name}",
+  "@starring": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "suggestedForYou": "Gợi ý cho bạn",
   "itemCount": "{count} mục",
   "unwatched": "Chưa xem",
   "unwatchedCount": "{count} chưa xem",

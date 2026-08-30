@@ -506,6 +506,108 @@ abstract class AppLocalizations {
   /// **'Libraries'**
   String get libraries;
 
+  /// No description provided for @tabMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Movies'**
+  String get tabMovies;
+
+  /// No description provided for @tabShows.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows'**
+  String get tabShows;
+
+  /// No description provided for @tabItems.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get tabItems;
+
+  /// No description provided for @tabSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions'**
+  String get tabSuggestions;
+
+  /// No description provided for @tabFavourites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get tabFavourites;
+
+  /// No description provided for @tabCollections.
+  ///
+  /// In en, this message translates to:
+  /// **'Collections'**
+  String get tabCollections;
+
+  /// No description provided for @tabPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlists'**
+  String get tabPlaylists;
+
+  /// No description provided for @noFavourites.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing starred in this library yet.'**
+  String get noFavourites;
+
+  /// No description provided for @noCollections.
+  ///
+  /// In en, this message translates to:
+  /// **'No collections draw on this library.'**
+  String get noCollections;
+
+  /// No description provided for @noPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'No playlists on this server yet.'**
+  String get noPlaylists;
+
+  /// No description provided for @noSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to suggest yet — watch something and come back.'**
+  String get noSuggestions;
+
+  /// No description provided for @emptyPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'This playlist is empty.'**
+  String get emptyPlaylist;
+
+  /// No description provided for @becauseYouWatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Because you watched {title}'**
+  String becauseYouWatched(String title);
+
+  /// No description provided for @becauseYouLike.
+  ///
+  /// In en, this message translates to:
+  /// **'Because you like {title}'**
+  String becauseYouLike(String title);
+
+  /// No description provided for @directedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Directed by {name}'**
+  String directedBy(String name);
+
+  /// No description provided for @starring.
+  ///
+  /// In en, this message translates to:
+  /// **'Starring {name}'**
+  String starring(String name);
+
+  /// No description provided for @suggestedForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested for you'**
+  String get suggestedForYou;
+
   /// No description provided for @itemCount.
   ///
   /// In en, this message translates to:

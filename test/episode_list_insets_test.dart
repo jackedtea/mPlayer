@@ -7,11 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fake_library_source.dart';
+
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/router.dart';
 import 'package:mplayer/features/servers/server_library.dart';
 import 'package:mplayer/servers/media_library_source.dart';
-import 'package:mplayer/servers/server_profile.dart';
 
 /// The screen from the report, with episodes in it.
 ///
@@ -23,14 +24,6 @@ import 'package:mplayer/servers/server_profile.dart';
 const _statusBar = 48.0;
 const _navigationBar = 56.0;
 
-const _profile = ServerProfile(
-  id: 'p1',
-  kind: ServerKind.jellyfin,
-  name: 'Home',
-  uri: 'https://media.home.lan',
-  userId: 'u1',
-  username: 'nam',
-);
 
 void main() {
   testWidgets('the last episode row clears the navigation bar', (tester) async {
@@ -92,7 +85,9 @@ void main() {
 }
 
 /// A series with enough episodes to overflow the window.
-class _FakeSeriesServer implements MediaLibrarySource {
+class _FakeSeriesServer extends FakeLibrarySource {
+  const _FakeSeriesServer();
+
   static const _series = ServerItem(
     id: 's1',
     title: 'Bottom-tier Character Tomozaki',
@@ -100,9 +95,6 @@ class _FakeSeriesServer implements MediaLibrarySource {
     overview: 'Tomozaki is one of the best gamers in Japan.',
     genres: <String>['Drama', 'Comedy', 'Animation'],
   );
-
-  @override
-  ServerProfile get profile => _profile;
 
   @override
   Future<ServerItem> item(String itemId) async => _series;
@@ -124,75 +116,4 @@ class _FakeSeriesServer implements MediaLibrarySource {
         ),
     ];
   }
-
-  @override
-  Uri? imageUrl(ServerItem item, {int? maxWidth}) => null;
-  @override
-  Future<List<MediaSegment>> segments(String itemId) async =>
-      const <MediaSegment>[];
-  @override
-  Uri? chapterImageUrl(String itemId, ServerChapter chapter, {int? maxWidth}) =>
-      null;
-  @override
-  Uri? personImageUrl(ServerPerson person, {int? maxWidth}) => null;
-  @override
-  Future<int> itemCount(String viewId) async => 0;
-  @override
-  Future<List<ServerItem>> items(String viewId,
-          {int startIndex = 0,
-          int limit = 100,
-          ServerSort sort = ServerSort.name}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> nextUp({int limit = 12}) async => const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> resumable({int limit = 12}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> search(String query, {int limit = 40}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> personItems(String personId,
-          {int limit = 100}) async =>
-      const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> playlists() async => const <ServerItem>[];
-  @override
-  Future<List<ServerItem>> playlistItems(String playlistId) async =>
-      const <ServerItem>[];
-  @override
-  Future<void> addToPlaylist(String playlistId, List<String> itemIds) async {}
-  @override
-  Future<void> removeFromPlaylist(
-      String playlistId, List<String> entryIds) async {}
-  @override
-  Future<String?> createPlaylist(String name, List<String> itemIds) async => null;
-  @override
-  Future<ServerPlayback> playback(
-    String itemId,
-    PlaybackCapabilities caps, {
-    int? audioStreamIndex,
-    int? subtitleStreamIndex,
-    String? mediaSourceId,
-  }) async =>
-      ServerPlayback(uri: Uri.parse('https://x'), isDirectPlay: true);
-  @override
-  Future<void> reportProgress(String itemId,
-      {required Duration position,
-      required bool isPaused,
-      String? playSessionId}) async {}
-  @override
-  Future<void> reportStopped(String itemId,
-      {required Duration position, String? playSessionId}) async {}
-  @override
-  Future<void> setFavourite(String itemId, {required bool favourite}) async {}
-  @override
-  Future<void> setPlayed(String itemId, {required bool played}) async {}
-  @override
-  Future<List<LibraryView>> views() async => const <LibraryView>[];
-  @override
-  Future<void> dispose() async {}
 }

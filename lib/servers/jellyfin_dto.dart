@@ -134,6 +134,12 @@ ServerItem serverItemFromJson(
     favourite: userData?['IsFavorite'] as bool? ?? false,
     imageTag: _primaryImageTag(json),
     imageOwnerId: _imageOwnerId(json),
+    backdropTag: _backdropImageTag(json),
+    backdropOwnerId: _backdropOwnerId(json),
+    originalTitle: (json['OriginalTitle'] as String?)?.trim().isNotEmpty ??
+            false
+        ? (json['OriginalTitle'] as String).trim()
+        : null,
     seriesId: json['SeriesId'] as String?,
     seriesTitle: json['SeriesName'] as String?,
     seasonNumber: json['ParentIndexNumber'] as int?,
@@ -314,6 +320,37 @@ List<MediaSegment> mediaSegmentsFromJson(Map<String, dynamic> json) {
   return segments;
 }
 
+
+/// The `/Movies/Recommendations` answer — a bare array of titled rows.
+///
+/// Each carries the reason and the thing it reasoned from, never a sentence:
+/// "SimilarToRecentlyPlayed" plus "Dune" becomes "Because you watched Dune"
+/// on the screen, where there is a locale to say it in.
+List<ServerShelf> serverShelvesFromJson(List<Object?> json) {
+  final shelves = <ServerShelf>[];
+
+  for (final Object? entry in json) {
+    if (entry is! Map) continue;
+
+    final items = <ServerItem>[
+      for (final Object? i in (entry['Items'] as List?) ?? const <Object?>[])
+        if (i is Map<String, dynamic>) serverItemFromJson(i),
+    ];
+    // A reason with nothing behind it is a heading over blank space.
+    if (items.isEmpty) continue;
+
+    shelves.add(
+      ServerShelf(
+        kind: SuggestionKind.fromWire(entry['RecommendationType'] as String?),
+        subject: (entry['BaselineItemName'] as String?)?.trim() ?? '',
+        items: items,
+      ),
+    );
+  }
+
+  return shelves;
+}
+
 /// A chapter still, or null where the server generated none.
 Uri? chapterImageUrlFor(
   ServerChapter chapter, {
@@ -348,6 +385,41 @@ String? _primaryImageTag(Map<String, dynamic> json) {
   // every client shows in its place.
   final parent = json['SeriesPrimaryImageTag'] ?? json['ParentPrimaryImageTag'];
   return parent is String ? parent : null;
+}
+
+/// The first entry of `BackdropImageTags`, or the parent's where the item
+/// has none of its own.
+///
+/// A list, because a server can hold several — the header draws one, and the
+/// first is the one every other client treats as the default.
+String? _backdropImageTag(Map<String, dynamic> json) {
+  final own = json['BackdropImageTags'];
+  if (own is List && own.isNotEmpty && own.first is String) {
+    return own.first as String;
+  }
+
+  final parent = json['ParentBackdropImageTags'];
+  if (parent is List && parent.isNotEmpty && parent.first is String) {
+    return parent.first as String;
+  }
+  return null;
+}
+
+/// Which item the tag [_backdropImageTag] found belongs to.
+String? _backdropOwnerId(Map<String, dynamic> json) {
+  final own = json['BackdropImageTags'];
+  if (own is List && own.isNotEmpty && own.first is String) {
+    return json['Id'] as String?;
+  }
+
+  final parent = json['ParentBackdropImageTags'];
+  if (parent is List && parent.isNotEmpty && parent.first is String) {
+    // The server names the owner outright here rather than leaving it to be
+    // guessed from the parent chain, which for an episode is the season and
+    // not the series that holds the picture.
+    return json['ParentBackdropItemId'] as String? ?? json['Id'] as String?;
+  }
+  return null;
 }
 
 /// Which item the tag [_primaryImageTag] found belongs to.
@@ -657,6 +729,35 @@ Uri? imageUrlFor(
   final owner = item.imageOwnerId ?? item.id;
 
   return _primaryImageUrl(base, owner, tag, maxWidth);
+}
+
+/// The wide artwork behind a detail header, or null when the item has none.
+Uri? backdropImageUrlFor(
+  ServerItem item, {
+  required Uri base,
+  int? maxWidth,
+}) {
+  final tag = item.backdropTag;
+  final owner = item.backdropOwnerId;
+  if (tag == null || tag.isEmpty || owner == null || owner.isEmpty) return null;
+
+  // Indexed as well as tagged: the backdrop route is the *n*th picture of an
+  // item, and the tag alone will not fetch it. Zero is the one the tag came
+  // from — the first of `BackdropImageTags`.
+  return base.replace(
+    pathSegments: <String>[
+      ...base.pathSegments.where((s) => s.isNotEmpty),
+      'Items',
+      owner,
+      'Images',
+      'Backdrop',
+      '0',
+    ],
+    queryParameters: <String, String>{
+      'tag': tag,
+      if (maxWidth != null) 'maxWidth': '$maxWidth',
+    },
+  );
 }
 
 /// A person's headshot. Same route as an item's — a person *is* an item to
