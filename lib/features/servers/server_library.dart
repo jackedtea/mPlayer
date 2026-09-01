@@ -30,24 +30,43 @@ final activeServerProvider = Provider<MediaLibrarySource?>(
   (ref) => ref.watch(serverRegistryProvider).source,
 );
 
-/// A library and the order it is being read in.
+/// A library, the order it is being read in, and what is being left out.
 ///
-/// The two travel together because the sort is part of the *request*: the
-/// server does the ordering, so changing it has to refetch rather than
-/// reorder what is already here.
+/// The three travel together because all of them are part of the *request*:
+/// the server sorts and the server filters, so changing either has to refetch
+/// rather than rearrange what is already here. Filtering the page in hand
+/// would also be wrong rather than merely slow — it holds a hundred of
+/// however many the library has, and hiding rows out of those hides nothing
+/// past the hundredth.
 @immutable
 class LibraryQuery {
-  const LibraryQuery(this.viewId, this.sort);
+  const LibraryQuery(
+    this.viewId,
+    this.sort, {
+    this.order,
+    this.filter = LibraryFilter.none,
+  });
 
   final String viewId;
   final ServerSort sort;
 
-  @override
-  bool operator ==(Object other) =>
-      other is LibraryQuery && other.viewId == viewId && other.sort == sort;
+  /// Null for the sort's own natural direction, set once the user has picked
+  /// one — the two are different states, and a stored "ascending" would turn
+  /// Recently added into oldest-first.
+  final SortOrder? order;
+
+  final LibraryFilter filter;
 
   @override
-  int get hashCode => Object.hash(viewId, sort);
+  bool operator ==(Object other) =>
+      other is LibraryQuery &&
+      other.viewId == viewId &&
+      other.sort == sort &&
+      other.order == order &&
+      other.filter == filter;
+
+  @override
+  int get hashCode => Object.hash(viewId, sort, order, filter);
 }
 
 /// One page of a library.
@@ -55,7 +74,24 @@ final libraryItemsProvider =
     FutureProvider.family<List<ServerItem>, LibraryQuery>((ref, query) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return const <ServerItem>[];
-  return source.items(query.viewId, sort: query.sort);
+  return source.items(
+    query.viewId,
+    sort: query.sort,
+    order: query.order,
+    filter: query.filter,
+  );
+});
+
+/// The genres, certificates, tags and years one library actually holds.
+///
+/// A request of its own, made when the filter sheet opens rather than with
+/// the grid: it is one round trip that nothing on the screen behind the sheet
+/// draws, and a library the user never filters never costs it.
+final libraryFilterOptionsProvider =
+    FutureProvider.family<LibraryFilterOptions, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return LibraryFilterOptions.empty;
+  return source.filterOptions(viewId);
 });
 
 final serverViewsProvider = FutureProvider<List<LibraryView>>((ref) async {

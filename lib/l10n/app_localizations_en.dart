@@ -1546,4 +1546,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get offlineSkipped => 'Offline — will be skipped';
+
+  @override
+  String get sortBy => 'Sort by';
+
+  @override
+  String get sortOrder => 'Sort order';
+
+  @override
+  String get sortAscending => 'Ascending';
+
+  @override
+  String get sortDescending => 'Descending';
+
+  @override
+  String get sortCommunityRating => 'Community rating';
+
+  @override
+  String get sortEpisodeAdded => 'Latest episode added';
+
+  @override
+  String get sortParentalRating => 'Parental rating';
+
+  @override
+  String get filterStatus => 'Status';
+
+  @override
+  String get filterFeatures => 'Features';
+
+  @override
+  String get filterGenres => 'Genres';
+
+  @override
+  String get filterParentalRatings => 'Parental ratings';
+
+  @override
+  String get filterTags => 'Tags';
+
+  @override
+  String get filterYears => 'Years';
+
+  @override
+  String get filterPlayed => 'Watched';
+
+  @override
+  String get filterUnplayed => 'Unwatched';
+
+  @override
+  String get filterFavourite => 'Favourites';
+
+  @override
+  String get filterInProgress => 'In progress';
+
+  @override
+  String get featureTrailer => 'Trailer';
+
+  @override
+  String get featureExtras => 'Extras';
+
+  @override
+  String get featureThemeSong => 'Theme song';
+
+  @override
+  String get featureThemeVideo => 'Theme video';
+
+  @override
+  String get filterApply => 'Apply';
+
+  @override
+  String get filterReset => 'Reset';
+
+  @override
+  String get nothingToFilterBy =>
+      'This library holds nothing else to filter by.';
 }

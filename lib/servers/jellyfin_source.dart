@@ -103,6 +103,8 @@ class JellyfinSource implements MediaLibrarySource {
     int startIndex = 0,
     int limit = 100,
     ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
   }) async {
     final json = await _get('/Items', <String, String>{
       'userId': _profile.userId,
@@ -114,15 +116,77 @@ class JellyfinSource implements MediaLibrarySource {
       // Emby honours the filter, and without it that library comes back empty.
       'includeItemTypes': 'Movie,Series,Video,BoxSet',
       'sortBy': sortByFor(sort),
-      'sortOrder': sortOrderFor(sort),
+      'sortOrder': sortOrderFor(sort, order),
       'startIndex': '$startIndex',
       'limit': '$limit',
+      // The narrowing happens on the server, not over the page that comes
+      // back: filtering a hundred items here would silently hide everything
+      // past the hundredth, and the count under the chips would describe a
+      // page rather than a library.
+      ...filterParams(filter),
       'fields': _fields,
       'imageTypeLimit': '1',
       'enableImageTypes': 'Primary',
     });
 
     return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<LibraryFilterOptions> filterOptions(String viewId) async {
+    // Emby answers 404 here — the aggregate route is Jellyfin's alone — so
+    // its four facets are read separately and put back together.
+    if (_profile.kind != ServerKind.jellyfin) return _facetOptions(viewId);
+
+    try {
+      final json = await _get('/Items/Filters', <String, String>{
+        'userId': _profile.userId,
+        'parentId': viewId,
+      });
+
+      return filterOptionsFromJson(json);
+    } catch (e) {
+      // A sheet with fewer sections beats one that refuses to open: the
+      // watch-state and feature filters need nothing from this call.
+      debugPrint('No filter values for $viewId: $e');
+      return LibraryFilterOptions.empty;
+    }
+  }
+
+  Future<LibraryFilterOptions> _facetOptions(String viewId) async {
+    final facets = await Future.wait(<Future<List<String>>>[
+      _facet('/Genres', viewId),
+      _facet('/OfficialRatings', viewId),
+      _facet('/Tags', viewId),
+      _facet('/Years', viewId),
+    ]);
+
+    return LibraryFilterOptions(
+      genres: facets[0],
+      parentalRatings: facets[1],
+      tags: facets[2],
+      years: <int>[
+        for (final String year in facets[3])
+          if (int.tryParse(year) != null) int.parse(year),
+      ],
+    );
+  }
+
+  Future<List<String>> _facet(String path, String viewId) async {
+    try {
+      final json = await _get(path, <String, String>{
+        'userId': _profile.userId,
+        'parentId': viewId,
+        // Required: without it the server only considers the view's direct
+        // children and every facet comes back empty.
+        'recursive': 'true',
+      });
+
+      return facetNamesFromJson(json);
+    } catch (e) {
+      debugPrint('No $path facet for $viewId: $e');
+      return const <String>[];
+    }
   }
 
   @override

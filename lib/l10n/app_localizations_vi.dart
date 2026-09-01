@@ -1547,4 +1547,76 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get offlineSkipped => 'Ngoại tuyến — sẽ bỏ qua';
+
+  @override
+  String get sortBy => 'Sắp xếp theo';
+
+  @override
+  String get sortOrder => 'Thứ tự';
+
+  @override
+  String get sortAscending => 'Tăng dần';
+
+  @override
+  String get sortDescending => 'Giảm dần';
+
+  @override
+  String get sortCommunityRating => 'Điểm cộng đồng';
+
+  @override
+  String get sortEpisodeAdded => 'Tập mới thêm gần nhất';
+
+  @override
+  String get sortParentalRating => 'Phân loại độ tuổi';
+
+  @override
+  String get filterStatus => 'Trạng thái';
+
+  @override
+  String get filterFeatures => 'Nội dung kèm theo';
+
+  @override
+  String get filterGenres => 'Thể loại';
+
+  @override
+  String get filterParentalRatings => 'Phân loại độ tuổi';
+
+  @override
+  String get filterTags => 'Thẻ';
+
+  @override
+  String get filterYears => 'Năm';
+
+  @override
+  String get filterPlayed => 'Đã xem';
+
+  @override
+  String get filterUnplayed => 'Chưa xem';
+
+  @override
+  String get filterFavourite => 'Yêu thích';
+
+  @override
+  String get filterInProgress => 'Đang xem dở';
+
+  @override
+  String get featureTrailer => 'Trailer';
+
+  @override
+  String get featureExtras => 'Nội dung thêm';
+
+  @override
+  String get featureThemeSong => 'Nhạc chủ đề';
+
+  @override
+  String get featureThemeVideo => 'Video chủ đề';
+
+  @override
+  String get filterApply => 'Áp dụng';
+
+  @override
+  String get filterReset => 'Đặt lại';
+
+  @override
+  String get nothingToFilterBy => 'Thư viện này không còn gì khác để lọc.';
 }

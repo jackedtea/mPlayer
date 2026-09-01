@@ -54,8 +54,14 @@ class FakeLibrarySource implements MediaLibrarySource {
     int startIndex = 0,
     int limit = 100,
     ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
   }) async =>
       const <ServerItem>[];
+
+  @override
+  Future<LibraryFilterOptions> filterOptions(String viewId) async =>
+      LibraryFilterOptions.empty;
 
   @override
   Future<List<ServerItem>> episodes(String seriesId, {String? seasonId}) async =>

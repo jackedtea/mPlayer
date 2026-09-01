@@ -622,6 +622,47 @@ with the server home (1d) — the two screens draw the same rows from different 
 the ink-inset arithmetic in them is not worth having twice. `openServerItem` in
 `server_library.dart` is likewise the one place that decides where tapping an item goes.
 
+## Sorting and filtering the library grid
+
+The chip row over the grid is Unwatched · the sort · a filter button carrying a count, and
+`features/servers/library_filter_sheet.dart` holds the two sheets behind the last two.
+
+- **The server sorts and the server filters.** Both are part of the *request*
+  (`LibraryQuery` carries the sort, the direction and a `LibraryFilter`), so either
+  changing refetches. Narrowing the page in hand would not merely be slow, it would be
+  wrong: a listing is a hundred of however many the library has, and hiding rows out of
+  those hides nothing past the hundredth while the count strip claims to describe a
+  library. The Unwatched chip used to do exactly that and no longer does.
+- **`LibraryFilter` has value equality, and needs it.** It is half of a provider family
+  key; without it the same filter rebuilt each frame would be a new request each frame.
+  `filterParams` sorts every list on the way out for the same reason — an identical filter
+  has to produce an identical URL.
+- **Three delimiters, not interchangeable.** `Genres`, `Tags` and `OfficialRatings` are
+  pipe-separated because a comma occurs *inside* those values; `Filters` and `Years` are
+  comma-separated, being closed vocabularies where it cannot. Each feature
+  (`hasSubtitles`, `hasTrailer`, …) is its own boolean and is **absent** rather than false
+  when unticked: `hasTrailer=false` asks for items that have none.
+- **An unset direction is not the direction it stands in for.** `SortOrder?` is null until
+  the user picks one, and `ServerSort.naturalOrder` supplies the rest — which is what
+  makes Recently added newest-first without anyone saying so. Storing the natural one
+  instead would freeze it, and the next sort chosen would inherit "ascending" and read
+  oldest-first. Picking a new *field* keeps the direction: a user who chose Descending
+  meant it.
+- **`/Items/Filters` is Jellyfin's alone.** Emby answers 404 and serves the four facets
+  separately — and the ratings one is `/OfficialRatings`, not the `/Items/OfficialRatings`
+  its siblings suggest. Every facet needs `recursive=true` or the server only considers the
+  view's direct children and all four come back empty. A server that will not answer costs
+  the sheet those four sections and nothing else: the watch-state and feature filters need
+  no round trip.
+- **Sections that cannot mean anything are absent, not disabled.** Status is shows-only (a
+  film is neither continuing nor ended), the "Latest episode added" sort likewise, and a
+  value section the server named nothing for is not drawn — an empty "Genres" heading reads
+  as broken rather than as honest.
+- **The sheet is a draft.** Nothing applies until Apply, so the grid behind it does not
+  refetch on every checkbox. Each collapsed section carries the number of boxes ticked
+  inside it, and the chip carries the total: a library that looks half empty has to say
+  why somewhere on screen.
+
 ## Administration
 
 `lib/servers/server_admin.dart` (types + interface), `jellyfin_admin_dto.dart` (pure

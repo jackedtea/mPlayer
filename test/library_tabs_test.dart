@@ -38,6 +38,8 @@ class _FakeServer extends FakeLibrarySource {
     int startIndex = 0,
     int limit = 100,
     ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
   }) async =>
       empty
           ? const <ServerItem>[]

@@ -632,5 +632,31 @@
 
   "connected": "Connected",
   "offline": "Offline",
-  "offlineSkipped": "Offline — will be skipped"
+  "offlineSkipped": "Offline — will be skipped",
+
+  "sortBy": "Sort by",
+  "sortOrder": "Sort order",
+  "sortAscending": "Ascending",
+  "sortDescending": "Descending",
+  "sortCommunityRating": "Community rating",
+  "sortEpisodeAdded": "Latest episode added",
+  "sortParentalRating": "Parental rating",
+
+  "filterStatus": "Status",
+  "filterFeatures": "Features",
+  "filterGenres": "Genres",
+  "filterParentalRatings": "Parental ratings",
+  "filterTags": "Tags",
+  "filterYears": "Years",
+  "filterPlayed": "Watched",
+  "filterUnplayed": "Unwatched",
+  "filterFavourite": "Favourites",
+  "filterInProgress": "In progress",
+  "featureTrailer": "Trailer",
+  "featureExtras": "Extras",
+  "featureThemeSong": "Theme song",
+  "featureThemeVideo": "Theme video",
+  "filterApply": "Apply",
+  "filterReset": "Reset",
+  "nothingToFilterBy": "This library holds nothing else to filter by."
 }

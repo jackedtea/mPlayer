@@ -468,20 +468,128 @@ LibraryView libraryViewFromJson(Map<String, dynamic> json) {
 String sortByFor(ServerSort sort) {
   return switch (sort) {
     ServerSort.name => 'SortName',
-    ServerSort.dateAdded => 'DateCreated',
-    ServerSort.datePlayed => 'DatePlayed',
-    ServerSort.releaseDate => 'PremiereDate',
     ServerSort.random => 'Random',
+    ServerSort.communityRating => 'CommunityRating',
+    ServerSort.dateAdded => 'DateCreated',
+    // The newest episode under a series, not the series' own arrival. The
+    // two are years apart on a show that is still running.
+    ServerSort.dateEpisodeAdded => 'DateLastContentAdded',
+    ServerSort.datePlayed => 'DatePlayed',
+    ServerSort.parentalRating => 'OfficialRating',
+    ServerSort.releaseDate => 'PremiereDate',
   };
 }
 
-/// Descending for everything that is "most recent first"; ascending for a
-/// name. Sorting names backwards is never what anyone meant.
-String sortOrderFor(ServerSort sort) {
-  return switch (sort) {
-    ServerSort.name || ServerSort.releaseDate => 'Ascending',
-    _ => 'Descending',
+/// The `sortOrder` value, given what the user asked for.
+///
+/// [order] is null wherever nobody has chosen, and the sort's own natural
+/// direction stands in: ascending for a name, most-recent-first for a date.
+/// Sorting names backwards is never what anyone meant by picking "Name".
+String sortOrderFor(ServerSort sort, [SortOrder? order]) {
+  return (order ?? sort.naturalOrder) == SortOrder.ascending
+      ? 'Ascending'
+      : 'Descending';
+}
+
+/// The query a [LibraryFilter] becomes.
+///
+/// Three delimiters, and they are not interchangeable. `Genres`, `Tags` and
+/// `OfficialRatings` are **pipe**-separated, because a comma is a character
+/// that occurs inside one of those values; `Filters` and `Years` are
+/// comma-separated, being closed vocabularies where it cannot. Each feature
+/// is its own boolean parameter rather than a member of a set.
+///
+/// Every list is sorted on the way out. Nothing on screen depends on the
+/// order, but an identical filter has to produce an identical URL or the
+/// same request is cached twice.
+Map<String, String> filterParams(LibraryFilter filter) {
+  return <String, String>{
+    if (filter.flags.isNotEmpty)
+      'filters': _sorted(filter.flags.map(_wireFilter)).join(','),
+    if (filter.status.isNotEmpty)
+      'seriesStatus': _sorted(filter.status.map(_wireStatus)).join(','),
+    for (final String param in _sorted(filter.features.map(_wireFeature)))
+      param: 'true',
+    if (filter.genres.isNotEmpty) 'genres': _sorted(filter.genres).join('|'),
+    if (filter.parentalRatings.isNotEmpty)
+      'officialRatings': _sorted(filter.parentalRatings).join('|'),
+    if (filter.tags.isNotEmpty) 'tags': _sorted(filter.tags).join('|'),
+    if (filter.years.isNotEmpty)
+      'years': (filter.years.toList()..sort()).join(','),
   };
+}
+
+List<String> _sorted(Iterable<String> values) => values.toList()..sort();
+
+String _wireFilter(ItemFilter filter) {
+  return switch (filter) {
+    ItemFilter.played => 'IsPlayed',
+    ItemFilter.unplayed => 'IsUnplayed',
+    ItemFilter.favourite => 'IsFavorite',
+    ItemFilter.resumable => 'IsResumable',
+  };
+}
+
+String _wireStatus(SeriesStatus status) {
+  return switch (status) {
+    SeriesStatus.continuing => 'Continuing',
+    SeriesStatus.ended => 'Ended',
+  };
+}
+
+String _wireFeature(ItemFeature feature) {
+  return switch (feature) {
+    ItemFeature.subtitles => 'hasSubtitles',
+    ItemFeature.trailer => 'hasTrailer',
+    ItemFeature.specialFeature => 'hasSpecialFeature',
+    ItemFeature.themeSong => 'hasThemeSong',
+    ItemFeature.themeVideo => 'hasThemeVideo',
+  };
+}
+
+/// `/Items/Filters`, which answers with the four lists in one object.
+///
+/// Years arrive as numbers and are kept as numbers: they are sorted newest
+/// first on screen, and sorting them as strings would file 999 after 2024.
+LibraryFilterOptions filterOptionsFromJson(Map<String, dynamic> json) {
+  return LibraryFilterOptions(
+    genres: _names(json['Genres']),
+    parentalRatings: _names(json['OfficialRatings']),
+    tags: _names(json['Tags']),
+    years: _years(json['Years']),
+  );
+}
+
+/// The same four lists, reassembled from the per-facet routes.
+///
+/// Emby has no aggregate route — it answers 404 — and serves each facet as a
+/// listing of named items instead. The ratings one is `/OfficialRatings`,
+/// not the `/Items/OfficialRatings` its siblings suggest.
+List<String> facetNamesFromJson(Map<String, dynamic> json) {
+  final items = json['Items'];
+  if (items is! List) return const <String>[];
+
+  return <String>[
+    for (final Object? entry in items)
+      if (entry is Map<String, dynamic> && entry['Name'] is String)
+        if ((entry['Name'] as String).isNotEmpty) entry['Name'] as String,
+  ];
+}
+
+List<String> _names(Object? raw) {
+  if (raw is! List) return const <String>[];
+  return raw.whereType<String>().where((s) => s.isNotEmpty).toList();
+}
+
+List<int> _years(Object? raw) {
+  if (raw is! List) return const <int>[];
+  return <int>[
+    for (final Object? year in raw)
+      if (year is num)
+        year.toInt()
+      else if (year is String && int.tryParse(year) != null)
+        int.parse(year),
+  ];
 }
 
 /// Turns a `PlaybackInfo` response into the one decision the player needs.

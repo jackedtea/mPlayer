@@ -644,12 +644,28 @@ abstract class MediaLibrarySource {
   Future<int> itemCount(String viewId);
 
   /// One library's contents.
+  ///
+  /// [order] is null for the sort's own natural direction — a name reads A-Z,
+  /// a date newest first — and set only where the user has said otherwise.
   Future<List<ServerItem>> items(
     String viewId, {
     int startIndex = 0,
     int limit = 100,
     ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
   });
+
+  /// The values a library can actually be filtered by.
+  ///
+  /// Asked of the server rather than derived from a page of items: the grid
+  /// holds a hundred of several hundred, and a genre list built from those
+  /// would be missing whatever the first page happens not to contain.
+  ///
+  /// Empty rather than an error wherever the server will not answer — a
+  /// filter sheet with fewer sections is worth more than a screen that
+  /// refuses to open.
+  Future<LibraryFilterOptions> filterOptions(String viewId);
 
   /// Everything the detail screen shows for one item.
   Future<ServerItem> item(String itemId);
@@ -787,7 +803,186 @@ abstract class MediaLibrarySource {
   Future<void> dispose();
 }
 
-enum ServerSort { name, dateAdded, datePlayed, releaseDate, random }
+/// What a library listing is ordered by.
+///
+/// The order is part of the *request*: the server does the sorting, so
+/// changing it refetches rather than reordering what is already on screen.
+/// Which also means an entry exists here only where the server has a field
+/// behind it — there is no sorting by anything this app would have to
+/// compute over a page it only partly holds.
+enum ServerSort {
+  name,
+  random,
+  communityRating,
+
+  /// When the item itself was added to the library.
+  dateAdded,
+
+  /// When the newest *episode* under it landed, which is not when the series
+  /// did. Meaningless outside a shows library, and offered only there.
+  dateEpisodeAdded,
+
+  datePlayed,
+
+  /// The certificate — G before PG before R.
+  parentalRating,
+
+  releaseDate;
+
+  /// Which way this sort reads when nobody has said otherwise.
+  ///
+  /// A name and a certificate ascend; everything else is newest or highest
+  /// first, because "recently added, oldest first" is not what anyone
+  /// choosing it meant.
+  SortOrder get naturalOrder => switch (this) {
+        ServerSort.name ||
+        ServerSort.releaseDate ||
+        ServerSort.parentalRating =>
+          SortOrder.ascending,
+        _ => SortOrder.descending,
+      };
+}
+
+enum SortOrder { ascending, descending }
+
+/// A watch-state constraint the server applies to a listing.
+///
+/// [played] and [unplayed] are both here and are not a single tri-state on
+/// purpose: the server takes them as a set, and asking for neither — which
+/// is the default — is not the same as asking for both.
+enum ItemFilter { played, unplayed, favourite, resumable }
+
+/// Whether a series is still running.
+///
+/// Only a shows library has these; a film is neither continuing nor ended.
+enum SeriesStatus { continuing, ended }
+
+/// Something the server holds *alongside* the film itself.
+enum ItemFeature { subtitles, trailer, specialFeature, themeSong, themeVideo }
+
+/// Everything the filter sheet can narrow a library listing by.
+///
+/// Sets rather than single values throughout, because every one of these is
+/// an "any of" on the wire: two genres selected means either, not both.
+@immutable
+class LibraryFilter {
+  const LibraryFilter({
+    this.flags = const <ItemFilter>{},
+    this.status = const <SeriesStatus>{},
+    this.features = const <ItemFeature>{},
+    this.genres = const <String>{},
+    this.parentalRatings = const <String>{},
+    this.tags = const <String>{},
+    this.years = const <int>{},
+  });
+
+  /// Nothing narrowed — what a library opens on. Hiding most of a collection
+  /// until the user notices a control is the wrong first impression.
+  static const LibraryFilter none = LibraryFilter();
+
+  final Set<ItemFilter> flags;
+  final Set<SeriesStatus> status;
+  final Set<ItemFeature> features;
+  final Set<String> genres;
+  final Set<String> parentalRatings;
+  final Set<String> tags;
+  final Set<int> years;
+
+  bool get isEmpty => count == 0;
+
+  /// How many constraints are on — the number on the filter button, which is
+  /// the only thing telling a user why a library looks half empty.
+  int get count =>
+      flags.length +
+      status.length +
+      features.length +
+      genres.length +
+      parentalRatings.length +
+      tags.length +
+      years.length;
+
+  LibraryFilter copyWith({
+    Set<ItemFilter>? flags,
+    Set<SeriesStatus>? status,
+    Set<ItemFeature>? features,
+    Set<String>? genres,
+    Set<String>? parentalRatings,
+    Set<String>? tags,
+    Set<int>? years,
+  }) {
+    return LibraryFilter(
+      flags: flags ?? this.flags,
+      status: status ?? this.status,
+      features: features ?? this.features,
+      genres: genres ?? this.genres,
+      parentalRatings: parentalRatings ?? this.parentalRatings,
+      tags: tags ?? this.tags,
+      years: years ?? this.years,
+    );
+  }
+
+  /// Adds or removes one value of a set, which is what a checkbox does.
+  static Set<T> toggled<T>(Set<T> from, T value, bool on) {
+    final next = Set<T>.of(from);
+    on ? next.add(value) : next.remove(value);
+    return next;
+  }
+
+  // Value equality is not decoration here: this is half of a provider family
+  // key, so an identical filter built twice has to be the same request rather
+  // than a second one.
+  @override
+  bool operator ==(Object other) =>
+      other is LibraryFilter &&
+      setEquals(other.flags, flags) &&
+      setEquals(other.status, status) &&
+      setEquals(other.features, features) &&
+      setEquals(other.genres, genres) &&
+      setEquals(other.parentalRatings, parentalRatings) &&
+      setEquals(other.tags, tags) &&
+      setEquals(other.years, years);
+
+  @override
+  int get hashCode => Object.hash(
+        Object.hashAllUnordered(flags),
+        Object.hashAllUnordered(status),
+        Object.hashAllUnordered(features),
+        Object.hashAllUnordered(genres),
+        Object.hashAllUnordered(parentalRatings),
+        Object.hashAllUnordered(tags),
+        Object.hashAllUnordered(years),
+      );
+}
+
+/// What one library actually holds to be filtered by.
+///
+/// Four lists the server compiles from the library itself, so the sheet
+/// offers the genres that occur in it rather than a fixed vocabulary that
+/// would mostly return nothing.
+@immutable
+class LibraryFilterOptions {
+  const LibraryFilterOptions({
+    this.genres = const <String>[],
+    this.parentalRatings = const <String>[],
+    this.tags = const <String>[],
+    this.years = const <int>[],
+  });
+
+  /// What a server that will not answer gets: the sheet then draws the
+  /// sections it can build without asking anything, and no empty headings.
+  static const LibraryFilterOptions empty = LibraryFilterOptions();
+
+  final List<String> genres;
+  final List<String> parentalRatings;
+  final List<String> tags;
+  final List<int> years;
+
+  bool get isEmpty =>
+      genres.isEmpty &&
+      parentalRatings.isEmpty &&
+      tags.isEmpty &&
+      years.isEmpty;
+}
 
 /// What this device can play without help.
 ///

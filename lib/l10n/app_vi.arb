@@ -579,5 +579,31 @@
 
   "connected": "Đã kết nối",
   "offline": "Ngoại tuyến",
-  "offlineSkipped": "Ngoại tuyến — sẽ bỏ qua"
+  "offlineSkipped": "Ngoại tuyến — sẽ bỏ qua",
+
+  "sortBy": "Sắp xếp theo",
+  "sortOrder": "Thứ tự",
+  "sortAscending": "Tăng dần",
+  "sortDescending": "Giảm dần",
+  "sortCommunityRating": "Điểm cộng đồng",
+  "sortEpisodeAdded": "Tập mới thêm gần nhất",
+  "sortParentalRating": "Phân loại độ tuổi",
+
+  "filterStatus": "Trạng thái",
+  "filterFeatures": "Nội dung kèm theo",
+  "filterGenres": "Thể loại",
+  "filterParentalRatings": "Phân loại độ tuổi",
+  "filterTags": "Thẻ",
+  "filterYears": "Năm",
+  "filterPlayed": "Đã xem",
+  "filterUnplayed": "Chưa xem",
+  "filterFavourite": "Yêu thích",
+  "filterInProgress": "Đang xem dở",
+  "featureTrailer": "Trailer",
+  "featureExtras": "Nội dung thêm",
+  "featureThemeSong": "Nhạc chủ đề",
+  "featureThemeVideo": "Video chủ đề",
+  "filterApply": "Áp dụng",
+  "filterReset": "Đặt lại",
+  "nothingToFilterBy": "Thư viện này không còn gì khác để lọc."
 }

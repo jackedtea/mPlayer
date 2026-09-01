@@ -2887,6 +2887,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Offline — will be skipped'**
   String get offlineSkipped;
+
+  /// No description provided for @sortBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by'**
+  String get sortBy;
+
+  /// No description provided for @sortOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort order'**
+  String get sortOrder;
+
+  /// No description provided for @sortAscending.
+  ///
+  /// In en, this message translates to:
+  /// **'Ascending'**
+  String get sortAscending;
+
+  /// No description provided for @sortDescending.
+  ///
+  /// In en, this message translates to:
+  /// **'Descending'**
+  String get sortDescending;
+
+  /// No description provided for @sortCommunityRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Community rating'**
+  String get sortCommunityRating;
+
+  /// No description provided for @sortEpisodeAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest episode added'**
+  String get sortEpisodeAdded;
+
+  /// No description provided for @sortParentalRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Parental rating'**
+  String get sortParentalRating;
+
+  /// No description provided for @filterStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get filterStatus;
+
+  /// No description provided for @filterFeatures.
+  ///
+  /// In en, this message translates to:
+  /// **'Features'**
+  String get filterFeatures;
+
+  /// No description provided for @filterGenres.
+  ///
+  /// In en, this message translates to:
+  /// **'Genres'**
+  String get filterGenres;
+
+  /// No description provided for @filterParentalRatings.
+  ///
+  /// In en, this message translates to:
+  /// **'Parental ratings'**
+  String get filterParentalRatings;
+
+  /// No description provided for @filterTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get filterTags;
+
+  /// No description provided for @filterYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Years'**
+  String get filterYears;
+
+  /// No description provided for @filterPlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Watched'**
+  String get filterPlayed;
+
+  /// No description provided for @filterUnplayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unwatched'**
+  String get filterUnplayed;
+
+  /// No description provided for @filterFavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get filterFavourite;
+
+  /// No description provided for @filterInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get filterInProgress;
+
+  /// No description provided for @featureTrailer.
+  ///
+  /// In en, this message translates to:
+  /// **'Trailer'**
+  String get featureTrailer;
+
+  /// No description provided for @featureExtras.
+  ///
+  /// In en, this message translates to:
+  /// **'Extras'**
+  String get featureExtras;
+
+  /// No description provided for @featureThemeSong.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme song'**
+  String get featureThemeSong;
+
+  /// No description provided for @featureThemeVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme video'**
+  String get featureThemeVideo;
+
+  /// No description provided for @filterApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get filterApply;
+
+  /// No description provided for @filterReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get filterReset;
+
+  /// No description provided for @nothingToFilterBy.
+  ///
+  /// In en, this message translates to:
+  /// **'This library holds nothing else to filter by.'**
+  String get nothingToFilterBy;
 }
 
 class _AppLocalizationsDelegate

@@ -166,6 +166,139 @@ void main() {
       expect(query['sortOrder'], 'Descending');
     });
 
+    test('a filtered listing narrows on the server, not on the page',
+        () async {
+      // Filtering the hundred items that come back would hide nothing past
+      // the hundredth while claiming to have filtered a library.
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
+      );
+
+      await source.items(
+        'v1',
+        sort: ServerSort.releaseDate,
+        order: SortOrder.descending,
+        filter: const LibraryFilter(
+          flags: <ItemFilter>{ItemFilter.unplayed},
+          status: <SeriesStatus>{SeriesStatus.continuing},
+          features: <ItemFeature>{ItemFeature.subtitles, ItemFeature.trailer},
+          genres: <String>{'Science Fiction', 'Drama'},
+          parentalRatings: <String>{'PG-13'},
+          tags: <String>{'miniseries'},
+          years: <int>{2024, 1999},
+        ),
+      );
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['sortBy'], 'PremiereDate');
+      // The explicit direction wins over the sort's natural ascending one.
+      expect(query['sortOrder'], 'Descending');
+      expect(query['filters'], 'IsUnplayed');
+      expect(query['seriesStatus'], 'Continuing');
+      // Each feature is its own boolean, not a member of a set.
+      expect(query['hasSubtitles'], 'true');
+      expect(query['hasTrailer'], 'true');
+      expect(query['hasThemeSong'], isNull);
+      // Pipes, because a comma is a character that occurs inside a genre.
+      expect(query['genres'], 'Drama|Science Fiction');
+      expect(query['officialRatings'], 'PG-13');
+      expect(query['tags'], 'miniseries');
+      expect(query['years'], '1999,2024');
+    });
+
+    test('an unfiltered listing sends no filter parameters at all', () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
+      );
+
+      await source.items('v1');
+
+      final query = adapter.requests.single.uri.queryParameters;
+      // An empty `filters=` is not the same as none: some versions read it as
+      // a filter nothing satisfies.
+      expect(query.containsKey('filters'), isFalse);
+      expect(query.containsKey('genres'), isFalse);
+      expect(query['sortOrder'], 'Ascending');
+    });
+
+    test("the filter values are one call, and the library's own", () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{
+          'Genres': <String>['Drama', 'Science Fiction'],
+          'OfficialRatings': <String>['PG-13'],
+          'Tags': <String>['miniseries'],
+          'Years': <int>[1999, 2024],
+        }),
+      );
+
+      final options = await source.filterOptions('v1');
+
+      expect(adapter.requests.single.uri.path, '/Items/Filters');
+      expect(adapter.requests.single.uri.queryParameters['parentId'], 'v1');
+      expect(options.genres, <String>['Drama', 'Science Fiction']);
+      expect(options.parentalRatings, <String>['PG-13']);
+      expect(options.tags, <String>['miniseries']);
+      expect(options.years, <int>[1999, 2024]);
+    });
+
+    test('a server that will not answer costs the sheet its sections only',
+        () async {
+      // A filter sheet with fewer sections beats one that refuses to open:
+      // the watch-state and feature filters need nothing from this call.
+      final (source, _) = sourceWith(
+        (_) => _json(<String, dynamic>{}, status: 500),
+      );
+
+      expect((await source.filterOptions('v1')).isEmpty, isTrue);
+    });
+
+    test('Emby has no aggregate filters route, so its facets are read instead',
+        () async {
+      // Emby 4.9.5 answers 404 for `/Items/Filters` and serves each facet as
+      // a listing of named items. Note `/OfficialRatings`, not the
+      // `/Items/OfficialRatings` its siblings suggest.
+      final adapter = _FakeAdapter(
+        (options) => _json(<String, dynamic>{
+          'Items': <dynamic>[
+            <String, dynamic>{'Name': options.uri.path == '/Years' ? '2024' : 'Drama'},
+            // A nameless row is dropped rather than becoming an empty
+            // checkbox nobody can read.
+            <String, dynamic>{'Id': 'no-name'},
+          ],
+        }),
+      );
+      final dio = Dio(BaseOptions(validateStatus: (_) => true))
+        ..httpClientAdapter = adapter;
+
+      final emby = JellyfinSource(
+        profile: const ServerProfile(
+          id: 'p2',
+          kind: ServerKind.emby,
+          name: 'Emby',
+          uri: 'https://media.home.lan',
+          userId: 'u1',
+          username: 'nam',
+        ),
+        token: 'tok',
+        identity: _identity,
+        client: dio,
+      );
+
+      final options = await emby.filterOptions('v1');
+
+      expect(
+        adapter.requests.map((r) => r.uri.path).toSet(),
+        <String>{'/Genres', '/OfficialRatings', '/Tags', '/Years'},
+      );
+      // Without `recursive` the server only considers the view's direct
+      // children and every facet comes back empty.
+      for (final RequestOptions request in adapter.requests) {
+        expect(request.uri.queryParameters['recursive'], 'true');
+      }
+      expect(options.genres, <String>['Drama']);
+      expect(options.years, <int>[2024]);
+    });
+
     test('a reverse-proxy prefix survives into every path', () async {
       final adapter = _FakeAdapter(
         (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
