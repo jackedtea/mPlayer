@@ -119,9 +119,10 @@ class ControlsOverlay extends StatelessWidget {
   /// The fade lives *inside* the overlay rather than around it because the
   /// pills must outlast it: the end of an episode is exactly when nobody has
   /// touched the screen for twenty minutes, and a "Next episode" button that
-  /// only exists while the scrubber is up is a button nobody will see. Faded
-  /// rather than removed, so the pill keeps the position the bottom bar
-  /// gives it and does not jump down the screen when the chrome goes.
+  /// only exists while the scrubber is up is a button nobody will see. The
+  /// bar folds away under it rather than merely fading, so the pill rides the
+  /// fold down to the bottom of the screen instead of hanging a control row's
+  /// height above nothing.
   final bool chromeVisible;
 
   @override
@@ -178,6 +179,7 @@ class ControlsOverlay extends StatelessWidget {
               // that ends with the viewer watching the next episode wins.
               if (state.nextUpDue)
                 _PillSlot(
+                  chromeVisible: chromeVisible,
                   child: _SkipPill(
                     label: state.queue.isSeries
                         ? AppLocalizations.of(context).nextEpisode
@@ -191,6 +193,7 @@ class ControlsOverlay extends StatelessWidget {
               // when there are segments, so at most one of these is non-null.
               else if (segment != null)
                 _PillSlot(
+                  chromeVisible: chromeVisible,
                   child: _SkipPill(
                     label: _segmentLabel(context, segment.kind),
                     onTap: () => onSkipSegment(segment),
@@ -198,12 +201,13 @@ class ControlsOverlay extends StatelessWidget {
                 )
               else if (intro != null)
                 _PillSlot(
+                  chromeVisible: chromeVisible,
                   child: _SkipPill(
                     label: AppLocalizations.of(context).skipIntro,
                     onTap: () => onSkipIntro(intro),
                   ),
                 ),
-              _Fade(
+              _CollapsingChrome(
                 visible: chromeVisible,
                 child: _BottomBar(this_: this),
               ),
@@ -234,6 +238,10 @@ String _segmentLabel(BuildContext context, MediaSegmentKind kind) {
   };
 }
 
+/// How long the chrome takes to come or go. Shared so the bars' fade, the
+/// bottom bar's fold and the pill's shuffle down all land together.
+const Duration _chromeFade = Duration(milliseconds: 200);
+
 /// Takes one layer of the chrome out of sight without taking it out of the
 /// layout, and out of reach while it is gone.
 class _Fade extends StatelessWidget {
@@ -246,7 +254,7 @@ class _Fade extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedOpacity(
       opacity: visible ? 1 : 0,
-      duration: const Duration(milliseconds: 200),
+      duration: _chromeFade,
       // An invisible control that still swallows taps would cost the viewer
       // the tap-to-show gesture over the whole bottom of the screen.
       child: IgnorePointer(ignoring: !visible, child: child),
@@ -254,20 +262,66 @@ class _Fade extends StatelessWidget {
   }
 }
 
-/// Where every skip pill sits: bottom right, clear of the scrubber.
-class _PillSlot extends StatelessWidget {
-  const _PillSlot({required this.child});
+/// Takes a layer of the chrome out of the layout as well as out of sight.
+///
+/// [_Fade] leaves a hole the size of what it hid, which is right for the bars
+/// nothing sits under. It is wrong for the bottom bar: whatever the pill slot
+/// holds sits directly on top of it, and fading alone left that pill stranded
+/// mid-screen once the controls went. Clipping the height down to nothing
+/// lets the pill above slide to the bottom with it.
+class _CollapsingChrome extends StatelessWidget {
+  const _CollapsingChrome({required this.visible, required this.child});
 
+  final bool visible;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: visible ? 1 : 0),
+      duration: _chromeFade,
+      curve: Curves.easeOut,
+      builder: (context, t, child) => ClipRect(
+        child: Align(
+          alignment: Alignment.topCenter,
+          heightFactor: t,
+          child: child,
+        ),
+      ),
+      // The fade is still [_Fade]'s: this one only takes the bar out of the
+      // layout, so there is one widget answering "is the chrome up" and not
+      // two disagreeing about it mid-animation.
+      child: _Fade(visible: visible, child: child),
+    );
+  }
+}
+
+/// Where every skip pill sits: bottom right, just clear of the scrubber.
+///
+/// The gap moves with the chrome. With the bar up the pill only has to sit
+/// off the scrubber's track, so it hugs it; with the bar folded away the pill
+/// is what sits at the bottom of the screen, and it takes over the system-bar
+/// inset the bar used to keep it clear of.
+class _PillSlot extends StatelessWidget {
+  const _PillSlot({required this.chromeVisible, required this.child});
+
+  final bool chromeVisible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+
     return Align(
       alignment: Alignment.centerRight,
-      child: Padding(
+      child: AnimatedPadding(
+        duration: _chromeFade,
+        curve: Curves.easeOut,
         padding: EdgeInsets.only(
-          right: context.spacing.lg,
-          bottom: context.spacing.sm,
+          right: spacing.lg,
+          bottom: chromeVisible
+              ? spacing.xs
+              : spacing.sm + context.systemBottomInset,
         ),
         child: child,
       ),

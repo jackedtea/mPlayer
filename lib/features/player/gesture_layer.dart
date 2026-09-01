@@ -311,7 +311,14 @@ class _LevelBar extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.3),
                 child: Align(
                   alignment: Alignment.bottomCenter,
+                  // `widthFactor: 1` is what makes the fill visible at all.
+                  // A childless `ColoredBox` takes the *smallest* size its
+                  // constraints allow, and the fraction only tightened the
+                  // height — so the fill was laid out the full height asked
+                  // for and zero pixels wide, and every level read as empty
+                  // however far the swipe went.
                   child: FractionallySizedBox(
+                    widthFactor: 1,
                     heightFactor: value.clamp(0.0, 1.0),
                     child: ColoredBox(color: context.colors.primaryContainer),
                   ),
