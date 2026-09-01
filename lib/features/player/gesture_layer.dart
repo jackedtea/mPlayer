@@ -320,7 +320,9 @@ class _LevelBar extends StatelessWidget {
                   child: FractionallySizedBox(
                     widthFactor: 1,
                     heightFactor: value.clamp(0.0, 1.0),
-                    child: ColoredBox(color: context.colors.primaryContainer),
+                    // White over the 30% track, matching the scrubber and
+                    // the rest of the chrome drawn over the video.
+                    child: const ColoredBox(color: Colors.white),
                   ),
                 ),
               ),

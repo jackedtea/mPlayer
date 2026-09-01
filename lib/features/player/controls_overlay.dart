@@ -916,8 +916,6 @@ class _Scrubber extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = context.colors;
-
     return SizedBox(
       height: 32,
       child: Stack(
@@ -961,10 +959,16 @@ class _Scrubber extends StatelessWidget {
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               trackHeight: 4,
-              activeTrackColor: scheme.primaryContainer,
+              // White, not the accent. Everything else drawn over the video
+              // is white — the inactive track, the buffered stretch, the
+              // times either side of it — and an accent track put the one
+              // coloured thing on the screen next to three shades of grey.
+              // It also keeps the scrubber legible under a custom accent the
+              // theme is free to make as pale as it likes.
+              activeTrackColor: Colors.white,
               inactiveTrackColor: Colors.white.withValues(alpha: 0.30),
-              thumbColor: scheme.primaryContainer,
-              overlayColor: scheme.primaryContainer.withValues(alpha: 0.24),
+              thumbColor: Colors.white,
+              overlayColor: Colors.white.withValues(alpha: 0.24),
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 13),
             ),
