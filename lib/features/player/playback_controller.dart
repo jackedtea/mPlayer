@@ -43,6 +43,15 @@ final localSourceProvider = Provider<LocalSource>((ref) => const LocalSource());
 class PlaybackController extends Notifier<PlaybackState> {
   Player? _player;
   VideoController? _videoController;
+
+  /// Last value read from libmpv's `hwdec-current`.
+  ///
+  /// Held here rather than fetched where it is needed: the stats snapshot is
+  /// built synchronously from several streams, and reading an mpv property is
+  /// asynchronous. So the property is polled at the points it can change — a
+  /// new file, a new track list, a change to the setting — and the snapshot
+  /// takes whatever the last read produced.
+  String? _hwdec;
   final List<StreamSubscription<void>> _subs = <StreamSubscription<void>>[];
 
   /// Guards against re-reading the chapter list on every duration tick.
@@ -139,6 +148,10 @@ class PlaybackController extends Notifier<PlaybackState> {
     // A new file gets its own still straight away rather than waiting out
     // the previous one's interval.
     _lastThumbnail = DateTime.fromMillisecondsSinceEpoch(0);
+    // The next file may well decode differently from this one — the setting
+    // is the same, the codec is not — so the reading is dropped rather than
+    // carried over and shown against the wrong video.
+    _hwdec = null;
 
     state = state.copyWith(
       media: media,
@@ -277,6 +290,24 @@ class PlaybackController extends Notifier<PlaybackState> {
     }
   }
 
+  /// Plays the first file of the folder again, for [LoopMode.all].
+  Future<void> _restartQueue() async {
+    if (_stepping) return;
+
+    final first = state.queue.stepTo(0);
+    if (first == null) return;
+
+    final source = ref.read(mediaSourcesProvider)[first.current!.sourceId];
+    if (source == null) return;
+
+    _stepping = true;
+    try {
+      await _openAt(first, source);
+    } finally {
+      _stepping = false;
+    }
+  }
+
   Future<void> _openAt(PlaybackQueue queue, MediaSource source) async {
     final mediaRef = queue.current;
     if (mediaRef == null) return;
@@ -328,6 +359,42 @@ class PlaybackController extends Notifier<PlaybackState> {
     final clamped = volume.clamp(0.0, 100.0);
     await _player?.setVolume(clamped);
     state = state.copyWith(volume: clamped);
+  }
+
+  /// Steps the loop control on to its next mode.
+  ///
+  /// `all` is skipped for a lone video: mpv's playlist holds exactly one item
+  /// whatever the folder holds, so repeating "the playlist" and repeating the
+  /// file would be the same thing with two different labels.
+  Future<void> cycleLoop() =>
+      setLoop(state.loop.next(hasSiblings: state.queue.hasSiblings));
+
+  /// Repeat one goes straight into libmpv, which loops the file without a
+  /// gap. Repeat all cannot: the folder is the app's queue and mpv has never
+  /// been told about it, so the roll back to the first file is done in the
+  /// completion handler alongside auto-play-next.
+  Future<void> setLoop(LoopMode mode) async {
+    await _player?.setPlaylistMode(
+      mode == LoopMode.one ? PlaylistMode.single : PlaylistMode.none,
+    );
+    state = state.copyWith(loop: mode);
+  }
+
+  /// The frame on screen right now, as JPEG bytes, or null.
+  ///
+  /// Null for an audio-only file, a frame that is not decoded yet, or a
+  /// backend that cannot screenshot — the caller says so rather than writing
+  /// an empty file.
+  Future<Uint8List?> captureFrame() async {
+    final player = _player;
+    if (player == null) return null;
+
+    try {
+      return await player.screenshot();
+    } catch (e) {
+      debugPrint('Could not take a screenshot: $e');
+      return null;
+    }
   }
 
   /// Opens the current item again, at [at].
@@ -485,8 +552,15 @@ class PlaybackController extends Notifier<PlaybackState> {
         // Roll on to the next file in the folder, which is what the Player
         // settings page already calls "Auto-play next episode". Guarded on
         // hasNext so the last file simply stops.
-        if (v && autoPlayNext && state.queue.hasNext) {
+        if (!v) return;
+        if (autoPlayNext && state.queue.hasNext) {
           unawaited(playNext());
+        } else if (state.loop == LoopMode.all && !state.queue.hasNext) {
+          // The end of the folder with repeat-all on: back to the top. mpv
+          // never saw the folder, so this is the one loop it cannot do
+          // itself. `hasNext` guards it so the roll-on above still wins
+          // mid-folder.
+          unawaited(_restartQueue());
         }
       }),
       s.volume.listen((v) => state = state.copyWith(volume: v)),
@@ -505,6 +579,12 @@ class PlaybackController extends Notifier<PlaybackState> {
           _smartSubtitlesApplied = true;
           unawaited(applySmartSubtitles());
         }
+
+        // A demuxed file is the earliest point mpv has chosen a decoder for
+        // it, and a codec the GPU refuses is exactly the case worth
+        // reporting — the setting says "prefer hardware" and the picture is
+        // coming off the CPU regardless.
+        unawaited(refreshDecoder());
       }),
       s.track.listen((t) {
         state = state.copyWith(
@@ -608,6 +688,70 @@ class PlaybackController extends Notifier<PlaybackState> {
     }
   }
 
+  /// Switches between hardware and software decoding without leaving the film.
+  ///
+  /// The same preference the Player settings page owns, written through the
+  /// same notifier — a shortcut to it, not a second setting. Reachable from
+  /// the player because the file that needs it is the one already on screen:
+  /// a driver that mishandles a codec shows a green or juddering picture, and
+  /// "software" is the only way past it.
+  ///
+  /// mpv reinitialises the video chain on an `hwdec` change, so this takes
+  /// effect on the frame after it rather than on the next file.
+  Future<void> setHardwareDecoding(HardwareDecoding mode) async {
+    final settings = ref.read(playerSettingsProvider);
+    if (settings.hardwareDecoding == mode) return;
+
+    final next = settings.copyWith(hardwareDecoding: mode);
+    await ref.read(playerSettingsProvider.notifier).update(next);
+    // Which also re-reads what mpv settled on, so there is one place that
+    // pushes `hwdec` and one place that reports the result of having done so.
+    await applySettings(next);
+  }
+
+  /// Re-reads which decoder is running and publishes it.
+  ///
+  /// Asking for hardware is not the same as getting it: mpv falls back to
+  /// software on its own whenever the GPU cannot take a codec, and says so
+  /// nowhere but this property. Without it the picker would report the
+  /// user's request back to them as though it were the outcome.
+  Future<void> refreshDecoder() async {
+    final player = _player;
+    final platform = player?.platform;
+    // Any backend without the mpv property interface simply never reports a
+    // decoder, and the stats line falls back to the description heuristic.
+    if (player == null || platform is! NativePlayer) return;
+
+    try {
+      final value = (await platform.getProperty('hwdec-current')).trim();
+      if (value.isEmpty || value == _hwdec) return;
+      _hwdec = value;
+      state = state.copyWith(stats: _statsFrom(player));
+    } catch (e) {
+      debugPrint('Could not read hwdec-current: $e');
+    }
+  }
+
+  /// Waits out mpv's decoder reinitialisation, then reports what it landed on.
+  ///
+  /// The property does not change on the same turn the option is set — the
+  /// video chain is torn down and rebuilt first — so reading it immediately
+  /// gives the previous answer. Polled for the same reason
+  /// [_awaitNewSubtitleTrack] is: there is no event to await, and a second is
+  /// far longer than a reinit takes.
+  Future<void> _awaitDecoderSwitch() async {
+    const step = Duration(milliseconds: 60);
+    final before = _hwdec;
+
+    for (var waited = Duration.zero;
+        waited < const Duration(seconds: 1);
+        waited += step) {
+      await Future<void>.delayed(step);
+      await refreshDecoder();
+      if (_hwdec != before) return;
+    }
+  }
+
   /// Applies mpv options media_kit never sets.
   ///
   /// Both of these show up as errors in the mpv log and nowhere else, which is
@@ -680,6 +824,12 @@ class PlaybackController extends Notifier<PlaybackState> {
       // Best-effort: a property mpv does not know must not stop playback.
       debugPrint('Could not apply player settings: $e');
     }
+
+    // `hwdec` was just written, so whatever was last read about the decoder
+    // may no longer be true. Here rather than only in [setHardwareDecoding]
+    // because the Player settings page reaches this method directly, and a
+    // change made there must not leave a stale reading behind it.
+    unawaited(_awaitDecoderSwitch());
   }
 
   /// Picks the audio and subtitle tracks the user's language preference asks
@@ -887,6 +1037,7 @@ class PlaybackController extends Notifier<PlaybackState> {
       audioChannels: audio.channels,
       audioSampleRate: audio.samplerate,
       audioBitrate: ps.audioBitrate,
+      hwdec: _hwdec,
     );
   }
 

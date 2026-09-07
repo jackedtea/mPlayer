@@ -9,6 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/features/settings/player_settings.dart';
+import 'package:mplayer/l10n/app_localizations.dart';
+import 'package:mplayer/l10n/app_localizations_en.dart';
+import 'package:mplayer/l10n/app_localizations_vi.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +37,26 @@ void main() {
       expect(HardwareDecoding.auto.mpvValue, 'auto-safe');
       expect(HardwareDecoding.yes.mpvValue, 'auto');
       expect(HardwareDecoding.no.mpvValue, 'no');
+    });
+
+    test('every decoding mode is named and explained in both languages', () {
+      // The names used to be English literals on the enum, which is the one
+      // thing a `label(l10n)` method exists to stop.
+      for (final AppLocalizations l10n in <AppLocalizations>[
+        AppLocalizationsEn(),
+        AppLocalizationsVi(),
+      ]) {
+        final labels = <String>{};
+        for (final HardwareDecoding mode in HardwareDecoding.values) {
+          expect(mode.label(l10n), isNotEmpty);
+          // A line saying what the mode costs, not a repeat of its name:
+          // which of the three to reach for is the whole question.
+          expect(mode.description(l10n), isNotEmpty);
+          expect(mode.description(l10n), isNot(mode.label(l10n)));
+          labels.add(mode.label(l10n));
+        }
+        expect(labels, hasLength(HardwareDecoding.values.length));
+      }
     });
 
     test('text scale multiplies mpv default size and stays sane', () {

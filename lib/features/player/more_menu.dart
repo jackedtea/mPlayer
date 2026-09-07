@@ -12,10 +12,17 @@ import '../../l10n/app_localizations.dart';
 import '../settings/player_settings.dart';
 import '../settings/player_settings_page.dart';
 import 'playback_controller.dart';
+import 'playback_state.dart';
 import 'player_ui_state.dart';
 
-/// The player's overflow sheet: rotation, lock, aspect, sleep timer, then
-/// stats and the settings page below a divider.
+/// The player's overflow sheet: rotation, aspect, sleep timer, audio delay
+/// and the decoder, then stats and the settings page below a divider.
+///
+/// Seven rows is the ceiling, not a coincidence. The shortest screen the
+/// player is held on is a phone on its side — 393 points — and the theme's
+/// drag handle takes 48 of them, so an eighth row is one nothing can be
+/// scrolled to without the sheet having cost a swipe first. A row added here
+/// has to earn its place against the ones already in it.
 class MoreMenu extends ConsumerWidget {
   const MoreMenu({super.key});
 
@@ -61,14 +68,6 @@ class MoreMenu extends ConsumerWidget {
             onTap: controller.cycleRotation,
           ),
           _Row(
-            icon: Icons.lock_rounded,
-            label: l10n.lockPlayer,
-            onTap: () {
-              controller.toggleLock();
-              Navigator.of(context).pop();
-            },
-          ),
-          _Row(
             icon: Icons.aspect_ratio_rounded,
             label: l10n.aspectRatio,
             value: ui.aspect.label(l10n),
@@ -88,6 +87,20 @@ class MoreMenu extends ConsumerWidget {
             label: l10n.audioDelay,
             value: formatDelay(ref.watch(playerSettingsProvider).audioDelay),
             onTap: () => _pickAudioDelay(context, ref),
+          ),
+          // Here as well as in settings, and for the same reason the audio
+          // delay is: a driver that mishandles a codec shows a green or
+          // juddering picture, and the file it happens on is the one already
+          // on screen. Sending the viewer to Settings to fix it means losing
+          // the film they were watching.
+          _Row(
+            icon: Icons.memory_rounded,
+            label: l10n.decoder,
+            value: ref
+                .watch(playerSettingsProvider)
+                .hardwareDecoding
+                .label(l10n),
+            onTap: () => _pickDecoder(context, ref),
           ),
           const Divider(height: 1, color: Colors.white24),
           _Row(
@@ -124,6 +137,70 @@ class MoreMenu extends ConsumerWidget {
     });
   }
 
+  /// Hardware or software, with what mpv actually settled on at the top.
+  ///
+  /// The reading matters as much as the choice: asking for hardware is not
+  /// the same as getting it, since mpv drops to software on its own whenever
+  /// the GPU cannot take a codec. Without it the sheet would report the
+  /// user's request back to them as though it were the outcome.
+  Future<void> _pickDecoder(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final current = ref.read(playerSettingsProvider).hardwareDecoding;
+    final stats = ref.read(playbackControllerProvider).stats;
+
+    final chosen = await showModalBottomSheet<HardwareDecoding>(
+      context: context,
+      backgroundColor: const Color(0xFF1A2125),
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            if (stats.hwdec != null || stats.videoDecoder != null)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  context.spacing.xl,
+                  context.spacing.md,
+                  context.spacing.xl,
+                  context.spacing.xs,
+                ),
+                child: Text(
+                  l10n.decodingNow(_decodingNow(l10n, stats)),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            for (final HardwareDecoding mode in HardwareDecoding.values)
+              ListTile(
+                title: Text(
+                  mode.label(l10n),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  mode.description(l10n),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                ),
+                trailing: mode == current
+                    ? const Icon(Icons.check_rounded, color: Colors.white)
+                    : null,
+                onTap: () => Navigator.of(sheetContext).pop(mode),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (chosen == null) return;
+    // Straight into libmpv, which reinitialises the video chain: the point of
+    // changing this here is seeing the frame in front of you decode again.
+    await ref
+        .read(playbackControllerProvider.notifier)
+        .setHardwareDecoding(chosen);
+  }
+
   Future<void> _pickSleepTimer(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
     final choices = <(String, Duration?)>[
@@ -155,6 +232,22 @@ class MoreMenu extends ConsumerWidget {
     if (chosen == null) return;
     ref.read(playerUiProvider.notifier).setSleepTimer(chosen.$2);
   }
+}
+
+/// What is decoding, in as few words as it takes.
+///
+/// mpv names the API — `d3d11va-copy`, `mediacodec`, `videotoolbox` — which
+/// is the useful answer and needs no translating. `no` is the one value that
+/// is a word rather than a name, so it is the one that does.
+String _decodingNow(AppLocalizations l10n, PlaybackStats stats) {
+  final hwdec = stats.hwdec;
+  final codec = stats.videoDecoder;
+
+  final how = hwdec == null || hwdec == 'no' || hwdec.isEmpty
+      ? l10n.decodingSoftware
+      : hwdec;
+
+  return codec == null ? how : '$codec · $how';
 }
 
 class _Row extends StatelessWidget {

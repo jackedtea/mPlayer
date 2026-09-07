@@ -709,14 +709,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get playback => 'Playback';
 
   @override
+  String get decoder => 'Decoder';
+
+  @override
+  String get hardwareDecodingAuto => 'Auto (safe)';
+
+  @override
+  String get hardwareDecodingAutoSub =>
+      'Hardware for the codecs mpv trusts, software for the rest';
+
+  @override
+  String get hardwareDecodingPrefer => 'Prefer hardware';
+
+  @override
+  String get hardwareDecodingPreferSub =>
+      'Every codec the GPU claims. Fastest, and the one that can show a broken picture';
+
+  @override
+  String get hardwareDecodingSoftware => 'Software only';
+
+  @override
+  String get hardwareDecodingSoftwareSub =>
+      'The CPU decodes everything. Heavier on the battery, but it plays what hardware gets wrong';
+
+  @override
+  String decodingNow(String decoder) {
+    return 'Decoding now: $decoder';
+  }
+
+  @override
+  String get decodingSoftware => 'software';
+
+  @override
   String get hardwareDecoding => 'Hardware decoding';
-
-  @override
-  String get hardwareDecodingValue => 'Auto (safe)';
-
-  @override
-  String get hardwareDecodingSub =>
-      'Falls back to software when a codec is unsupported';
 
   @override
   String get resumeBehaviour => 'Resume behaviour';
@@ -1009,6 +1034,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String audioValue(String track) {
     return 'Audio: $track';
   }
+
+  @override
+  String get loop => 'Loop';
+
+  @override
+  String get loopOne => 'Repeat this video';
+
+  @override
+  String get loopAll => 'Repeat the folder';
+
+  @override
+  String loopValue(String mode) {
+    return 'Loop: $mode';
+  }
+
+  @override
+  String qualityValue(String label) {
+    return 'Quality: $label';
+  }
+
+  @override
+  String get screenshot => 'Take a screenshot';
+
+  @override
+  String screenshotSaved(String folder) {
+    return 'Screenshot saved to $folder';
+  }
+
+  @override
+  String get screenshotFailed => 'Could not take a screenshot of this frame';
 
   @override
   String speedValue(String speed) {

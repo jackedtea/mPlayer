@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/desktop_window.dart';
@@ -32,6 +33,7 @@ import 'pip_controller.dart';
 import 'playback_controller.dart';
 import 'playback_state.dart';
 import 'player_ui_state.dart';
+import 'screenshot.dart';
 import '../settings/player_settings.dart';
 import 'stats_overlay.dart';
 import 'track_sheet.dart';
@@ -463,9 +465,23 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                             setState(() => _chromeVisible = false);
                             _applySystemUi();
                           },
-                          onRotate: ref
-                              .read(playerUiProvider.notifier)
-                              .cycleRotation,
+                          onRotate: () {
+                            _restartHideTimer();
+                            ref
+                                .read(playerUiProvider.notifier)
+                                .cycleRotation();
+                          },
+                          onLoop: () {
+                            _restartHideTimer();
+                            controller.cycleLoop();
+                          },
+                          onZoom: () {
+                            _restartHideTimer();
+                            ref.read(playerUiProvider.notifier).cycleAspect();
+                          },
+                          onScreenshot: () => _takeScreenshot(controller),
+                          onBackgroundPlay: _toggleBackgroundPlay,
+                          backgroundPlay: settings.backgroundAudio,
                           onChapters: () =>
                               _showChapters(state, controller),
                           onFullscreen: _toggleFullscreen,
@@ -846,6 +862,62 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         return KeyEventResult.ignored;
     }
     return KeyEventResult.handled;
+  }
+
+  /// Turns background audio on or off without leaving the film.
+  ///
+  /// The same preference the Player settings page owns, written back through
+  /// the same notifier — this is a shortcut to it, not a second setting.
+  /// `_syncNowPlaying` picks the change up on the next state tick and either
+  /// raises the notification or takes it down.
+  Future<void> _toggleBackgroundPlay() async {
+    _restartHideTimer();
+
+    final settings = ref.read(playerSettingsProvider);
+    await ref
+        .read(playerSettingsProvider.notifier)
+        .update(settings.copyWith(backgroundAudio: !settings.backgroundAudio));
+  }
+
+  /// Writes the frame on screen to a file and says where it went.
+  ///
+  /// Both outcomes are reported. A grab that silently does nothing — an
+  /// audio-only file, a frame the decoder has not produced yet, a directory
+  /// the platform refuses — is indistinguishable from a dead button.
+  Future<void> _takeScreenshot(PlaybackController controller) async {
+    _restartHideTimer();
+
+    final state = ref.read(playbackControllerProvider);
+    final bytes = await controller.captureFrame();
+    if (!mounted) return;
+
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (bytes == null) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.screenshotFailed)));
+      return;
+    }
+
+    final file = await saveScreenshot(
+      bytes,
+      title: state.media?.ref.title ?? widget.media.ref.title,
+      at: state.position,
+    );
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          file == null
+              ? l10n.screenshotFailed
+              // The folder, not the full path: the file name carries a
+              // timestamp nobody needs to read, and the whole path does not
+              // fit a snack bar on a phone.
+              : l10n.screenshotSaved(p.dirname(file.path)),
+        ),
+      ),
+    );
   }
 
   void _notImplemented(String what) {

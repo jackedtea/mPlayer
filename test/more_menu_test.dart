@@ -72,12 +72,17 @@ void main() {
 
       expect(tester.takeException(), isNull);
 
+      // Lock moved to the control bar's bottom-left group in the redesign and
+      // came off this sheet when the decoder went on it: seven rows is all a
+      // phone on its side has room for.
+      expect(find.text('Lock player'), findsNothing);
+
       for (final String label in <String>[
         'Rotation',
-        'Lock player',
         'Aspect ratio',
         'Sleep timer',
         'Audio delay',
+        'Decoder',
         'Stats for nerds',
         'Player settings',
       ]) {
@@ -149,6 +154,52 @@ void main() {
         tester.getRect(find.text('Player settings')).bottom,
         lessThanOrEqualTo(300 - 48),
       );
+    });
+  });
+
+  group('the decoder picker', () {
+    testWidgets('offers hardware and software, each with what it costs',
+        (tester) async {
+      await openMoreMenu(tester);
+
+      // The row reports the setting; the sheet is where it is changed.
+      expect(find.text('Decoder'), findsOneWidget);
+      expect(find.text('Auto (safe)'), findsOneWidget);
+
+      await tester.tap(find.text('Decoder'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Prefer hardware'), findsOneWidget);
+      expect(find.text('Software only'), findsOneWidget);
+      // The names alone do not say which to reach for, which is the whole
+      // question a viewer opens this sheet with.
+      expect(
+        find.text(
+          'The CPU decodes everything. Heavier on the battery, but it plays '
+          'what hardware gets wrong',
+        ),
+        findsOneWidget,
+      );
+      // The mode already in force is ticked rather than merely listed.
+      expect(
+        find.descendant(
+          of: find.widgetWithText(ListTile, 'Auto (safe)'),
+          matching: find.byIcon(Icons.check_rounded),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('says nothing about what is decoding when nothing is playing',
+        (tester) async {
+      // The reading is mpv's, and there is no mpv here — a line reporting
+      // "software" for a player that has not opened a file would be a claim
+      // about a decoder that does not exist.
+      await openMoreMenu(tester);
+      await tester.tap(find.text('Decoder'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Decoding now'), findsNothing);
     });
   });
 }

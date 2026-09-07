@@ -103,6 +103,29 @@ class MediaTrack {
   }
 }
 
+/// What happens when the file being played reaches its end.
+///
+/// `all` only means something where the file was opened from a folder holding
+/// others: it is the queue that is repeated, not the file. The control skips
+/// straight back to `off` for a lone video rather than offering a mode that
+/// would behave identically to `one`.
+enum LoopMode {
+  off,
+  one,
+  all;
+
+  /// The next mode the loop control cycles to.
+  ///
+  /// [hasSiblings] is the queue's, not a preference: repeating a folder of one
+  /// is repeating the file, and two buttons that do the same thing is one
+  /// button too many.
+  LoopMode next({required bool hasSiblings}) => switch (this) {
+        LoopMode.off => LoopMode.one,
+        LoopMode.one => hasSiblings ? LoopMode.all : LoopMode.off,
+        LoopMode.all => LoopMode.off,
+      };
+}
+
 /// Everything the stats overlay reports. All fields are optional because a
 /// stream reveals them at different times, and a missing value must render as
 /// "—" rather than a zero that looks real.
@@ -118,6 +141,7 @@ class PlaybackStats {
     this.audioCodec,
     this.audioChannels,
     this.audioSampleRate,
+    this.hwdec,
     this.audioBitrate,
   });
 
@@ -135,8 +159,26 @@ class PlaybackStats {
   final int? audioSampleRate;
   final double? audioBitrate;
 
-  /// True when the decoder description mentions a hardware pipeline.
+  /// libmpv's `hwdec-current` — the API that is decoding *right now*, e.g.
+  /// `d3d11va-copy`, `mediacodec`, or the literal `no` for software.
+  ///
+  /// This is the answer to the only question the decoder setting raises:
+  /// asking for hardware is not the same as getting it, and mpv falls back to
+  /// software silently whenever the GPU cannot take a codec. Null until the
+  /// property has been read, or on a backend without the mpv property
+  /// interface at all.
+  final String? hwdec;
+
+  /// Whether the picture is coming off the GPU.
+  ///
+  /// [hwdec] answers this outright when it has been read. The decoder
+  /// description is only a fallback for the moment before that, and it is a
+  /// guess: it names the codec implementation, which mentions the hardware
+  /// API on some platforms and not others.
   bool get isHardwareDecoded {
+    final current = hwdec;
+    if (current != null) return current != 'no' && current.isNotEmpty;
+
     final d = videoDecoder?.toLowerCase();
     if (d == null) return false;
     return d.contains('d3d') ||
@@ -177,6 +219,7 @@ class PlaybackState {
     this.containerChapters = const <MediaChapter>[],
     this.logLines = const <String>[],
     this.queue = const PlaybackQueue(),
+    this.loop = LoopMode.off,
   });
 
   /// Null until something has been opened.
@@ -225,6 +268,12 @@ class PlaybackState {
 
   /// The folder the current file came from; empty when opened standalone.
   final PlaybackQueue queue;
+
+  /// Whether the file, or the folder it came from, plays again at the end.
+  ///
+  /// Playback state rather than chrome state: it is a property pushed into
+  /// libmpv and it outlives the controls being tapped away.
+  final LoopMode loop;
 
   bool get hasMedia => media != null;
 
@@ -315,6 +364,7 @@ class PlaybackState {
     List<MediaChapter>? containerChapters,
     List<String>? logLines,
     PlaybackQueue? queue,
+    LoopMode? loop,
     bool clearError = false,
     bool clearMedia = false,
   }) {
@@ -337,6 +387,7 @@ class PlaybackState {
       containerChapters: containerChapters ?? this.containerChapters,
       logLines: logLines ?? this.logLines,
       queue: queue ?? this.queue,
+      loop: loop ?? this.loop,
     );
   }
 }

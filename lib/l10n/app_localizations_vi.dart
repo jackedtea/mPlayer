@@ -710,14 +710,39 @@ class AppLocalizationsVi extends AppLocalizations {
   String get playback => 'Phát lại';
 
   @override
+  String get decoder => 'Bộ giải mã';
+
+  @override
+  String get hardwareDecodingAuto => 'Tự động (an toàn)';
+
+  @override
+  String get hardwareDecodingAutoSub =>
+      'Dùng phần cứng với codec mpv tin được, còn lại dùng phần mềm';
+
+  @override
+  String get hardwareDecodingPrefer => 'Ưu tiên phần cứng';
+
+  @override
+  String get hardwareDecodingPreferSub =>
+      'Mọi codec GPU nhận. Nhanh nhất, và cũng là lựa chọn dễ cho hình lỗi';
+
+  @override
+  String get hardwareDecodingSoftware => 'Chỉ phần mềm';
+
+  @override
+  String get hardwareDecodingSoftwareSub =>
+      'CPU giải mã tất cả. Tốn pin hơn, nhưng phát được thứ phần cứng làm hỏng';
+
+  @override
+  String decodingNow(String decoder) {
+    return 'Đang giải mã bằng: $decoder';
+  }
+
+  @override
+  String get decodingSoftware => 'phần mềm';
+
+  @override
   String get hardwareDecoding => 'Giải mã phần cứng';
-
-  @override
-  String get hardwareDecodingValue => 'Tự động (an toàn)';
-
-  @override
-  String get hardwareDecodingSub =>
-      'Tự chuyển sang phần mềm khi codec không được hỗ trợ';
 
   @override
   String get resumeBehaviour => 'Cách tiếp tục xem';
@@ -1010,6 +1035,36 @@ class AppLocalizationsVi extends AppLocalizations {
   String audioValue(String track) {
     return 'Âm thanh: $track';
   }
+
+  @override
+  String get loop => 'Lặp';
+
+  @override
+  String get loopOne => 'Lặp lại video này';
+
+  @override
+  String get loopAll => 'Lặp lại cả thư mục';
+
+  @override
+  String loopValue(String mode) {
+    return 'Lặp: $mode';
+  }
+
+  @override
+  String qualityValue(String label) {
+    return 'Chất lượng: $label';
+  }
+
+  @override
+  String get screenshot => 'Chụp ảnh màn hình';
+
+  @override
+  String screenshotSaved(String folder) {
+    return 'Đã lưu ảnh vào $folder';
+  }
+
+  @override
+  String get screenshotFailed => 'Không chụp được khung hình này';
 
   @override
   String speedValue(String speed) {

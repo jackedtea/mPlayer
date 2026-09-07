@@ -45,6 +45,11 @@ class ControlsOverlay extends StatelessWidget {
     required this.onChapters,
     required this.onFullscreen,
     required this.onMore,
+    required this.onLoop,
+    required this.onZoom,
+    required this.onScreenshot,
+    required this.onBackgroundPlay,
+    this.backgroundPlay = false,
     this.onPip,
     this.onCast,
     this.skipBack = const Duration(seconds: 10),
@@ -87,6 +92,22 @@ class ControlsOverlay extends StatelessWidget {
   final VoidCallback onChapters;
   final VoidCallback onFullscreen;
   final VoidCallback onMore;
+
+  /// Steps the loop control on; the mode itself is read from [state].
+  final VoidCallback onLoop;
+
+  /// Cycles how the frame fills the screen — fit, fill, stretch.
+  final VoidCallback onZoom;
+
+  /// Writes the frame on screen to a file.
+  final VoidCallback onScreenshot;
+
+  /// Turns the background-audio preference on or off from the player, rather
+  /// than making the viewer leave the film to reach Settings.
+  final VoidCallback onBackgroundPlay;
+
+  /// Whether that preference is currently on, so the glyph can say so.
+  final bool backgroundPlay;
 
   /// Null where the platform has no picture in picture — desktop, and the
   /// Android devices whose manufacturer left it out. The button is hidden
@@ -359,91 +380,149 @@ class _Scrim extends StatelessWidget {
   }
 }
 
+/// Back and the title on the left; everything that picks *what is played* on
+/// the right.
+///
+/// Subtitles, audio and quality live up here rather than down beside the
+/// scrubber. They answer a different question from the rest of the chrome —
+/// which stream, not how it is shown — and grouping them by the corner they
+/// sit in is what lets the bottom bar read as one row of playback controls
+/// rather than nine unrelated glyphs.
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.this_});
 
   final ControlsOverlay this_;
 
+  /// Below this the whole row tightens rather than overflowing.
+  ///
+  /// Six 44pt buttons plus the back arrow come to more than a 320pt phone
+  /// has, and the title beside them is an [Expanded] that can only shrink to
+  /// nothing — so on a narrow screen the buttons are what give the width up.
+  static const _compactBelow = 420.0;
+
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
+    final l10n = AppLocalizations.of(context);
+    final state = this_.state;
+    final accent = context.colors.primaryContainer;
+    final subtitleOn = state.activeSubtitle?.isOff == false;
 
     return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: spacing.sm),
-        child: Row(
-          children: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              color: Colors.white,
-              tooltip: AppLocalizations.of(context).actionBack,
-              onPressed: () {
-                this_.onInteraction();
-                if (context.canPop()) context.pop();
-              },
-            ),
-            SizedBox(width: spacing.xs),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    this_.media.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final extent = constraints.maxWidth < _compactBelow ? 38.0 : 44.0;
+
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: spacing.xs),
+            child: Row(
+              children: <Widget>[
+                _SmallIcon(
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: l10n.actionBack,
+                  extent: extent,
+                  onTap: () {
+                    this_.onInteraction();
+                    if (context.canPop()) context.pop();
+                  },
+                ),
+                SizedBox(width: spacing.xs),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Icon(
-                        this_.media.kind.icon,
-                        size: 13,
-                        color: Colors.white.withValues(alpha: 0.75),
-                      ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          this_.media.sourceLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.75),
-                            fontSize: 12,
-                          ),
+                      Text(
+                        this_.media.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                      Row(
+                        children: <Widget>[
+                          Icon(
+                            this_.media.kind.icon,
+                            size: 13,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              this_.media.sourceLine,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.75),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                _SmallIcon(
+                  // Off is worth seeing without opening the sheet, so the
+                  // glyph says so.
+                  icon: subtitleOn
+                      ? Icons.subtitles_rounded
+                      : Icons.subtitles_off_rounded,
+                  tooltip: l10n.subtitlesValue(
+                    state.activeSubtitle?.label ?? l10n.off,
+                  ),
+                  colour: subtitleOn ? accent : null,
+                  extent: extent,
+                  onTap: this_.onSubtitles,
+                ),
+                _SmallIcon(
+                  icon: Icons.graphic_eq_rounded,
+                  tooltip: l10n.audioValue(
+                    state.activeAudio?.label ?? l10n.defaultLabel,
+                  ),
+                  extent: extent,
+                  onTap: this_.onAudio,
+                ),
+                // Quality only means something when the far end can re-encode.
+                // A local file, a share or a WebDAV stream is served as-is, so
+                // the button would open a sheet holding exactly one choice.
+                if (this_.media.capabilities.transcoding)
+                  _SmallIcon(
+                    icon: Icons.hd_rounded,
+                    tooltip: l10n.qualityValue(
+                      this_.qualityLabel ?? l10n.original,
+                    ),
+                    extent: extent,
+                    onTap: this_.onQuality,
+                  ),
+                if (this_.onPip != null)
+                  _SmallIcon(
+                    icon: Icons.picture_in_picture_alt_rounded,
+                    tooltip: l10n.pictureInPicture,
+                    extent: extent,
+                    onTap: this_.onPip!,
+                  ),
+                if (this_.onCast != null)
+                  _SmallIcon(
+                    icon: Icons.cast_rounded,
+                    tooltip: l10n.castTo,
+                    extent: extent,
+                    onTap: this_.onCast!,
+                  ),
+                _SmallIcon(
+                  icon: Icons.more_vert_rounded,
+                  tooltip: l10n.actionMore,
+                  extent: extent,
+                  onTap: this_.onMore,
+                ),
+              ],
             ),
-            if (this_.onPip != null)
-              IconButton(
-                icon: const Icon(Icons.picture_in_picture_alt_rounded),
-                color: Colors.white,
-                tooltip: AppLocalizations.of(context).pictureInPicture,
-                onPressed: this_.onPip,
-              ),
-            if (this_.onCast != null)
-              IconButton(
-                icon: const Icon(Icons.cast_rounded),
-                color: Colors.white,
-                tooltip: AppLocalizations.of(context).castTo,
-                onPressed: this_.onCast,
-              ),
-            IconButton(
-              icon: const Icon(Icons.more_vert_rounded),
-              color: Colors.white,
-              tooltip: AppLocalizations.of(context).actionMore,
-              onPressed: this_.onMore,
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -1042,48 +1121,49 @@ class _ChapterTicks extends CustomPainter {
       old.duration != duration || old.chapters != chapters;
 }
 
-/// Track pills on the left, the four icon buttons on the right.
+/// How the file is played, bottom left; how it is shown, bottom right.
 ///
-/// The design draws these as one row, which it can: its player frames are
-/// landscape. In portrait on a phone the four 44pt buttons leave the pills
-/// almost no width and the two groups collide, so below [_twoRowBelow] they
-/// stack instead — pills first, buttons under them.
+/// The split is the point of the row. The left group changes something about
+/// the playback itself and each of its members can be *on* — background
+/// audio, the lock, a forced rotation, a speed that is not 1.0, a loop — so
+/// they are the ones that carry a tint. The right group acts on the frame in
+/// front of the viewer and leaves nothing behind: a grab, a zoom step, the
+/// chapter list, the window.
+///
+/// Nine 44pt buttons need 396pt and a phone in portrait has 320, so below
+/// [_shareWidthBelow] they divide the row equally instead. The tight width an
+/// [Expanded] hands down overrides the button's own, shrinking the touch
+/// target rather than pushing a control off-screen where it cannot be reached
+/// at all.
 class _ControlRow extends StatelessWidget {
   const _ControlRow({required this.this_});
 
   final ControlsOverlay this_;
 
-  /// Four icon buttons (176) plus enough room for two readable pills.
-  static const _twoRowBelow = 480.0;
+  /// Nine buttons at their natural width, plus a little air between the two
+  /// groups.
+  static const _shareWidthBelow = 420.0;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= _twoRowBelow) {
+        final playback = _playbackIcons(context);
+        final view = _viewIcons(context);
+
+        if (constraints.maxWidth >= _shareWidthBelow) {
           return Row(
             children: <Widget>[
-              Expanded(child: _pills(context)),
-              ..._icons(context),
+              ...playback,
+              const Spacer(),
+              ...view,
             ],
           );
         }
 
-        // Portrait on a phone: labelled pills and four icon buttons cannot
-        // share a row, so the track controls drop their labels and join the
-        // others as icons. The label's information is not lost — each sheet
-        // still names the current selection, and the icons themselves carry
-        // the state worth seeing at a glance.
-        //
-        // Seven or eight buttons at their natural 44pt overrun a 320pt phone,
-        // so they share the row equally instead: the tight width an [Expanded]
-        // hands down overrides the button's own, shrinking the touch target
-        // rather than pushing a control off-screen where it cannot be reached
-        // at all.
         return Row(
           children: <Widget>[
-            for (final button
-                in <Widget>[..._trackIcons(context), ..._icons(context)])
+            for (final Widget button in <Widget>[...playback, ...view])
               Expanded(child: button),
           ],
         );
@@ -1091,36 +1171,35 @@ class _ControlRow extends StatelessWidget {
     );
   }
 
-  /// The pills, reduced to icons.
-  List<Widget> _trackIcons(BuildContext context) {
+  /// Bottom left — background play, lock, rotation, speed, loop.
+  List<Widget> _playbackIcons(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final state = this_.state;
+    final ui = this_.ui;
     final accent = context.colors.primaryContainer;
-    final subtitleOn = state.activeSubtitle?.isOff == false;
     final speedChanged = (state.speed - 1.0).abs() > 0.01;
 
     return <Widget>[
       _SmallIcon(
-        // Off is worth seeing without opening the sheet, so the glyph says so.
-        icon: subtitleOn
-            ? Icons.subtitles_rounded
-            : Icons.subtitles_off_rounded,
-        tooltip: l10n.subtitlesValue(state.activeSubtitle?.label ?? l10n.off),
-        colour: subtitleOn ? accent : null,
-        onTap: this_.onSubtitles,
+        icon: this_.backgroundPlay
+            ? Icons.headphones_rounded
+            : Icons.headphones_battery_rounded,
+        tooltip: l10n.backgroundAudio,
+        colour: this_.backgroundPlay ? accent : null,
+        onTap: this_.onBackgroundPlay,
       ),
       _SmallIcon(
-        icon: Icons.graphic_eq_rounded,
-        tooltip:
-            l10n.audioValue(state.activeAudio?.label ?? l10n.defaultLabel),
-        onTap: this_.onAudio,
+        icon: ui.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
+        tooltip: l10n.lockPlayer,
+        colour: ui.locked ? accent : null,
+        onTap: this_.onLock,
       ),
-      if (this_.media.capabilities.transcoding)
-        _SmallIcon(
-          icon: Icons.hd_rounded,
-          tooltip: l10n.quality,
-          onTap: this_.onQuality,
-        ),
+      _SmallIcon(
+        icon: ui.rotation.icon,
+        tooltip: l10n.rotationValue(ui.rotation.label(l10n)),
+        colour: ui.rotation == RotationMode.auto ? null : accent,
+        onTap: this_.onRotate,
+      ),
       _SmallIcon(
         icon: Icons.speed_rounded,
         // Playing at anything but normal speed is easy to forget and hard to
@@ -1129,60 +1208,35 @@ class _ControlRow extends StatelessWidget {
         colour: speedChanged ? accent : null,
         onTap: this_.onSpeed,
       ),
+      _SmallIcon(
+        icon: _loopIcon(state.loop),
+        tooltip: l10n.loopValue(loopLabel(l10n, state.loop)),
+        colour: state.loop == LoopMode.off ? null : accent,
+        onTap: this_.onLoop,
+      ),
     ];
   }
 
-  Widget _pills(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final state = this_.state;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: <Widget>[
-          _Pill(
-            icon: Icons.subtitles_rounded,
-            label: state.activeSubtitle?.label ?? l10n.off,
-            onTap: this_.onSubtitles,
-          ),
-          _Pill(
-            icon: Icons.graphic_eq_rounded,
-            label: state.activeAudio?.label ?? l10n.defaultLabel,
-            onTap: this_.onAudio,
-          ),
-          // Quality only means something when the far end can re-encode.
-          // A local file, a share or a WebDAV stream is served as-is, so the
-          // pill would open a sheet with exactly one choice in it.
-          if (this_.media.capabilities.transcoding)
-            _Pill(
-              icon: Icons.hd_rounded,
-              label: this_.qualityLabel ?? l10n.original,
-              onTap: this_.onQuality,
-            ),
-          _Pill(
-            icon: Icons.speed_rounded,
-            label: '${state.speed.toStringAsFixed(1)}×',
-            onTap: this_.onSpeed,
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _icons(BuildContext context) {
+  /// Bottom right — screenshot, zoom, chapters, fullscreen.
+  List<Widget> _viewIcons(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final ui = this_.ui;
+    final accent = context.colors.primaryContainer;
 
     return <Widget>[
       _SmallIcon(
-        icon: ui.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
-        tooltip: l10n.lockPlayer,
-        onTap: this_.onLock,
+        icon: Icons.photo_camera_rounded,
+        tooltip: l10n.screenshot,
+        onTap: this_.onScreenshot,
       ),
       _SmallIcon(
-        icon: ui.rotation.icon,
-        tooltip: l10n.rotationValue(ui.rotation.label(l10n)),
-        onTap: this_.onRotate,
+        // Zoom is the aspect cycle: fit, fill, stretch is what "zoom" does to
+        // a frame that is not the shape of the screen, and there is no second
+        // control that would mean anything different.
+        icon: Icons.zoom_out_map_rounded,
+        tooltip: l10n.aspectRatioValue(ui.aspect.label(l10n)),
+        colour: ui.aspect == AspectMode.fit ? null : accent,
+        onTap: this_.onZoom,
       ),
       _SmallIcon(
         icon: Icons.segment_rounded,
@@ -1198,53 +1252,24 @@ class _ControlRow extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({required this.icon, required this.label, required this.onTap});
+/// Repeat-one gets its own glyph; the folder loop and "off" share one and are
+/// told apart by the tint, the way every other stateful control in the row is.
+IconData _loopIcon(LoopMode mode) => switch (mode) {
+      LoopMode.off => Icons.repeat_rounded,
+      LoopMode.one => Icons.repeat_one_rounded,
+      LoopMode.all => Icons.repeat_on_rounded,
+    };
 
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(icon, size: 16, color: Colors.white),
-                const SizedBox(width: 6),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 130),
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+/// What the loop control's tooltip names its current mode.
+///
+/// Next to the widget rather than on [LoopMode] itself, for the reason
+/// `RotationMode` and `AspectMode` gave up their own `label` fields: an enum
+/// constant is built once, before there is a locale to build it in.
+String loopLabel(AppLocalizations l10n, LoopMode mode) => switch (mode) {
+      LoopMode.off => l10n.off,
+      LoopMode.one => l10n.loopOne,
+      LoopMode.all => l10n.loopAll,
+    };
 
 class _SmallIcon extends StatelessWidget {
   const _SmallIcon({
@@ -1252,6 +1277,7 @@ class _SmallIcon extends StatelessWidget {
     required this.tooltip,
     required this.onTap,
     this.colour,
+    this.extent = 44,
   });
 
   final IconData icon;
@@ -1261,6 +1287,10 @@ class _SmallIcon extends StatelessWidget {
   /// Tints the glyph to carry state the label used to. Null means plain white.
   final Color? colour;
 
+  /// The button's square footprint. 44 everywhere it fits; the top bar drops
+  /// it on a narrow phone, where six of these plus a title do not.
+  final double extent;
+
   @override
   Widget build(BuildContext context) {
     return IconButton(
@@ -1269,7 +1299,7 @@ class _SmallIcon extends StatelessWidget {
       color: colour ?? Colors.white,
       tooltip: tooltip,
       onPressed: onTap,
-      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+      constraints: BoxConstraints.tightFor(width: extent, height: extent),
       padding: EdgeInsets.zero,
     );
   }

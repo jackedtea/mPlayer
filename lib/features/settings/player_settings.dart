@@ -9,20 +9,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 
 /// How mpv should pick a decoder.
+///
+/// Worth a viewer's attention rather than being left to the backend: hardware
+/// decoding is what makes 4K play at all on a phone, and it is also what
+/// produces a green or stuttering picture when a driver mishandles a codec.
+/// The only way past that second case is to say "software", so the choice has
+/// to be reachable — from Player settings, and from the player itself while
+/// the file that broke is still on screen.
 enum HardwareDecoding {
-  auto('Auto (safe)', 'auto-safe'),
-  yes('Prefer hardware', 'auto'),
-  no('Software only', 'no');
+  auto('auto-safe'),
+  yes('auto'),
+  no('no');
 
-  const HardwareDecoding(this.label, this.mpvValue);
-
-  final String label;
+  const HardwareDecoding(this.mpvValue);
 
   /// What `hwdec` is set to. `auto-safe` is mpv's own conservative pick.
   final String mpvValue;
+
+  /// The name in the user's language. A `label` field cannot carry this: an
+  /// enum constant is built once, before there is a locale to build it in.
+  String label(AppLocalizations l10n) => switch (this) {
+        HardwareDecoding.auto => l10n.hardwareDecodingAuto,
+        HardwareDecoding.yes => l10n.hardwareDecodingPrefer,
+        HardwareDecoding.no => l10n.hardwareDecodingSoftware,
+      };
+
+  /// The line under the name in the picker — what the mode costs, not what it
+  /// is called. Which of the three to reach for is not obvious from the names
+  /// alone, and picking wrong is how a film ends up unwatchable.
+  String description(AppLocalizations l10n) => switch (this) {
+        HardwareDecoding.auto => l10n.hardwareDecodingAutoSub,
+        HardwareDecoding.yes => l10n.hardwareDecodingPreferSub,
+        HardwareDecoding.no => l10n.hardwareDecodingSoftwareSub,
+      };
 }
 
 /// How hard mpv should try to play one file into the next without a gap.

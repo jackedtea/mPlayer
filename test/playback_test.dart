@@ -9,10 +9,111 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mplayer/core/models/media_models.dart';
 import 'package:mplayer/features/player/playback_state.dart';
+import 'package:mplayer/features/player/screenshot.dart';
 import 'package:mplayer/sources/local_source.dart';
 import 'package:mplayer/sources/media_source.dart';
 
 void main() {
+  group('which decoder is running', () {
+    test('hwdec-current is believed over the decoder description', () {
+      // Asking for hardware is not getting it: mpv drops to software on its
+      // own for a codec the GPU will not take, and the description still
+      // names the codec implementation either way.
+      const stats = PlaybackStats(videoDecoder: 'h264', hwdec: 'd3d11va-copy');
+      expect(stats.isHardwareDecoded, isTrue);
+    });
+
+    test('a literal no is software however the codec is named', () {
+      // `mediacodec` in the description is exactly the trap the heuristic
+      // falls into — the name of a decoder that is not the one in use.
+      const stats = PlaybackStats(
+        videoDecoder: 'h264 (mediacodec)',
+        hwdec: 'no',
+      );
+      expect(stats.isHardwareDecoded, isFalse);
+    });
+
+    test('the description is the fallback until the property is read', () {
+      // Null means "not read yet", not "software" — there is a moment after a
+      // file opens where the guess is all there is.
+      expect(
+        const PlaybackStats(videoDecoder: 'h264 (d3d11va)').isHardwareDecoded,
+        isTrue,
+      );
+      expect(
+        const PlaybackStats(videoDecoder: 'h264').isHardwareDecoded,
+        isFalse,
+      );
+    });
+
+    test('an empty reading is not mistaken for hardware', () {
+      // mpv answers "" for a property it has no value for, and a blank string
+      // is not the name of a decoding API.
+      expect(
+        const PlaybackStats(videoDecoder: 'h264', hwdec: '').isHardwareDecoded,
+        isFalse,
+      );
+    });
+  });
+
+  group('LoopMode', () {
+    test('cycles off, one, all through a folder', () {
+      expect(LoopMode.off.next(hasSiblings: true), LoopMode.one);
+      expect(LoopMode.one.next(hasSiblings: true), LoopMode.all);
+      expect(LoopMode.all.next(hasSiblings: true), LoopMode.off);
+    });
+
+    test('a lone video is never offered a folder loop', () {
+      // mpv holds a playlist of one whatever the folder holds, so repeating
+      // "the playlist" and repeating the file would be the same thing under
+      // two labels.
+      expect(LoopMode.off.next(hasSiblings: false), LoopMode.one);
+      expect(LoopMode.one.next(hasSiblings: false), LoopMode.off);
+    });
+  });
+
+  group('screenshot names', () {
+    final at = DateTime(2026, 9, 7, 19, 33, 55);
+
+    test('carry the position the frame was grabbed at', () {
+      expect(
+        screenshotName(
+          title: 'Nightfall S01E02',
+          at: const Duration(minutes: 12, seconds: 4),
+          now: at,
+        ),
+        'Nightfall S01E02 - 00-12-04 - 20260907-193355.jpg',
+      );
+    });
+
+    test('keep the hour once a film runs past one', () {
+      expect(
+        screenshotName(
+          title: 'Clip',
+          at: const Duration(hours: 2, minutes: 5, seconds: 9),
+          now: at,
+        ),
+        'Clip - 02-05-09 - 20260907-193355.jpg',
+      );
+    });
+
+    test('drop what no filesystem will take', () {
+      // A muxer or a server wrote the title, and a colon is both common in one
+      // and a path separator on macOS.
+      expect(sanitiseFileName('Series: Part 1/2'), 'Series_ Part 1_2');
+      expect(sanitiseFileName('  spaced   out  '), 'spaced out');
+    });
+
+    test('an empty title still names a file', () {
+      expect(sanitiseFileName('   '), 'Video');
+    });
+
+    test('a very long title is trimmed to a workable length', () {
+      final name = sanitiseFileName('a' * 200);
+      expect(name.length, 60);
+    });
+  });
+
   group('formatDuration', () {
     test('omits the hour below an hour', () {
       expect(formatDuration(const Duration(seconds: 5)), '0:05');

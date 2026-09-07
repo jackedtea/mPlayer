@@ -35,11 +35,17 @@ Future<void> pumpControls(
   WidgetTester tester,
   Size size, {
   PlaybackState state = const PlaybackState(),
+  PlayerUiState ui = const PlayerUiState(),
   bool transcoding = false,
   double bottomInset = 0,
   MediaSegment? skipSegment,
   bool chromeVisible = true,
+  bool backgroundPlay = false,
   VoidCallback? onNext,
+  VoidCallback? onLoop,
+  VoidCallback? onZoom,
+  VoidCallback? onScreenshot,
+  VoidCallback? onBackgroundPlay,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
@@ -59,7 +65,7 @@ Future<void> pumpControls(
         body: ControlsOverlay(
           media: media(transcoding: transcoding),
           state: state,
-          ui: const PlayerUiState(),
+          ui: ui,
           dragProgress: null,
           onInteraction: () {},
           onPlayPause: () {},
@@ -79,6 +85,11 @@ Future<void> pumpControls(
           onChapters: () {},
           onFullscreen: () {},
           onMore: () {},
+          onLoop: onLoop ?? () {},
+          onZoom: onZoom ?? () {},
+          onScreenshot: onScreenshot ?? () {},
+          onBackgroundPlay: onBackgroundPlay ?? () {},
+          backgroundPlay: backgroundPlay,
           onSkipIntro: (_) {},
           skipSegment: skipSegment,
           onSkipSegment: (_) {},
@@ -111,6 +122,23 @@ PlaybackState _episode({
       isSeries: isSeries,
     ),
   );
+}
+
+/// What colour a control in the chrome is actually drawn in.
+///
+/// [IconButton] passes its `color` down through an [IconTheme] rather than on
+/// to the [Icon], which leaves `Icon.color` null whichever way the control is
+/// set — so reading the glyph would pass a tint assertion and an untinted one
+/// alike.
+Color? iconColour(WidgetTester tester, IconData icon) {
+  return tester
+      .widget<IconButton>(
+        find.ancestor(
+          of: find.byIcon(icon),
+          matching: find.byType(IconButton),
+        ).first,
+      )
+      .color;
 }
 
 void main() {
@@ -342,13 +370,21 @@ void main() {
     ) async {
       await pumpControls(tester, const Size(400, 900));
 
-      // The whole point of dropping the labels: one row, no overlap.
+      // Nine buttons sharing one row rather than any of them falling off it.
       expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.subtitles_off_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.graphic_eq_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.speed_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.fullscreen_rounded), findsOneWidget);
+      for (final IconData icon in <IconData>[
+        Icons.headphones_battery_rounded,
+        Icons.lock_open_rounded,
+        Icons.screen_rotation_rounded,
+        Icons.speed_rounded,
+        Icons.repeat_rounded,
+        Icons.photo_camera_rounded,
+        Icons.zoom_out_map_rounded,
+        Icons.segment_rounded,
+        Icons.fullscreen_rounded,
+      ]) {
+        expect(find.byIcon(icon), findsOneWidget, reason: '$icon');
+      }
     });
 
     testWidgets('a narrow phone still does not overflow', (tester) async {
@@ -356,13 +392,200 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('landscape keeps the labelled pills', (tester) async {
-      await pumpControls(tester, const Size(900, 500));
+    testWidgets('landscape puts the two groups in opposite corners', (
+      tester,
+    ) async {
+      const width = 900.0;
+      await pumpControls(tester, const Size(width, 500));
 
       expect(tester.takeException(), isNull);
-      // Labels are readable at this width, so they stay.
-      expect(find.text('Off'), findsOneWidget);
-      expect(find.text('1.0×'), findsOneWidget);
+
+      // Everything that changes how the file plays is bottom left; everything
+      // that acts on the frame in front of the viewer is bottom right.
+      for (final IconData icon in <IconData>[
+        Icons.headphones_battery_rounded,
+        Icons.lock_open_rounded,
+        Icons.screen_rotation_rounded,
+        Icons.speed_rounded,
+        Icons.repeat_rounded,
+      ]) {
+        expect(
+          tester.getCenter(find.byIcon(icon)).dx,
+          lessThan(width / 2),
+          reason: '$icon belongs bottom left',
+        );
+      }
+
+      for (final IconData icon in <IconData>[
+        Icons.photo_camera_rounded,
+        Icons.zoom_out_map_rounded,
+        Icons.segment_rounded,
+        Icons.fullscreen_rounded,
+      ]) {
+        expect(
+          tester.getCenter(find.byIcon(icon)).dx,
+          greaterThan(width / 2),
+          reason: '$icon belongs bottom right',
+        );
+      }
+    });
+  });
+
+  group('the track controls', () {
+    testWidgets('sit in the top right, above the video', (tester) async {
+      const size = Size(900, 500);
+      await pumpControls(tester, size, transcoding: true);
+
+      // Which stream to play is a different question from how it is shown,
+      // and the corner is what says so.
+      for (final IconData icon in <IconData>[
+        Icons.subtitles_off_rounded,
+        Icons.graphic_eq_rounded,
+        Icons.hd_rounded,
+      ]) {
+        final centre = tester.getCenter(find.byIcon(icon));
+        expect(centre.dx, greaterThan(size.width / 2), reason: '$icon');
+        expect(centre.dy, lessThan(size.height / 2), reason: '$icon');
+      }
+    });
+
+    testWidgets('are not repeated down beside the scrubber', (tester) async {
+      await pumpControls(tester, const Size(900, 500), transcoding: true);
+
+      expect(find.byIcon(Icons.subtitles_off_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.graphic_eq_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.hd_rounded), findsOneWidget);
+    });
+
+    testWidgets('a narrow phone fits the whole top bar', (tester) async {
+      // Six buttons at their natural width plus the back arrow overrun a
+      // 320pt phone, and the title between them can only shrink to nothing.
+      await pumpControls(tester, const Size(320, 700), transcoding: true);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('loop', () {
+    testWidgets('off draws the plain glyph untinted', (tester) async {
+      await pumpControls(tester, const Size(900, 500));
+
+      expect(find.byTooltip('Loop: Off'), findsOneWidget);
+      expect(iconColour(tester, Icons.repeat_rounded), Colors.white);
+    });
+
+    testWidgets('repeat-one gets its own glyph', (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: const PlaybackState(loop: LoopMode.one),
+      );
+
+      expect(find.byTooltip('Loop: Repeat this video'), findsOneWidget);
+      expect(
+        iconColour(tester, Icons.repeat_one_rounded),
+        isNot(Colors.white),
+      );
+    });
+
+    testWidgets('repeat-all names the folder', (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: const PlaybackState(loop: LoopMode.all),
+      );
+
+      expect(find.byTooltip('Loop: Repeat the folder'), findsOneWidget);
+    });
+
+    testWidgets('cycles when pressed', (tester) async {
+      var cycled = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        onLoop: () => cycled++,
+      );
+
+      await tester.tap(find.byIcon(Icons.repeat_rounded));
+      await tester.pump();
+
+      expect(cycled, 1);
+    });
+  });
+
+  group('background play', () {
+    testWidgets('says which way it is set', (tester) async {
+      await pumpControls(tester, const Size(900, 500));
+      expect(find.byIcon(Icons.headphones_battery_rounded), findsOneWidget);
+
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        backgroundPlay: true,
+      );
+      expect(
+        iconColour(tester, Icons.headphones_rounded),
+        isNot(Colors.white),
+      );
+    });
+
+    testWidgets('toggles when pressed', (tester) async {
+      var toggled = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        onBackgroundPlay: () => toggled++,
+      );
+
+      await tester.tap(find.byIcon(Icons.headphones_battery_rounded));
+      await tester.pump();
+
+      expect(toggled, 1);
+    });
+  });
+
+  group('screenshot and zoom', () {
+    testWidgets('the grab reports what it does', (tester) async {
+      var grabbed = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        onScreenshot: () => grabbed++,
+      );
+
+      expect(find.byTooltip('Take a screenshot'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.photo_camera_rounded));
+      await tester.pump();
+
+      expect(grabbed, 1);
+    });
+
+    testWidgets('zoom names the aspect mode it is on', (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        ui: const PlayerUiState(aspect: AspectMode.fill),
+      );
+
+      // The tooltip is the only place the current mode is written now.
+      expect(find.byTooltip('Aspect ratio: Fill'), findsOneWidget);
+      expect(
+        iconColour(tester, Icons.zoom_out_map_rounded),
+        isNot(Colors.white),
+      );
+    });
+
+    testWidgets('cycles when pressed', (tester) async {
+      var zoomed = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        onZoom: () => zoomed++,
+      );
+
+      await tester.tap(find.byIcon(Icons.zoom_out_map_rounded));
+      await tester.pump();
+
+      expect(zoomed, 1);
     });
   });
 
@@ -394,13 +617,8 @@ void main() {
       );
 
       // Playing at 1.5x is easy to forget; the tint is the only cue left.
-      final icon = tester.widget<Icon>(
-        find.descendant(
-          of: find.byTooltip('Speed: 1.50×'),
-          matching: find.byIcon(Icons.speed_rounded),
-        ),
-      );
-      expect(icon.color, isNot(Colors.white));
+      expect(find.byTooltip('Speed: 1.50×'), findsOneWidget);
+      expect(iconColour(tester, Icons.speed_rounded), isNot(Colors.white));
     });
   });
 

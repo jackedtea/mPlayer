@@ -47,7 +47,7 @@ class PlayerSettingsPage extends ConsumerWidget {
         SettingsSection(title: AppLocalizations.of(context).playback),
         SettingsValueRow(
           title: AppLocalizations.of(context).hardwareDecoding,
-          value: settings.hardwareDecoding.label,
+          value: settings.hardwareDecoding.label(AppLocalizations.of(context)),
           subtitle: AppLocalizations.of(context).hardwareDecodingFallback,
           onTap: () => _pickHardwareDecoding(context, settings, save),
         ),
@@ -154,7 +154,13 @@ class PlayerSettingsPage extends ConsumerWidget {
           children: <Widget>[
             for (final HardwareDecoding mode in HardwareDecoding.values)
               ListTile(
-                title: Text(mode.label),
+                title: Text(mode.label(AppLocalizations.of(sheetContext))),
+                // Which of the three to reach for is the whole question, and
+                // the names alone do not answer it.
+                subtitle: Text(
+                  mode.description(AppLocalizations.of(sheetContext)),
+                ),
+                isThreeLine: false,
                 trailing: mode == settings.hardwareDecoding
                     ? const Icon(Icons.check_rounded)
                     : null,

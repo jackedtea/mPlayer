@@ -1358,23 +1358,65 @@ abstract class AppLocalizations {
   /// **'Playback'**
   String get playback;
 
+  /// No description provided for @decoder.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoder'**
+  String get decoder;
+
+  /// No description provided for @hardwareDecodingAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto (safe)'**
+  String get hardwareDecodingAuto;
+
+  /// No description provided for @hardwareDecodingAutoSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware for the codecs mpv trusts, software for the rest'**
+  String get hardwareDecodingAutoSub;
+
+  /// No description provided for @hardwareDecodingPrefer.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer hardware'**
+  String get hardwareDecodingPrefer;
+
+  /// No description provided for @hardwareDecodingPreferSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Every codec the GPU claims. Fastest, and the one that can show a broken picture'**
+  String get hardwareDecodingPreferSub;
+
+  /// No description provided for @hardwareDecodingSoftware.
+  ///
+  /// In en, this message translates to:
+  /// **'Software only'**
+  String get hardwareDecodingSoftware;
+
+  /// No description provided for @hardwareDecodingSoftwareSub.
+  ///
+  /// In en, this message translates to:
+  /// **'The CPU decodes everything. Heavier on the battery, but it plays what hardware gets wrong'**
+  String get hardwareDecodingSoftwareSub;
+
+  /// No description provided for @decodingNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoding now: {decoder}'**
+  String decodingNow(String decoder);
+
+  /// No description provided for @decodingSoftware.
+  ///
+  /// In en, this message translates to:
+  /// **'software'**
+  String get decodingSoftware;
+
   /// No description provided for @hardwareDecoding.
   ///
   /// In en, this message translates to:
   /// **'Hardware decoding'**
   String get hardwareDecoding;
-
-  /// No description provided for @hardwareDecodingValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto (safe)'**
-  String get hardwareDecodingValue;
-
-  /// No description provided for @hardwareDecodingSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Falls back to software when a codec is unsupported'**
-  String get hardwareDecodingSub;
 
   /// No description provided for @resumeBehaviour.
   ///
@@ -1915,6 +1957,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Audio: {track}'**
   String audioValue(String track);
+
+  /// No description provided for @loop.
+  ///
+  /// In en, this message translates to:
+  /// **'Loop'**
+  String get loop;
+
+  /// No description provided for @loopOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat this video'**
+  String get loopOne;
+
+  /// No description provided for @loopAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat the folder'**
+  String get loopAll;
+
+  /// No description provided for @loopValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Loop: {mode}'**
+  String loopValue(String mode);
+
+  /// No description provided for @qualityValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality: {label}'**
+  String qualityValue(String label);
+
+  /// No description provided for @screenshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a screenshot'**
+  String get screenshot;
+
+  /// No description provided for @screenshotSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshot saved to {folder}'**
+  String screenshotSaved(String folder);
+
+  /// No description provided for @screenshotFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not take a screenshot of this frame'**
+  String get screenshotFailed;
 
   /// No description provided for @speedValue.
   ///
