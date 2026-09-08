@@ -79,6 +79,12 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// on every later one would undo a track the user picked by hand.
   bool _smartSubtitlesApplied = false;
 
+  /// Whether the media index has already been asked for this session.
+  ///
+  /// A refusal must not put a system dialog in front of every file the user
+  /// opens afterwards, so the question is asked once and then let go of.
+  bool _askedForIndexAccess = false;
+
   bool get autoPlayNext => ref.read(playerSettingsProvider).autoPlayNext;
 
   /// Throttles resume writes. The position stream fires several times a
@@ -302,8 +308,16 @@ class PlaybackController extends Notifier<PlaybackState> {
 
     final index = ref.read(mediaStoreSourceProvider);
     try {
+      if (!await _indexReadable(index)) {
+        debugPrint('No playlist: the media index may not be read.');
+        return null;
+      }
+
       final video = await index.bucketForUri(mediaRef.itemId);
-      if (video == null) return null;
+      if (video == null) {
+        debugPrint('No playlist: ${mediaRef.itemId} is not in the index.');
+        return null;
+      }
 
       final listing = await index.listDirectory(video.bucketId);
       final items = <MediaRef>[
@@ -325,6 +339,21 @@ class PlaybackController extends Notifier<PlaybackState> {
       debugPrint('No playlist from the media index: $e');
       return null;
     }
+  }
+
+  /// Whether the media index may be read, asking for it if it never has been.
+  ///
+  /// A video handed over by another app opens the player directly, and the
+  /// Files tab is the only screen that asks for this permission — so a fresh
+  /// install could never step through the folder it was handed a file from,
+  /// however many videos sat beside it. Asked here because this is the first
+  /// moment the answer is actually needed.
+  Future<bool> _indexReadable(MediaStoreSource index) async {
+    if (await index.hasPermission()) return true;
+    if (_askedForIndexAccess) return false;
+
+    _askedForIndexAccess = true;
+    return index.requestPermission();
   }
 
   /// Steps to the previous file in the folder.
