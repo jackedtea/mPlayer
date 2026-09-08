@@ -44,6 +44,7 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "videosIn" -> media.handleVideosIn(call.argument("bucketId"), result)
+                "bucketForUri" -> media.handleBucketForUri(call.argument("uri"), result)
                 else -> media.handle(call.method, result)
             }
         }

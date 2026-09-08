@@ -43,6 +43,24 @@ class MediaFolder {
   final int videoCount;
 }
 
+/// One video as the media index holds it.
+///
+/// The [uri] is the index's own `content://` URI for the row, which is what a
+/// listing of [bucketId] will contain — the URI a hand-off arrived on very
+/// often is not.
+@immutable
+class IndexedVideo {
+  const IndexedVideo({
+    required this.bucketId,
+    required this.uri,
+    required this.name,
+  });
+
+  final String bucketId;
+  final String uri;
+  final String name;
+}
+
 /// The device's videos, via Android's MediaStore.
 ///
 /// Scoped storage means an app cannot list shared storage directly, so the
@@ -75,10 +93,17 @@ class MediaStoreSource implements BrowsableSource {
   @override
   String get rootLabel => 'This device';
 
-  /// Bucket ids are opaque, so the "parent" of a video is the folder it was
-  /// listed from. Callers pass that through unchanged.
+  /// Not derivable here, so [path] is returned as it came.
+  ///
+  /// An item is a `content://` URI and a folder is an opaque bucket id, and
+  /// no amount of string surgery turns the first into the second — only a
+  /// query does, which is what [bucketForUri] is for. Returned unchanged
+  /// rather than empty on purpose: empty means "every video on the device" to
+  /// [listDirectory], which would make a folder step walk the whole library.
+  /// A bucket id this is not matches nothing, so [siblingVideosOf] finds no
+  /// run here and the caller asks the index properly instead.
   @override
-  String parentOf(String path) => '';
+  String parentOf(String path) => path;
 
   Future<bool> hasPermission() async {
     if (!isSupported) return false;
@@ -139,6 +164,8 @@ class MediaStoreSource implements BrowsableSource {
       );
     }
 
+    // An empty bucket id means "every video on the device", which is what the
+    // Files tab's flat listing wants and what a folder step must never get.
     final raw = await _invoke<List<Object?>>(
       'videosIn',
       <String, Object?>{'bucketId': path.isEmpty ? null : path},
@@ -174,6 +201,33 @@ class MediaStoreSource implements BrowsableSource {
       kind: kind,
       capabilities: capabilities,
       sourceLine: 'Device',
+    );
+  }
+
+  /// The indexed row for [uri], or null when the index does not hold it.
+  ///
+  /// This is what makes a hand-off from another app steppable. A file manager
+  /// opens a video with a URI it owns — its own `FileProvider`, a `MediaStore`
+  /// id, a bare path — and none of those can be turned into a folder by
+  /// string surgery, so the index is asked which row the URI is and which
+  /// bucket that row sits in.
+  Future<IndexedVideo?> bucketForUri(String uri) async {
+    if (!isSupported || uri.isEmpty) return null;
+
+    final raw = await _invoke<Map<Object?, Object?>>(
+      'bucketForUri',
+      <String, Object?>{'uri': uri},
+    );
+    if (raw == null) return null;
+
+    final bucketId = raw['bucketId'] as String?;
+    final canonical = raw['uri'] as String?;
+    if (bucketId == null || canonical == null) return null;
+
+    return IndexedVideo(
+      bucketId: bucketId,
+      uri: canonical,
+      name: raw['name'] as String? ?? '',
     );
   }
 

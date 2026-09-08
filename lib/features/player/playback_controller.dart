@@ -13,11 +13,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../../core/models/library_models.dart';
 import '../../core/resume_repository.dart';
 import '../../servers/media_library_source.dart';
 import '../settings/player_settings.dart';
 import '../../sources/local_source.dart';
 import '../../sources/media_source.dart';
+import '../../sources/media_store_source.dart';
 import '../../sources/source_registry.dart';
 import 'playback_state.dart';
 import 'segment_skipper.dart';
@@ -245,25 +247,83 @@ class PlaybackController extends Notifier<PlaybackState> {
   Future<void> loadSiblingQueue(MediaRef mediaRef) async {
     final source = ref.read(mediaSourcesProvider)[mediaRef.sourceId];
 
+    // The source's own answer first, the media index second. The second is
+    // what a hand-off from another app needs: it arrives on the device source
+    // carrying a `content://` URI, which has no directory to list.
+    final siblings = await _sourceSiblings(source, mediaRef) ??
+        await _indexedSiblings(mediaRef);
+    if (siblings == null || siblings.items.length <= 1) return;
+
+    state = state.copyWith(
+      queue: PlaybackQueue(
+        items: siblings.items,
+        index: siblings.index,
+        // Only a server answers with a series; a folder holds whatever it
+        // holds, and the prompt says so.
+        isSeries: source is QueueableSource,
+      ),
+    );
+  }
+
+  /// What the item's own source says plays beside it.
+  ///
+  /// Null rather than throwing, and null for a run of one: both mean "no
+  /// playlist from here", and the caller has somewhere else to ask.
+  Future<({List<MediaRef> items, int index})?> _sourceSiblings(
+    MediaSource? source,
+    MediaRef mediaRef,
+  ) async {
     try {
-      final ({List<MediaRef> items, int index})? siblings = switch (source) {
+      final found = switch (source) {
         final BrowsableSource s => await siblingVideosOf(s, mediaRef),
         final QueueableSource s => await s.siblingsOf(mediaRef),
         _ => null,
       };
-      if (siblings == null || siblings.items.length <= 1) return;
-
-      state = state.copyWith(
-        queue: PlaybackQueue(
-          items: siblings.items,
-          index: siblings.index,
-          // Only a server answers with a series; a folder holds whatever it
-          // holds, and the prompt says so.
-          isSeries: source is QueueableSource,
-        ),
-      );
+      return (found == null || found.items.length <= 1) ? null : found;
     } catch (e) {
-      debugPrint('Could not read the siblings for a playlist: $e');
+      debugPrint('No playlist from ${mediaRef.sourceId}: $e');
+      return null;
+    }
+  }
+
+  /// The folder the media index files [mediaRef] under.
+  ///
+  /// A file manager hands a video over with a URI it owns — its own
+  /// `FileProvider`, a `MediaStore` id, a bare path — and the device source
+  /// can list none of those. The index can: it is asked which row the URI is,
+  /// and the bucket that row sits in becomes the playlist.
+  ///
+  /// The queue is rebuilt on the index's own source, so stepping resolves
+  /// through it rather than through the URI the hand-off happened to use.
+  Future<({List<MediaRef> items, int index})?> _indexedSiblings(
+    MediaRef mediaRef,
+  ) async {
+    if (!MediaStoreSource.isSupported) return null;
+
+    final index = ref.read(mediaStoreSourceProvider);
+    try {
+      final video = await index.bucketForUri(mediaRef.itemId);
+      if (video == null) return null;
+
+      final listing = await index.listDirectory(video.bucketId);
+      final items = <MediaRef>[
+        for (final BrowseEntry e in listing.entries)
+          if (e.isPlayable)
+            MediaRef(
+              sourceId: MediaStoreSource.sourceId,
+              itemId: e.path,
+              title: e.name,
+            ),
+      ];
+
+      // The index's URI for the row, not the one the hand-off arrived on —
+      // those differ for every foreign provider, and a miss here would put
+      // the queue on the wrong file rather than merely lose it.
+      final at = items.indexWhere((m) => m.itemId == video.uri);
+      return at < 0 ? null : (items: items, index: at);
+    } catch (e) {
+      debugPrint('No playlist from the media index: $e');
+      return null;
     }
   }
 

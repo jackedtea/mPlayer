@@ -3,8 +3,10 @@ package dev.icedtea.mplayer
 import android.app.Activity
 import android.content.ContentUris
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.flutter.plugin.common.MethodChannel
@@ -59,6 +61,14 @@ class MediaStoreChannel(
 
     fun handleVideosIn(bucketId: String?, result: MethodChannel.Result) {
         guarded(result) { result.success(queryVideos(bucketId)) }
+    }
+
+    fun handleBucketForUri(uri: String?, result: MethodChannel.Result) {
+        if (uri.isNullOrEmpty()) {
+            result.error("bad_argument", "No URI given", null)
+            return
+        }
+        guarded(result) { result.success(bucketForUri(Uri.parse(uri))) }
     }
 
     /** Every query needs the permission; refusing loudly beats an empty list. */
@@ -256,5 +266,135 @@ class MediaStoreChannel(
             }
         }
         return out
+    }
+
+    /**
+     * The media-index row a hand-off from another app refers to.
+     *
+     * A file manager opens a video with whatever URI it happens to own — its
+     * own `FileProvider`, a `MediaStore` id, or a bare path — and none of the
+     * three can be turned into a folder by string surgery. Only the index
+     * knows which folder holds the file, so the URI is matched back to a row
+     * here and the caller lists that row's bucket.
+     *
+     * Null when nothing matches: a file outside the index, or one the index
+     * lists under no bucket. The caller then plays it on its own.
+     */
+    private fun bucketForUri(uri: Uri): Map<String, Any?>? {
+        // A MediaStore URI already names its row, so the id is authoritative
+        // and no guessing is needed.
+        idFrom(uri)?.let { id ->
+            rowMatching("${MediaStore.Files.FileColumns._ID} = ?", arrayOf(id.toString()))
+                ?.let { return it }
+        }
+
+        // A path identifies the file exactly too, and `file://` hand-offs and
+        // providers that expose `_data` both give one.
+        pathFrom(uri)?.let { path ->
+            rowMatching("${MediaStore.Files.FileColumns.DATA} = ?", arrayOf(path))
+                ?.let { return it }
+        }
+
+        // Anything else — a foreign FileProvider that shares neither an id nor
+        // a path — is matched on what it will say about itself. Name and size
+        // together are specific enough in practice; the first row wins, since
+        // two files agreeing on both are the same video for this purpose.
+        val (name, size) = openableColumns(uri)
+        if (name != null) {
+            if (size != null) {
+                rowMatching(
+                    "${MediaStore.Files.FileColumns.DISPLAY_NAME} = ? AND " +
+                        "${MediaStore.Files.FileColumns.SIZE} = ?",
+                    arrayOf(name, size.toString()),
+                )?.let { return it }
+            }
+            rowMatching(
+                "${MediaStore.Files.FileColumns.DISPLAY_NAME} = ?",
+                arrayOf(name),
+            )?.let { return it }
+        }
+
+        return null
+    }
+
+    /** The row id of a `content://media/...` URI, or null for anything else. */
+    private fun idFrom(uri: Uri): Long? {
+        if (uri.authority != MediaStore.AUTHORITY) return null
+        return runCatching { ContentUris.parseId(uri) }.getOrNull()
+    }
+
+    /** The filesystem path a `file://` URI carries, if it carries one. */
+    private fun pathFrom(uri: Uri): String? =
+        if (uri.scheme == "file") uri.path else null
+
+    /**
+     * The first indexed video satisfying [clause], as the same shape
+     * [queryVideos] returns plus the bucket it belongs to.
+     */
+    private fun rowMatching(clause: String, args: Array<String>): Map<String, Any?>? {
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.BUCKET_ID,
+            MediaStore.Files.FileColumns.DATA,
+        )
+
+        return runCatching {
+            activity.contentResolver.query(
+                collection(), projection, clause, args, null,
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+
+                val id = cursor.getLong(
+                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID),
+                )
+                val bucketCol =
+                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_ID)
+                val bucketId =
+                    if (cursor.isNull(bucketCol)) null else cursor.getString(bucketCol)
+                if (bucketId == null) return@use null
+
+                mapOf(
+                    "bucketId" to bucketId,
+                    // The canonical URI for the row, which is what the sibling
+                    // listing will hold — matching the hand-off URI against it
+                    // would otherwise fail for every foreign provider.
+                    "uri" to ContentUris.withAppendedId(collection(), id).toString(),
+                    "name" to cursor.getString(
+                        cursor.getColumnIndexOrThrow(
+                            MediaStore.Files.FileColumns.DISPLAY_NAME,
+                        ),
+                    ),
+                    "path" to cursor.getString(
+                        cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA),
+                    ),
+                )
+            }
+        }.getOrNull()
+    }
+
+    /** Display name and size as the providing app reports them. */
+    private fun openableColumns(uri: Uri): Pair<String?, Long?> {
+        if (uri.scheme != "content") return Pair(null, null)
+
+        val projection = arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
+
+        return runCatching {
+            activity.contentResolver
+                .query(uri, projection, null, null, null)
+                ?.use { cursor ->
+                    if (!cursor.moveToFirst()) return@use Pair(null, null)
+
+                    val nameCol = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    val sizeCol = cursor.getColumnIndex(OpenableColumns.SIZE)
+
+                    Pair(
+                        if (nameCol < 0 || cursor.isNull(nameCol)) null
+                        else cursor.getString(nameCol),
+                        if (sizeCol < 0 || cursor.isNull(sizeCol)) null
+                        else cursor.getLong(sizeCol),
+                    )
+                } ?: Pair(null, null)
+        }.getOrDefault(Pair(null, null))
     }
 }
