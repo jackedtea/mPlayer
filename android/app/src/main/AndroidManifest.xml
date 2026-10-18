@@ -1,13 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!--
       Flutter's template declares INTERNET only in the debug and profile
-      manifests, so a release build has no network access at all: SMB, WebDAV
-      and Jellyfin all fail while the same code works from the IDE. It has to
-      be declared here to reach release builds.
+      manifests, so a release build has no network access at all: the server
+      client and device discovery both fail while the same code works from the
+      IDE. It has to be declared here to reach release builds.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- Reading the current network state before attempting a share. -->
+    <!-- Reading the current network state before reaching for the server. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <!--
@@ -26,25 +26,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <!--
-      Reading the user's videos. Scoped storage forbids listing shared
-      storage directly, so the Files tab is built from MediaStore instead.
-
-      Two permissions because the model changed in Android 13: READ_MEDIA_VIDEO
-      is the granular replacement, and READ_EXTERNAL_STORAGE is capped at API
-      32 so it is not requested on newer releases where it no longer applies.
+      **No media-read permissions.** READ_MEDIA_VIDEO, READ_EXTERNAL_STORAGE
+      and READ_MEDIA_VISUAL_USER_SELECTED were here for the Files tab, which
+      was built from MediaStore because scoped storage forbids listing shared
+      storage directly. There is no device library any more: mPlayer plays
+      what a media server gives it, so asking for access to the user's own
+      videos would be asking for something it has no use for.
     -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"/>
-    <!--
-      Android 14 added partial media access: choosing "Select photos and
-      videos" grants *only* this permission and denies READ_MEDIA_VIDEO. It
-      must be declared, or the system will not offer that option at all — and
-      an app that checks only READ_MEDIA_VIDEO keeps asking after the user has
-      already agreed.
-    -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
 
     <!--
       A touchscreen is not required: mPlayer is driveable with a remote or a
@@ -60,11 +48,11 @@
         android:appCategory="video"
         android:networkSecurityConfig="@xml/network_security_config">
         <!--
-          singleTask rather than Flutter's default singleTop: with singleTop a
-          VIEW intent that arrives while mPlayer is already in the background
-          builds a second MainActivity on top of the first, so the user ends up
-          with a stack of players. singleTask routes it to the running instance
-          through onNewIntent, which is where receive_sharing_intent picks it up.
+          singleTask rather than Flutter's default singleTop. It was for the
+          VIEW intents: with singleTop, one arriving while mPlayer was in the
+          background built a second MainActivity on top of the first and the
+          user ended up with a stack of players. No intent is routed here now,
+          but a second launch still has no business becoming a second activity.
         -->
         <!--
           supportsPictureInPicture needs resizeableActivity beside it: a
@@ -91,10 +79,10 @@
               android:resource="@style/NormalTheme"
               />
             <!--
-              go_router owns in-app navigation. Left enabled, Flutter's own
-              deep-link handling consumes the VIEW intents below and tries to
-              route "content://.../1234" as a location, so the file never
-              reaches receive_sharing_intent.
+              go_router owns in-app navigation, and Flutter's own deep-link
+              handling would try to route anything arriving as a location.
+              Nothing is sent here now, but leaving it enabled would mean the
+              next intent filter added quietly stops working.
             -->
             <meta-data
                 android:name="flutter_deeplinking_enabled"
@@ -105,152 +93,16 @@
             </intent-filter>
 
             <!--
-              "Open with" from a file manager or gallery.
-
-              Deliberately no android:scheme here. A filter that lists only a
-              MIME type is presumed by the platform to accept content: and
-              file: URIs, whereas naming the schemes explicitly turns the
-              <data> children into a cross product that has to match on both
-              axes — which is what kept mPlayer out of the chooser for senders
-              whose URI is neither, such as Storage Access Framework document
-              URIs from OEM file managers.
+              **Every VIEW and SEND filter is gone.** mPlayer used to claim
+              video/*, a long list of containers Android has no MIME type for,
+              the streaming schemes, and the share sheet, so that "open with
+              mPlayer" and "send to mPlayer" reached its player. The player is
+              still here, but it only opens what a media server resolved —
+              there is no local source left to turn a handed-over file into
+              something playable. An app that appeared in the chooser and then
+              had nowhere to put the file would be worse than one that does
+              not appear.
             -->
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:mimeType="video/*"/>
-            </intent-filter>
-
-            <!--
-              Containers Android has no video/* mapping for. A sender that
-              cannot type a .mkv or .m2ts hands over one of these instead, and
-              without the filter mPlayer is missing from the chooser for
-              exactly the formats it is best at.
-            -->
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:mimeType="application/octet-stream"/>
-                <data android:mimeType="application/x-matroska"/>
-                <data android:mimeType="application/mp4"/>
-                <data android:mimeType="application/ogg"/>
-                <data android:mimeType="application/x-mpegURL"/>
-                <data android:mimeType="application/vnd.apple.mpegurl"/>
-                <data android:mimeType="application/dash+xml"/>
-            </intent-filter>
-
-            <!--
-              Last resort: match on the file name when the MIME type carries
-              no information. Senders that pass "*/*" are common enough —
-              several file managers do it for everything they open — and the
-              two filters above cannot catch them without mPlayer claiming
-              every file type on the device.
-
-              A path is only consulted when a scheme and a host are given too,
-              hence the wildcard host. Patterns match literally, so the
-              upper-case spellings are separate entries: cameras and
-              camcorders write .MP4 and .MTS.
-            -->
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="content"/>
-                <data android:scheme="file"/>
-                <data android:host="*"/>
-                <data android:mimeType="*/*"/>
-                <data android:pathPattern=".*\\.mp4"/>
-                <data android:pathPattern=".*\\.m4v"/>
-                <data android:pathPattern=".*\\.mkv"/>
-                <data android:pathPattern=".*\\.webm"/>
-                <data android:pathPattern=".*\\.avi"/>
-                <data android:pathPattern=".*\\.mov"/>
-                <data android:pathPattern=".*\\.wmv"/>
-                <data android:pathPattern=".*\\.flv"/>
-                <data android:pathPattern=".*\\.f4v"/>
-                <data android:pathPattern=".*\\.asf"/>
-                <data android:pathPattern=".*\\.ts"/>
-                <data android:pathPattern=".*\\.m2ts"/>
-                <data android:pathPattern=".*\\.mts"/>
-                <data android:pathPattern=".*\\.m2t"/>
-                <data android:pathPattern=".*\\.tp"/>
-                <data android:pathPattern=".*\\.mpg"/>
-                <data android:pathPattern=".*\\.mpeg"/>
-                <data android:pathPattern=".*\\.m1v"/>
-                <data android:pathPattern=".*\\.m2v"/>
-                <data android:pathPattern=".*\\.vob"/>
-                <data android:pathPattern=".*\\.3gp"/>
-                <data android:pathPattern=".*\\.3g2"/>
-                <data android:pathPattern=".*\\.ogv"/>
-                <data android:pathPattern=".*\\.ogm"/>
-                <data android:pathPattern=".*\\.rm"/>
-                <data android:pathPattern=".*\\.rmvb"/>
-                <data android:pathPattern=".*\\.divx"/>
-                <data android:pathPattern=".*\\.mxf"/>
-                <data android:pathPattern=".*\\.iso"/>
-                <data android:pathPattern=".*\\.m3u8"/>
-                <data android:pathPattern=".*\\.mpd"/>
-                <data android:pathPattern=".*\\.MP4"/>
-                <data android:pathPattern=".*\\.M4V"/>
-                <data android:pathPattern=".*\\.MKV"/>
-                <data android:pathPattern=".*\\.AVI"/>
-                <data android:pathPattern=".*\\.MOV"/>
-                <data android:pathPattern=".*\\.WMV"/>
-                <data android:pathPattern=".*\\.TS"/>
-                <data android:pathPattern=".*\\.M2TS"/>
-                <data android:pathPattern=".*\\.MTS"/>
-                <data android:pathPattern=".*\\.MPG"/>
-                <data android:pathPattern=".*\\.MPEG"/>
-                <data android:pathPattern=".*\\.VOB"/>
-                <data android:pathPattern=".*\\.3GP"/>
-            </intent-filter>
-
-            <!-- Streaming protocols, claimed outright by scheme. -->
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="rtsp"/>
-                <data android:scheme="rtsps"/>
-                <data android:scheme="rtmp"/>
-                <data android:scheme="rtmps"/>
-                <data android:scheme="mms"/>
-                <data android:scheme="mmsh"/>
-                <data android:scheme="rtp"/>
-                <data android:scheme="udp"/>
-                <data android:scheme="srt"/>
-            </intent-filter>
-
-            <!--
-              Streams over http(s), narrowed by type so mPlayer does not offer
-              itself for every link on the web. A scheme has to be named here:
-              the "MIME type only" shortcut above covers content: and file:
-              alone.
-            -->
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="http"/>
-                <data android:scheme="https"/>
-                <data android:scheme="ftp"/>
-                <data android:host="*"/>
-                <data android:mimeType="video/*"/>
-                <data android:mimeType="application/x-mpegURL"/>
-                <data android:mimeType="application/vnd.apple.mpegurl"/>
-                <data android:mimeType="application/dash+xml"/>
-            </intent-filter>
-
-            <!-- Share sheet: "Send to mPlayer". -->
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.SEND"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <data android:mimeType="video/*"/>
-                <data android:mimeType="application/octet-stream"/>
-                <data android:mimeType="application/x-matroska"/>
-            </intent-filter>
         </activity>
         <!--
           The Cast SDK finds its configuration by class name, so this entry is

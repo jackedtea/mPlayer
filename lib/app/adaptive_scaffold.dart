@@ -6,15 +6,13 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/player/open_local_video.dart';
 import '../l10n/app_localizations.dart';
 import 'system_ui.dart';
 import 'tokens.dart';
 
-/// One of the three top-level destinations.
+/// One of the two top-level destinations.
 @immutable
 class NavDestination {
   const NavDestination({
@@ -33,13 +31,12 @@ class NavDestination {
 
 /// Built per-frame rather than as a const list: the labels are translated, so
 /// they have to be resolved against the current locale.
+///
+/// Two, where there were three. Storage is gone with the device library it
+/// browsed — there is nothing local left to play, so a tab listing the
+/// phone's videos could only lead to a dead end.
 List<NavDestination> navDestinationsFor(AppLocalizations l10n) {
   return <NavDestination>[
-    NavDestination(
-      label: l10n.navStorage,
-      icon: Icons.folder_outlined,
-      selectedIcon: Icons.folder_rounded,
-    ),
     NavDestination(
       label: l10n.navServer,
       icon: Icons.dns_outlined,
@@ -125,14 +122,14 @@ class _CompactShell extends StatelessWidget {
   }
 }
 
-class _RailShell extends ConsumerWidget {
+class _RailShell extends StatelessWidget {
   const _RailShell({required this.shell, required this.onGo});
 
   final StatefulNavigationShell shell;
   final void Function(int) onGo;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
 
@@ -144,18 +141,6 @@ class _RailShell extends ConsumerWidget {
             selectedIndex: shell.currentIndex,
             onDestinationSelected: onGo,
             labelType: NavigationRailLabelType.all,
-            leading: Padding(
-              padding: EdgeInsets.symmetric(vertical: spacing.md),
-              child: FloatingActionButton(
-                // Explicit tag: this FAB outlives page transitions, so it
-                // would collide with any page-level FAB's default hero tag.
-                heroTag: 'rail-open-file',
-                onPressed: () => openLocalVideo(context, ref),
-                elevation: 0,
-                tooltip: AppLocalizations.of(context).openFile,
-                child: const Icon(Icons.folder_open_rounded),
-              ),
-            ),
             trailing: Expanded(
               child: Align(
                 alignment: Alignment.bottomCenter,

@@ -23,7 +23,6 @@ import '../player/playback_state.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
 import '../../sources/media_source.dart';
-import '../../sources/source_registry.dart';
 
 /// The signed-in client, or null when nothing is signed in.
 final activeServerProvider = Provider<MediaLibrarySource?>(

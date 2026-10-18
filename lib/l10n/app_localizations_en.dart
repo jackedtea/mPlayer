@@ -30,13 +30,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionSave => 'Save';
 
   @override
-  String get actionTest => 'Test';
-
-  @override
   String get actionConnect => 'Connect';
-
-  @override
-  String get actionRetry => 'Retry';
 
   @override
   String get actionAdd => 'Add';
@@ -52,9 +46,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get actionSort => 'Sort';
-
-  @override
-  String get actionRefresh => 'Refresh';
 
   @override
   String get actionRemove => 'Remove';
@@ -80,72 +71,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get network => 'Network';
 
   @override
-  String get openFile => 'Open a file';
-
-  @override
-  String get selectMore => 'Select more';
-
-  @override
-  String get partialAccessNotice => 'Only the videos you shared are listed.';
-
-  @override
-  String get noVideosOnDevice => 'No videos found on this device yet.';
-
-  @override
-  String get mediaAccessTitle => 'Allow mPlayer to find your videos';
-
-  @override
-  String get mediaAccessBody =>
-      'Android does not let apps browse storage directly, so the system media index is used instead.';
-
-  @override
-  String videoCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count videos',
-      one: '1 video',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get addShareTitle => 'Add SMB or WebDAV';
-
-  @override
-  String get addShareSubtitle => 'A share on your network';
-
-  @override
   String driverUnavailable(String kind) {
     return '$kind — driver not available yet';
   }
 
   @override
-  String get shareOptions => 'Share options';
-
-  @override
-  String get removeShare => 'Remove share';
-
-  @override
-  String get removeShareSubtitle => 'Its saved password is deleted too';
-
-  @override
   String get addShareHeading => 'Add a share';
-
-  @override
-  String get fieldName => 'Name';
-
-  @override
-  String get fieldAddress => 'Address';
-
-  @override
-  String get fieldUsername => 'Username';
-
-  @override
-  String get fieldPassword => 'Password';
-
-  @override
-  String get anonymousHint => 'Leave empty for an anonymous share';
 
   @override
   String get showPassword => 'Show password';
@@ -184,16 +115,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get couldNotReadFolder => 'Could not read this folder.';
 
   @override
-  String notAVideo(String name) {
-    return '$name is not a video file';
-  }
-
-  @override
   String get noServerTitle => 'No media server yet';
 
   @override
   String get noServerBody =>
-      'Everything on this device and your network shares already works without one. Add a Jellyfin server to sync watch state, metadata and remote access.';
+      'mPlayer plays what a media server gives it. Add a Jellyfin server to browse your library, keep your watch state in step across devices, and reach it from anywhere.';
 
   @override
   String get addJellyfinServer => 'Add Jellyfin server';
@@ -1098,27 +1024,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get couldNotCast => 'Could not cast to that device.';
 
   @override
-  String get grantedFolder => 'Granted folder';
-
-  @override
-  String get removeFolder => 'Remove folder';
-
-  @override
-  String get addFolder => 'Add a folder';
-
-  @override
-  String get addFolderSubtitle => 'For videos the media index does not list';
-
-  @override
-  String get allowAccess => 'Allow access';
-
-  @override
-  String get editShare => 'Edit share';
-
-  @override
-  String get editShareSubtitle => 'Change its name, address or credentials';
-
-  @override
   String get hardwareDecodingFallback =>
       'Falls back to software when a codec is unsupported';
 
@@ -1573,16 +1478,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearAll => 'Clear';
-
-  @override
-  String get clearContinueWatchingTitle => 'Clear Continue watching?';
-
-  @override
-  String get clearContinueWatchingBody =>
-      'Every saved position is forgotten, on this device only. Nothing is deleted from your shares or your server.';
-
-  @override
-  String get continueWatchingCleared => 'Continue watching cleared';
 
   @override
   String get rotationAuto => 'Auto';

@@ -31,6 +31,7 @@ import 'now_playing.dart';
 import 'stable_insets.dart';
 import 'pip_controller.dart';
 import 'playback_controller.dart';
+import 'subtitle_picker.dart';
 import 'playback_state.dart';
 import 'player_ui_state.dart';
 import 'screenshot.dart';
@@ -565,7 +566,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   Future<void> _openSubtitleFile(PlaybackController controller) async {
     _restartHideTimer();
 
-    final file = await ref.read(localSourceProvider).pickSubtitle();
+    final file = await pickSubtitleFile();
     if (file == null) return;
 
     await controller.addExternalSubtitle(Uri.file(file.path), title: file.name);

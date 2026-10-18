@@ -8,21 +8,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/media_models.dart';
-import '../../core/sample_data.dart';
 import '../../core/models/library_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
 import '../servers/server_library.dart';
 import '../../widgets/section_header.dart';
-import '../../widgets/source_tile.dart';
 import 'search_results.dart';
 
-/// Screen 1n, idle state — scoped search across device, shares and server.
+/// Screen 1n — search the signed-in server.
 ///
-/// Scope is the point of this screen: the user picks which sources to hit
-/// before querying, and unreachable ones are shown greyed and skipped rather
-/// than hidden, so a dead NAS never looks like missing results.
+/// **It used to be scoped.** Scope was the point: the user picked which
+/// sources to hit — device, each share, the server — with unreachable ones
+/// shown greyed and skipped so a dead NAS never looked like missing results.
+/// There is one source now, so the chip row and the "Where to look" list are
+/// gone: a scope picker offering one scope cannot be set wrongly and cannot
+/// be set usefully either.
+///
+/// Recent searches live for as long as the screen does. Persisting them would
+/// mean writing what someone searched for to disk, and this screen is not
+/// worth that.
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
 
@@ -31,17 +36,13 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  List<SearchScope> _scopes = List<SearchScope>.of(SampleData.searchScopes);
-  final List<RecentSearch> _recents =
-      List<RecentSearch>.of(SampleData.recentSearches);
+  final List<RecentSearch> _recents = <RecentSearch>[];
   final TextEditingController _query = TextEditingController();
 
   /// Empty means the idle state; anything else shows grouped results.
   String _submitted = '';
 
   bool get _isActive => _submitted.isNotEmpty;
-
-  bool get _allSelected => _scopes.every((s) => s.enabled || !s.source.online);
 
   @override
   void dispose() {
@@ -51,6 +52,7 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final spacing = context.spacing;
     final padding = spacing.screenPadding(context.windowSize);
 
@@ -68,7 +70,7 @@ class _SearchPageState extends State<SearchPage> {
               ),
               child: SearchBar(
                 controller: _query,
-                hintText: 'Search everything',
+                hintText: l10n.searchEverything,
                 // Back replaces the magnifier once a query is active, so
                 // there is always a way out of the results.
                 leading: IconButton(
@@ -78,28 +80,22 @@ class _SearchPageState extends State<SearchPage> {
                         : Icons.search_rounded,
                   ),
                   color: context.colors.onSurfaceVariant,
-                  tooltip: _isActive ? 'Back to sources' : 'Search',
+                  tooltip: _isActive ? l10n.actionBack : l10n.navSearch,
                   onPressed: _isActive ? _clearQuery : null,
                 ),
                 trailing: <Widget>[
-                  IconButton(
-                    icon: Icon(
-                      _isActive ? Icons.close_rounded : Icons.mic_rounded,
+                  // Voice search went with the microphone icon: it was never
+                  // implemented, and a button that reports "not implemented
+                  // yet" on a screen with one real control is noise.
+                  if (_isActive)
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      tooltip: l10n.actionClear,
+                      onPressed: _clearQuery,
                     ),
-                    tooltip: _isActive ? 'Clear' : 'Voice search',
-                    onPressed: _isActive
-                        ? _clearQuery
-                        : () => _notYet(context, 'Voice search'),
-                  ),
                 ],
                 onSubmitted: _runQuery,
               ),
-            ),
-            _ScopeChips(
-              scopes: _scopes,
-              allSelected: _allSelected,
-              onToggleAll: _selectAll,
-              onToggle: _toggleScope,
             ),
             if (_isActive)
               Expanded(child: _ServerResults(query: _submitted))
@@ -108,10 +104,28 @@ class _SearchPageState extends State<SearchPage> {
               child: ListView(
                 padding: EdgeInsets.only(bottom: spacing.xl),
                 children: <Widget>[
+                  if (_recents.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        padding.left,
+                        spacing.xl,
+                        padding.right,
+                        spacing.xl,
+                      ),
+                      child: Center(
+                        child: Text(
+                          l10n.searchThisServer,
+                          textAlign: TextAlign.center,
+                          style: context.texts.bodyMedium?.copyWith(
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
                   if (_recents.isNotEmpty) ...<Widget>[
                     SectionHeader(
-                      title: 'Recent searches',
-                      actionLabel: 'Clear',
+                      title: l10n.recentSearches,
+                      actionLabel: l10n.clearAll,
                       onAction: () => setState(_recents.clear),
                     ),
                     for (final RecentSearch r in _recents)
@@ -137,32 +151,6 @@ class _SearchPageState extends State<SearchPage> {
                       child: const Divider(),
                     ),
                   ],
-                  const SectionHeader(title: 'Where to look'),
-                  Padding(
-                    padding: padding,
-                    child: Column(
-                      children: <Widget>[
-                        for (final (int i, SearchScope scope)
-                            in _scopes.indexed) ...<Widget>[
-                          SourceTile(
-                            source: scope.source,
-                            subtitleOverride: scope.capability,
-                            onTap: scope.source.online
-                                ? () => _toggleScope(i)
-                                : null,
-                            trailing: Checkbox(
-                              value: scope.enabled,
-                              onChanged: scope.source.online
-                                  ? (_) => _toggleScope(i)
-                                  : null,
-                            ),
-                          ),
-                          if (i != _scopes.length - 1)
-                            SizedBox(height: spacing.sm),
-                        ],
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -170,24 +158,6 @@ class _SearchPageState extends State<SearchPage> {
         ),
       ),
     );
-  }
-
-  void _toggleScope(int index) {
-    final scope = _scopes[index];
-    // An unreachable source cannot be searched; the chip stays inert.
-    if (!scope.source.online) return;
-    setState(() {
-      _scopes[index] = scope.copyWith(enabled: !scope.enabled);
-    });
-  }
-
-  void _selectAll() {
-    setState(() {
-      _scopes = <SearchScope>[
-        for (final SearchScope s in _scopes)
-          s.copyWith(enabled: s.source.online),
-      ];
-    });
   }
 
   void _runQuery(String query) {
@@ -211,58 +181,11 @@ class _SearchPageState extends State<SearchPage> {
   }
 }
 
-/// Scope chip row: "All sources" plus one chip per configured source.
-class _ScopeChips extends StatelessWidget {
-  const _ScopeChips({
-    required this.scopes,
-    required this.allSelected,
-    required this.onToggleAll,
-    required this.onToggle,
-  });
-
-  final List<SearchScope> scopes;
-  final bool allSelected;
-  final VoidCallback onToggleAll;
-  final void Function(int index) onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final padding = spacing.screenPadding(context.windowSize);
-
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: padding,
-        children: <Widget>[
-          FilterChip(
-            label: const Text('All sources'),
-            selected: allSelected,
-            onSelected: (_) => onToggleAll(),
-          ),
-          for (final (int i, SearchScope scope) in scopes.indexed)
-            Padding(
-              padding: EdgeInsets.only(left: spacing.sm),
-              child: FilterChip(
-                avatar: Icon(scope.source.kind.icon, size: 16),
-                label: Text(scope.source.name.split(' · ').first),
-                selected: scope.enabled,
-                onSelected:
-                    scope.source.online ? (_) => onToggle(i) : null,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Results from the signed-in server, grouped the way the design groups them.
+/// Results from the signed-in server.
 ///
-/// One group for now: device and share search need a scanner, which does not
-/// exist yet. Grouping by source is the design's decision and holds whether
-/// there is one group or three.
+/// Still grouped, with one group. The grouping is the design's decision and
+/// it holds whether there is one source or three — and it is what says which
+/// server a hit came from, once more than one can be signed in.
 class _ServerResults extends ConsumerWidget {
   const _ServerResults({required this.query});
 
@@ -302,10 +225,4 @@ class _ServerResults extends ConsumerWidget {
       ],
     );
   }
-}
-
-void _notYet(BuildContext context, String what) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$what — not implemented yet')),
-  );
 }

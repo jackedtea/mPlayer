@@ -106,11 +106,21 @@ endif()
 # LICENCE: these builds are GPL, not LGPL like the trimmed one. That is fine
 # precisely because mPlayer is GPL-3.0-or-later — see README's third-party
 # table. It would not be fine for a permissively licensed app.
-set(FULL_LIBMPV_ARCHIVE "mpv-dev-x86_64-20260812-git-f4d13e1c2c.7z")
+# **This pin goes stale on its own.** shinchiro's repository publishes a build
+# per day and prunes old releases, so the tag a working pin names stops
+# existing after a few weeks — the download then 404s and the hard error below
+# fails the build for anyone without a warm `build/` directory. Repinning is
+# the whole fix: take the newest tag from
+#   https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases
+# and the SHA256 of the `mpv-dev-x86_64-<date>-git-<sha>.7z` asset. Not the
+# `-v3` variant: that one requires an x86-64-v3 CPU.
+#
+# Repinned 2026-10-18; the previous 20260812 pin had been pruned upstream.
+set(FULL_LIBMPV_ARCHIVE "mpv-dev-x86_64-20261018-git-01e2533f31.7z")
 set(FULL_LIBMPV_URL
-  "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260812/${FULL_LIBMPV_ARCHIVE}")
+  "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261018/${FULL_LIBMPV_ARCHIVE}")
 set(FULL_LIBMPV_SHA256
-  "f3cbd91e8f275a119e95ce4b458dd62768b5b571b3c1ad12aff430a4a85290da")
+  "d7f5621f42b6e161fe032df914a10bdece28a89df3e57c6c3e16a5a250929b5e")
 set(FULL_LIBMPV_DIR "${CMAKE_BINARY_DIR}/libmpv-full")
 
 if(NOT EXISTS "${FULL_LIBMPV_DIR}/libmpv-2.dll")

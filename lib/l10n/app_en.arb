@@ -1,95 +1,44 @@
 {
   "@@locale": "en",
-
   "appTitle": "mPlayer",
-
   "navStorage": "Files",
   "navServer": "Servers",
   "navSearch": "Search",
   "settings": "Settings",
-
   "actionCancel": "Cancel",
   "actionSave": "Save",
-  "actionTest": "Test",
   "actionConnect": "Connect",
-  "actionRetry": "Retry",
   "actionAdd": "Add",
   "actionClear": "Clear",
   "actionBack": "Back",
   "actionMore": "More",
   "actionSort": "Sort",
-  "actionRefresh": "Refresh",
   "actionRemove": "Remove",
   "viewList": "List view",
   "viewGrid": "Grid view",
-
   "notImplemented": "{feature} — not implemented yet",
-  "@notImplemented": {
-    "placeholders": { "feature": { "type": "String" } }
-  },
-
+  "@notImplemented": {"placeholders": {"feature": {"type": "String"}}},
   "continueWatching": "Continue watching",
   "thisDevice": "This device",
   "network": "Network",
-  "openFile": "Open a file",
-  "selectMore": "Select more",
-  "partialAccessNotice": "Only the videos you shared are listed.",
-  "noVideosOnDevice": "No videos found on this device yet.",
-  "mediaAccessTitle": "Allow mPlayer to find your videos",
-  "mediaAccessBody": "Android does not let apps browse storage directly, so the system media index is used instead.",
-  "videoCount": "{count, plural, =1{1 video} other{{count} videos}}",
-  "@videoCount": {
-    "placeholders": { "count": { "type": "int" } }
-  },
-  "addShareTitle": "Add SMB or WebDAV",
-  "addShareSubtitle": "A share on your network",
   "driverUnavailable": "{kind} — driver not available yet",
-  "@driverUnavailable": {
-    "placeholders": { "kind": { "type": "String" } }
-  },
-  "shareOptions": "Share options",
-  "removeShare": "Remove share",
-  "removeShareSubtitle": "Its saved password is deleted too",
-
+  "@driverUnavailable": {"placeholders": {"kind": {"type": "String"}}},
   "addShareHeading": "Add a share",
-  "fieldName": "Name",
-  "fieldAddress": "Address",
-  "fieldUsername": "Username",
-  "fieldPassword": "Password",
-  "anonymousHint": "Leave empty for an anonymous share",
   "showPassword": "Show password",
   "hidePassword": "Hide password",
   "noDriverNotice": "{kind} has no driver yet. The share will be saved and listed, but cannot be browsed until it lands.",
-  "@noDriverNotice": {
-    "placeholders": { "kind": { "type": "String" } }
-  },
+  "@noDriverNotice": {"placeholders": {"kind": {"type": "String"}}},
   "connectionOk": "Connected — {folders} folders, {files} files",
-  "@connectionOk": {
-    "placeholders": {
-      "folders": { "type": "int" },
-      "files": { "type": "int" }
-    }
-  },
-
+  "@connectionOk": {"placeholders": {"folders": {"type": "int"}, "files": {"type": "int"}}},
   "folderCounts": "{folders} folders · {files} files",
-  "@folderCounts": {
-    "placeholders": {
-      "folders": { "type": "int" },
-      "files": { "type": "int" }
-    }
-  },
+  "@folderCounts": {"placeholders": {"folders": {"type": "int"}, "files": {"type": "int"}}},
   "reading": "Reading…",
   "directPlay": "Direct play",
   "folder": "Folder",
   "emptyFolder": "This folder is empty",
   "couldNotReadFolder": "Could not read this folder.",
-  "notAVideo": "{name} is not a video file",
-  "@notAVideo": {
-    "placeholders": { "name": { "type": "String" } }
-  },
-
   "noServerTitle": "No media server yet",
-  "noServerBody": "Everything on this device and your network shares already works without one. Add a Jellyfin server to sync watch state, metadata and remote access.",
+  "noServerBody": "mPlayer plays what a media server gives it. Add a Jellyfin server to browse your library, keep your watch state in step across devices, and reach it from anywhere.",
   "addJellyfinServer": "Add Jellyfin server",
   "scanNetwork": "Scan this network",
   "otherServersNotice": "Emby and Plex servers can be added here too — the tab is not Jellyfin-only.",
@@ -100,7 +49,6 @@
   "detectPending": "Detection runs once the Jellyfin client lands",
   "quickConnect": "Quick connect instead",
   "quickConnectSubtitle": "Approve from another signed-in device",
-
   "nextUp": "Next up",
   "recentlyAdded": "Recently added",
   "libraries": "Libraries",
@@ -108,17 +56,11 @@
   "settingsAdmin": "Server administration",
   "justNow": "just now",
   "minutesAgo": "{count}m ago",
-  "@minutesAgo": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@minutesAgo": {"placeholders": {"count": {"type": "int"}}},
   "hoursAgo": "{count}h ago",
-  "@hoursAgo": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@hoursAgo": {"placeholders": {"count": {"type": "int"}}},
   "daysAgo": "{count}d ago",
-  "@daysAgo": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@daysAgo": {"placeholders": {"count": {"type": "int"}}},
   "settingsAdminSub": "Sessions, tasks, users, plugins",
   "adminTitle": "Administration",
   "adminNotAdmin": "This account is not an administrator.",
@@ -130,9 +72,7 @@
   "adminStopPlayback": "Stop playback",
   "adminSendMessage": "Send a message",
   "adminMessageTitle": "Message to {device}",
-  "@adminMessageTitle": {
-    "placeholders": { "device": { "type": "String" } }
-  },
+  "@adminMessageTitle": {"placeholders": {"device": {"type": "String"}}},
   "adminMessageHint": "What should it say?",
   "adminMessageSent": "Message sent.",
   "adminPlaybackStopped": "Playback stopped.",
@@ -141,18 +81,12 @@
   "adminRunTask": "Run now",
   "adminStopTask": "Stop",
   "adminTaskStarted": "{name} started.",
-  "@adminTaskStarted": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminTaskStarted": {"placeholders": {"name": {"type": "String"}}},
   "adminTaskStopping": "{name} is being stopped.",
-  "@adminTaskStopping": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminTaskStopping": {"placeholders": {"name": {"type": "String"}}},
   "adminTaskNeverRun": "Never run",
   "adminTaskLastRun": "Last run {when}",
-  "@adminTaskLastRun": {
-    "placeholders": { "when": { "type": "String" } }
-  },
+  "@adminTaskLastRun": {"placeholders": {"when": {"type": "String"}}},
   "adminTaskLastFailed": "Last run failed",
   "adminScanLibraries": "Scan all libraries",
   "adminScanStarted": "Library scan started.",
@@ -163,13 +97,9 @@
   "adminUserEnable": "Enable",
   "adminUserDisable": "Disable",
   "adminUserEnabled": "{name} can sign in again.",
-  "@adminUserEnabled": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminUserEnabled": {"placeholders": {"name": {"type": "String"}}},
   "adminUserNowDisabled": "{name} can no longer sign in.",
-  "@adminUserNowDisabled": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminUserNowDisabled": {"placeholders": {"name": {"type": "String"}}},
   "adminDevices": "Devices",
   "adminNoDevices": "No devices have signed in.",
   "adminForgetDevice": "Forget this device",
@@ -186,33 +116,23 @@
   "adminPluginSuperceded": "Superseded",
   "adminPluginUnsupported": "Not supported",
   "adminPluginChanged": "{name} updated. Some changes need a restart.",
-  "@adminPluginChanged": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminPluginChanged": {"placeholders": {"name": {"type": "String"}}},
   "adminPluginRemoved": "{name} uninstalled.",
-  "@adminPluginRemoved": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminPluginRemoved": {"placeholders": {"name": {"type": "String"}}},
   "adminUninstallPluginQuestion": "Uninstall {name}?",
-  "@adminUninstallPluginQuestion": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminUninstallPluginQuestion": {"placeholders": {"name": {"type": "String"}}},
   "adminUninstallPluginBody": "Its settings stay on the server, but it stops working until it is installed again.",
   "adminRename": "Rename server",
   "adminRenameHint": "Server name",
   "adminRenamed": "Server renamed.",
   "adminRestart": "Restart server",
   "adminRestartQuestion": "Restart {name}?",
-  "@adminRestartQuestion": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminRestartQuestion": {"placeholders": {"name": {"type": "String"}}},
   "adminRestartBody": "Everyone watching is cut off. The server comes back on its own.",
   "adminRestarting": "Restart requested.",
   "adminShutdown": "Shut down server",
   "adminShutdownQuestion": "Shut down {name}?",
-  "@adminShutdownQuestion": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminShutdownQuestion": {"placeholders": {"name": {"type": "String"}}},
   "adminShutdownBody": "Everyone watching is cut off, and nothing here can start it again - someone has to start it at the machine.",
   "adminShuttingDown": "Shutdown requested.",
   "adminCannotRestart": "This server cannot restart itself.",
@@ -230,31 +150,19 @@
   "noSuggestions": "Nothing to suggest yet — watch something and come back.",
   "emptyPlaylist": "This playlist is empty.",
   "becauseYouWatched": "Because you watched {title}",
-  "@becauseYouWatched": {
-    "placeholders": { "title": { "type": "String" } }
-  },
+  "@becauseYouWatched": {"placeholders": {"title": {"type": "String"}}},
   "becauseYouLike": "Because you like {title}",
-  "@becauseYouLike": {
-    "placeholders": { "title": { "type": "String" } }
-  },
+  "@becauseYouLike": {"placeholders": {"title": {"type": "String"}}},
   "directedBy": "Directed by {name}",
-  "@directedBy": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@directedBy": {"placeholders": {"name": {"type": "String"}}},
   "starring": "Starring {name}",
-  "@starring": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@starring": {"placeholders": {"name": {"type": "String"}}},
   "suggestedForYou": "Suggested for you",
   "itemCount": "{count} items",
-  "@itemCount": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@itemCount": {"placeholders": {"count": {"type": "int"}}},
   "unwatched": "Unwatched",
   "unwatchedCount": "{count} unwatched",
-  "@unwatchedCount": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@unwatchedCount": {"placeholders": {"count": {"type": "int"}}},
   "genre": "Genre",
   "filters": "Filters",
   "cast": "Cast",
@@ -264,7 +172,6 @@
   "pause": "Pause",
   "download": "Download",
   "bookmark": "Bookmark",
-
   "searchEverything": "Search everything",
   "voiceSearch": "Voice search",
   "recentSearches": "Recent searches",
@@ -272,20 +179,13 @@
   "allSources": "All sources",
   "backToSources": "Back to sources",
   "showMoreFrom": "Show {count} more from {source}",
-  "@showMoreFrom": {
-    "placeholders": {
-      "count": { "type": "int" },
-      "source": { "type": "String" }
-    }
-  },
-
+  "@showMoreFrom": {"placeholders": {"count": {"type": "int"}, "source": {"type": "String"}}},
   "downloads": "Downloads",
   "nothingDownloaded": "Nothing downloaded",
   "downloadsBody": "Downloads are queued on Wi-Fi by default and expire per the server's policy.",
   "pauseDownload": "Pause",
   "cancelDownload": "Cancel",
   "availableOffline": "Available offline",
-
   "settingsAppearance": "Appearance",
   "settingsAppearanceSub": "Theme, accent colour, density",
   "settingsGeneral": "General",
@@ -298,12 +198,10 @@
   "settingsSubtitleSub": "Style, language order, sync offset",
   "settingsAbout": "About",
   "settingsAboutSub": "Version, licences, diagnostics",
-
   "language": "Language",
   "languageSystem": "System default",
   "languageEnglish": "English",
   "languageVietnamese": "Tiếng Việt",
-
   "theme": "Theme",
   "themeLight": "Light",
   "themeDark": "Dark",
@@ -316,7 +214,6 @@
   "layout": "Layout",
   "defaultLibraryView": "Default library view",
   "density": "Density",
-
   "playback": "Playback",
   "decoder": "Decoder",
   "hardwareDecodingAuto": "Auto (safe)",
@@ -326,7 +223,7 @@
   "hardwareDecodingSoftware": "Software only",
   "hardwareDecodingSoftwareSub": "The CPU decodes everything. Heavier on the battery, but it plays what hardware gets wrong",
   "decodingNow": "Decoding now: {decoder}",
-  "@decodingNow": { "placeholders": { "decoder": { "type": "String" } } },
+  "@decodingNow": {"placeholders": {"decoder": {"type": "String"}}},
   "decodingSoftware": "software",
   "hardwareDecoding": "Hardware decoding",
   "resumeBehaviour": "Resume behaviour",
@@ -356,10 +253,7 @@
   "onCellular": "On cellular",
   "original": "Original",
   "megabitsPerSecond": "{value} Mbps",
-  "@megabitsPerSecond": {
-    "placeholders": { "value": { "type": "int" } }
-  },
-
+  "@megabitsPerSecond": {"placeholders": {"value": {"type": "int"}}},
   "style": "Style",
   "font": "Font",
   "textSize": "Text size",
@@ -371,17 +265,9 @@
   "syncOffset": "Sync offset",
   "subtitlePreview": "The tide turns at midnight.",
   "percent": "{value}%",
-  "@percent": {
-    "placeholders": { "value": { "type": "int" } }
-  },
-
+  "@percent": {"placeholders": {"value": {"type": "int"}}},
   "versionAndBuild": "Version {version} · build {build}",
-  "@versionAndBuild": {
-    "placeholders": {
-      "version": { "type": "String" },
-      "build": { "type": "String" }
-    }
-  },
+  "@versionAndBuild": {"placeholders": {"version": {"type": "String"}, "build": {"type": "String"}}},
   "upToDate": "Up to date",
   "checkForUpdates": "Check for updates",
   "releaseNotes": "Release notes",
@@ -391,7 +277,6 @@
   "sourceCode": "Source code",
   "thisDeviceInfo": "This device",
   "notAffiliated": "mPlayer is not affiliated with, endorsed by, or sponsored by the Jellyfin, Emby or Plex projects.",
-
   "subtitles": "Subtitles",
   "audio": "Audio",
   "quality": "Quality",
@@ -419,44 +304,41 @@
   "aspectStretch": "Stretch",
   "sleepTimer": "Sleep timer",
   "minutes": "{count} min",
-  "@minutes": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@minutes": {"placeholders": {"count": {"type": "int"}}},
   "statsForNerds": "Stats for nerds",
   "playerSettings": "Player settings",
   "on": "On",
   "back10": "Back {seconds} seconds",
-  "@back10": { "placeholders": { "seconds": { "type": "int" } } },
+  "@back10": {"placeholders": {"seconds": {"type": "int"}}},
   "forward30": "Forward {seconds} seconds",
-  "@forward30": { "placeholders": { "seconds": { "type": "int" } } },
+  "@forward30": {"placeholders": {"seconds": {"type": "int"}}},
   "nothingToPlay": "Nothing to play — pick a file from Files.",
-
   "previousFile": "Previous",
   "nextFile": "Next",
   "nextEpisode": "Next episode",
   "nextVideo": "Next video",
   "loading": "Loading",
   "aspectRatioValue": "Aspect ratio: {mode}",
-  "@aspectRatioValue": { "placeholders": { "mode": { "type": "String" } } },
+  "@aspectRatioValue": {"placeholders": {"mode": {"type": "String"}}},
   "rotationValue": "Rotation: {mode}",
-  "@rotationValue": { "placeholders": { "mode": { "type": "String" } } },
+  "@rotationValue": {"placeholders": {"mode": {"type": "String"}}},
   "subtitlesValue": "Subtitles: {track}",
-  "@subtitlesValue": { "placeholders": { "track": { "type": "String" } } },
+  "@subtitlesValue": {"placeholders": {"track": {"type": "String"}}},
   "audioValue": "Audio: {track}",
-  "@audioValue": { "placeholders": { "track": { "type": "String" } } },
+  "@audioValue": {"placeholders": {"track": {"type": "String"}}},
   "loop": "Loop",
   "loopOne": "Repeat this video",
   "loopAll": "Repeat the folder",
   "loopValue": "Loop: {mode}",
-  "@loopValue": { "placeholders": { "mode": { "type": "String" } } },
+  "@loopValue": {"placeholders": {"mode": {"type": "String"}}},
   "qualityValue": "Quality: {label}",
-  "@qualityValue": { "placeholders": { "label": { "type": "String" } } },
+  "@qualityValue": {"placeholders": {"label": {"type": "String"}}},
   "screenshot": "Take a screenshot",
   "screenshotSaved": "Screenshot saved to {folder}",
-  "@screenshotSaved": { "placeholders": { "folder": { "type": "String" } } },
+  "@screenshotSaved": {"placeholders": {"folder": {"type": "String"}}},
   "screenshotFailed": "Could not take a screenshot of this frame",
   "speedValue": "Speed: {speed}×",
-  "@speedValue": { "placeholders": { "speed": { "type": "String" } } },
+  "@speedValue": {"placeholders": {"speed": {"type": "String"}}},
   "audioDelay": "Audio delay",
   "openSubtitleFile": "Open subtitle file…",
   "playOn": "Play on",
@@ -464,15 +346,8 @@
   "noDevicesFound": "No devices found. Check that the television is on and on the same network.",
   "stopCasting": "Stop casting",
   "playingOn": "Playing on {device}",
-  "@playingOn": { "placeholders": { "device": { "type": "String" } } },
+  "@playingOn": {"placeholders": {"device": {"type": "String"}}},
   "couldNotCast": "Could not cast to that device.",
-  "grantedFolder": "Granted folder",
-  "removeFolder": "Remove folder",
-  "addFolder": "Add a folder",
-  "addFolderSubtitle": "For videos the media index does not list",
-  "allowAccess": "Allow access",
-  "editShare": "Edit share",
-  "editShareSubtitle": "Change its name, address or credentials",
   "hardwareDecodingFallback": "Falls back to software when a codec is unsupported",
   "audioDelaySub": "Shifts the sound against the picture",
   "autoPlayNextSub": "Continues with the next video in the folder",
@@ -513,10 +388,10 @@
   "privacySub": "What leaves this device, and what does not",
   "checking": "Checking…",
   "updateAvailable": "Version {version} is out",
-  "@updateAvailable": { "placeholders": { "version": { "type": "String" } } },
+  "@updateAvailable": {"placeholders": {"version": {"type": "String"}}},
   "couldNotCheck": "Could not check",
   "couldNotOpen": "Could not open {url}",
-  "@couldNotOpen": { "placeholders": { "url": { "type": "String" } } },
+  "@couldNotOpen": {"placeholders": {"url": {"type": "String"}}},
   "build": "Build",
   "version": "Version",
   "applicationId": "Application id",
@@ -542,12 +417,11 @@
   "noChaptersInFile": "This file has no chapters",
   "locked": "Locked",
   "milliseconds": "{count} ms",
-  "@milliseconds": { "placeholders": { "count": { "type": "int" } } },
+  "@milliseconds": {"placeholders": {"count": {"type": "int"}}},
   "seconds": "{count} seconds",
-  "@seconds": { "placeholders": { "count": { "type": "int" } } },
+  "@seconds": {"placeholders": {"count": {"type": "int"}}},
   "timeLeft": "{time} left",
-  "@timeLeft": { "placeholders": { "time": { "type": "String" } } },
-
+  "@timeLeft": {"placeholders": {"time": {"type": "String"}}},
   "cancel": "Cancel",
   "create": "Create",
   "save": "Save",
@@ -572,23 +446,14 @@
   "addServer": "Add server",
   "removeServer": "Remove server",
   "removeServerBody": "{name} will be forgotten, along with its sign-in. Nothing on the server itself is deleted.",
-  "@removeServerBody": {
-  },
+  "@removeServerBody": {},
   "qualityOriginal": "Original",
   "qualityOriginalDetail": "Never re-encode. Best picture, and the only option that works offline of the the server's own CPU.",
   "playbackQuality": "Playback quality",
   "episodeOf": "S{season}E{episode}",
-  "@episodeOf": {
-    "placeholders": {
-      "season": { "type": "int" },
-      "episode": { "type": "int" }
-    }
-  },
-
+  "@episodeOf": {"placeholders": {"season": {"type": "int"}, "episode": {"type": "int"}}},
   "signedInAs": "Signed in as {name}",
-  "@signedInAs": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@signedInAs": {"placeholders": {"name": {"type": "String"}}},
   "signInAgain": "The stored sign-in still works",
   "change": "Change",
   "noServersYet": "No servers yet.",
@@ -608,51 +473,37 @@
   "seriesStatus": "Status",
   "statusContinuing": "Continuing",
   "statusEnded": "Ended",
-
   "gridSize": "Grid size",
   "gridColumns": "{count} per row",
-  "@gridColumns": {
-    "placeholders": { "count": { "type": "int" } }
-  },
-
+  "@gridColumns": {"placeholders": {"count": {"type": "int"}}},
   "sortName": "A–Z",
   "sortDateAdded": "Recently added",
   "sortReleaseDate": "Release date",
   "sortDatePlayed": "Recently played",
   "sortRandom": "Random",
-
   "resumeAt": "Resume · {time}",
-  "@resumeAt": { "placeholders": { "time": { "type": "String" } } },
+  "@resumeAt": {"placeholders": {"time": {"type": "String"}}},
   "watched": "watched",
   "episodeNew": "new",
-
   "seasonCount": "{count} seasons",
-  "@seasonCount": { "placeholders": { "count": { "type": "int" } } },
+  "@seasonCount": {"placeholders": {"count": {"type": "int"}}},
   "episodeCount": "{count} episodes",
-  "@episodeCount": { "placeholders": { "count": { "type": "int" } } },
+  "@episodeCount": {"placeholders": {"count": {"type": "int"}}},
   "seasonNumber": "Season {number}",
-  "@seasonNumber": { "placeholders": { "number": { "type": "int" } } },
+  "@seasonNumber": {"placeholders": {"number": {"type": "int"}}},
   "specials": "Specials",
-
   "kindMovie": "Movie",
   "kindSeries": "Series",
   "kindSeason": "Season",
   "kindEpisode": "Episode",
   "noResults": "Nothing matched that",
-
   "clearAll": "Clear",
-  "clearContinueWatchingTitle": "Clear Continue watching?",
-  "clearContinueWatchingBody": "Every saved position is forgotten, on this device only. Nothing is deleted from your shares or your server.",
-  "continueWatchingCleared": "Continue watching cleared",
-
   "rotationAuto": "Auto",
   "rotationLandscape": "Landscape",
   "rotationPortrait": "Portrait",
-
   "connected": "Connected",
   "offline": "Offline",
   "offlineSkipped": "Offline — will be skipped",
-
   "sortBy": "Sort by",
   "sortOrder": "Sort order",
   "sortAscending": "Ascending",
@@ -660,7 +511,6 @@
   "sortCommunityRating": "Community rating",
   "sortEpisodeAdded": "Latest episode added",
   "sortParentalRating": "Parental rating",
-
   "filterStatus": "Status",
   "filterFeatures": "Features",
   "filterGenres": "Genres",

@@ -3,22 +3,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
-import 'dart:async';
-
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path/path.dart' as p;
 
-import '../features/player/incoming_media.dart';
-import '../features/player/playback_controller.dart';
 import '../l10n/app_localizations.dart';
-import '../sources/local_source.dart';
-import '../sources/media_source.dart';
 import 'appearance_settings.dart';
-import 'desktop_window.dart';
 import 'locale_controller.dart';
 import 'router.dart';
 import '../features/player/stable_insets.dart';
@@ -29,6 +20,13 @@ import 'theme.dart';
 ///
 /// [router] is injectable so widget tests can drive a single screen without
 /// standing up the whole shell.
+///
+/// It used to do rather more. A file handed over by the system — "open with
+/// mPlayer", a drop on the window, a second launch carrying a path — was
+/// resolved here and pushed onto the player, because it could arrive whichever
+/// screen was showing. None of that survives the device library going: there
+/// is no local source to resolve a path against, so the intent filters, the
+/// drop target and the single-instance handoff are gone with it.
 class MPlayerApp extends ConsumerStatefulWidget {
   const MPlayerApp({super.key, this.router, this.themeMode});
 
@@ -45,46 +43,8 @@ class MPlayerApp extends ConsumerStatefulWidget {
 class _MPlayerAppState extends ConsumerState<MPlayerApp> {
   late final GoRouter _router = widget.router ?? buildRouter();
 
-  StreamSubscription<String>? _handoffs;
-
-  @override
-  void initState() {
-    super.initState();
-    // A second launch on desktop hands its file here rather than opening a
-    // window of its own.
-    _handoffs = handedOverFiles.listen(_openPath);
-  }
-
-  @override
-  void dispose() {
-    unawaited(_handoffs?.cancel());
-    super.dispose();
-  }
-
-  /// A path from outside the app: a second launch, or a file dropped on the
-  /// window. Both are local paths, which is what the device source reads.
-  void _openPath(String path) {
-    if (path.isEmpty) return;
-    unawaited(
-      _openIncoming(
-        MediaRef(
-          sourceId: LocalSource.sourceId,
-          itemId: path,
-          title: p.basename(path),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // A file opened from a file manager or the share sheet. Routed from here
-    // rather than from a screen, because it can arrive whichever screen is
-    // showing — including before the first one has been built.
-    ref.listen<MediaRef?>(incomingMediaProvider, (_, mediaRef) {
-      if (mediaRef != null) unawaited(_openIncoming(mediaRef));
-    });
-
     final appearance = ref.watch(appearanceSettingsProvider);
 
     // Only the wallpaper palette needs the platform round-trip, so the
@@ -109,9 +69,6 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
     return MaterialApp.router(
       title: 'mPlayer',
       debugShowCheckedModeBanner: false,
-      // Lets a failure from an incoming file report without a BuildContext
-      // from inside the navigator.
-      scaffoldMessengerKey: _messengerKey,
       theme: buildTheme(
         Brightness.light,
         accent: appearance.accent,
@@ -130,47 +87,15 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: _router,
-      // Wrapping the navigator rather than a screen: a file dropped anywhere
-      // in the window should play, not only on the Files tab.
-      builder: (context, child) {
-        final content = _InsetFromSystemBars(
-          child: child ?? const SizedBox.shrink(),
-        );
-
-        return isDesktop
-            ? DropTarget(
-                onDragDone: (details) {
-                  final file = details.files.firstOrNull;
-                  if (file != null) _openPath(file.path);
-                },
-                child: content,
-              )
-            : content;
-      },
+      // There is nothing to drop on it any more: the window used to be a
+      // drop target so a file dragged anywhere in it would play, and the app
+      // opens no local files now.
+      builder: (context, child) => _InsetFromSystemBars(
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 
-  /// Resolves the handed-over file and pushes the player onto it.
-  ///
-  /// Resolution happens here rather than in the player so an unreadable file
-  /// reports on whatever screen is showing, instead of opening a black player
-  /// that then fails.
-  Future<void> _openIncoming(MediaRef mediaRef) async {
-    // Clear first: an error must not leave the file pending and reopen it on
-    // the next rebuild.
-    ref.read(incomingMediaProvider.notifier).consume();
-
-    try {
-      final source = ref.read(localSourceProvider);
-      final media = await source.resolve(mediaRef);
-      _router.push('/player', extra: media);
-    } on MediaSourceException catch (e) {
-      final messenger = _messengerKey.currentState;
-      messenger?.showSnackBar(SnackBar(content: Text(e.message)));
-    }
-  }
-
-  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
 }
 
 /// Keeps the app between the status bar and the navigation bar.

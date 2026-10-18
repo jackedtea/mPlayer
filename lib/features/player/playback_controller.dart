@@ -13,14 +13,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
-import '../../core/models/library_models.dart';
-import '../../core/resume_repository.dart';
 import '../../servers/media_library_source.dart';
+import '../../servers/server_registry.dart';
 import '../settings/player_settings.dart';
-import '../../sources/local_source.dart';
 import '../../sources/media_source.dart';
-import '../../sources/media_store_source.dart';
-import '../../sources/source_registry.dart';
 import 'playback_state.dart';
 import 'segment_skipper.dart';
 import 'smart_subtitles.dart';
@@ -30,12 +26,6 @@ final playbackControllerProvider =
     NotifierProvider<PlaybackController, PlaybackState>(
   PlaybackController.new,
 );
-
-/// The device source, which always exists and needs no configuration.
-///
-/// Every other source comes from `sourceRegistryProvider`; see
-/// `sources/source_registry.dart` for the map this controller resolves against.
-final localSourceProvider = Provider<LocalSource>((ref) => const LocalSource());
 
 /// Owns the `media_kit` player and translates it into [PlaybackState].
 ///
@@ -79,12 +69,6 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// on every later one would undo a track the user picked by hand.
   bool _smartSubtitlesApplied = false;
 
-  /// Whether the media index has already been asked for this session.
-  ///
-  /// A refusal must not put a system dialog in front of every file the user
-  /// opens afterwards, so the question is asked once and then let go of.
-  bool _askedForIndexAccess = false;
-
   bool get autoPlayNext => ref.read(playerSettingsProvider).autoPlayNext;
 
   /// Throttles resume writes. The position stream fires several times a
@@ -92,12 +76,6 @@ class PlaybackController extends Notifier<PlaybackState> {
   DateTime _lastResumeWrite = DateTime.fromMillisecondsSinceEpoch(0);
   static const _resumeInterval = Duration(seconds: 5);
 
-  /// Throttles the frame grab behind the resume write. Decoding and encoding
-  /// a still is far heavier than writing a position, so the shelf's artwork
-  /// only follows playback every so often — and always on the final write,
-  /// which is the frame the user actually left off on.
-  DateTime _lastThumbnail = DateTime.fromMillisecondsSinceEpoch(0);
-  static const _thumbnailInterval = Duration(seconds: 30);
 
   /// Completes once the mpv properties media_kit leaves unset have been
   /// applied. [openResolved] waits on it so the first file already benefits.
@@ -153,9 +131,6 @@ class PlaybackController extends Notifier<PlaybackState> {
     _smartSubtitlesApplied = false;
     _lastPosition = null;
     _skipped.clear();
-    // A new file gets its own still straight away rather than waiting out
-    // the previous one's interval.
-    _lastThumbnail = DateTime.fromMillisecondsSinceEpoch(0);
     // The next file may well decode differently from this one — the setting
     // is the same, the codec is not — so the reading is dropped rather than
     // carried over and shown against the wrong video.
@@ -253,19 +228,21 @@ class PlaybackController extends Notifier<PlaybackState> {
   Future<void> loadSiblingQueue(MediaRef mediaRef) async {
     final source = ref.read(mediaSourcesProvider)[mediaRef.sourceId];
 
-    // The source's own answer first, the media index second. The second is
-    // what a hand-off from another app needs: it arrives on the device source
-    // carrying a `content://` URI, which has no directory to list.
-    final siblings = await _sourceSiblings(source, mediaRef) ??
-        await _indexedSiblings(mediaRef);
+    // There is one place a playlist can come from now. It used to fall back
+    // to the Android media index, for a file handed over by another app with
+    // a `content://` URI that had no directory to list; nothing hands this
+    // app a file any more.
+    final siblings = await _sourceSiblings(source, mediaRef);
     if (siblings == null || siblings.items.length <= 1) return;
 
     state = state.copyWith(
       queue: PlaybackQueue(
         items: siblings.items,
         index: siblings.index,
-        // Only a server answers with a series; a folder holds whatever it
-        // holds, and the prompt says so.
+        // A server answers with a series, which is what makes the
+        // end-of-episode prompt say "Next episode". Kept as a check rather
+        // than hard-coded true: a source that cannot answer `siblingsOf` has
+        // no series to claim.
         isSeries: source is QueueableSource,
       ),
     );
@@ -281,7 +258,6 @@ class PlaybackController extends Notifier<PlaybackState> {
   ) async {
     try {
       final found = switch (source) {
-        final BrowsableSource s => await siblingVideosOf(s, mediaRef),
         final QueueableSource s => await s.siblingsOf(mediaRef),
         _ => null,
       };
@@ -290,70 +266,6 @@ class PlaybackController extends Notifier<PlaybackState> {
       debugPrint('No playlist from ${mediaRef.sourceId}: $e');
       return null;
     }
-  }
-
-  /// The folder the media index files [mediaRef] under.
-  ///
-  /// A file manager hands a video over with a URI it owns — its own
-  /// `FileProvider`, a `MediaStore` id, a bare path — and the device source
-  /// can list none of those. The index can: it is asked which row the URI is,
-  /// and the bucket that row sits in becomes the playlist.
-  ///
-  /// The queue is rebuilt on the index's own source, so stepping resolves
-  /// through it rather than through the URI the hand-off happened to use.
-  Future<({List<MediaRef> items, int index})?> _indexedSiblings(
-    MediaRef mediaRef,
-  ) async {
-    if (!MediaStoreSource.isSupported) return null;
-
-    final index = ref.read(mediaStoreSourceProvider);
-    try {
-      if (!await _indexReadable(index)) {
-        debugPrint('No playlist: the media index may not be read.');
-        return null;
-      }
-
-      final video = await index.bucketForUri(mediaRef.itemId);
-      if (video == null) {
-        debugPrint('No playlist: ${mediaRef.itemId} is not in the index.');
-        return null;
-      }
-
-      final listing = await index.listDirectory(video.bucketId);
-      final items = <MediaRef>[
-        for (final BrowseEntry e in listing.entries)
-          if (e.isPlayable)
-            MediaRef(
-              sourceId: MediaStoreSource.sourceId,
-              itemId: e.path,
-              title: e.name,
-            ),
-      ];
-
-      // The index's URI for the row, not the one the hand-off arrived on —
-      // those differ for every foreign provider, and a miss here would put
-      // the queue on the wrong file rather than merely lose it.
-      final at = items.indexWhere((m) => m.itemId == video.uri);
-      return at < 0 ? null : (items: items, index: at);
-    } catch (e) {
-      debugPrint('No playlist from the media index: $e');
-      return null;
-    }
-  }
-
-  /// Whether the media index may be read, asking for it if it never has been.
-  ///
-  /// A video handed over by another app opens the player directly, and the
-  /// Files tab is the only screen that asks for this permission — so a fresh
-  /// install could never step through the folder it was handed a file from,
-  /// however many videos sat beside it. Asked here because this is the first
-  /// moment the answer is actually needed.
-  Future<bool> _indexReadable(MediaStoreSource index) async {
-    if (await index.hasPermission()) return true;
-    if (_askedForIndexAccess) return false;
-
-    _askedForIndexAccess = true;
-    return index.requestPermission();
   }
 
   /// Steps to the previous file in the folder.
@@ -536,8 +448,9 @@ class PlaybackController extends Notifier<PlaybackState> {
     await _teardownAsync();
     state = const PlaybackState();
 
-    // The Continue-watching shelf is built from what was just written.
-    ref.invalidate(resumePointsProvider);
+    // The server's own shelves are what show a resumable item now, and they
+    // are invalidated by the screens that draw them when they come back into
+    // view — there is no local store here left to tell anything about.
   }
 
   /// Files the closing report for whatever is playing now.
@@ -703,11 +616,18 @@ class PlaybackController extends Notifier<PlaybackState> {
     ]);
   }
 
-  /// Writes where playback got to, at most once every [_resumeInterval].
+  /// Reports where playback got to, at most once every [_resumeInterval].
   ///
   /// Throttled because the position stream fires several times a second and
-  /// each write touches storage. The repository decides what is worth keeping
-  /// — barely-started and finished files are dropped there, not here.
+  /// each report is a request.
+  ///
+  /// **The server is the only place this goes now.** It used to write a local
+  /// resume point first — with a JPEG of the current frame beside it — and
+  /// tell the server second, so that the Continue-watching shelf on the Files
+  /// tab worked offline. There is no Files tab and no local library: every
+  /// item playing came from a server, and that server has been collecting the
+  /// position from every device the user owns. A second copy on this one
+  /// could only disagree with it.
   Future<void> _recordProgress({bool force = false}) async {
     final media = state.media;
     if (media == null || state.duration <= Duration.zero) return;
@@ -716,26 +636,6 @@ class PlaybackController extends Notifier<PlaybackState> {
     if (!force && now.difference(_lastResumeWrite) < _resumeInterval) return;
     _lastResumeWrite = now;
 
-    // Grabbed before the write so the still and the position it is shelved
-    // with come from the same moment.
-    final thumbnail = await _captureThumbnail(force: force, now: now);
-
-    await ref.read(resumeRepositoryProvider).save(
-          ResumePoint(
-            sourceId: media.ref.sourceId,
-            itemId: media.ref.itemId,
-            title: media.title,
-            kind: media.kind,
-            position: state.position,
-            duration: state.duration,
-            updatedAt: now,
-          ),
-          thumbnail: thumbnail,
-        );
-
-    // A server keeps its own watch state, gathered from every device the
-    // user owns. Told alongside the local write rather than instead of it:
-    // the local point is what makes the shelf work offline.
     await _reportToSource(media, paused: !state.playing);
   }
 
@@ -750,31 +650,6 @@ class PlaybackController extends Notifier<PlaybackState> {
       );
     }
     return Future<void>.value();
-  }
-
-  /// The current video frame as JPEG, for the Continue-watching card.
-  ///
-  /// Null whenever there is nothing worth shelving — an audio-only file, a
-  /// frame that is not decoded yet, or a backend that cannot screenshot. The
-  /// card falls back to its gradient in every one of those cases, so a
-  /// failure here is never worth surfacing.
-  Future<Uint8List?> _captureThumbnail({
-    required bool force,
-    required DateTime now,
-  }) async {
-    final player = _player;
-    if (player == null) return null;
-    if (!force && now.difference(_lastThumbnail) < _thumbnailInterval) {
-      return null;
-    }
-    _lastThumbnail = now;
-
-    try {
-      return await player.screenshot();
-    } catch (e) {
-      debugPrint('Could not grab a thumbnail: $e');
-      return null;
-    }
   }
 
   /// Switches between hardware and software decoding without leaving the film.

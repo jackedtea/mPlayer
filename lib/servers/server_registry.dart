@@ -16,8 +16,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'jellyfin_admin.dart';
 import 'jellyfin_source.dart';
 import 'media_library_source.dart';
+import 'jellyfin_media_source.dart';
 import 'server_admin.dart';
 import 'server_profile.dart';
+import 'stream_preferences.dart';
+import '../sources/media_source.dart';
 
 /// Where signed-in servers are persisted.
 ///
@@ -183,6 +186,36 @@ class ServerRegistryState {
 
 final serverRegistryProvider =
     NotifierProvider<ServerRegistry, ServerRegistryState>(ServerRegistry.new);
+
+/// Every source the player can resolve against, keyed by id.
+///
+/// This replaces `sourceRegistry.dart`'s map, which also held the device, SAF,
+/// MediaStore, SMB and WebDAV drivers. Those are gone — mPlayer plays what a
+/// server gives it and nothing else — so the map has exactly one entry, or
+/// none while nothing is signed in.
+///
+/// **Still a map, deliberately.** `PlaybackController` looks a source up by
+/// `mediaRef.sourceId`, and a resume point or a queue entry carries the
+/// profile id it was made against. Collapsing this to a single value would
+/// make every one of those lookups silently resolve to "the current server",
+/// which is wrong the moment a second server can be signed in.
+final mediaSourcesProvider = Provider<Map<String, MediaSource>>((ref) {
+  final library = ref.watch(serverRegistryProvider).source;
+  if (library == null) return const <String, MediaSource>{};
+
+  return <String, MediaSource>{
+    library.profile.id: JellyfinMediaSource(
+      library,
+      // Read through a callback rather than captured: the source is built
+      // once and resolves many times, and a quality picked in the player has
+      // to reach the *next* file without rebuilding this provider.
+      preferences: () => StreamPreferences(
+        quality: ref.read(streamQualityProvider),
+        trackChoice: ref.read(trackChoiceProvider),
+      ),
+    ),
+  };
+});
 
 /// The signed-in servers, and which one the library is looking at.
 class ServerRegistry extends Notifier<ServerRegistryState> {

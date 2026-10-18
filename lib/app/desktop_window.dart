@@ -24,7 +24,7 @@ bool get isDesktop =>
 
 const _prefsKey = 'window_bounds_v1';
 
-/// The port the running instance listens on for "open this file" hand-offs.
+/// The port the running instance holds to prove it is the running instance.
 ///
 /// A fixed loopback port is the whole locking mechanism: binding it succeeds
 /// for exactly one process, and a second launch fails to bind, which is how
@@ -94,10 +94,15 @@ Future<void> saveWindowBounds() async {
 
 /// True when this is the only instance.
 ///
-/// When it is not, the file named on the command line is handed to the
-/// instance that is already running and this process should exit — opening a
-/// second player that fights the first over the audio device helps nobody.
-Future<bool> claimSingleInstance(List<String> arguments) async {
+/// When it is not, the running window is raised and this process should exit.
+///
+/// It used to carry a file across as well: a second `mPlayer video.mkv`
+/// handed its path to the instance already running rather than opening a
+/// second player to fight the first over the audio device. mPlayer opens no
+/// local files now, so there is nothing to carry — but a second launch still
+/// has no business becoming a second window, and bringing the existing one
+/// forward is what the user meant by launching it.
+Future<bool> claimSingleInstance() async {
   if (!isDesktop) return true;
 
   try {
@@ -105,63 +110,42 @@ Future<bool> claimSingleInstance(List<String> arguments) async {
       InternetAddress.loopbackIPv4,
       singleInstancePort,
     );
-    _listenForHandoffs(server);
+    _listenForLaunches(server);
     return true;
   } on SocketException {
-    // The port is taken, so another instance owns it. Hand over whatever we
-    // were asked to open and let the caller exit.
-    await _handOff(arguments);
+    // The port is taken, so another instance owns it. Knock, and let the
+    // caller exit.
+    await _raiseRunningWindow();
     return false;
   }
 }
 
-/// Files handed over by a second launch.
-///
-/// Broadcast because the app root subscribes late: the server starts before
-/// `runApp`, and a listener that arrives afterwards must not miss anything —
-/// which is also why the first hand-off is buffered by the caller.
-final _handoffs = StreamController<String>.broadcast();
-
-Stream<String> get handedOverFiles => _handoffs.stream;
-
-void _listenForHandoffs(ServerSocket server) {
+void _listenForLaunches(ServerSocket server) {
   server.listen((socket) async {
     try {
-      final message = await utf8.decodeStream(socket.cast<List<int>>());
-      final path = message.trim();
-      if (path.isNotEmpty) _handoffs.add(path);
-
-      // Nothing outside this app has any business here, but the socket is on
-      // loopback and a stray connection must not wedge the listener.
+      // The connection itself is the whole message. Nothing is read from it:
+      // it is on loopback, but a socket this app does not need to trust is a
+      // socket it should not parse.
       await windowManager.show();
       await windowManager.focus();
     } catch (e) {
-      debugPrint('Bad hand-off from a second instance: $e');
+      debugPrint('Could not raise the window for a second launch: $e');
     } finally {
       socket.destroy();
     }
   });
 }
 
-Future<void> _handOff(List<String> arguments) async {
-  final path = arguments.firstWhere(
-    (a) => a.isNotEmpty && !a.startsWith('-'),
-    orElse: () => '',
-  );
-
+Future<void> _raiseRunningWindow() async {
   try {
     final socket = await Socket.connect(
       InternetAddress.loopbackIPv4,
       singleInstancePort,
       timeout: const Duration(seconds: 2),
     );
-    // Even with no file, connecting is what raises the running window — a
-    // second launch from the launcher should bring the app forward.
-    socket.write(path);
-    await socket.flush();
-    await socket.close();
+    socket.destroy();
   } catch (e) {
-    debugPrint('Could not hand the file to the running instance: $e');
+    debugPrint('Could not reach the running instance: $e');
   }
 }
 

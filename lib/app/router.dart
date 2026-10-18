@@ -12,7 +12,6 @@ import '../features/admin/admin_dashboard_page.dart';
 import '../features/admin/admin_plugins_page.dart';
 import '../features/admin/admin_tasks_page.dart';
 import '../features/admin/admin_users_page.dart';
-import '../features/browse/browser_page.dart';
 import '../features/downloads/downloads_page.dart';
 import '../features/playback/smoke_test_page.dart';
 import '../features/player/playback_controller.dart';
@@ -35,32 +34,26 @@ import '../features/settings/general_settings_page.dart';
 import '../features/settings/player_settings_page.dart';
 import '../features/settings/settings_index_page.dart';
 import '../features/settings/subtitle_settings_page.dart';
-import '../features/files/files_page.dart';
-import '../sources/local_source.dart';
 import '../sources/media_source.dart';
 import 'adaptive_scaffold.dart';
 
 final _rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
-/// Files is the initial location — the app must never open on a login or a
-/// server check.
+/// Servers is the initial location, and it is still not a login wall: with
+/// nothing configured it is an empty state that offers to add one.
+///
+/// It used to be Files, for a device library the app could play by itself.
+/// That library is gone — mPlayer plays what a media server gives it — so the
+/// server list is both the first screen and where everything starts.
 GoRouter buildRouter() {
   return GoRouter(
     navigatorKey: _rootKey,
-    initialLocation: '/files',
+    initialLocation: '/servers',
     routes: <RouteBase>[
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AdaptiveScaffold(navigationShell: navigationShell),
         branches: <StatefulShellBranch>[
-          StatefulShellBranch(
-            routes: <RouteBase>[
-              GoRoute(
-                path: '/files',
-                builder: (context, state) => const FilesPage(),
-              ),
-            ],
-          ),
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
@@ -202,16 +195,6 @@ GoRouter buildRouter() {
           ),
         ],
       ),
-      // `source` is a configured share's id, `path` a directory within it.
-      // Both are query parameters so a folder can be linked to directly.
-      GoRoute(
-        path: '/browse',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => BrowserPage(
-          sourceId: state.uri.queryParameters['source'] ?? LocalSource.sourceId,
-          path: state.uri.queryParameters['path'] ?? '',
-        ),
-      ),
       GoRoute(
         path: '/downloads',
         parentNavigatorKey: _rootKey,
@@ -287,7 +270,7 @@ class _MissingMediaPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(),
       body: const Center(
-        child: Text('Nothing to play — pick a file from Files.'),
+        child: Text('Nothing to play — pick something from a server.'),
       ),
     );
   }

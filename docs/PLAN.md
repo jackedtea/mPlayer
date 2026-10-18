@@ -1,6 +1,40 @@
 # mPlayer — Implementation Plan
 
-Cross-platform video player and media server client.
+> ## ⚠ Scope change, 2026-10-18 — read this before any phase below
+>
+> **The local sources were removed. mPlayer plays only what a media server
+> gives it.** The built-in player is untouched and remains the point of the
+> app; what went is the device library, SAF folders, the Android media index,
+> SMB and WebDAV shares, the folder browser, the Files tab, and the intents
+> and pickers that fed them.
+>
+> `../CLAUDE.md` describes the code as it stands — prefer it. This plan is
+> kept for the environment facts, the verified gotchas and the architecture
+> rationale, all of which still hold.
+>
+> Void, in whole or in large part:
+>
+> | Section | Status |
+> |---|---|
+> | `StorageDriver` — byte-level sources | **Void.** A server hands over a URL; nothing reads bytes |
+> | Design build step 4 — filesystem sources | **Void.** Deleted |
+> | Phase 3 — Storage drivers | **Void** |
+> | Phase 5 — Library & scanning | **Void** as written (local scanning); the server does this |
+> | Phase 6 — History, resume, sync | **Void** as written; the server is the authority on position, reported as playback moves |
+> | Phase 9 — Cloud drives | **Void.** Dropped with the share drivers |
+> | Phase 10 — Metadata scraping | **Void.** The server's job |
+>
+> Still live, and unaffected: Phase 0 (foundation), Phase 1 (app shell),
+> **Phase 2 (playback core — the player stays)**, Phase 4 (media server
+> clients, now the whole product), Phase 7/8 (desktop and mobile polish),
+> Phase 11 (packaging and release), Phase 12 (Apple platforms), and
+> Cross-cutting.
+>
+> The non-goals list at the foot gains the local sources. Downloads is *not*
+> among them: an offline copy of a server item is a real feature the player
+> can still play.
+
+Cross-platform client for a Jellyfin/Emby media server, with a built-in player.
 
 - **Package**: `mplayer` · **Bundle ID**: `dev.icedtea.mplayer` · **Display name**: mPlayer
 - **Priority platforms**: Android, Windows, Linux. iOS/macOS are scaffolded but deferred until a Mac is available.
@@ -534,6 +568,9 @@ Blocked on Mac hardware.
 
 ## Deliberate non-goals (for now)
 
+- **Local sources of any kind** — the device library, SAF folders, the media
+  index, SMB, WebDAV, NFS. All were built and then removed; see the banner at
+  the top of this file. Do not reinstate them without the owner asking.
 - Danmaku / bullet comments
 - Multiple player kernels (media_kit only until there's a concrete reason)
 - Anime-specific integrations (Bangumi, dandanplay)

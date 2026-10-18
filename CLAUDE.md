@@ -1,49 +1,99 @@
 # mPlayer
 
-Cross-platform video player and media server client (Jellyfin/Emby) with SMB/WebDAV/cloud-drive support.
+Cross-platform **client** for a Jellyfin/Emby media server: browse a library,
+play it in the built-in player, cast it to a television, administer the
+server.
+
+**The player is intact. The local sources are gone.** mPlayer no longer opens
+a file from the device, a SAF folder, the Android media index, an SMB share or
+a WebDAV mount — it plays what a server resolves and nothing else. Read
+"Current state" before anything else; several sections below describe code
+that has been removed, and they say so where they do.
 
 **Read [docs/PLAN.md](docs/PLAN.md) first** — it holds the architecture, the phase checklist, and the environment gotchas already resolved.
 
-## Current state (2026-08-24)
+## Current state (2026-10-18)
 
-**The player is essentially complete. The Jellyfin client has a data layer and no UI.**
+**mPlayer is a media-server client with a built-in player.**
 
-Real, end to end: playing a file from the device, a SAF folder, the Android media index,
-an SMB share or a WebDAV mount — browse it in 1b, play it in 1h, resume where you left
-off. Casting to a DLNA renderer or a Chromecast. Picture in picture, background audio
-with a media notification, smart subtitles, audio delay.
+Real, end to end: sign in to a Jellyfin/Emby server, browse its libraries,
+open a film or an episode and **play it in the app** — chapters, the track
+pickers, skip-intro from the server's media segments, trickplay previews on
+the scrubber, external subtitles, smart subtitles, audio delay, picture in
+picture, background audio with a media notification. Or cast it to a DLNA
+renderer or a Chromecast. Watch state goes back to the server as it plays.
 
-`lib/servers/` can probe a server, sign in, list libraries and items, resolve playback
-and report progress — all of it unit-tested against captured responses. **Nothing calls
-it yet**: there is no server registry, and `add_server_sheet.dart` still collects an
-address and reports "not implemented yet".
+### What was removed, and what it means
 
-Still sample data (`core/sample_library.dart`): screens **1d-1g** (server home, library
-grid, movie, series), **1i** downloads and the active state of **1n** search.
+The **local half** of the app went; the player did not.
 
-Verified by building and running, not assumed:
+| Removed | Why |
+|---|---|
+| `sources/local_source.dart`, `saf_source.dart`, `media_store_source.dart`, `smb_source.dart`, `webdav_source.dart` | The device library and network shares |
+| `sources/source_registry.dart`, `source_config.dart` | Configured shares and their keychain entries |
+| `sources/media_proxy_server.dart` | Existed only to serve `smb://` to libmpv over loopback |
+| `features/files/`, `features/browse/` | The Files tab and the folder browser |
+| `features/player/open_local_video.dart`, `incoming_media.dart` | The file picker, and the VIEW/SEND intents and command-line argument that carried a file in |
+| `core/resume_repository.dart`, `core/thumbnail_store.dart` | Local resume points and the frame grab that illustrated them |
+| `widgets/source_tile.dart` | A row describing a configured share |
+| Android `IntentChannel.kt`, `MediaStoreChannel.kt`, `SafChannel.kt`, every VIEW/SEND intent filter, the media-read permissions | The above, natively |
+| `BrowsableSource`, `siblingVideosOf`, `StableItemId`, `classifyFile`, the video extension set | The folder-as-playlist world |
+| Deps: `dart_smb2`, `desktop_drop`, plus the never-used `drift`, `freezed`, `json_annotation` and their codegen | Nothing left imports them |
 
-- Windows debug build links and bundles `libmpv-2.dll`
-- Android release builds per ABI: armeabi-v7a 36.2 MB, arm64-v8a 39.3 MB, x86_64 44.2 MB
-- `flutter analyze` clean; `flutter test` **317 passing**. `test/screens_test.dart` pumps
-  **every route at all three breakpoints** and fails on any overflow — it caught a
-  duplicate FAB hero tag and two real overflows, so do not weaken it.
+**Kept, and still the point of the app:** `media_kit` and the whole of
+`features/player/`, `PlaybackService.kt`, `PipChannel.kt`,
+`NowPlayingChannel.kt`, the Player/Audio/Subtitle settings pages, chapters,
+media segments, trickplay, external subtitles, and casting.
 
-**Everything platform-specific is unverified on a real device.** The list is long enough
-to be worth writing down: `content://` handles through libmpv, container chapters from a
-real MKV, the Linux build, picture in picture, the background-audio service and its
-notification, audio focus, DLNA casting, Chromecast casting. All of it compiles, is
-statically analysed and has its pure logic unit-tested; none of it has run on hardware.
+Three consequences worth knowing:
+
+1. **The queue is server-only.** `PlaybackController._sourceSiblings` used to
+   fall back to the folder a file sat in, and then to the Android media index
+   for a file handed over by another app. Only `QueueableSource.siblingsOf` is
+   left, so prev/next and auto-play-next work on a *series* and nothing else.
+2. **There is no local resume store.** `_recordProgress` reports to the server
+   and stops there. It used to write a local point with a JPEG of the current
+   frame beside it, every five seconds, so the Files tab's Continue-watching
+   shelf worked offline — there is no such shelf, and the server has been
+   collecting the position from every device anyway.
+3. **Casting needs no proxy.** A server stream is already an address on the
+   network with its token in the query, so the URL goes straight to the
+   television. `_publish` refuses a non-http(s) URL, one carrying auth
+   *headers* (they do not travel with a URL) and a loopback host, each with a
+   sentence.
+
+The one local file still opened is a **subtitle**:
+`features/player/subtitle_picker.dart`, for a `.srt` the server does not have.
+
+### Verified
+
+- `flutter analyze` clean; `flutter test` **492 passing, 1 failing**.
+- The failure is `test/workflow_test.dart`, "the jq program contains no
+  apostrophes" — **pre-existing**, reproduced on a clean HEAD checkout, and
+  nothing to do with this change. The "317 passing" this section used to
+  claim was already stale.
+- Windows debug build links and runs.
+- `test/screens_test.dart` still pumps **every route at all three
+  breakpoints** and fails on any overflow. Do not weaken it.
+- `l10n_untranslated.json` is `{}`. 31 keys were stripped from both ARBs —
+  only the ones this change orphaned; 52 that were already unreferenced at
+  HEAD were left alone deliberately.
+
+**Everything platform-specific is still unverified on a real device:** the
+Linux build, picture in picture, the background-audio service and its
+notification, audio focus, DLNA casting, Chromecast casting. `content://`
+handles through libmpv and container chapters from a real MKV have dropped off
+that list — there is no local file to have either.
 
 Also open:
 
-1. **The quality pill** is hidden, not stubbed: it only appears for a source that
-   advertises `SourceCapabilities.transcoding`, which is now true of a Jellyfin source.
-2. English literals remain only in the sample-data screens; see Localisation.
-3. Dropped on purpose, so nobody picks them up again by accident: **NFS** (no viable
-   pure-Dart client — it would mean hand-written RPC/XDR or a native build per
-   platform), **network scanning** for shares, and **preview thumbnails** on the
-   scrubber. Downloads (screen 1i) is parked until after the Jellyfin client.
+1. Downloads (screen 1i) is still parked on sample data. It is now a *server*
+   feature — an offline copy of a server item — and the player can play one,
+   so it is worth building rather than dropping.
+2. English literals remain where Localisation says.
+3. Dropped on purpose: **NFS**, **network scanning**, **preview thumbnails**
+   generated locally (the server's trickplay covers it), and now every local
+   source.
 
 ## Localisation
 
@@ -91,68 +141,46 @@ over adding near-duplicates.
 
 ## Sources
 
-`sources/` holds the drivers. `MediaSource` resolves an item for playback;
-`BrowsableSource` adds `listDirectory` and is what screen 1b talks to — a Jellyfin
-library is browsed by collection, not by path, so it will never implement it.
-`QueueableSource` is how a server answers the question a folder listing answers for
-everyone else — what plays after this item. `JellyfinMediaSource` returns the episodes
-of the series, which is what gives an episode prev/next, the end-of-file prompt and
-auto-play next.
+**There is one.** `servers/jellyfin_media_source.dart` implements
+`MediaSource`, `QueueableSource` and `ProgressReporting` from
+`sources/media_source.dart`, and `mediaSourcesProvider` in
+`servers/server_registry.dart` is the map the player resolves against — one
+entry, or none while nothing is signed in.
 
-| Kind | Driver | State |
-|---|---|---|
-| Device | `LocalSource` | Browsing + playback |
-| Device (Android) | `MediaStoreSource` | The system media index — scoped storage forbids listing shared storage directly |
-| Device (Android) | `SafSource` | Folders the user granted explicitly, for what the index cannot see |
-| WebDAV | `WebDavSource` | Browsing + direct-play streaming |
-| SMB | `SmbSource` | Browsing + playback through the local HTTP proxy |
-| NFS | — | No driver, and no pure-Dart client to build one on |
+`QueueableSource` is how a server answers the question a folder listing used
+to answer for everyone else: what plays after this item. It returns the
+episodes of the series, which is what gives an episode prev/next, the
+end-of-file prompt and auto-play next.
 
-`features/storage/source_sheet.dart` both adds and edits a share — the same form, opened
-from the Network section's *Add* or from a tile's overflow menu. `SourceRegistry.update`
-rewrites the config **in place** (position preserved) and takes a nullable password where
-**`null` means "leave the keychain alone"** and `''` clears it; the sheet passes `null`
-unless the user actually typed in the password field, so a keychain that could not be read
-never wipes a working credential. `test/fake_keychain.dart` stands in for the platform
-keychain in tests.
+**Still a map, deliberately.** `PlaybackController` looks a source up by
+`mediaRef.sourceId`, and a queue entry carries the profile id it was made
+against. Collapsing it to a single value would make every lookup silently
+resolve to "the current server", which breaks the moment a second server can
+be signed in.
 
-Configured shares live in `SourceRegistry`. **Passwords never touch
-`shared_preferences`** — `SourceConfig.toJson` has no password field (there is a test
-asserting this), and credentials go to `flutter_secure_storage` under
-`SourceConfig.credentialKey`, which is derived from the immutable id so renaming a share
-does not orphan its password.
+Everything else that was documented here is gone — the driver table, the
+share sheet, `SourceRegistry`, the keychain rules for share passwords. See
+"Current state". `test/fake_keychain.dart` survives, now only for the server
+token.
 
-A configured share whose kind has no driver is still listed, greyed and un-browsable,
-rather than being dropped — silently discarding a user's setup is worse than admitting
-the driver is missing.
+### Gone: the WebDAV and SMB clients
 
-### WebDAV
+Both are named here because a search for them should land on a paragraph
+rather than nothing.
 
-`PROPFIND` is hand-written over `dio` rather than using a client package: listing is the
-only operation needed, and playback bypasses any client library entirely — libmpv opens
-the `https://` URL itself with the `Authorization` header `WebDavSource` supplies. That
-also keeps the parser testable against captured server responses with no live share.
-`parsePropfind` matches on **local** element names because prefixes differ between
-servers (`d:`, `D:`, none).
+- **WebDAV** — `PROPFIND` hand-written over `dio`, with `parsePropfind`
+  matching on local element names because prefixes differ between servers.
+  libmpv opened the `https://` URL itself with the header the driver supplied.
+- **SMB** — `dart_smb2` gives random-access reads and nothing else, so
+  `media_proxy_server.dart` bridged it: a loopback `HttpServer` turning
+  `Range` requests into offset reads, with libmpv pointed at
+  `http://127.0.0.1:<port>/media/<id>`. Its two non-obvious details were 1 MiB
+  chunks with a `flush` between them (without the back-pressure a fast share
+  outran the socket and buffered the whole file in memory) and a 416 carrying
+  the real size (libmpv corrects its own request from it).
 
-### SMB, and the proxy it needs
-
-libmpv cannot consume a Dart stream; it needs a URL or a path. `dart_smb2` gives
-random-access reads and nothing else, so `sources/media_proxy_server.dart` bridges the
-two: a `dart:io` `HttpServer` on `127.0.0.1` that turns `Range` requests into offset
-reads, with libmpv pointed at `http://127.0.0.1:<port>/media/<id>`. Pure Dart, no native
-build — the vendored fork and the FFI package `refs/NipaPlay-Reload` needed turned out to
-be avoidable.
-
-Two things the proxy does that are easy to undo by accident:
-
-- **1 MiB chunks with a `flush` between them.** Without the back-pressure a fast share
-  outruns the socket and the whole file buffers in memory.
-- **A 416 carries the real size.** libmpv corrects its own request from it; answering a
-  bare 416 leaves it guessing.
-
-The same server, bound to every interface instead of loopback, is what serves a file to a
-television while casting. See the Casting section.
+The proxy is also what casting used to republish a local file on the LAN. It
+needs neither now: see Casting.
 
 ## Subtitles
 
@@ -229,14 +257,16 @@ Cast SDK is Android-only and drags in Play Services.
   because a renderer already showing something rejects a new URI often enough to lose the
   second file; `Seek` only after `Play`, because a stream that is not open yet cannot be
   seeked.
-- **The proxy is the part to understand.** libmpv plays from `127.0.0.1`, which means
-  nothing to a television, so a cast starts a *second* `MediaProxyServer` bound to every
-  interface and hands the device a LAN URL. Separate instance, lifetime tied to the cast:
-  while it runs, anything on the network can read what is published. A share the playback
-  proxy already opened is republished over the **same reader** rather than opening a
-  second connection to the NAS.
-- A `content://` URI cannot be cast — only Android's content resolver can read one, not a
-  Dart `File`. The picker says so rather than failing silently.
+- **There is no proxy any more**, and this is the biggest change here. A cast
+  used to start a second `MediaProxyServer` bound to every interface, because
+  libmpv played local files from `127.0.0.1` and a television cannot fetch
+  that. Every stream now comes from a server — already an address on the
+  network, with its token in the query — so the URL goes straight across and
+  nothing this app runs is reachable from the network at all.
+- `_publish` refuses three things with a sentence each: a non-`http(s)` URL, a
+  stream carrying auth **headers** (they would not travel with the URL, so the
+  television would fetch a 401 and sit on a black screen), and a loopback
+  host. No server the app signs into hits any of them today.
 
 ### Chromecast
 
@@ -251,10 +281,12 @@ what to load and when to give up are all Dart's.
   alongside it — it is what covers Windows and Linux.
 - `CastOptionsProvider` is found **by class name** from a manifest `meta-data` entry, the
   only reference to it. Renaming it breaks casting at runtime, not at compile time.
-- The **default media receiver** is used, so no receiver app has to be registered with
-  Google. It plays MP4/H.264 and WebM and does **not** play Matroska — most of what this
-  player exists for. A rejected load says so in words rather than leaving a black screen;
-  fixing it properly means transcoding, which is a server's job.
+- The **default media receiver** is used, so no receiver app has to be
+  registered with Google. It plays MP4/H.264 and WebM and does **not** play
+  Matroska. The answer is the server's transcoder — reached by lowering
+  `streamQualityProvider`'s cap — and that answer is now always available,
+  because every castable item came from a server in the first place. A
+  rejected load says so in words rather than leaving a black screen.
 - There is no "connect" call in the SDK: selecting a route makes the session manager open
   a session, and the answer arrives as an event. `Chromecast.connect` awaits that event.
 - Discovery is an **active** scan, which costs battery — so it is started with the picker
@@ -268,17 +300,19 @@ the two lists and picks the renderer from `CastDevice.kind`.
 `app/desktop_window.dart`, all of it inert off desktop — `window_manager` throws on
 Android and iOS, which is the signal to do nothing.
 
-- **Single instance is a bound socket.** A fixed loopback port (47821) is the lock:
-  exactly one process can bind it, so failing to bind *is* how a second launch knows it
-  is the second. It then writes its file path to that socket and exits, and the running
-  instance opens the file and raises its window. No lock file to go stale after a crash.
+- **Single instance is a bound socket.** A fixed loopback port (47821) is the
+  lock: exactly one process can bind it, so failing to bind *is* how a second
+  launch knows it is the second. It then connects, which raises the running
+  window, and exits. No lock file to go stale after a crash. It used to carry
+  the file path from `mPlayer video.mkv` across; nothing is read from the
+  socket now, and the connection itself is the whole message.
 - Size and position are restored before the window is shown, through
   `waitUntilReadyToShow`, or the user watches it appear at the default size and jump.
   A **minimised or fullscreen** window is not saved — neither is what they left behind —
   and a position on a monitor that has since been unplugged is discarded.
 - Saves are debounced 600 ms: dragging an edge fires a resize per frame.
-- Drag-and-drop wraps the **navigator**, not a screen, so a file dropped anywhere in the
-  window plays.
+- **Drag-and-drop is gone** with the local sources. The window used to be a
+  drop target wrapping the navigator, so a file dropped anywhere in it played.
 
 ## Background playback & picture in picture
 
@@ -307,10 +341,12 @@ notification ends up claiming "playing" over silence.
 
 Two independent sources, and the distinction matters:
 
-- **Container** — MKV and MP4 routinely embed chapters. `PlaybackController` reads them
-  from libmpv's `chapter-list/*` properties once the duration is known, so **local files
-  do get chapters and ticks**. `getProperty` returns `""` for a missing property, so a
-  file without them yields a count of 0 and stays silent.
+- **Container** — MKV and MP4 routinely embed chapters. `PlaybackController`
+  reads them from libmpv's `chapter-list/*` properties once the duration is
+  known, which still matters: a **direct play** hands the container over
+  untouched, so its own chapters are there whether or not the server extracted
+  any. `getProperty` returns `""` for a missing property, so a file without
+  them yields a count of 0 and stays silent.
 - **Source** — a server supplies its own list, with a still per chapter where it has
   generated them (`MediaChapter.imageUri`, drawn in the chapters sheet).
   `SourceCapabilities.chapters` refers only to this. False there does **not** mean the
@@ -406,8 +442,10 @@ Four rules from that bundle that are easy to violate by accident:
    login or a reachable server; a dead server shows an inline retry, never a modal.
 2. Stock Material 3 widgets first — do not hand-roll what `NavigationBar`, `FilterChip`,
    `ListTile`, `Slider` or `SearchBar` already provide.
-3. One player screen serves local files, SMB/WebDAV/NFS shares and Jellyfin streams.
-   Do not fork it per source.
+3. One player screen serves every source. Only one kind is left, so the rule
+   now bites one level up: the player talks to `MediaSource` and not to
+   Jellyfin, which is what would let an Emby or Plex driver land beside it
+   without the player noticing. Do not fork it per server.
 4. No magic numbers in widgets — spacing and radii come from `context.spacing` /
    `context.radii`, colours from `context.colors`, and the few M3 has no slot for
    (success green, rating star, divider) from `context.semantic`.
@@ -474,11 +512,21 @@ as SVGs from [simple-icons](https://simpleicons.org) (CC0), rendered with `flutt
 
 ## Stack
 
-Flutter 3.44 · Riverpod 3 (**hand-written providers, no codegen**) · Drift · go_router · media_kit · dio · freezed
+Flutter 3.44 · Riverpod 3 (**hand-written providers, no codegen**) ·
+go_router · media_kit · dio · xml
+
+`drift`, `freezed` and `json_annotation` were dependencies that nothing ever
+generated from — there was not a single `.g.dart` in `lib/` — and they went
+with the local sources rather than waiting for a schema that is not coming.
+**The only codegen left is `flutter gen-l10n`.**
 
 ## Hard-won constraints — do not undo without re-verifying
 
-- **No `riverpod_generator`, no `riverpod_lint`, no `custom_lint`.** They conflict irreconcilably with `freezed` + `drift_dev` over `analyzer` versions. Riverpod providers are written by hand.
+- **No `riverpod_generator`, no `riverpod_lint`, no `custom_lint`.** They
+  conflicted irreconcilably with `freezed` + `drift_dev` over `analyzer`
+  versions. Both of those are gone now, so the conflict is too — but providers
+  stay hand-written, because every one of them already is and a half-converted
+  codebase is worse than either choice.
 - **`compileSdk = 37`** is pinned in `android/app/build.gradle.kts` (required by `flutter_secure_storage 11.x`; Flutter's default is 36).
 - **`kotlin.incremental=false`** in `android/gradle.properties` — this host intermittently fails with "Could not close incremental caches" otherwise.
 - **`dynamic_color` is held at `^1.7.0`** (Material You on the Appearance page). 2.x builds against the separate `material_ui` package, whose `ColorScheme` is a different type from Flutter's, so `DynamicColorBuilder` stops handing back anything `MaterialApp.theme` accepts. 1.7.0 in turn pins its own module to `compileSdkVersion 31`, older than the androidx artifacts it pulls in, so `android/build.gradle.kts` raises that one subproject to 36 — without it every Android build fails at `checkReleaseAarMetadata` with 24 issues. Register the `afterEvaluate` **inside** a name check, not around one: `:app` is already evaluated by the block above and Gradle rejects a late registration.
@@ -556,7 +604,8 @@ clean now; a duplicate-key scan is the way to check after editing it.
 
 ## Media servers (Jellyfin)
 
-`lib/servers/` is the data layer; nothing above it is wired up yet. Three rules it keeps:
+`lib/servers/` is the data layer, and the screens and the player are wired to
+it. Three rules it keeps:
 
 - **Domain types, not the design's.** `core/models/library_models.dart` holds strings the
   design already shaped ("2h 16m", "48m · watched") and an `IconData`. A network client
@@ -581,8 +630,10 @@ Four things that are easy to get wrong and are already handled:
    pre-10.9 `/Users/{userId}/…` spelling of the user-scoped routes this client uses.
 4. **A `TranscodingUrl` on the media source means the server chose to re-encode**,
    whatever `SupportsDirectPlay` says — those flags describe what is possible, not what
-   was decided. The direct-play URL carries the token as `api_key` in the query, because
-   libmpv fetches it itself and cannot be handed a header.
+   was decided. The direct-play URL carries the token as `api_key` in the
+   query, because libmpv fetches it itself and cannot be handed a header —
+   and that is also what makes the URL castable, since a header could not
+   travel to a television either. See Casting.
 
 ## The library screen's tabs
 
@@ -722,8 +773,11 @@ normal, and a plugin waiting on a restart is not broken.
 `test/fake_library_source.dart` is a `MediaLibrarySource` that answers nothing; tests
 `extend` it and override the two or three methods they are about. Before it, four test
 files each carried sixty lines of "returns an empty list" stub and **every method added to
-the interface broke all of them at once** — which is what adding media segments and the
-library tabs did in turn.
+the interface broke all of them at once** — which is what adding media segments
+and the library tabs did in turn. It earns its keep in both directions.
+
+`test/fake_keychain.dart` stands in for the platform keychain. It was shared
+with the share-password tests; only the server token uses it now.
 
 ## Reference material
 
@@ -753,10 +807,10 @@ flutter build apk --debug
 flutter build apk --release --split-per-abi    # what CI ships
 ```
 
-`build_runner` is not part of the loop yet — `drift`, `freezed` and `json_serializable`
-are dependencies but nothing generates from them, and there is not a single `.g.dart` in
-`lib/`. The command lands with the Drift schema in Phase 4:
+**There is no `build_runner`.** `drift`, `freezed` and `json_serializable`
+were dependencies that nothing ever generated from, and they have been
+removed. The only generated code is the localisations:
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs
+flutter gen-l10n          # also run by flutter pub get
 ```

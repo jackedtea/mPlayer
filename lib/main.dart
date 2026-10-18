@@ -14,19 +14,19 @@ import 'package:media_kit/media_kit.dart';
 import 'app/app.dart';
 import 'app/desktop_window.dart';
 import 'app/system_ui.dart';
-import 'features/player/incoming_media.dart';
 
-/// [args] carries a file named on the command line. The Windows and Linux
-/// runners already forward it as the Dart entrypoint arguments, so this is
-/// all that "open with mPlayer" and `mPlayer video.mkv` need on desktop;
-/// Android hands its files over through an intent channel instead.
-Future<void> main(List<String> args) async {
+/// No arguments are read any more.
+///
+/// `main` used to take the file named on the command line and hand it to the
+/// player, which is what made `mPlayer video.mkv` and "open with mPlayer"
+/// work on desktop. There is no local source left to open one with — mPlayer
+/// plays what a media server gives it — so nothing names a file here.
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Before anything else on desktop: a second launch hands its file to the
-  // instance already running and stops here, rather than opening a second
-  // player to fight the first over the audio device.
-  if (!await claimSingleInstance(args)) {
+  // Before anything else on desktop: a second launch raises the window that
+  // is already up rather than opening one of its own.
+  if (!await claimSingleInstance()) {
     exit(0);
   }
 
@@ -41,12 +41,7 @@ Future<void> main(List<String> args) async {
   await restoreWindow();
   await watchWindowBounds();
 
-  runApp(
-    ProviderScope(
-      overrides: [startupArgumentsProvider.overrideWithValue(args)],
-      child: const MPlayerApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MPlayerApp()));
 }
 
 /// Roboto ships inside the app, so its OFL notice has to ship with it — this

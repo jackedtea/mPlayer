@@ -15,8 +15,10 @@ import 'add_server_sheet.dart';
 
 /// Screen 1c — the Server tab with nothing configured.
 ///
-/// This is an opt-in empty state, never a login wall: the copy exists to say
-/// local playback already works without a server.
+/// Still an empty state and never a login wall, but the copy had to change:
+/// it used to say local playback already worked without a server, which was
+/// the whole reason this was opt-in. A server is the only thing the app plays
+/// from now, so the copy says what to add and what it gets.
 class ServersEmptyPage extends ConsumerWidget {
   const ServersEmptyPage({super.key});
 
@@ -72,15 +74,13 @@ class ServersEmptyPage extends ConsumerWidget {
                     ),
                     SizedBox(height: spacing.xl),
                     Text(
-                      'No media server yet',
+                      AppLocalizations.of(context).noServerTitle,
                       textAlign: TextAlign.center,
                       style: context.texts.headlineSmall,
                     ),
                     SizedBox(height: spacing.md),
                     Text(
-                      'Everything on this device and your network shares '
-                      'already works without one. Add a Jellyfin server to '
-                      'sync watch state, metadata and remote access.',
+                      AppLocalizations.of(context).noServerBody,
                       textAlign: TextAlign.center,
                       style: context.texts.bodyMedium
                           ?.copyWith(color: scheme.onSurfaceVariant),
@@ -107,8 +107,7 @@ class ServersEmptyPage extends ConsumerWidget {
               spacing.xl - spacing.xs,
             ),
             child: _InfoCard(
-              text: 'Emby and Plex servers can be added here too — '
-                  'the tab is not Jellyfin-only.',
+              text: AppLocalizations.of(context).otherServersNotice,
             ),
           ),
         ],

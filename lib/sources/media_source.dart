@@ -7,14 +7,15 @@ import 'package:flutter/foundation.dart';
 
 import '../servers/media_library_source.dart';
 
-import '../core/models/library_models.dart';
 import '../core/models/media_models.dart';
 
 /// What a given source can do beyond handing over bytes.
 ///
-/// The player screen is the same for every source; these flags are how it
-/// decides whether to draw chapter ticks, a "Skip intro" pill, or a transcode
-/// indicator. A local file supports none of them, Jellyfin supports all.
+/// These flags are how the player decides whether to draw chapter ticks, a
+/// "Skip intro" pill, or a transcode indicator. A server supports all of
+/// them, which is now the only kind of source there is — the flags stay
+/// because the *item* still varies: a server that has never run a detection
+/// plugin advertises chapters and supplies none.
 @immutable
 class SourceCapabilities {
   const SourceCapabilities({
@@ -42,7 +43,6 @@ class SourceCapabilities {
   /// Sidecar subtitle files can be discovered next to the media.
   final bool externalSubtitles;
 
-  static const local = SourceCapabilities(externalSubtitles: true);
 }
 
 /// A pointer to an item inside a source, before it has been resolved.
@@ -60,8 +60,7 @@ class MediaRef {
   /// Matches [MediaSourceRef.id].
   final String sourceId;
 
-  /// Opaque to everything but the owning source: a file path, an SMB path, a
-  /// Jellyfin item GUID.
+  /// Opaque to everything but the owning source: a Jellyfin item GUID.
   final String itemId;
 
   final String title;
@@ -109,9 +108,8 @@ class MediaChapter {
 
 /// A resolved handle the player can open right now.
 ///
-/// Resolving is deliberately separate from browsing: a Jellyfin stream URL
-/// carries a short-lived token, and an SMB path may need a mounted session, so
-/// neither survives being cached in a listing.
+/// Resolving is deliberately separate from browsing: a stream URL carries a
+/// short-lived token, so it does not survive being cached in a listing.
 @immutable
 class PlayableMedia {
   const PlayableMedia({
@@ -131,22 +129,25 @@ class PlayableMedia {
 
   final MediaRef ref;
 
-  /// What the playback backend opens. `file://` for local, `smb://`,
-  /// `http(s)://` for WebDAV and server streams.
+  /// What the playback backend opens. Always `http(s)://` now — the only
+  /// thing that resolves anything is a media server.
   final Uri uri;
 
   final SourceKind kind;
   final SourceCapabilities capabilities;
 
-  /// The line under the player's title — "NAS · SMB · direct play · 18.4 Mbps"
-  /// or "Jellyfin · transcoding 1080p". Each source words this itself.
+  /// The line under the player's title — "Jellyfin · transcoding 1080p".
+  /// The source words this itself.
   final String sourceLine;
 
   /// Auth headers for HTTP-backed sources.
   final Map<String, String> headers;
 
-  /// Where playback should begin, from the local resume point reconciled with
-  /// the server's.
+  /// Where playback should begin, as the server last recorded it.
+  ///
+  /// There is no local resume store to reconcile with any more: the server
+  /// has been collecting this from every device the user owns, which is
+  /// better than anything one device remembers.
   final Duration startPosition;
 
   /// Empty unless [capabilities] advertises chapters. The scrubber draws a
@@ -229,9 +230,9 @@ class MediaSourceException implements Exception {
 
 /// One place media comes from.
 ///
-/// Implementations: local files, SMB, WebDAV, NFS, and Jellyfin/Emby streams.
-/// The player depends on this interface alone, which is what keeps a single
-/// player screen serving all of them.
+/// One implementation today, `JellyfinMediaSource`. The player depends on
+/// this interface alone and not on Jellyfin, which is what would let an Emby
+/// or Plex driver land beside it without the player noticing.
 abstract interface class MediaSource {
   /// Matches the `id` of the [MediaSourceRef] this source was configured from.
   String get id;
@@ -246,37 +247,13 @@ abstract interface class MediaSource {
   Future<PlayableMedia> resolve(MediaRef ref);
 }
 
-/// A source that is a filesystem: device storage, SMB, WebDAV, NFS.
-///
-/// Kept separate from [MediaSource] because a Jellyfin library is browsed by
-/// collection and id, not by path — the browser screen (1b) only ever talks to
-/// this interface.
-/// A source whose item ids describe a *route* rather than a file.
-///
-/// SAF is the reason this exists: its ids carry the folder they were reached
-/// through, so the same document browsed from two places yields two ids — and
-/// anything keyed on the id, the Continue-watching shelf most of all, then
-/// holds the same film twice with two different positions.
-abstract interface class StableItemId {
-  /// The same file always yields the same value, whatever route reached it.
-  String stableItemId(String itemId);
-}
-
-/// The identity to file [itemId] under.
-///
-/// Falls back to the id itself, which is already stable for every source that
-/// does not implement [StableItemId].
-String stableIdFor(MediaSource? source, String itemId) {
-  if (source case final StableItemId stable) return stable.stableItemId(itemId);
-  return itemId;
-}
-
 /// A source that keeps watch state somewhere other than this device.
 ///
-/// Implemented by servers. `PlaybackController` calls it alongside the local
-/// resume write, so a film paused on a phone is where you left it on a
-/// television — and so a transcode is torn down when playback stops rather
-/// than left running until the server times it out.
+/// Implemented by servers, and the only place watch state lives now that the
+/// local resume store is gone. `PlaybackController` calls it as playback
+/// moves, so a film paused on a phone is where you left it on a television —
+/// and so a transcode is torn down when playback stops rather than left
+/// running until the server times it out.
 abstract interface class ProgressReporting {
   Future<void> reportProgress(
     String itemId, {
@@ -301,77 +278,4 @@ abstract interface class QueueableSource implements MediaSource {
   /// Returns an empty list where the item has no run to belong to — a film,
   /// or an episode the server files under no series.
   Future<({List<MediaRef> items, int index})> siblingsOf(MediaRef mediaRef);
-}
-
-abstract interface class BrowsableSource implements MediaSource {
-  /// Path shown as the breadcrumb root, e.g. `smb://nas/media`.
-  String get rootLabel;
-
-  /// Lists one directory. Pass an empty path for the share root.
-  ///
-  /// Throws [MediaSourceException] when the directory cannot be read — an
-  /// unreachable share must surface inline, never as a crash.
-  Future<BrowseListing> listDirectory(String path);
-
-  /// The directory holding [path].
-  ///
-  /// Each driver answers for its own path style: local paths use the
-  /// platform separator, a WebDAV href is always POSIX. Getting this wrong
-  /// silently produces an empty playlist rather than an error.
-  String parentOf(String path);
-}
-
-/// The videos beside [mediaRef], in the order a file manager would show them,
-/// with the index of [mediaRef] itself.
-///
-/// This is what makes prev/next work after opening a single file: the folder
-/// it came from *is* the playlist.
-Future<({List<MediaRef> items, int index})> siblingVideosOf(
-  BrowsableSource source,
-  MediaRef mediaRef,
-) async {
-  final parent = source.parentOf(mediaRef.itemId);
-  final listing = await source.listDirectory(parent);
-
-  final videos = listing.entries.where((e) => e.isPlayable).toList();
-
-  final items = <MediaRef>[
-    for (final BrowseEntry e in videos)
-      MediaRef(sourceId: source.id, itemId: e.path, title: e.name),
-  ];
-
-  // The opened file may not be in the listing — a picker can hand over a file
-  // from a directory the driver cannot list, and on Android it hands over a
-  // copy in the cache. Falling back to a single-item queue keeps playback
-  // working instead of failing to find an index.
-  final index = items.indexWhere((m) => m.itemId == mediaRef.itemId);
-  if (index < 0) {
-    return (items: <MediaRef>[mediaRef], index: 0);
-  }
-
-  return (items: items, index: index);
-}
-
-/// Extensions the browser treats as playable video.
-///
-/// Not a whitelist for playback: [MediaSource.resolve] hands anything to the
-/// backend and lets it decide. This only drives which icon a row gets.
-const videoFileExtensions = <String>{
-  'mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v', 'ts', 'm2ts', 'mpg', 'mpeg',
-  'wmv', 'flv', '3gp', 'ogv', 'rmvb', 'vob', 'mts', 'divx',
-};
-
-const subtitleFileExtensions = <String>{
-  'srt', 'ass', 'ssa', 'sub', 'vtt', 'idx', 'sup',
-};
-
-/// Classifies a filename for the browser listing.
-BrowseEntryKind classifyFile(String name) {
-  final dot = name.lastIndexOf('.');
-  if (dot < 0 || dot == name.length - 1) return BrowseEntryKind.other;
-  final ext = name.substring(dot + 1).toLowerCase();
-
-  if (videoFileExtensions.contains(ext)) return BrowseEntryKind.video;
-  if (subtitleFileExtensions.contains(ext)) return BrowseEntryKind.subtitle;
-  return BrowseEntryKind.other;
 }

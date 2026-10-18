@@ -1,6 +1,12 @@
 # mPlayer
 
-Cross-platform video player and media server client (Jellyfin/Emby) with SMB/WebDAV/cloud-drive support.
+Cross-platform client for a Jellyfin/Emby media server, with a built-in
+player and casting to DLNA renderers and Chromecast.
+
+**It plays only what a server gives it.** mPlayer used to be a video player
+with a server client attached — the device library, SMB and WebDAV shares,
+"open with mPlayer" — and all of that is gone. The player is still here; the
+local sources it used to open are not.
 
 Built with Flutter. Priority platforms: Android, Windows, Linux — iOS/macOS are scaffolded but deferred.
 
@@ -39,7 +45,7 @@ The full text is in [LICENSE](LICENSE).
 
 | Component | License | Note |
 |---|---|---|
-| Flutter, Dart packages (`media_kit`, `drift`, `go_router`, `dio`, …) | BSD-3-Clause / MIT / Apache-2.0 | Permissive; GPLv3-compatible |
+| Flutter, Dart packages (`media_kit`, `go_router`, `dio`, `riverpod`, …) | BSD-3-Clause / MIT / Apache-2.0 | Permissive; GPLv3-compatible |
 | libmpv / FFmpeg on Android, iOS, macOS, Linux (`media_kit_libs_*`) | LGPL-2.1-or-later (upstream) | Dynamically linked; GPLv3-compatible |
 | libmpv / FFmpeg on **Windows** ([shinchiro build](https://github.com/shinchiro/mpv-winbuild-cmake)) | **GPL-2.0-or-later** | Replaces the trimmed build so image-based subtitles decode; GPL is fine here only because this app is GPL |
 | Service-layer code adapted from [NipaPlay-Reload](https://github.com/MCDFsteve/NipaPlay-Reload) | MIT | GPLv3-compatible; MIT notice retained in adapted files |

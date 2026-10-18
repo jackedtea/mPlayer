@@ -140,23 +140,11 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get actionSave;
 
-  /// No description provided for @actionTest.
-  ///
-  /// In en, this message translates to:
-  /// **'Test'**
-  String get actionTest;
-
   /// No description provided for @actionConnect.
   ///
   /// In en, this message translates to:
   /// **'Connect'**
   String get actionConnect;
-
-  /// No description provided for @actionRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get actionRetry;
 
   /// No description provided for @actionAdd.
   ///
@@ -187,12 +175,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sort'**
   String get actionSort;
-
-  /// No description provided for @actionRefresh.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh'**
-  String get actionRefresh;
 
   /// No description provided for @actionRemove.
   ///
@@ -236,119 +218,17 @@ abstract class AppLocalizations {
   /// **'Network'**
   String get network;
 
-  /// No description provided for @openFile.
-  ///
-  /// In en, this message translates to:
-  /// **'Open a file'**
-  String get openFile;
-
-  /// No description provided for @selectMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Select more'**
-  String get selectMore;
-
-  /// No description provided for @partialAccessNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Only the videos you shared are listed.'**
-  String get partialAccessNotice;
-
-  /// No description provided for @noVideosOnDevice.
-  ///
-  /// In en, this message translates to:
-  /// **'No videos found on this device yet.'**
-  String get noVideosOnDevice;
-
-  /// No description provided for @mediaAccessTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow mPlayer to find your videos'**
-  String get mediaAccessTitle;
-
-  /// No description provided for @mediaAccessBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Android does not let apps browse storage directly, so the system media index is used instead.'**
-  String get mediaAccessBody;
-
-  /// No description provided for @videoCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 video} other{{count} videos}}'**
-  String videoCount(int count);
-
-  /// No description provided for @addShareTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Add SMB or WebDAV'**
-  String get addShareTitle;
-
-  /// No description provided for @addShareSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'A share on your network'**
-  String get addShareSubtitle;
-
   /// No description provided for @driverUnavailable.
   ///
   /// In en, this message translates to:
   /// **'{kind} — driver not available yet'**
   String driverUnavailable(String kind);
 
-  /// No description provided for @shareOptions.
-  ///
-  /// In en, this message translates to:
-  /// **'Share options'**
-  String get shareOptions;
-
-  /// No description provided for @removeShare.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove share'**
-  String get removeShare;
-
-  /// No description provided for @removeShareSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Its saved password is deleted too'**
-  String get removeShareSubtitle;
-
   /// No description provided for @addShareHeading.
   ///
   /// In en, this message translates to:
   /// **'Add a share'**
   String get addShareHeading;
-
-  /// No description provided for @fieldName.
-  ///
-  /// In en, this message translates to:
-  /// **'Name'**
-  String get fieldName;
-
-  /// No description provided for @fieldAddress.
-  ///
-  /// In en, this message translates to:
-  /// **'Address'**
-  String get fieldAddress;
-
-  /// No description provided for @fieldUsername.
-  ///
-  /// In en, this message translates to:
-  /// **'Username'**
-  String get fieldUsername;
-
-  /// No description provided for @fieldPassword.
-  ///
-  /// In en, this message translates to:
-  /// **'Password'**
-  String get fieldPassword;
-
-  /// No description provided for @anonymousHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Leave empty for an anonymous share'**
-  String get anonymousHint;
 
   /// No description provided for @showPassword.
   ///
@@ -410,12 +290,6 @@ abstract class AppLocalizations {
   /// **'Could not read this folder.'**
   String get couldNotReadFolder;
 
-  /// No description provided for @notAVideo.
-  ///
-  /// In en, this message translates to:
-  /// **'{name} is not a video file'**
-  String notAVideo(String name);
-
   /// No description provided for @noServerTitle.
   ///
   /// In en, this message translates to:
@@ -425,7 +299,7 @@ abstract class AppLocalizations {
   /// No description provided for @noServerBody.
   ///
   /// In en, this message translates to:
-  /// **'Everything on this device and your network shares already works without one. Add a Jellyfin server to sync watch state, metadata and remote access.'**
+  /// **'mPlayer plays what a media server gives it. Add a Jellyfin server to browse your library, keep your watch state in step across devices, and reach it from anywhere.'**
   String get noServerBody;
 
   /// No description provided for @addJellyfinServer.
@@ -2060,48 +1934,6 @@ abstract class AppLocalizations {
   /// **'Could not cast to that device.'**
   String get couldNotCast;
 
-  /// No description provided for @grantedFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Granted folder'**
-  String get grantedFolder;
-
-  /// No description provided for @removeFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove folder'**
-  String get removeFolder;
-
-  /// No description provided for @addFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a folder'**
-  String get addFolder;
-
-  /// No description provided for @addFolderSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'For videos the media index does not list'**
-  String get addFolderSubtitle;
-
-  /// No description provided for @allowAccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow access'**
-  String get allowAccess;
-
-  /// No description provided for @editShare.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit share'**
-  String get editShare;
-
-  /// No description provided for @editShareSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Change its name, address or credentials'**
-  String get editShareSubtitle;
-
   /// No description provided for @hardwareDecodingFallback.
   ///
   /// In en, this message translates to:
@@ -2923,24 +2755,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear'**
   String get clearAll;
-
-  /// No description provided for @clearContinueWatchingTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear Continue watching?'**
-  String get clearContinueWatchingTitle;
-
-  /// No description provided for @clearContinueWatchingBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Every saved position is forgotten, on this device only. Nothing is deleted from your shares or your server.'**
-  String get clearContinueWatchingBody;
-
-  /// No description provided for @continueWatchingCleared.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue watching cleared'**
-  String get continueWatchingCleared;
 
   /// No description provided for @rotationAuto.
   ///

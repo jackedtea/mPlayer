@@ -28,9 +28,7 @@ const _statusBar = 48.0;
 const _navigationBar = 56.0;
 
 void main() {
-  // `/browse` is left out: it needs the directory-listing stub that
-  // `screens_test.dart` installs, and its inset behaviour is a list like any
-  // other here.
+  // `/files`, `/browse` and `/downloads` are gone with the device library.
 
   Future<GoRouter> pumpWithBars(WidgetTester tester) async {
     tester.view.devicePixelRatio = 1.0;
@@ -68,13 +66,11 @@ void main() {
     }
 
     for (final String route in <String>[
-      '/files',
       '/servers',
       '/search',
       '/settings',
       '/library',
       '/servers/home',
-      '/downloads',
     ]) {
       testWidgets('$route is inset from both bars', (tester) async {
         final router = await pumpWithBars(tester);

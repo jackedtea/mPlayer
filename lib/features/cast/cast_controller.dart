@@ -4,7 +4,6 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +14,6 @@ import '../../cast/cast_discovery.dart';
 import '../../cast/cast_renderer.dart';
 import '../../cast/chromecast.dart';
 import '../../cast/dlna_renderer.dart';
-import '../../sources/media_proxy_server.dart';
 import '../../sources/media_source.dart';
 
 @immutable
@@ -66,18 +64,18 @@ final castControllerProvider = NotifierProvider<CastController, CastState>(
 
 /// Finding devices, and playing on one instead of on this screen.
 ///
-/// The proxy is the part worth understanding. libmpv plays from a loopback
-/// address, which means nothing to a television, so casting starts a *second*
-/// proxy bound to every interface and hands the device a LAN URL. It is a
-/// separate server with a lifetime tied to the cast, so nothing is reachable
-/// from the network except while a cast is actually running.
+/// **There is no proxy any more.** It used to be the part worth
+/// understanding: libmpv played local files from a loopback address, which
+/// means nothing to a television, so casting started a second server bound to
+/// every interface and handed the device a LAN URL. Nothing local plays now —
+/// every stream comes from a media server, which is already an address on the
+/// network with its token in the query — so the URL goes straight across and
+/// nothing this app runs is reachable from the network at all.
 class CastController extends Notifier<CastState> {
   static const _pollInterval = Duration(seconds: 2);
 
   CastRenderer? _renderer;
-  MediaProxyServer? _proxy;
   Timer? _poll;
-  String? _publishedId;
   StreamSubscription<List<CastDevice>>? _chromecasts;
 
   /// Kept apart because they arrive differently: DLNA answers a search once,
@@ -98,7 +96,6 @@ class CastController extends Notifier<CastState> {
       unawaited(_chromecasts?.cancel());
       unawaited(Chromecast.instance.stopDiscovery());
       unawaited(_renderer?.dispose());
-      unawaited(_proxy?.shutdown());
     });
     return const CastState();
   }
@@ -152,7 +149,7 @@ class CastController extends Notifier<CastState> {
     state = state.copyWith(clearError: true);
 
     try {
-      final url = await _publish(media);
+      final url = _publish(media);
       final renderer = _rendererFor(device);
 
       await renderer.load(
@@ -247,103 +244,51 @@ class CastController extends Notifier<CastState> {
     };
   }
 
-  /// A URL for [media] that the television can actually fetch.
-  Future<Uri> _publish(PlayableMedia media) async {
+  /// The URL the television is given.
+  ///
+  /// A server stream is already fetchable from the network, so the device
+  /// gets it unchanged and this app stays out of the data path.
+  ///
+  /// The three refusals are each a case that would otherwise leave a
+  /// television on a black screen with no explanation:
+  ///
+  /// - **Not http(s)** — nothing else is left that resolves anything, so this
+  ///   means the server answered with something unexpected.
+  /// - **Auth headers** — they do not travel with a URL and a device cannot
+  ///   be told about them. Jellyfin puts its token in the query (`api_key`),
+  ///   so no server the app signs into hits this today; the check is here so
+  ///   that one which does fails with a sentence.
+  /// - **Loopback** — a server reachable only from this device cannot be
+  ///   reached by a television on the same network.
+  Uri _publish(PlayableMedia media) {
     final uri = media.uri;
 
-    // A plain remote URL needs no help — the device fetches it itself, and
-    // one hop fewer is one thing fewer to go wrong. Anything carrying auth
-    // headers cannot go this way: they would not travel with the URL.
-    if ((uri.scheme == 'http' || uri.scheme == 'https') &&
-        media.headers.isEmpty &&
-        !_isLoopback(uri)) {
-      return uri;
-    }
-
-    final host = await MediaProxyServer.localAddress();
-    if (host == null) {
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
       throw const CastException(
-        'This device is not on a network a television could reach.',
+        'This item cannot be cast — the server did not give an address a '
+        'device could fetch.',
       );
     }
-
-    final proxy = _proxy ??= MediaProxyServer(bindAddress: InternetAddress.anyIPv4);
-    final entry = await _entryFor(media);
-    _publishedId = entry.id;
-
-    return proxy.publish(entry, host: host);
-  }
-
-  /// What the cast proxy should serve.
-  Future<ProxiedMedia> _entryFor(PlayableMedia media) async {
-    final uri = media.uri;
-    final contentType = contentTypeFor(media.title);
-
-    // A share the playback proxy already opened: reuse its reader rather than
-    // opening a second connection to the same NAS. Closing is left to the
-    // playback proxy, which owns the handle.
+    if (media.headers.isNotEmpty) {
+      throw const CastException(
+        'This item cannot be cast — it needs a sign-in a device cannot be '
+        'given.',
+      );
+    }
     if (_isLoopback(uri)) {
-      final id = uri.pathSegments.length >= 2 ? uri.pathSegments[1] : '';
-      final existing = ref.read(mediaProxyServerProvider).entryFor(id);
-      if (existing != null) {
-        return ProxiedMedia(
-          id: existing.id,
-          name: existing.name,
-          size: existing.size,
-          read: existing.read,
-          close: () async {},
-          contentType: contentType,
-        );
-      }
-    }
-
-    final path = _localPath(uri);
-    if (path == null) {
       throw const CastException(
-        'This file cannot be cast — it is not a local file and the device '
-        'cannot reach it.',
+        'This item cannot be cast — the server is only reachable from this '
+        'device.',
       );
     }
 
-    final file = File(path);
-    if (!await file.exists()) {
-      throw const CastException('That file is no longer there.');
-    }
-
-    final size = await file.length();
-    RandomAccessFile? handle;
-
-    return ProxiedMedia(
-      id: 'cast-${DateTime.now().microsecondsSinceEpoch}',
-      name: p.basename(path),
-      size: size,
-      contentType: contentType,
-      read: (offset, length) async {
-        final open = handle ??= await file.open();
-        await open.setPosition(offset);
-        return open.read(length);
-      },
-      close: () async {
-        await handle?.close();
-        handle = null;
-      },
-    );
+    return uri;
   }
 
   bool _isLoopback(Uri uri) =>
-      uri.host == '127.0.0.1' || uri.host == 'localhost';
-
-  /// The filesystem path behind a URI, or null when there is not one.
-  ///
-  /// `content://` is deliberately excluded: only Android can read one, and it
-  /// is the content resolver that does — not a Dart `File`.
-  String? _localPath(Uri uri) {
-    if (uri.scheme == 'file') return uri.toFilePath();
-    // A Windows drive letter parses as a one-character scheme, the same trap
-    // `LocalSource.resolve` documents.
-    if (!uri.hasScheme || uri.scheme.length == 1) return uri.toString();
-    return null;
-  }
+      uri.host == '127.0.0.1' ||
+      uri.host == 'localhost' ||
+      uri.host == '::1';
 
   Future<void> _teardown() async {
     _poll?.cancel();
@@ -352,15 +297,6 @@ class CastController extends Notifier<CastState> {
     final renderer = _renderer;
     _renderer = null;
     await renderer?.dispose();
-
-    final id = _publishedId;
-    _publishedId = null;
-    if (id != null) await _proxy?.withdraw(id);
-
-    // The LAN-bound server exists only for the duration of a cast.
-    final proxy = _proxy;
-    _proxy = null;
-    await proxy?.shutdown();
   }
 }
 

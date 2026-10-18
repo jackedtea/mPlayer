@@ -3,52 +3,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/theme.dart';
 import 'package:mplayer/app/tokens.dart';
-import 'package:mplayer/core/models/media_models.dart';
-import 'package:mplayer/core/resume_repository.dart';
-import 'package:mplayer/widgets/gradient_art.dart';
-
-/// Smallest image the card can actually decode, for the still it draws.
-const onePixelPng =
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAE'
-    'hQGAhKmMIQAAAABJRU5ErkJggg==';
-
-/// Seeds the Continue-watching shelf.
-///
-/// It is built from real resume points now, so a test that asserts about the
-/// shelf has to put something in it — an empty shelf renders nothing at all,
-/// which is the correct behaviour and would silently pass a geometry test.
-void seedResumePoints(int count, {String? thumbnailPath}) {
-  final now = DateTime(2026, 2, 10);
-  SharedPreferences.setMockInitialValues(<String, Object>{
-    'resume_points_v1': <String>[
-      for (var i = 0; i < count; i++)
-        jsonEncode(
-          ResumePoint(
-            sourceId: 'device',
-            itemId: '/media/clip$i.mkv',
-            title: 'Clip $i',
-            kind: SourceKind.device,
-            position: const Duration(minutes: 10),
-            duration: const Duration(minutes: 100),
-            updatedAt: now.subtract(Duration(minutes: i)),
-            thumbnailPath: thumbnailPath,
-          ).toJson(),
-        ),
-    ],
-  });
-}
 
 /// Pumps the real app at a specific logical window size.
 ///
@@ -139,23 +101,13 @@ void main() {
   });
 
   group('startup', () {
-    testWidgets('opens on Files with no server gate', (tester) async {
-      seedResumePoints(2);
+    testWidgets('opens on Servers as an empty state, not a login wall',
+        (tester) async {
+      // It used to open on Files, so the app had something to play before any
+      // server existed. There is nothing local to play now, so Servers is the
+      // first screen — and it still has to be an empty state that offers to
+      // add one, never a gate that demands it.
       await pumpAppAt(tester, const Size(400, 800));
-
-      // The Files app bar title, not a login screen.
-      expect(find.widgetWithText(AppBar, 'Files'), findsOneWidget);
-      expect(find.text('Continue watching'), findsOneWidget);
-      expect(find.text('This device'), findsOneWidget);
-    });
-
-    testWidgets('Server tab is an opt-in empty state, not a login wall', (
-      tester,
-    ) async {
-      await pumpAppAt(tester, const Size(400, 800));
-
-      await tester.tap(find.text('Servers'));
-      await tester.pumpAndSettle();
 
       expect(find.text('No media server yet'), findsOneWidget);
       expect(find.text('Add Jellyfin server'), findsOneWidget);
@@ -164,13 +116,19 @@ void main() {
       expect(find.text('Scan this network'), findsNothing);
     });
 
+    testWidgets('there is no Files destination left', (tester) async {
+      await pumpAppAt(tester, const Size(400, 800));
+
+      expect(find.text('Files'), findsNothing);
+      expect(find.text('Servers'), findsOneWidget);
+      expect(find.text('Search'), findsOneWidget);
+    });
+
     testWidgets('add-server sheet asks for an address before anything else', (
       tester,
     ) async {
       await pumpAppAt(tester, const Size(400, 900));
 
-      await tester.tap(find.text('Servers'));
-      await tester.pumpAndSettle();
       await tester.tap(find.text('Add Jellyfin server'));
       await tester.pumpAndSettle();
 
@@ -194,291 +152,6 @@ void main() {
         find.widgetWithText(FilledButton, 'Connect'),
       );
       expect(connect.onPressed, isNull);
-    });
-  });
-
-  group('what the Files shelf continues', () {
-    testWidgets('a server item is not one of them', (tester) async {
-      // A server keeps its own watch state, gathered from every device the
-      // user owns, and shows it on the Server tab. Repeating it here would
-      // put two entries for one film on two screens, disagreeing about the
-      // position as soon as it were watched anywhere else.
-      final now = DateTime(2026, 2, 10);
-      SharedPreferences.setMockInitialValues(<String, Object>{
-        'resume_points_v1': <String>[
-          jsonEncode(
-            ResumePoint(
-              sourceId: 'device',
-              itemId: '/media/local.mkv',
-              title: 'A local file',
-              kind: SourceKind.device,
-              position: const Duration(minutes: 10),
-              duration: const Duration(minutes: 100),
-              updatedAt: now,
-            ).toJson(),
-          ),
-          jsonEncode(
-            ResumePoint(
-              sourceId: 'server-1',
-              itemId: 'abc123',
-              title: 'A film from the server',
-              kind: SourceKind.jellyfin,
-              position: const Duration(minutes: 20),
-              duration: const Duration(minutes: 100),
-              updatedAt: now,
-            ).toJson(),
-          ),
-        ],
-      });
-
-      await pumpAppAt(tester, const Size(400, 800));
-
-      expect(find.text('A local file'), findsOneWidget);
-      expect(find.text('A film from the server'), findsNothing);
-    });
-
-    testWidgets('a shelf of nothing but server items is not drawn at all',
-        (tester) async {
-      final now = DateTime(2026, 2, 10);
-      SharedPreferences.setMockInitialValues(<String, Object>{
-        'resume_points_v1': <String>[
-          jsonEncode(
-            ResumePoint(
-              sourceId: 'server-1',
-              itemId: 'abc123',
-              title: 'A film from the server',
-              kind: SourceKind.jellyfin,
-              position: const Duration(minutes: 20),
-              duration: const Duration(minutes: 100),
-              updatedAt: now,
-            ).toJson(),
-          ),
-        ],
-      });
-
-      await pumpAppAt(tester, const Size(400, 800));
-
-      // Heading and Clear button both go with it: an empty shelf under a
-      // heading reads as something having gone wrong.
-      expect(find.text('Continue watching'), findsNothing);
-      expect(find.widgetWithText(TextButton, 'Clear'), findsNothing);
-    });
-  });
-
-  group('clearing Continue watching', () {
-    testWidgets('the action only appears when there is something to clear',
-        (tester) async {
-      // Reset explicitly: the preference mock is global, so a shelf seeded by
-      // an earlier test would still be there.
-      SharedPreferences.setMockInitialValues(<String, Object>{});
-
-      // The whole section is absent on an empty shelf, and so is its button.
-      await pumpAppAt(tester, const Size(400, 800));
-
-      expect(find.text('Continue watching'), findsNothing);
-      expect(find.byIcon(Icons.delete_sweep_rounded), findsNothing);
-    });
-
-    testWidgets('clearing asks first, and says what it does not touch',
-        (tester) async {
-      seedResumePoints(2);
-      await pumpAppAt(tester, const Size(400, 800));
-
-      expect(find.text('Clip 0'), findsOneWidget);
-
-      await tester.tap(find.byIcon(Icons.delete_sweep_rounded));
-      await tester.pumpAndSettle();
-
-      // "Clear" beside a shelf of films is easy to read as "delete the
-      // films", so the dialog has to say what stays.
-      expect(find.text('Clear Continue watching?'), findsOneWidget);
-      expect(
-        find.textContaining('Nothing is deleted from your shares'),
-        findsOneWidget,
-      );
-
-      // Cancelling leaves the shelf alone.
-      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.text('Clip 0'), findsOneWidget);
-    });
-
-    testWidgets('confirming empties the shelf', (tester) async {
-      seedResumePoints(2);
-      await pumpAppAt(tester, const Size(400, 800));
-
-      await tester.tap(find.byIcon(Icons.delete_sweep_rounded));
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsOneWidget);
-
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.widgetWithText(FilledButton, 'Clear'),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(tester.takeException(), isNull);
-
-      // `path_provider` has no mock here, so the still-sweep's directory
-      // lookup runs to its timeout rather than answering. That bound is the
-      // point — before it existed, this hung for ever and the button looked
-      // like it did nothing — so the test waits it out.
-      await tester.pump(const Duration(seconds: 6));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Continue watching cleared'), findsOneWidget);
-      expect(find.text('Clip 0'), findsNothing);
-      // The section takes itself down with its last card.
-      expect(find.text('Continue watching'), findsNothing);
-    });
-  });
-
-  group('continue-watching shelf geometry', () {
-    testWidgets('artwork lands on the 16pt margin and 12pt card gap', (
-      tester,
-    ) async {
-      seedResumePoints(2);
-      await pumpAppAt(tester, const Size(400, 800));
-
-      // The ink ring around each card is drawn outside the artwork, so the
-      // shelf has to compensate. Measure the artwork itself, not the card.
-      final art = find.byType(GradientArt);
-      expect(art, findsWidgets);
-
-      final first = tester.getRect(art.first);
-      expect(first.left, 16, reason: 'artwork must start at the screen margin');
-      expect(first.width, 200);
-      expect(first.height, 112);
-
-      final second = tester.getRect(art.at(1));
-      expect(
-        second.left - first.right,
-        12,
-        reason: 'design fixes the card gap at 12',
-      );
-    });
-
-    testWidgets('press highlight is inset from the artwork and caption', (
-      tester,
-    ) async {
-      seedResumePoints(2);
-      await pumpAppAt(tester, const Size(400, 800));
-
-      final inkWell = find
-          .ancestor(
-            of: find.byType(GradientArt).first,
-            matching: find.byType(InkWell),
-          )
-          .first;
-
-      final inkRect = tester.getRect(inkWell);
-      final artRect = tester.getRect(find.byType(GradientArt).first);
-
-      expect(
-        artRect.left - inkRect.left,
-        greaterThan(0),
-        reason: 'ink must not sit flush against the content',
-      );
-      expect(artRect.top - inkRect.top, artRect.left - inkRect.left);
-    });
-
-    testWidgets('a captured frame is drawn over the gradient', (tester) async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-
-      // A real 1x1 PNG: the card decodes the file, so bytes that are not an
-      // image would land in the error builder and pass for the wrong reason.
-      final dir = Directory.systemTemp.createTempSync('mplayer_shelf');
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final still = File(p.join(dir.path, 'frame.png'))
-        ..writeAsBytesSync(base64Decode(onePixelPng));
-
-      seedResumePoints(1, thumbnailPath: still.path);
-      await pumpAppAt(tester, const Size(400, 800));
-
-      final images = tester
-          .widgetList<Image>(find.byType(Image))
-          .map((i) => i.image)
-          .whereType<ResizeImage>()
-          .map((i) => i.imageProvider)
-          .whereType<FileImage>()
-          .toList();
-
-      expect(
-        images.map((i) => i.file.path),
-        contains(still.path),
-        reason: 'the shelf must draw the frame that was captured',
-      );
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('an entry with no frame draws no image at all', (tester) async {
-      seedResumePoints(1);
-      await pumpAppAt(tester, const Size(400, 800));
-
-      expect(
-        tester
-            .widgetList<Image>(find.byType(Image))
-            .where((i) => i.image is ResizeImage || i.image is FileImage),
-        isEmpty,
-      );
-      expect(find.byType(GradientArt), findsWidgets);
-    });
-
-    testWidgets('shelf grows with the text scale instead of overflowing', (
-      tester,
-    ) async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-      seedResumePoints(2);
-      tester.view.devicePixelRatio = 1.0;
-      tester.view.physicalSize = const Size(400, 800);
-      addTearDown(tester.view.reset);
-
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MediaQuery(
-            data: MediaQueryData(textScaler: TextScaler.linear(1.6)),
-            child: MPlayerApp(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // A RenderFlex overflow would have been recorded as an exception here.
-      expect(tester.takeException(), isNull);
-      expect(find.byType(GradientArt), findsWidgets);
-    });
-  });
-
-  group('search scoping', () {
-    testWidgets('offline sources are listed, unchecked and not selectable', (
-      tester,
-    ) async {
-      await pumpAppAt(tester, const Size(400, 900));
-
-      await tester.tap(find.text('Search'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Where to look'), findsOneWidget);
-
-      // Nextcloud is offline in the sample data: shown, but skipped.
-      final offlineTile = find.ancestor(
-        of: find.text('Offline — will be skipped'),
-        matching: find.byType(Checkbox),
-      );
-      expect(offlineTile, findsNothing);
-
-      final checkboxes = tester
-          .widgetList<Checkbox>(find.byType(Checkbox))
-          .toList();
-      expect(checkboxes.length, 4);
-      expect(
-        checkboxes.where((c) => c.onChanged == null).length,
-        1,
-        reason: 'the single offline source must be inert',
-      );
-      expect(checkboxes.where((c) => c.value == true).length, 3);
     });
   });
 }

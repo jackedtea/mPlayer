@@ -30,13 +30,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get actionSave => 'Lưu';
 
   @override
-  String get actionTest => 'Kiểm tra';
-
-  @override
   String get actionConnect => 'Kết nối';
-
-  @override
-  String get actionRetry => 'Thử lại';
 
   @override
   String get actionAdd => 'Thêm';
@@ -52,9 +46,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get actionSort => 'Sắp xếp';
-
-  @override
-  String get actionRefresh => 'Tải lại';
 
   @override
   String get actionRemove => 'Gỡ bỏ';
@@ -80,71 +71,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get network => 'Mạng';
 
   @override
-  String get openFile => 'Mở tệp';
-
-  @override
-  String get selectMore => 'Chọn thêm';
-
-  @override
-  String get partialAccessNotice => 'Chỉ hiện những video bạn đã chia sẻ.';
-
-  @override
-  String get noVideosOnDevice => 'Chưa tìm thấy video nào trên thiết bị này.';
-
-  @override
-  String get mediaAccessTitle => 'Cho phép mPlayer tìm video của bạn';
-
-  @override
-  String get mediaAccessBody =>
-      'Android không cho ứng dụng duyệt bộ nhớ trực tiếp, nên chỉ mục media của hệ thống được dùng thay thế.';
-
-  @override
-  String videoCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count video',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get addShareTitle => 'Thêm SMB hoặc WebDAV';
-
-  @override
-  String get addShareSubtitle => 'Một chia sẻ trong mạng của bạn';
-
-  @override
   String driverUnavailable(String kind) {
     return '$kind — chưa có trình điều khiển';
   }
 
   @override
-  String get shareOptions => 'Tuỳ chọn chia sẻ';
-
-  @override
-  String get removeShare => 'Gỡ chia sẻ';
-
-  @override
-  String get removeShareSubtitle => 'Mật khẩu đã lưu cũng bị xoá';
-
-  @override
   String get addShareHeading => 'Thêm chia sẻ';
-
-  @override
-  String get fieldName => 'Tên';
-
-  @override
-  String get fieldAddress => 'Địa chỉ';
-
-  @override
-  String get fieldUsername => 'Tên đăng nhập';
-
-  @override
-  String get fieldPassword => 'Mật khẩu';
-
-  @override
-  String get anonymousHint => 'Để trống nếu chia sẻ không cần đăng nhập';
 
   @override
   String get showPassword => 'Hiện mật khẩu';
@@ -183,16 +115,11 @@ class AppLocalizationsVi extends AppLocalizations {
   String get couldNotReadFolder => 'Không đọc được thư mục này.';
 
   @override
-  String notAVideo(String name) {
-    return '$name không phải tệp video';
-  }
-
-  @override
   String get noServerTitle => 'Chưa có máy chủ nào';
 
   @override
   String get noServerBody =>
-      'Mọi thứ trên thiết bị và các chia sẻ mạng đều hoạt động mà không cần máy chủ. Thêm máy chủ Jellyfin để đồng bộ tiến độ xem, siêu dữ liệu và truy cập từ xa.';
+      'mPlayer phát nội dung từ máy chủ media. Thêm một máy chủ Jellyfin để duyệt thư viện, đồng bộ tiến độ xem giữa các thiết bị và truy cập từ bất cứ đâu.';
 
   @override
   String get addJellyfinServer => 'Thêm máy chủ Jellyfin';
@@ -1099,27 +1026,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get couldNotCast => 'Không truyền được tới thiết bị đó.';
 
   @override
-  String get grantedFolder => 'Thư mục đã cấp quyền';
-
-  @override
-  String get removeFolder => 'Gỡ thư mục';
-
-  @override
-  String get addFolder => 'Thêm thư mục';
-
-  @override
-  String get addFolderSubtitle => 'Cho video mà chỉ mục media không liệt kê';
-
-  @override
-  String get allowAccess => 'Cho phép truy cập';
-
-  @override
-  String get editShare => 'Sửa chia sẻ';
-
-  @override
-  String get editShareSubtitle => 'Đổi tên, địa chỉ hoặc thông tin đăng nhập';
-
-  @override
   String get hardwareDecodingFallback =>
       'Tự chuyển sang phần mềm khi codec không được hỗ trợ';
 
@@ -1574,16 +1480,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get clearAll => 'Xoá hết';
-
-  @override
-  String get clearContinueWatchingTitle => 'Xoá kệ Xem tiếp?';
-
-  @override
-  String get clearContinueWatchingBody =>
-      'Mọi vị trí đã lưu sẽ bị quên, chỉ trên máy này. Không xoá gì trên chia sẻ hay máy chủ của bạn.';
-
-  @override
-  String get continueWatchingCleared => 'Đã xoá kệ Xem tiếp';
 
   @override
   String get rotationAuto => 'Tự động';

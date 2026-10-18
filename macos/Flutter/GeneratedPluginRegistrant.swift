@@ -5,8 +5,6 @@
 import FlutterMacOS
 import Foundation
 
-import dart_smb2
-import desktop_drop
 import dynamic_color
 import file_selector_macos
 import flutter_secure_storage_darwin
@@ -22,8 +20,6 @@ import wakelock_plus
 import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
-  DartSmb2Plugin.register(with: registry.registrar(forPlugin: "DartSmb2Plugin"))
-  DesktopDropPlugin.register(with: registry.registrar(forPlugin: "DesktopDropPlugin"))
   DynamicColorPlugin.register(with: registry.registrar(forPlugin: "DynamicColorPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
   FlutterSecureStorageDarwinPlugin.register(with: registry.registrar(forPlugin: "FlutterSecureStorageDarwinPlugin"))

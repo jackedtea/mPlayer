@@ -1,71 +1,39 @@
 {
   "@@locale": "vi",
-
   "appTitle": "mPlayer",
-
   "navStorage": "Tệp",
   "navServer": "Máy chủ",
   "navSearch": "Tìm kiếm",
   "settings": "Cài đặt",
-
   "actionCancel": "Huỷ",
   "actionSave": "Lưu",
-  "actionTest": "Kiểm tra",
   "actionConnect": "Kết nối",
-  "actionRetry": "Thử lại",
   "actionAdd": "Thêm",
   "actionClear": "Xoá",
   "actionBack": "Quay lại",
   "actionMore": "Thêm nữa",
   "actionSort": "Sắp xếp",
-  "actionRefresh": "Tải lại",
   "actionRemove": "Gỡ bỏ",
   "viewList": "Dạng danh sách",
   "viewGrid": "Dạng lưới",
-
   "notImplemented": "{feature} — chưa hỗ trợ",
-
   "continueWatching": "Xem tiếp",
   "thisDevice": "Thiết bị này",
   "network": "Mạng",
-  "openFile": "Mở tệp",
-  "selectMore": "Chọn thêm",
-  "partialAccessNotice": "Chỉ hiện những video bạn đã chia sẻ.",
-  "noVideosOnDevice": "Chưa tìm thấy video nào trên thiết bị này.",
-  "mediaAccessTitle": "Cho phép mPlayer tìm video của bạn",
-  "mediaAccessBody": "Android không cho ứng dụng duyệt bộ nhớ trực tiếp, nên chỉ mục media của hệ thống được dùng thay thế.",
-  "videoCount": "{count, plural, other{{count} video}}",
-  "@videoCount": {
-    "placeholders": { "count": { "type": "int" } }
-  },
-  "addShareTitle": "Thêm SMB hoặc WebDAV",
-  "addShareSubtitle": "Một chia sẻ trong mạng của bạn",
   "driverUnavailable": "{kind} — chưa có trình điều khiển",
-  "shareOptions": "Tuỳ chọn chia sẻ",
-  "removeShare": "Gỡ chia sẻ",
-  "removeShareSubtitle": "Mật khẩu đã lưu cũng bị xoá",
-
   "addShareHeading": "Thêm chia sẻ",
-  "fieldName": "Tên",
-  "fieldAddress": "Địa chỉ",
-  "fieldUsername": "Tên đăng nhập",
-  "fieldPassword": "Mật khẩu",
-  "anonymousHint": "Để trống nếu chia sẻ không cần đăng nhập",
   "showPassword": "Hiện mật khẩu",
   "hidePassword": "Ẩn mật khẩu",
   "noDriverNotice": "{kind} chưa có trình điều khiển. Chia sẻ vẫn được lưu và hiển thị, nhưng chưa duyệt được.",
   "connectionOk": "Đã kết nối — {folders} thư mục, {files} tệp",
-
   "folderCounts": "{folders} thư mục · {files} tệp",
   "reading": "Đang đọc…",
   "directPlay": "Phát trực tiếp",
   "folder": "Thư mục",
   "emptyFolder": "Thư mục này trống",
   "couldNotReadFolder": "Không đọc được thư mục này.",
-  "notAVideo": "{name} không phải tệp video",
-
   "noServerTitle": "Chưa có máy chủ nào",
-  "noServerBody": "Mọi thứ trên thiết bị và các chia sẻ mạng đều hoạt động mà không cần máy chủ. Thêm máy chủ Jellyfin để đồng bộ tiến độ xem, siêu dữ liệu và truy cập từ xa.",
+  "noServerBody": "mPlayer phát nội dung từ máy chủ media. Thêm một máy chủ Jellyfin để duyệt thư viện, đồng bộ tiến độ xem giữa các thiết bị và truy cập từ bất cứ đâu.",
   "addJellyfinServer": "Thêm máy chủ Jellyfin",
   "scanNetwork": "Quét mạng này",
   "otherServersNotice": "Máy chủ Emby và Plex cũng thêm được ở đây — tab này không chỉ dành cho Jellyfin.",
@@ -76,7 +44,6 @@
   "detectPending": "Việc nhận diện sẽ hoạt động khi có Jellyfin client",
   "quickConnect": "Dùng Quick Connect",
   "quickConnectSubtitle": "Duyệt từ một thiết bị đã đăng nhập khác",
-
   "nextUp": "Tiếp theo",
   "recentlyAdded": "Mới thêm",
   "libraries": "Thư viện",
@@ -84,17 +51,11 @@
   "settingsAdmin": "Quản trị máy chủ",
   "justNow": "vừa xong",
   "minutesAgo": "{count} phút trước",
-  "@minutesAgo": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@minutesAgo": {"placeholders": {"count": {"type": "int"}}},
   "hoursAgo": "{count} giờ trước",
-  "@hoursAgo": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@hoursAgo": {"placeholders": {"count": {"type": "int"}}},
   "daysAgo": "{count} ngày trước",
-  "@daysAgo": {
-    "placeholders": { "count": { "type": "int" } }
-  },
+  "@daysAgo": {"placeholders": {"count": {"type": "int"}}},
   "settingsAdminSub": "Phiên phát, tác vụ, người dùng, plugin",
   "adminTitle": "Quản trị",
   "adminNotAdmin": "Tài khoản này không phải quản trị viên.",
@@ -106,9 +67,7 @@
   "adminStopPlayback": "Dừng phát",
   "adminSendMessage": "Gửi tin nhắn",
   "adminMessageTitle": "Nhắn tới {device}",
-  "@adminMessageTitle": {
-    "placeholders": { "device": { "type": "String" } }
-  },
+  "@adminMessageTitle": {"placeholders": {"device": {"type": "String"}}},
   "adminMessageHint": "Nội dung tin nhắn?",
   "adminMessageSent": "Đã gửi tin nhắn.",
   "adminPlaybackStopped": "Đã dừng phát.",
@@ -117,18 +76,12 @@
   "adminRunTask": "Chạy ngay",
   "adminStopTask": "Dừng",
   "adminTaskStarted": "Đã bắt đầu {name}.",
-  "@adminTaskStarted": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminTaskStarted": {"placeholders": {"name": {"type": "String"}}},
   "adminTaskStopping": "Đang dừng {name}.",
-  "@adminTaskStopping": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminTaskStopping": {"placeholders": {"name": {"type": "String"}}},
   "adminTaskNeverRun": "Chưa chạy lần nào",
   "adminTaskLastRun": "Chạy lần cuối {when}",
-  "@adminTaskLastRun": {
-    "placeholders": { "when": { "type": "String" } }
-  },
+  "@adminTaskLastRun": {"placeholders": {"when": {"type": "String"}}},
   "adminTaskLastFailed": "Lần chạy trước thất bại",
   "adminScanLibraries": "Quét toàn bộ thư viện",
   "adminScanStarted": "Đã bắt đầu quét thư viện.",
@@ -139,13 +92,9 @@
   "adminUserEnable": "Bật",
   "adminUserDisable": "Tắt",
   "adminUserEnabled": "{name} đã có thể đăng nhập lại.",
-  "@adminUserEnabled": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminUserEnabled": {"placeholders": {"name": {"type": "String"}}},
   "adminUserNowDisabled": "{name} không đăng nhập được nữa.",
-  "@adminUserNowDisabled": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminUserNowDisabled": {"placeholders": {"name": {"type": "String"}}},
   "adminDevices": "Thiết bị",
   "adminNoDevices": "Chưa có thiết bị nào đăng nhập.",
   "adminForgetDevice": "Quên thiết bị này",
@@ -162,33 +111,23 @@
   "adminPluginSuperceded": "Đã có bản thay thế",
   "adminPluginUnsupported": "Không được hỗ trợ",
   "adminPluginChanged": "Đã cập nhật {name}. Một số thay đổi cần khởi động lại.",
-  "@adminPluginChanged": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminPluginChanged": {"placeholders": {"name": {"type": "String"}}},
   "adminPluginRemoved": "Đã gỡ {name}.",
-  "@adminPluginRemoved": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminPluginRemoved": {"placeholders": {"name": {"type": "String"}}},
   "adminUninstallPluginQuestion": "Gỡ {name}?",
-  "@adminUninstallPluginQuestion": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminUninstallPluginQuestion": {"placeholders": {"name": {"type": "String"}}},
   "adminUninstallPluginBody": "Cấu hình của nó vẫn nằm trên máy chủ, nhưng nó ngừng hoạt động cho tới khi được cài lại.",
   "adminRename": "Đổi tên máy chủ",
   "adminRenameHint": "Tên máy chủ",
   "adminRenamed": "Đã đổi tên máy chủ.",
   "adminRestart": "Khởi động lại máy chủ",
   "adminRestartQuestion": "Khởi động lại {name}?",
-  "@adminRestartQuestion": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminRestartQuestion": {"placeholders": {"name": {"type": "String"}}},
   "adminRestartBody": "Mọi người đang xem sẽ bị ngắt. Máy chủ sẽ tự chạy lại.",
   "adminRestarting": "Đã yêu cầu khởi động lại.",
   "adminShutdown": "Tắt máy chủ",
   "adminShutdownQuestion": "Tắt {name}?",
-  "@adminShutdownQuestion": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@adminShutdownQuestion": {"placeholders": {"name": {"type": "String"}}},
   "adminShutdownBody": "Mọi người đang xem sẽ bị ngắt, và không có gì ở đây bật lại được - phải có người bật trực tiếp tại máy.",
   "adminShuttingDown": "Đã yêu cầu tắt máy chủ.",
   "adminCannotRestart": "Máy chủ này không tự khởi động lại được.",
@@ -206,21 +145,13 @@
   "noSuggestions": "Chưa có gì để gợi ý — xem gì đó rồi quay lại nhé.",
   "emptyPlaylist": "Danh sách phát này trống.",
   "becauseYouWatched": "Vì bạn đã xem {title}",
-  "@becauseYouWatched": {
-    "placeholders": { "title": { "type": "String" } }
-  },
+  "@becauseYouWatched": {"placeholders": {"title": {"type": "String"}}},
   "becauseYouLike": "Vì bạn thích {title}",
-  "@becauseYouLike": {
-    "placeholders": { "title": { "type": "String" } }
-  },
+  "@becauseYouLike": {"placeholders": {"title": {"type": "String"}}},
   "directedBy": "Đạo diễn bởi {name}",
-  "@directedBy": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@directedBy": {"placeholders": {"name": {"type": "String"}}},
   "starring": "Có sự tham gia của {name}",
-  "@starring": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@starring": {"placeholders": {"name": {"type": "String"}}},
   "suggestedForYou": "Gợi ý cho bạn",
   "itemCount": "{count} mục",
   "unwatched": "Chưa xem",
@@ -234,7 +165,6 @@
   "pause": "Tạm dừng",
   "download": "Tải xuống",
   "bookmark": "Đánh dấu",
-
   "searchEverything": "Tìm mọi thứ",
   "voiceSearch": "Tìm bằng giọng nói",
   "recentSearches": "Tìm kiếm gần đây",
@@ -242,14 +172,12 @@
   "allSources": "Mọi nguồn",
   "backToSources": "Quay lại danh sách nguồn",
   "showMoreFrom": "Xem thêm {count} kết quả từ {source}",
-
   "downloads": "Tải xuống",
   "nothingDownloaded": "Chưa tải gì",
   "downloadsBody": "Mặc định chỉ tải khi có Wi-Fi và sẽ hết hạn theo chính sách của máy chủ.",
   "pauseDownload": "Tạm dừng",
   "cancelDownload": "Huỷ",
   "availableOffline": "Xem được ngoại tuyến",
-
   "settingsAppearance": "Giao diện",
   "settingsAppearanceSub": "Chủ đề, màu nhấn, mật độ",
   "settingsGeneral": "Chung",
@@ -262,12 +190,10 @@
   "settingsSubtitleSub": "Kiểu chữ, thứ tự ngôn ngữ, độ trễ",
   "settingsAbout": "Giới thiệu",
   "settingsAboutSub": "Phiên bản, giấy phép, chẩn đoán",
-
   "language": "Ngôn ngữ",
   "languageSystem": "Theo hệ thống",
   "languageEnglish": "English",
   "languageVietnamese": "Tiếng Việt",
-
   "theme": "Chủ đề",
   "themeLight": "Sáng",
   "themeDark": "Tối",
@@ -280,7 +206,6 @@
   "layout": "Bố cục",
   "defaultLibraryView": "Kiểu xem thư viện mặc định",
   "density": "Mật độ",
-
   "playback": "Phát lại",
   "decoder": "Bộ giải mã",
   "hardwareDecodingAuto": "Tự động (an toàn)",
@@ -290,7 +215,7 @@
   "hardwareDecodingSoftware": "Chỉ phần mềm",
   "hardwareDecodingSoftwareSub": "CPU giải mã tất cả. Tốn pin hơn, nhưng phát được thứ phần cứng làm hỏng",
   "decodingNow": "Đang giải mã bằng: {decoder}",
-  "@decodingNow": { "placeholders": { "decoder": { "type": "String" } } },
+  "@decodingNow": {"placeholders": {"decoder": {"type": "String"}}},
   "decodingSoftware": "phần mềm",
   "hardwareDecoding": "Giải mã phần cứng",
   "resumeBehaviour": "Cách tiếp tục xem",
@@ -320,7 +245,6 @@
   "onCellular": "Khi dùng dữ liệu di động",
   "original": "Nguyên bản",
   "megabitsPerSecond": "{value} Mbps",
-
   "style": "Kiểu hiển thị",
   "font": "Phông chữ",
   "textSize": "Cỡ chữ",
@@ -332,7 +256,6 @@
   "syncOffset": "Độ lệch đồng bộ",
   "subtitlePreview": "Thuỷ triều đổi chiều lúc nửa đêm.",
   "percent": "{value}%",
-
   "versionAndBuild": "Phiên bản {version} · bản dựng {build}",
   "upToDate": "Đã là mới nhất",
   "checkForUpdates": "Kiểm tra cập nhật",
@@ -343,7 +266,6 @@
   "sourceCode": "Mã nguồn",
   "thisDeviceInfo": "Thiết bị này",
   "notAffiliated": "mPlayer không liên kết, không được bảo trợ hay tài trợ bởi các dự án Jellyfin, Emby hay Plex.",
-
   "subtitles": "Phụ đề",
   "audio": "Âm thanh",
   "quality": "Chất lượng",
@@ -375,37 +297,36 @@
   "playerSettings": "Cài đặt trình phát",
   "on": "Bật",
   "back10": "Lùi {seconds} giây",
-  "@back10": { "placeholders": { "seconds": { "type": "int" } } },
+  "@back10": {"placeholders": {"seconds": {"type": "int"}}},
   "forward30": "Tiến {seconds} giây",
-  "@forward30": { "placeholders": { "seconds": { "type": "int" } } },
+  "@forward30": {"placeholders": {"seconds": {"type": "int"}}},
   "nothingToPlay": "Chưa có gì để phát — hãy chọn tệp từ tab Tệp.",
-
   "previousFile": "Trước",
   "nextFile": "Tiếp",
   "nextEpisode": "Tập tiếp theo",
   "nextVideo": "Video tiếp theo",
   "loading": "Đang tải",
   "aspectRatioValue": "Tỉ lệ khung hình: {mode}",
-  "@aspectRatioValue": { "placeholders": { "mode": { "type": "String" } } },
+  "@aspectRatioValue": {"placeholders": {"mode": {"type": "String"}}},
   "rotationValue": "Xoay: {mode}",
-  "@rotationValue": { "placeholders": { "mode": { "type": "String" } } },
+  "@rotationValue": {"placeholders": {"mode": {"type": "String"}}},
   "subtitlesValue": "Phụ đề: {track}",
-  "@subtitlesValue": { "placeholders": { "track": { "type": "String" } } },
+  "@subtitlesValue": {"placeholders": {"track": {"type": "String"}}},
   "audioValue": "Âm thanh: {track}",
-  "@audioValue": { "placeholders": { "track": { "type": "String" } } },
+  "@audioValue": {"placeholders": {"track": {"type": "String"}}},
   "loop": "Lặp",
   "loopOne": "Lặp lại video này",
   "loopAll": "Lặp lại cả thư mục",
   "loopValue": "Lặp: {mode}",
-  "@loopValue": { "placeholders": { "mode": { "type": "String" } } },
+  "@loopValue": {"placeholders": {"mode": {"type": "String"}}},
   "qualityValue": "Chất lượng: {label}",
-  "@qualityValue": { "placeholders": { "label": { "type": "String" } } },
+  "@qualityValue": {"placeholders": {"label": {"type": "String"}}},
   "screenshot": "Chụp ảnh màn hình",
   "screenshotSaved": "Đã lưu ảnh vào {folder}",
-  "@screenshotSaved": { "placeholders": { "folder": { "type": "String" } } },
+  "@screenshotSaved": {"placeholders": {"folder": {"type": "String"}}},
   "screenshotFailed": "Không chụp được khung hình này",
   "speedValue": "Tốc độ: {speed}×",
-  "@speedValue": { "placeholders": { "speed": { "type": "String" } } },
+  "@speedValue": {"placeholders": {"speed": {"type": "String"}}},
   "audioDelay": "Độ trễ âm thanh",
   "openSubtitleFile": "Mở tệp phụ đề…",
   "playOn": "Phát trên",
@@ -413,15 +334,8 @@
   "noDevicesFound": "Không tìm thấy thiết bị nào. Kiểm tra TV đã bật và cùng mạng với điện thoại.",
   "stopCasting": "Dừng truyền",
   "playingOn": "Đang phát trên {device}",
-  "@playingOn": { "placeholders": { "device": { "type": "String" } } },
+  "@playingOn": {"placeholders": {"device": {"type": "String"}}},
   "couldNotCast": "Không truyền được tới thiết bị đó.",
-  "grantedFolder": "Thư mục đã cấp quyền",
-  "removeFolder": "Gỡ thư mục",
-  "addFolder": "Thêm thư mục",
-  "addFolderSubtitle": "Cho video mà chỉ mục media không liệt kê",
-  "allowAccess": "Cho phép truy cập",
-  "editShare": "Sửa chia sẻ",
-  "editShareSubtitle": "Đổi tên, địa chỉ hoặc thông tin đăng nhập",
   "hardwareDecodingFallback": "Tự chuyển sang phần mềm khi codec không được hỗ trợ",
   "audioDelaySub": "Dịch tiếng so với hình",
   "autoPlayNextSub": "Phát tiếp video kế trong thư mục",
@@ -462,10 +376,10 @@
   "privacySub": "Cái gì rời khỏi máy này, và cái gì thì không",
   "checking": "Đang kiểm tra…",
   "updateAvailable": "Đã có bản {version}",
-  "@updateAvailable": { "placeholders": { "version": { "type": "String" } } },
+  "@updateAvailable": {"placeholders": {"version": {"type": "String"}}},
   "couldNotCheck": "Không kiểm tra được",
   "couldNotOpen": "Không mở được {url}",
-  "@couldNotOpen": { "placeholders": { "url": { "type": "String" } } },
+  "@couldNotOpen": {"placeholders": {"url": {"type": "String"}}},
   "build": "Bản dựng",
   "version": "Phiên bản",
   "applicationId": "Mã ứng dụng",
@@ -491,12 +405,11 @@
   "noChaptersInFile": "Tệp này không có chương",
   "locked": "Đã khoá",
   "milliseconds": "{count} ms",
-  "@milliseconds": { "placeholders": { "count": { "type": "int" } } },
+  "@milliseconds": {"placeholders": {"count": {"type": "int"}}},
   "seconds": "{count} giây",
-  "@seconds": { "placeholders": { "count": { "type": "int" } } },
+  "@seconds": {"placeholders": {"count": {"type": "int"}}},
   "timeLeft": "còn {time}",
-  "@timeLeft": { "placeholders": { "time": { "type": "String" } } },
-
+  "@timeLeft": {"placeholders": {"time": {"type": "String"}}},
   "cancel": "Huỷ",
   "create": "Tạo",
   "save": "Lưu",
@@ -525,17 +438,9 @@
   "qualityOriginalDetail": "Không mã hoá lại. Hình đẹp nhất, và là lựa chọn duy nhất không phụ thuộc CPU máy chủ.",
   "playbackQuality": "Chất lượng phát",
   "episodeOf": "P{season}T{episode}",
-  "@episodeOf": {
-    "placeholders": {
-      "season": { "type": "int" },
-      "episode": { "type": "int" }
-    }
-  },
-
+  "@episodeOf": {"placeholders": {"season": {"type": "int"}, "episode": {"type": "int"}}},
   "signedInAs": "Đang đăng nhập bằng {name}",
-  "@signedInAs": {
-    "placeholders": { "name": { "type": "String" } }
-  },
+  "@signedInAs": {"placeholders": {"name": {"type": "String"}}},
   "signInAgain": "Phiên đã lưu vẫn dùng được",
   "change": "Đổi",
   "noServersYet": "Chưa có máy chủ nào.",
@@ -555,51 +460,37 @@
   "seriesStatus": "Trạng thái",
   "statusContinuing": "Đang chiếu",
   "statusEnded": "Đã kết thúc",
-
   "gridSize": "Cỡ lưới",
   "gridColumns": "{count} mỗi hàng",
-  "@gridColumns": {
-    "placeholders": { "count": { "type": "int" } }
-  },
-
+  "@gridColumns": {"placeholders": {"count": {"type": "int"}}},
   "sortName": "A–Z",
   "sortDateAdded": "Mới thêm",
   "sortReleaseDate": "Ngày phát hành",
   "sortDatePlayed": "Mới xem",
   "sortRandom": "Ngẫu nhiên",
-
   "resumeAt": "Xem tiếp · {time}",
-  "@resumeAt": { "placeholders": { "time": { "type": "String" } } },
+  "@resumeAt": {"placeholders": {"time": {"type": "String"}}},
   "watched": "đã xem",
   "episodeNew": "mới",
-
   "seasonCount": "{count} mùa",
-  "@seasonCount": { "placeholders": { "count": { "type": "int" } } },
+  "@seasonCount": {"placeholders": {"count": {"type": "int"}}},
   "episodeCount": "{count} tập",
-  "@episodeCount": { "placeholders": { "count": { "type": "int" } } },
+  "@episodeCount": {"placeholders": {"count": {"type": "int"}}},
   "seasonNumber": "Mùa {number}",
-  "@seasonNumber": { "placeholders": { "number": { "type": "int" } } },
+  "@seasonNumber": {"placeholders": {"number": {"type": "int"}}},
   "specials": "Đặc biệt",
-
   "kindMovie": "Phim",
   "kindSeries": "Phim bộ",
   "kindSeason": "Mùa",
   "kindEpisode": "Tập",
   "noResults": "Không có kết quả nào",
-
   "clearAll": "Xoá hết",
-  "clearContinueWatchingTitle": "Xoá kệ Xem tiếp?",
-  "clearContinueWatchingBody": "Mọi vị trí đã lưu sẽ bị quên, chỉ trên máy này. Không xoá gì trên chia sẻ hay máy chủ của bạn.",
-  "continueWatchingCleared": "Đã xoá kệ Xem tiếp",
-
   "rotationAuto": "Tự động",
   "rotationLandscape": "Ngang",
   "rotationPortrait": "Dọc",
-
   "connected": "Đã kết nối",
   "offline": "Ngoại tuyến",
   "offlineSkipped": "Ngoại tuyến — sẽ bỏ qua",
-
   "sortBy": "Sắp xếp theo",
   "sortOrder": "Thứ tự",
   "sortAscending": "Tăng dần",
@@ -607,7 +498,6 @@
   "sortCommunityRating": "Điểm cộng đồng",
   "sortEpisodeAdded": "Tập mới thêm gần nhất",
   "sortParentalRating": "Phân loại độ tuổi",
-
   "filterStatus": "Trạng thái",
   "filterFeatures": "Nội dung kèm theo",
   "filterGenres": "Thể loại",
