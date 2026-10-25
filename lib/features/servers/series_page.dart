@@ -115,8 +115,19 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
     // stacking them above the episode list would push the episodes — the
     // reason the screen exists — most of a screen down.
     final tabs = _controllerFor(series.seasons.length + 1);
+    final compact = context.windowSize == WindowSize.compact;
 
     return Scaffold(
+      // Play sits at the foot of the screen on a phone. The series header is
+      // a poster beside a block of facts, so the glyph row under it is most
+      // of a screen down on a tall display — and it scrolls away the moment
+      // the user reaches the episode list, which is the reason they came.
+      bottomNavigationBar: compact
+          ? ItemPrimaryActionBar(
+              item: item,
+              onPlay: () => _playNext(episodes, item),
+            )
+          : null,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => <Widget>[
           SliverToBoxAdapter(
@@ -147,6 +158,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
               // in the row itself, or one tap into its overflow.
               actionBar: ItemActionIcons(
                 item: item,
+                primary: !compact,
                 seriesId: item.id,
                 // Continue where the series is, which is whichever episode
                 // the server is holding a position for — not the series

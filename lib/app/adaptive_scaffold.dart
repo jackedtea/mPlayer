@@ -12,7 +12,7 @@ import '../l10n/app_localizations.dart';
 import 'system_ui.dart';
 import 'tokens.dart';
 
-/// One of the two top-level destinations.
+/// One of the three top-level destinations.
 @immutable
 class NavDestination {
   const NavDestination({
@@ -32,9 +32,11 @@ class NavDestination {
 /// Built per-frame rather than as a const list: the labels are translated, so
 /// they have to be resolved against the current locale.
 ///
-/// Two, where there were three. Storage is gone with the device library it
-/// browsed — there is nothing local left to play, so a tab listing the
-/// phone's videos could only lead to a dead end.
+/// **Servers · Search · Settings.** Storage went with the device library it
+/// browsed, which left two; Settings takes the third slot rather than sitting
+/// as an icon in the top-right corner of two screens, where a thumb cannot
+/// reach it on a tall phone. The design asked for a 3-destination bar, and
+/// this is one again.
 List<NavDestination> navDestinationsFor(AppLocalizations l10n) {
   return <NavDestination>[
     NavDestination(
@@ -46,6 +48,11 @@ List<NavDestination> navDestinationsFor(AppLocalizations l10n) {
       label: l10n.navSearch,
       icon: Icons.search_rounded,
       selectedIcon: Icons.search_rounded,
+    ),
+    NavDestination(
+      label: l10n.settings,
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings_rounded,
     ),
   ];
 }
@@ -130,7 +137,6 @@ class _RailShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
     final scheme = context.colors;
 
     return Scaffold(
@@ -141,19 +147,6 @@ class _RailShell extends StatelessWidget {
             selectedIndex: shell.currentIndex,
             onDestinationSelected: onGo,
             labelType: NavigationRailLabelType.all,
-            trailing: Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: spacing.lg),
-                  child: IconButton(
-                    icon: const Icon(Icons.settings_rounded),
-                    tooltip: AppLocalizations.of(context).settings,
-                    onPressed: () => context.push('/settings'),
-                  ),
-                ),
-              ),
-            ),
             destinations: <NavigationRailDestination>[
               for (final NavDestination d in navDestinationsFor(AppLocalizations.of(context)))
                 NavigationRailDestination(
@@ -198,24 +191,6 @@ class _DrawerShell extends StatelessWidget {
                     selectedIcon: Icon(d.selectedIcon),
                     label: Text(d.label),
                   ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    spacing.xl + spacing.xs,
-                    spacing.md,
-                    spacing.xl + spacing.xs,
-                    spacing.sm,
-                  ),
-                  child: const Divider(),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: spacing.md),
-                  child: ListTile(
-                    leading: const Icon(Icons.settings_rounded),
-                    title: Text(AppLocalizations.of(context).settings),
-                    shape: const StadiumBorder(),
-                    onTap: () => context.push('/settings'),
-                  ),
-                ),
               ],
             ),
           ),

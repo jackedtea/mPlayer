@@ -32,14 +32,6 @@ class ServersListPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.switchServer),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            tooltip: l10n.settings,
-            onPressed: () => context.push('/settings'),
-          ),
-          SizedBox(width: spacing.sm),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         // Distinct, because the rail's action outlives page transitions and

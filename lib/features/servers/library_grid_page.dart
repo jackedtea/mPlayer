@@ -104,6 +104,12 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     final viewId = widget.viewId;
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'library-search',
+        tooltip: l10n.navSearch,
+        onPressed: () => context.go('/search'),
+        child: const Icon(Icons.search_rounded),
+      ),
       appBar: AppBar(
         backgroundColor: scheme.surfaceContainerHigh,
         leading: IconButton(
@@ -117,11 +123,9 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
             tooltip: l10n.gridSize,
             onPressed: _pickColumns,
           ),
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            tooltip: l10n.navSearch,
-            onPressed: () => context.go('/search'),
-          ),
+          // Search moved to the FAB: it is the frequent action here, and the
+          // top-right corner is the one place a thumb cannot reach. Grid size
+          // stays up here — it is set once and then left alone.
         ],
         bottom: _hasTabs
             ? TabBar(

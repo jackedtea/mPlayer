@@ -88,14 +88,10 @@ class SettingsIndexPage extends ConsumerWidget {
     final isAdministrator = ref.watch(isAdministratorProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: l10n.actionBack,
-          onPressed: () => context.pop(),
-        ),
-        title: Text(l10n.settings),
-      ),
+      // No back arrow: Settings is a navigation destination now, not a
+      // screen pushed over another one, so there is nothing behind it to pop
+      // to. Leaving it means pressing another destination in the bottom bar.
+      appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         children: <Widget>[
           for (final _SettingsEntry e

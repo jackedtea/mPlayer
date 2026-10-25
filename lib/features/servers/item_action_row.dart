@@ -17,6 +17,12 @@ import 'item_actions.dart';
 /// same one in both places. The choices themselves come from
 /// [itemActionsFor], which the episode row's menu renders too — this widget
 /// only decides that they are drawn as chips.
+///
+/// On a phone the detail screens pass `primary: false` and put Play in an
+/// [ItemPrimaryActionBar] pinned to the bottom of the scaffold instead. The
+/// reason is reach: this row sits under a 268dp backdrop, so on a tall phone
+/// the one button the screen exists for lands in the middle of the display
+/// and scrolls away entirely once the user reads the overview.
 class ItemActionRow extends ConsumerWidget {
   const ItemActionRow({
     super.key,
@@ -28,6 +34,7 @@ class ItemActionRow extends ConsumerWidget {
     this.seriesId,
     this.downloadsAll = false,
     this.onMediaInfo,
+    this.primary = true,
   });
 
   final ServerItem item;
@@ -55,6 +62,15 @@ class ItemActionRow extends ConsumerWidget {
   /// Opens the stream list. Null on screens that have no such panel.
   final Future<void> Function()? onMediaInfo;
 
+  /// Whether to draw the Play button and Start-over beside it.
+  ///
+  /// False leaves only the chip strip, because an [ItemPrimaryActionBar] at
+  /// the foot of the screen is carrying the primary action. [onPlay] is still
+  /// required either way — the widget stays one thing to construct, and a
+  /// caller that passes `primary: false` without a bar to go with it has a
+  /// screen with no way to play, which is louder than a null check.
+  final bool primary;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final spacing = context.spacing;
@@ -76,34 +92,36 @@ class ItemActionRow extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: SizedBox(
-                height: 52,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(radii.action),
+        if (primary) ...<Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(radii.action),
+                      ),
                     ),
+                    onPressed: onPlay,
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: Text(started ? l10n.continueWatching : l10n.play),
                   ),
-                  onPressed: onPlay,
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(started ? l10n.continueWatching : l10n.play),
                 ),
               ),
-            ),
-            if (started && onStartOver != null) ...<Widget>[
-              SizedBox(width: spacing.md),
-              _Square(
-                icon: Icons.replay_rounded,
-                tooltip: l10n.startOver,
-                onPressed: onStartOver!,
-              ),
+              if (started && onStartOver != null) ...<Widget>[
+                SizedBox(width: spacing.md),
+                _Square(
+                  icon: Icons.replay_rounded,
+                  tooltip: l10n.startOver,
+                  onPressed: onStartOver!,
+                ),
+              ],
             ],
-          ],
-        ),
-        SizedBox(height: spacing.md),
+          ),
+          SizedBox(height: spacing.md),
+        ],
         // One scrolling row rather than a wrap: the list grows by one every
         // time a feature lands, and a wrap turns that into a second row of
         // buttons pushing the description off the screen.
@@ -144,6 +162,7 @@ class ItemActionIcons extends ConsumerWidget {
     this.downloadsAll = false,
     this.onMediaInfo,
     this.visible = 4,
+    this.primary = true,
   });
 
   final ServerItem item;
@@ -159,6 +178,10 @@ class ItemActionIcons extends ConsumerWidget {
 
   /// How many actions are drawn as glyphs before the overflow menu.
   final int visible;
+
+  /// Whether the Play glyph leads the row. False on a phone, where an
+  /// [ItemPrimaryActionBar] carries it at the foot of the screen instead.
+  final bool primary;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -190,13 +213,14 @@ class ItemActionIcons extends ConsumerWidget {
         // Play carries no label here, so it carries the tooltip instead: the
         // difference between starting a series and resuming one is the only
         // thing the row cannot say in a glyph.
-        IconButton(
-          icon: const Icon(Icons.play_arrow_rounded),
-          iconSize: 30,
-          color: scheme.onSurface,
-          tooltip: started ? l10n.continueWatching : l10n.play,
-          onPressed: onPlay,
-        ),
+        if (primary)
+          IconButton(
+            icon: const Icon(Icons.play_arrow_rounded),
+            iconSize: 30,
+            color: scheme.onSurface,
+            tooltip: started ? l10n.continueWatching : l10n.play,
+            onPressed: onPlay,
+          ),
         for (final ItemAction action in shown)
           IconButton(
             icon: Icon(action.icon),
@@ -337,6 +361,91 @@ class ItemActionMenu extends ConsumerWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The primary action, pinned to the foot of a detail screen.
+///
+/// **This exists for one-handed use.** The detail screens lead with a 268dp
+/// backdrop, so the Play button in [ItemActionRow] lands near the middle of a
+/// tall phone and leaves the screen as soon as the user scrolls into the
+/// overview or the cast list. A bar in the scaffold's `bottomNavigationBar`
+/// slot is in the thumb's arc and stays there whatever the list is doing.
+///
+/// Only the primary action is here, never the chips: those are still inline,
+/// and duplicating them would put the same button in two places on one
+/// screen. The chips are also the ones a user presses once a month, which is
+/// exactly what a reach is affordable for.
+class ItemPrimaryActionBar extends StatelessWidget {
+  const ItemPrimaryActionBar({
+    super.key,
+    required this.item,
+    required this.onPlay,
+    this.onStartOver,
+  });
+
+  final ServerItem item;
+
+  /// Resume where the server says the user got to.
+  final VoidCallback onPlay;
+
+  /// Play from the beginning. Null hides it.
+  final VoidCallback? onStartOver;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+    final radii = context.radii;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+
+    final started = (item.position ?? Duration.zero) > Duration.zero;
+
+    return Material(
+      // A surface of its own, so the bar reads as chrome rather than as the
+      // last row of the list scrolling under it.
+      color: scheme.surfaceContainer,
+      child: SafeArea(
+        // The scaffold's own inset handles the top; this is the bottom edge,
+        // where the navigation bar or the gesture pill is.
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            spacing.lg,
+            spacing.md,
+            spacing.lg,
+            spacing.md,
+          ),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(radii.action),
+                      ),
+                    ),
+                    onPressed: onPlay,
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: Text(started ? l10n.continueWatching : l10n.play),
+                  ),
+                ),
+              ),
+              if (started && onStartOver != null) ...<Widget>[
+                SizedBox(width: spacing.md),
+                _Square(
+                  icon: Icons.replay_rounded,
+                  tooltip: l10n.startOver,
+                  onPressed: onStartOver!,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

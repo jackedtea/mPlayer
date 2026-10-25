@@ -60,8 +60,21 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
 
     final movie = movieDetailFrom(item, l10n);
     final padding = spacing.screenPadding(context.windowSize);
+    final compact = context.windowSize == WindowSize.compact;
 
     return Scaffold(
+      // The primary action lives at the foot of the screen on a phone, where
+      // a thumb reaches without shifting grip, and inline above the overview
+      // on anything wider — a tablet or a desktop window is not held in one
+      // hand, and the design puts the row under the backdrop there.
+      bottomNavigationBar: compact
+          ? ItemPrimaryActionBar(
+              item: item,
+              onPlay: () => playServerItem(context, ref, item.id),
+              onStartOver: () =>
+                  playServerItem(context, ref, item.id, fromStart: true),
+            )
+          : null,
       body: ListView(
         padding: EdgeInsets.only(
           bottom: spacing.xl * 2 + context.systemBottomInset,
@@ -93,6 +106,7 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
               children: <Widget>[
                 ItemActionRow(
                   item: item,
+                  primary: !compact,
                   onPlay: () => playServerItem(context, ref, item.id),
                   onStartOver: () =>
                       playServerItem(context, ref, item.id, fromStart: true),

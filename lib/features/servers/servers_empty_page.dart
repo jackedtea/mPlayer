@@ -5,7 +5,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
@@ -41,14 +40,6 @@ class ServersEmptyPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).serverTab),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            tooltip: AppLocalizations.of(context).settings,
-            onPressed: () => context.push('/settings'),
-          ),
-          SizedBox(width: spacing.sm),
-        ],
       ),
       body: Column(
         children: <Widget>[

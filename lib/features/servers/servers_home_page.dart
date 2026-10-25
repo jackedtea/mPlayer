@@ -47,6 +47,16 @@ class _ServersHomePageState extends ConsumerState<ServersHomePage> {
     final username = profile?.username ?? '';
 
     return Scaffold(
+      // Search is the one action on this screen a user reaches for often, so
+      // it sits in the thumb's arc rather than in the far top corner.
+      floatingActionButton: FloatingActionButton(
+        // Explicit tag: this screen outlives page transitions and would
+        // collide with another page's default tag otherwise.
+        heroTag: 'home-search',
+        tooltip: AppLocalizations.of(context).searchThisServer,
+        onPressed: () => context.go('/search'),
+        child: const Icon(Icons.search_rounded),
+      ),
       appBar: AppBar(
         // Not a back button. When a server is configured this screen *is* the
         // Server tab's root, so there was nothing under it to pop and the
@@ -101,17 +111,11 @@ class _ServersHomePageState extends ConsumerState<ServersHomePage> {
             ),
           ],
         ),
+        // **Cast is gone from here**, not moved: it was a `_notYet` stub, and
+        // casting needs a resolved stream and a position to start from, so it
+        // belongs in the player — which has both and has the remote with it.
+        // Search moved to the FAB below, where a thumb reaches it.
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.cast_rounded),
-            tooltip: AppLocalizations.of(context).cast,
-            onPressed: () => _notYet(context, 'Cast'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            tooltip: AppLocalizations.of(context).searchThisServer,
-            onPressed: () => context.go('/search'),
-          ),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: spacing.sm),
             child: CircleAvatar(
@@ -325,10 +329,4 @@ class _LibraryGrid extends ConsumerWidget {
       ),
     );
   }
-}
-
-void _notYet(BuildContext context, String what) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$what — not implemented yet')),
-  );
 }

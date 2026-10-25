@@ -65,6 +65,10 @@ Three consequences worth knowing:
 The one local file still opened is a **subtitle**:
 `features/player/subtitle_picker.dart`, for a `.srt` the server does not have.
 
+The server screens were then reworked for **one-handed use** — Settings moved
+into the bottom bar, the detail screens pin Play to the foot of the scaffold
+on a phone, and Search became a FAB. See "One-handed use, and what it moved".
+
 ### Verified
 
 - `flutter analyze` clean; `flutter test` **492 passing, 1 failing**.
@@ -411,6 +415,50 @@ controller appends each with `sub-files-append` **after** the open, without sele
 which to show is smart subtitles' decision or the user's. `DeliveryMethod` is checked as
 well as `DeliveryUrl`, because the URL survives on a stream the server has since decided
 to burn in — acting on it then draws subtitles twice.
+
+## One-handed use, and what it moved
+
+The server UI is driven with one thumb on a tall phone, which is a constraint
+on **where** a control sits, not on what it is. Three things followed from it,
+and `test/one_handed_test.dart` measures each against the bottom of the
+window — not "a Play button exists somewhere", which is exactly the assertion
+that allowed the old layout.
+
+- **Settings is a navigation destination**, not an app-bar icon. It was in the
+  top-right corner of two screens, the one corner a thumb cannot reach on a
+  tall phone. It is now the third branch of the shell — Servers · Search ·
+  Settings — which also puts the design's 3-destination bar back after
+  Storage left a gap. Its sub-pages are nested **inside** the branch, so the
+  navigation bar stays up while the user is in them and leaving is another
+  thumb-press rather than a reach for the back arrow. `SettingsIndexPage`
+  therefore draws no back arrow: there is nothing behind it to pop.
+- **The detail screens pin their primary action to the foot of the scaffold**
+  on compact widths only (`ItemPrimaryActionBar`). The action row sits under a
+  268dp backdrop, so Play landed mid-display on a phone and scrolled away
+  entirely once the user read the overview. The inline row is passed
+  `primary: false` there so Play is not drawn twice; at 600dp and up the bar
+  is absent and the row is whole, because nothing holds a tablet in one hand
+  and the design puts the row under the backdrop.
+- **Search is a FAB on the two browse screens**, not an app-bar action — it is
+  the frequent one, so it gets the thumb's arc. Grid size stays in the app bar
+  because it is set once. The Cast button beside it was **removed rather than
+  moved**: it was a `_notYet` stub, and casting needs a resolved stream and a
+  position, so it belongs to the player.
+
+**The rail and the drawer are unchanged.** Design non-negotiable 4 fixes
+`NavigationBar` < 600, `NavigationRail` 600–1239, `NavigationDrawer` ≥ 1240,
+and a tablet or a desktop window is not held in one hand — so every change
+above is either compact-only or a routing change that all three share. The one
+thing the wider layouts did lose is their separate Settings affordance: it is
+a destination in the rail and the drawer too, which is what "same routes, same
+state" asks for anyway.
+
+**Still reaching, and deliberately left alone:** the library grid's five-tab
+scrolling `TabBar` and the season tabs on a series both sit at the top. Moving
+tabs to the bottom is the most debatable change of the set — it costs the
+at-a-glance row and is not a pattern M3 offers — so it is a decision to take
+on purpose rather than a thing to slip in. The sort and filter sheets are
+already bottom sheets and need nothing.
 
 ## Layout rules learned the hard way
 

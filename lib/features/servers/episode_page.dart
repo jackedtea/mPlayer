@@ -79,7 +79,20 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
         : ref.watch(seriesEpisodesProvider(item.seriesId!)).value ??
               const <ServerItem>[];
 
+    final compact = context.windowSize == WindowSize.compact;
+
     return Scaffold(
+      // The primary action lives at the foot of the screen on a phone, where
+      // a thumb reaches without shifting grip, and inline above the overview
+      // on anything wider — a tablet or a desktop window is not held in one
+      // hand, and the design puts the row under the backdrop there.
+      bottomNavigationBar: compact
+          ? ItemPrimaryActionBar(
+              item: item,
+              onPlay: () => _play(item, playback),
+              onStartOver: () => _play(item, playback, fromStart: true),
+            )
+          : null,
       body: ListView(
         padding: EdgeInsets.only(
           bottom: spacing.xl * 2 + context.systemBottomInset,
@@ -125,6 +138,7 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
               children: <Widget>[
                 ItemActionRow(
                   item: item,
+                  primary: !compact,
                   seriesId: item.seriesId,
                   shuffleFrom: siblings,
                   playlistIds: <String>[item.id],

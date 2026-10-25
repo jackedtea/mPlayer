@@ -70,52 +70,66 @@ GoRouter buildRouter() {
               ),
             ],
           ),
-        ],
-      ),
-      // Settings sits above the shell: it covers the navigation affordance
-      // rather than living inside a branch.
-      GoRoute(
-        path: '/settings',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => const SettingsIndexPage(),
-        routes: <RouteBase>[
-          GoRoute(
-            path: 'appearance',
-            builder: (context, state) => const AppearancePage(),
-          ),
-          GoRoute(
-            path: 'general',
-            builder: (context, state) => const GeneralSettingsPage(),
-          ),
-          GoRoute(
-            path: 'player',
-            builder: (context, state) => const PlayerSettingsPage(),
-          ),
-          GoRoute(
-            path: 'audio',
-            builder: (context, state) => const AudioSettingsPage(),
-          ),
-          GoRoute(
-            path: 'subtitle',
-            builder: (context, state) => const SubtitleSettingsPage(),
-          ),
-          GoRoute(
-            path: 'about',
-            builder: (context, state) => const AboutPage(),
-          ),
-          GoRoute(
-            path: 'diagnostics',
-            builder: (context, state) => const DiagnosticsPage(),
-          ),
-          GoRoute(
-            path: 'privacy',
-            builder: (context, state) => const PrivacyPage(),
+          // **Settings is a destination, not an app-bar button.**
+          //
+          // It used to sit above the shell, reached by an icon in the
+          // top-right corner of two screens — the one corner of a tall phone
+          // a thumb cannot reach without shifting grip. A third branch puts
+          // it in the bottom bar instead, which is both within reach and what
+          // the design's 3-destination bar asked for before Storage was
+          // removed and left only two.
+          //
+          // Its sub-pages are nested *inside* the branch on purpose: the
+          // navigation bar stays visible while the user is in them, so
+          // leaving Settings is one thumb-press on another destination rather
+          // than a reach for the back arrow.
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: '/settings',
+                builder: (context, state) => const SettingsIndexPage(),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'appearance',
+                    builder: (context, state) => const AppearancePage(),
+                  ),
+                  GoRoute(
+                    path: 'general',
+                    builder: (context, state) => const GeneralSettingsPage(),
+                  ),
+                  GoRoute(
+                    path: 'player',
+                    builder: (context, state) => const PlayerSettingsPage(),
+                  ),
+                  GoRoute(
+                    path: 'audio',
+                    builder: (context, state) => const AudioSettingsPage(),
+                  ),
+                  GoRoute(
+                    path: 'subtitle',
+                    builder: (context, state) => const SubtitleSettingsPage(),
+                  ),
+                  GoRoute(
+                    path: 'about',
+                    builder: (context, state) => const AboutPage(),
+                  ),
+                  GoRoute(
+                    path: 'diagnostics',
+                    builder: (context, state) => const DiagnosticsPage(),
+                  ),
+                  GoRoute(
+                    path: 'privacy',
+                    builder: (context, state) => const PrivacyPage(),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
       // Server library screens. They live above the shell rather than inside
-      // the Server branch because they are reached from search and from the
-      // Files tab too, not only from the servers home.
+      // the Server branch because they are reached from Search too, not only
+      // from the servers home.
       GoRoute(
         path: '/servers/home',
         parentNavigatorKey: _rootKey,
