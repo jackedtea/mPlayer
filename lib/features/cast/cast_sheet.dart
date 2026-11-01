@@ -10,6 +10,7 @@ import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../cast/cast_device.dart';
 import 'cast_controller.dart';
+import '../player/stable_insets.dart';
 
 /// The device picker, opened from the player's cast button.
 ///
@@ -25,12 +26,8 @@ class CastSheet extends ConsumerStatefulWidget {
     BuildContext context, {
     required ValueChanged<CastDevice> onSelected,
   }) {
-    return showModalBottomSheet<void>(
+    return showPlayerSheet<void>(
       context: context,
-      // The player is a dark surface and the sheet opens over it.
-      backgroundColor: const Color(0xFF1A2125),
-      useSafeArea: true,
-      isScrollControlled: true,
       builder: (_) => CastSheet(onSelected: onSelected),
     );
   }

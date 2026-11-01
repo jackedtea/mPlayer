@@ -15,6 +15,7 @@ import 'controls_overlay.dart' show loopLabel;
 import 'playback_controller.dart';
 import 'playback_state.dart';
 import 'player_ui_state.dart';
+import 'stable_insets.dart';
 
 /// The player's overflow sheet: a row of quick actions — background play,
 /// speed, loop, screenshot — then sleep timer, audio delay and the decoder,
@@ -56,22 +57,8 @@ class MoreMenu extends ConsumerWidget {
     VoidCallback? onScreenshot,
     VoidCallback? onBackgroundPlay,
   }) {
-    return showModalBottomSheet<void>(
+    return showPlayerSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1A2125),
-      // A sheet left to the default is capped at nine sixteenths of the
-      // screen, which is less than seven rows and a drag handle come to on a
-      // phone held sideways — and the player is *always* held sideways. The
-      // rows past the cap were not scrolled to, they were cut off.
-      isScrollControlled: true,
-      // **Not** `useSafeArea`, which wraps the whole sheet in a `SafeArea`
-      // and so gives up the status bar's strip of height at the far end of
-      // the screen from where the sheet is drawn. On a phone on its side that
-      // strip is the difference between seven rows and six: with the bars up
-      // the last row fell off the bottom, and hiding them put it back. The
-      // sheet takes the whole window and keeps clear of the navigation bar
-      // through the `SafeArea` in its own build, which is the inset that
-      // actually overlaps it.
       builder: (_) => MoreMenu(
         onSpeed: onSpeed,
         onScreenshot: onScreenshot,
@@ -224,10 +211,8 @@ class MoreMenu extends ConsumerWidget {
     final current = ref.read(playerSettingsProvider).hardwareDecoding;
     final stats = ref.read(playbackControllerProvider).stats;
 
-    final chosen = await showModalBottomSheet<HardwareDecoding>(
+    final chosen = await showPlayerSheet<HardwareDecoding>(
       context: context,
-      backgroundColor: const Color(0xFF1A2125),
-      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
         child: ListView(
           shrinkWrap: true,
@@ -286,10 +271,8 @@ class MoreMenu extends ConsumerWidget {
       (l10n.minutes(60), const Duration(minutes: 60)),
     ];
 
-    final chosen = await showModalBottomSheet<(String, Duration?)>(
+    final chosen = await showPlayerSheet<(String, Duration?)>(
       context: context,
-      backgroundColor: const Color(0xFF1A2125),
-      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
         child: ListView(
           shrinkWrap: true,

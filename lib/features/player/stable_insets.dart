@@ -98,3 +98,51 @@ class _StableInsetsState extends State<StableInsets> {
     );
   }
 }
+
+/// The player's sheets' own colour: a dark surface matching the player, so
+/// the app's light theme never flashes over the film.
+const Color playerSheetColor = Color(0xFF1A2125);
+
+/// Opens a bottom sheet over the player, the same size whether the system
+/// bars are showing or not.
+///
+/// A sheet is a route on the root navigator, above [StableInsets], so it used
+/// to see the real insets — which come and go with the sticky-immersive bars.
+/// Opened with the bars up, a sheet sat a status bar's height lower and a
+/// navigation bar's width to one side of the same sheet opened with them
+/// down. So every player sheet goes through here:
+///
+/// - its content gets [StableInsets]' padding — what the bars take when they
+///   show — so the `SafeArea` inside it pads the same either way;
+/// - it is capped below the status bar, so it never reaches the top and the
+///   top inset is removed rather than padded;
+/// - it is centred on the whole screen at a fixed maximum width, not on
+///   whatever the bars left free.
+Future<T?> showPlayerSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+}) {
+  final size = MediaQuery.sizeOf(context);
+  final known = knownSystemInsets(MediaQuery.orientationOf(context));
+
+  return showModalBottomSheet<T>(
+    context: context,
+    backgroundColor: playerSheetColor,
+    isScrollControlled: true,
+    useSafeArea: false,
+    constraints: BoxConstraints(
+      maxWidth: 640,
+      maxHeight: size.height - known.top,
+    ),
+    builder: (sheetContext) => StableInsets(
+      child: Builder(
+        builder: (inner) => MediaQuery.removePadding(
+          context: inner,
+          removeTop: true,
+          child: builder(inner),
+        ),
+      ),
+    ),
+  );
+}
+

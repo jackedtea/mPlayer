@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/app/theme.dart';
 import 'package:mplayer/features/player/more_menu.dart';
+import 'package:mplayer/features/player/stable_insets.dart';
 import 'package:mplayer/l10n/app_localizations.dart';
 
 /// Opens the sheet on a screen of [size], with [navigationBar] logical pixels
@@ -68,7 +69,12 @@ Future<void> openMoreMenu(
 }
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    // The sheets read the insets the bars were last seen taking, which is
+    // remembered for the whole run; each test starts from its own bars.
+    debugResetKnownSystemInsets();
+  });
 
   group('the more sheet on a short screen', () {
     testWidgets('every row fits above the navigation bar', (tester) async {

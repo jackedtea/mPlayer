@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../app/tokens.dart';
 import '../../core/languages.dart';
 import 'playback_state.dart';
+import 'stable_insets.dart';
 
 /// Bottom sheet for picking a subtitle or audio stream, and for speed.
 ///
@@ -42,13 +43,8 @@ class TrackSheet extends StatelessWidget {
     required ValueChanged<TrackOption> onSelected,
     TrackSheetAction? action,
   }) {
-    return showModalBottomSheet<void>(
+    return showPlayerSheet<void>(
       context: context,
-      // The player is a dark surface; the sheet has to match it rather than
-      // flashing the app's light theme over the video.
-      backgroundColor: const Color(0xFF1A2125),
-      useSafeArea: true,
-      isScrollControlled: true,
       builder: (_) => TrackSheet(
         title: title,
         options: options,
