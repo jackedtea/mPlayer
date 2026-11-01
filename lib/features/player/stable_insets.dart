@@ -118,6 +118,8 @@ const Color playerSheetColor = Color(0xFF1A2125);
 ///   top inset is removed rather than padded;
 /// - it is centred on the whole screen at a fixed maximum width, not on
 ///   whatever the bars left free.
+const double _sheetMaxWidth = 640;
+
 Future<T?> showPlayerSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -125,13 +127,19 @@ Future<T?> showPlayerSheet<T>({
   final size = MediaQuery.sizeOf(context);
   final known = knownSystemInsets(MediaQuery.orientationOf(context));
 
+  // A sheet narrower than the screen is centred, and on a phone on its side
+  // the gap either side of it is wider than the navigation bar or the
+  // camera cut-out. Padding for a bar the sheet does not reach doubled the
+  // rows' side margin for nothing.
+  final margin = (size.width - math.min(size.width, _sheetMaxWidth)) / 2;
+
   return showModalBottomSheet<T>(
     context: context,
     backgroundColor: playerSheetColor,
     isScrollControlled: true,
     useSafeArea: false,
     constraints: BoxConstraints(
-      maxWidth: 640,
+      maxWidth: _sheetMaxWidth,
       maxHeight: size.height - known.top,
     ),
     builder: (sheetContext) => StableInsets(
@@ -139,6 +147,8 @@ Future<T?> showPlayerSheet<T>({
         builder: (inner) => MediaQuery.removePadding(
           context: inner,
           removeTop: true,
+          removeLeft: margin >= known.left,
+          removeRight: margin >= known.right,
           child: builder(inner),
         ),
       ),

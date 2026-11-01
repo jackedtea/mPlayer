@@ -93,9 +93,9 @@ class MoreMenu extends ConsumerWidget {
             // under the rows' text rather than their leading icon; the outer
             // margin is the rows' own.
             padding: EdgeInsets.fromLTRB(
-              context.spacing.xl - context.spacing.sm,
+              context.spacing.lg - context.spacing.sm,
               0,
-              context.spacing.xl - context.spacing.sm,
+              context.spacing.lg - context.spacing.sm,
               context.spacing.xs,
             ),
             child: Row(
@@ -230,9 +230,9 @@ class MoreMenu extends ConsumerWidget {
             if (stats.hwdec != null || stats.videoDecoder != null)
               Padding(
                 padding: EdgeInsets.fromLTRB(
-                  context.spacing.xl,
+                  context.spacing.lg,
                   context.spacing.md,
-                  context.spacing.xl,
+                  context.spacing.lg,
                   context.spacing.xs,
                 ),
                 child: Text(
@@ -375,7 +375,7 @@ class _QuickAction extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
               ),
               if (value != null)
                 Text(
@@ -383,7 +383,7 @@ class _QuickAction extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: active ? accent : muted, fontSize: 11),
+                  style: TextStyle(color: active ? accent : muted, fontSize: 12),
                 ),
             ],
           ),
@@ -411,12 +411,13 @@ class _Row extends StatelessWidget {
     return SizedBox(
       height: 48,
       child: ListTile(
-        // Dense for height only — the sheet has to hold its rows on a phone
-        // on its side — with the same side margin as the track sheets, so
-        // the two read as one family.
-        dense: true,
+        // Compact for height only — the sheet has to hold its rows on a
+        // phone on its side — and not dense, which also shrank the text to
+        // 13pt. The side margin is the track sheets', so the two read as one
+        // family.
+        visualDensity: VisualDensity.compact,
         onTap: onTap,
-        contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.xl),
+        contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.lg),
         leading: Icon(icon, color: Colors.white, size: 22),
         title: Text(label, style: const TextStyle(color: Colors.white)),
         trailing: value == null
