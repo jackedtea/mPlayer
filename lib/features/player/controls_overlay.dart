@@ -389,7 +389,6 @@ class _TopBar extends StatelessWidget {
     final spacing = context.spacing;
     final l10n = AppLocalizations.of(context);
     final state = this_.state;
-    final accent = context.colors.primaryContainer;
     final subtitleOn = state.activeSubtitle?.isOff == false;
 
     return SafeArea(
@@ -453,7 +452,9 @@ class _TopBar extends StatelessWidget {
                 _SmallIcon(
                   // The subtitle glyph, because whether subtitles are on is
                   // the half worth seeing without opening anything; the
-                  // tooltip names both.
+                  // tooltip names both. White either way: the on and off
+                  // glyphs already differ, and the accent tint over a frame
+                  // was harder to read than the plain glyph.
                   icon: subtitleOn
                       ? Icons.subtitles_rounded
                       : Icons.subtitles_off_rounded,
@@ -461,7 +462,6 @@ class _TopBar extends StatelessWidget {
                     state.activeAudio?.label ?? l10n.defaultLabel,
                     state.activeSubtitle?.label ?? l10n.off,
                   ),
-                  colour: subtitleOn ? accent : null,
                   extent: extent,
                   onTap: this_.onTracks,
                 ),

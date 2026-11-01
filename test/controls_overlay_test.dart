@@ -536,6 +536,18 @@ void main() {
 
       expect(find.byIcon(Icons.subtitles_rounded), findsOneWidget);
       expect(find.byIcon(Icons.subtitles_off_rounded), findsNothing);
+      // Not tinted for being on: the accent over a frame was hard to read.
+      expect(
+        tester
+            .widget<IconButton>(
+              find.ancestor(
+                of: find.byIcon(Icons.subtitles_rounded),
+                matching: find.byType(IconButton),
+              ),
+            )
+            .color,
+        Colors.white,
+      );
     });
 
   });
