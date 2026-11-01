@@ -421,7 +421,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       StableInsets(
                         child: ControlsOverlay(
                           chromeVisible: _chromeVisible,
-                          media: widget.media,
+                          // What is playing now, not what the page was opened
+                          // with: after a step to the next episode the two
+                          // differ, and the old title over the new file read
+                          // as the same episode starting again.
+                          media: state.media ?? widget.media,
                           state: state,
                           ui: ui,
                           dragProgress: _dragProgress,
