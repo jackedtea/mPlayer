@@ -66,6 +66,10 @@ enum _Stage {
 
 class _AddServerSheetState extends ConsumerState<AddServerSheet> {
   final _address = TextEditingController();
+
+  /// The name this device shows for the server being edited. Absent when
+  /// adding: a server not yet found has no name to start from.
+  final _name = TextEditingController();
   final _username = TextEditingController();
   final _password = TextEditingController();
 
@@ -122,6 +126,7 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
     // already knows the address of, and making the user re-trigger detection
     // by typing a character is busywork.
     _address.text = editing.uri;
+    _name.text = editing.name;
     _username.text = editing.username;
     WidgetsBinding.instance.addPostFrameCallback((_) => _onAddressChanged());
   }
@@ -133,6 +138,7 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
     _debounce?.cancel();
     unawaited(_auth?.dispose());
     _address.dispose();
+    _name.dispose();
     _username.dispose();
     _password.dispose();
     super.dispose();
@@ -368,7 +374,12 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
         ref.read(serverSessionProvider.notifier).enter();
       }
     } else {
-      await registry.updateProfile(editing.id, info: server, auth: result);
+      await registry.updateProfile(
+        editing.id,
+        info: server,
+        auth: result,
+        name: _name.text,
+      );
     }
 
     if (mounted) Navigator.of(context).pop();
@@ -442,6 +453,38 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                         child: _DetectionLine(error: _error),
                       ),
               ),
+              if (widget.editing != null) ...<Widget>[
+                SizedBox(height: spacing.md),
+                TextField(
+                  controller: _name,
+                  enabled: !busy,
+                  textInputAction: TextInputAction.next,
+                  decoration: _fieldDecoration(
+                    context,
+                    label: l10n.adminRenameHint,
+                    icon: Icons.drive_file_rename_outline_rounded,
+                    // Emptying the field is how to hand the name back to the
+                    // server, so the hint shows which name that is.
+                    hint: _server?.name,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    spacing.lg,
+                    spacing.xs,
+                    spacing.lg,
+                    0,
+                  ),
+                  // Said here, not after Save: a name only this device knows
+                  // surprises someone who expected the web app to change too.
+                  child: Text(
+                    l10n.renameServerLocal,
+                    style: context.texts.bodySmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
               SizedBox(height: spacing.xl),
 
               // --------------------------------------------- 2. account

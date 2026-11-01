@@ -13,7 +13,6 @@ import '../../servers/auto_connect.dart';
 import '../../servers/server_profile.dart';
 import '../../servers/server_registry.dart';
 import '../servers/add_server_sheet.dart';
-import '../servers/rename_server.dart';
 import '../servers/server_library.dart';
 
 /// The server this app is talking to, at the top of Settings, with the two
@@ -59,14 +58,6 @@ class CurrentServerCard extends ConsumerWidget {
                     runSpacing: spacing.sm,
                     alignment: WrapAlignment.end,
                     children: <Widget>[
-                      OutlinedButton.icon(
-                        icon: const Icon(
-                          Icons.drive_file_rename_outline_rounded,
-                          size: 18,
-                        ),
-                        label: Text(l10n.adminRename),
-                        onPressed: () => renameServer(context, ref, profile),
-                      ),
                       OutlinedButton.icon(
                         icon: const Icon(Icons.edit_rounded, size: 18),
                         label: Text(l10n.editServer),

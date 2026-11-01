@@ -341,6 +341,46 @@ void main() {
       },
     );
 
+    group('a name typed in the edit sheet', () {
+      test('is kept on this device', () async {
+        final prefs = await SharedPreferences.getInstance();
+        final container = containerWith(ServerRepository(prefs: prefs));
+        final registry = await registryOf(container);
+        final profile = await registry.add(info: _info, auth: _auth);
+
+        await registry.updateProfile(
+          profile.id,
+          info: _info,
+          auth: _auth,
+          name: '  Living room ',
+        );
+
+        final kept = container.read(serverRegistryProvider).profiles.single;
+        expect(kept.name, 'Living room');
+        expect(kept.nameIsCustom, isTrue);
+      });
+
+      test("empty or the server's own, it follows the server again", () async {
+        final prefs = await SharedPreferences.getInstance();
+        final container = containerWith(ServerRepository(prefs: prefs));
+        final registry = await registryOf(container);
+        final profile = await registry.add(info: _info, auth: _auth);
+        await registry.rename(profile.id, 'Living room');
+
+        for (final typed in <String>['', _info.name]) {
+          await registry.updateProfile(
+            profile.id,
+            info: _info,
+            auth: _auth,
+            name: typed,
+          );
+          final named = container.read(serverRegistryProvider).profiles.single;
+          expect(named.name, _info.name);
+          expect(named.nameIsCustom, isFalse);
+        }
+      });
+    });
+
     test('the custom flag survives a restart', () async {
       final prefs = await SharedPreferences.getInstance();
       final first = containerWith(ServerRepository(prefs: prefs));

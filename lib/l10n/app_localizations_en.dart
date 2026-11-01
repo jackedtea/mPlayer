@@ -421,7 +421,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get renameServerLocal =>
-      'Only on this device. The server and its other apps keep the name it has.';
+      'Only on this device. The server and its other apps keep the name it has. Leave empty to use the server\'s.';
 
   @override
   String get adminRestart => 'Restart server';

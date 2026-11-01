@@ -839,7 +839,7 @@ abstract class AppLocalizations {
   /// No description provided for @renameServerLocal.
   ///
   /// In en, this message translates to:
-  /// **'Only on this device. The server and its other apps keep the name it has.'**
+  /// **'Only on this device. The server and its other apps keep the name it has. Leave empty to use the server\'s.'**
   String get renameServerLocal;
 
   /// No description provided for @adminRestart.

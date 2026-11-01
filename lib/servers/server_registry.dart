@@ -363,18 +363,28 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
   /// A re-sign-in is part of the deal rather than an extra step: an address
   /// or a password that changed has to be proved before it is stored, or the
   /// app saves a profile it cannot use.
+  ///
+  /// [name] is what the user typed for it in the same sheet. Empty, or the
+  /// server's own name, hands the name back to the server; anything else is
+  /// kept on this device. Null leaves the name as it was.
   Future<void> updateProfile(
     String profileId, {
     required ServerInfo info,
     required AuthResult auth,
+    String? name,
   }) async {
     final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
     if (profile == null) return;
 
+    final typed = name?.trim();
+    final custom = typed == null
+        ? profile.nameIsCustom
+        : typed.isNotEmpty && typed != info.name;
     final updated = profile.copyWith(
       // A name given on this device outlives the server's: editing the
       // address must not quietly undo a rename.
-      name: profile.nameIsCustom ? profile.name : info.name,
+      name: !custom ? info.name : (typed ?? profile.name),
+      nameIsCustom: custom,
       uri: info.uri,
       userId: auth.userId,
       username: auth.username,

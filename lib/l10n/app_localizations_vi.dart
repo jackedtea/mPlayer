@@ -422,7 +422,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get renameServerLocal =>
-      'Chỉ trên thiết bị này. Máy chủ và các ứng dụng khác vẫn giữ tên hiện tại.';
+      'Chỉ trên thiết bị này. Máy chủ và các ứng dụng khác vẫn giữ tên hiện tại. Để trống để dùng tên của máy chủ.';
 
   @override
   String get adminRestart => 'Khởi động lại máy chủ';
