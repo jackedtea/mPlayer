@@ -19,8 +19,12 @@ import 'package:flutter_test/flutter_test.dart';
 /// on a build nobody could otherwise explain.
 void main() {
   test('the jq program contains no apostrophes', () {
-    final source =
-        File('.github/workflows/release.yml').readAsStringSync();
+    // Line endings normalised: a Windows checkout with `core.autocrlf` has
+    // CRLF in the working copy, and every pattern below is written with `\n`.
+    // Without this the test failed on Windows while CI, on Linux, passed.
+    final source = File('.github/workflows/release.yml')
+        .readAsStringSync()
+        .replaceAll('\r\n', '\n');
 
     final start = source.indexOf('jq -n');
     expect(start, isNot(-1), reason: 'the Telegram step has been renamed');
