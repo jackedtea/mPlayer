@@ -415,7 +415,11 @@ jobs:
     name: Linux bundle
     needs: prepare
     runs-on: ubuntu-22.04
-    if: needs.prepare.outputs.skip != 'true'
+    # TEMPORARILY DISABLED. To bring Linux back: restore
+    # `if: needs.prepare.outputs.skip != 'true'` here, and put
+    # `&& needs.linux.result == 'success'` back into the `release` job's `if`.
+    # The job is left whole so those are the only two edits needed.
+    if: false
     steps:
       - uses: actions/checkout@v5
         with:
@@ -473,12 +477,14 @@ jobs:
     # release missing the desktop archives would not be rebuilt the next day
     # ("Already built?" sees the tag), and the desktop updater, finding no
     # asset for itself, would stay on the old build without a word.
+    #
+    # Linux is off for now (see the job) and so absent from the list: a
+    # skipped job is not a success, so requiring it would stop every release.
     if: >-
       always()
       && needs.prepare.result == 'success'
       && needs.android.result == 'success'
       && needs.windows.result == 'success'
-      && needs.linux.result == 'success'
     outputs:
       url: ${{ steps.publish.outputs.url }}
     steps:
