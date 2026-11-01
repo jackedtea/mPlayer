@@ -417,11 +417,15 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 48,
+      height: 44,
       child: ListTile(
         dense: true,
         onTap: onTap,
-        contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.xl),
+        // Tighter than a settings list: this is a menu over a film, on a
+        // screen that is short because the phone is on its side.
+        visualDensity: VisualDensity.compact,
+        minLeadingWidth: 24,
+        contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.lg),
         leading: Icon(icon, color: Colors.white, size: 22),
         title: Text(label, style: const TextStyle(color: Colors.white)),
         trailing: value == null
