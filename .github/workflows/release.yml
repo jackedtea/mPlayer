@@ -1,19 +1,21 @@
 name: Build & Release
 
-# Scheduled, not on push: dev is built once a day and main every third day,
-# so a burst of pushes is one build rather than one each. A day with nothing
-# new is skipped — see "Already built?" in `prepare`.
+# Dev is built on every push to it — a merge into dev is a push too — and
+# main every third day on a schedule. A run with nothing new is skipped; see
+# "Already built?" in `prepare`.
 #
 # Scheduled runs always start from the default branch's copy of this file,
-# whichever branch they build; `prepare` works out the branch from the cron
-# line that fired, and every job checks that branch out explicitly.
+# whichever branch they build; `prepare` works out the branch from the event
+# (and for a schedule, the cron line that fired), and every job checks that
+# branch out explicitly.
 #
-# The two cron lines below are matched by text in `prepare` — change one
-# there too. Times are UTC: 20:00 is 03:00 in Vietnam. `*/3` restarts each
-# month, so main occasionally builds a day or two early around the 1st.
+# The cron line below is matched by text in `prepare` — change it there too.
+# Times are UTC: 21:00 is 04:00 in Vietnam. `*/3` restarts each month, so
+# main occasionally builds a day or two early around the 1st.
 on:
+  push:
+    branches: [dev]
   schedule:
-    - cron: '0 20 * * *'    # dev, daily
     - cron: '0 21 */3 * *'  # main, every third day
   workflow_dispatch:
     inputs:
@@ -29,6 +31,14 @@ on:
 
 permissions:
   contents: write
+
+# One build per branch at a time. Pushes to dev that land while one is still
+# building cancel it: a burst of pushes is one build of the last of them, not
+# one each, and an older commit's release never lands after a newer one's.
+# A scheduled main build, or one started by hand, is never cancelled.
+concurrency:
+  group: release-${{ github.event_name == 'push' && github.ref_name || github.event.schedule || inputs.branch || 'manual' }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 env:
   FLUTTER_VERSION: '3.44.0'
@@ -56,8 +66,8 @@ jobs:
       app_id_suffix: ${{ steps.meta.outputs.app_id_suffix }}
       version_name_suffix: ${{ steps.meta.outputs.version_name_suffix }}
     steps:
-      # Which branch this run builds: the cron line for a scheduled run, the
-      # chosen input for a manual one.
+      # Which branch this run builds: the pushed one, the cron line's for a
+      # scheduled run, the chosen input for a manual one.
       - name: Pick the branch
         id: target
         env:
@@ -66,15 +76,21 @@ jobs:
           INPUT_BRANCH: ${{ inputs.branch }}
         run: |
           set -euo pipefail
-          if [ "$EVENT" = "schedule" ]; then
-            case "$SCHEDULE" in
-              '0 20 * * *') BRANCH=dev ;;
-              '0 21 */3 * *') BRANCH=main ;;
-              *) echo "::error::Unknown schedule '$SCHEDULE'"; exit 1 ;;
-            esac
-          else
-            BRANCH="${INPUT_BRANCH:-dev}"
-          fi
+          case "$EVENT" in
+            push)
+              # Only dev is listed under `push`, so this is dev.
+              BRANCH="$GITHUB_REF_NAME"
+              ;;
+            schedule)
+              case "$SCHEDULE" in
+                '0 21 */3 * *') BRANCH=main ;;
+                *) echo "::error::Unknown schedule '$SCHEDULE'"; exit 1 ;;
+              esac
+              ;;
+            *)
+              BRANCH="${INPUT_BRANCH:-dev}"
+              ;;
+          esac
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       # Full history and every tag: the next main version is worked out from
