@@ -294,6 +294,35 @@ void main() {
       expect(body['PositionTicks'], 1800000000);
     });
 
+    test('progress carries the tracks playing, which the server remembers',
+        () async {
+      final (source, adapter) = sourceWith((_) => _json(<String, dynamic>{}));
+
+      await source.reportProgress(
+        'a1',
+        position: const Duration(minutes: 3),
+        isPaused: false,
+        audioStreamIndex: 2,
+        subtitleStreamIndex: -1,
+      );
+      await source.reportProgress(
+        'a1',
+        position: const Duration(minutes: 4),
+        isPaused: false,
+      );
+
+      final told = adapter.requests.first.data as Map<String, dynamic>;
+      expect(told['AudioStreamIndex'], 2);
+      // -1 is the server's "no subtitles", and is remembered like any other.
+      expect(told['SubtitleStreamIndex'], -1);
+
+      // Unknown is left out, not sent as null: the server would read a null
+      // as nothing to record, but a stray 0 would be a track.
+      final unknown = adapter.requests.last.data as Map<String, dynamic>;
+      expect(unknown.containsKey('AudioStreamIndex'), isFalse);
+      expect(unknown.containsKey('SubtitleStreamIndex'), isFalse);
+    });
+
     test('unmarking played is a DELETE, not a POST with a flag', () async {
       final (source, adapter) = sourceWith((_) => _json(<String, dynamic>{}));
 

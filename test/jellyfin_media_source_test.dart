@@ -65,6 +65,8 @@ class _FakeLibrary extends FakeLibrarySource {
     required Duration position,
     required bool isPaused,
     String? playSessionId,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   }) async {
     progress.add((itemId, position, isPaused));
   }
@@ -305,6 +307,30 @@ void main() {
     });
   });
   group('what the player is told about a server file', () {
+    test("the series and the server's own track choice come along",
+        () async {
+      final library = _FakeLibrary(
+        item_: const ServerItem(id: 'e2', title: 'Ep 2', seriesId: 's1'),
+        playback_: ServerPlayback(
+          uri: Uri.parse('https://media.home.lan/e2'),
+          isDirectPlay: true,
+          defaultAudioIndex: 2,
+          defaultSubtitleIndex: -1,
+        ),
+      );
+      final media = await JellyfinMediaSource(library).resolve(
+        const MediaRef(sourceId: 'p1', itemId: 'e2', title: ''),
+      );
+
+      // What a choice is remembered against, so it reaches episode three.
+      expect(media.seriesId, 's1');
+      expect(media.isDirectPlay, isTrue);
+      expect(media.defaultAudioIndex, 2);
+      expect(media.defaultSubtitleIndex, -1);
+      // Nothing was picked on the episode page.
+      expect(media.tracksChosen, isFalse);
+    });
+
     test('segments, chapters and trickplay all arrive with the handle',
         () async {
       final library = _FakeLibrary(
@@ -417,6 +443,8 @@ class _ThrowingLibrary extends _FakeLibrary {
     required Duration position,
     required bool isPaused,
     String? playSessionId,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   }) async {
     throw const ServerException('gone');
   }

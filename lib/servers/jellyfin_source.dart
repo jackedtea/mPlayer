@@ -635,6 +635,8 @@ class JellyfinSource implements MediaLibrarySource {
     required Duration position,
     required bool isPaused,
     String? playSessionId,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   }) {
     return _post('/Sessions/Playing/Progress', <String, dynamic>{
       'ItemId': itemId,
@@ -642,6 +644,8 @@ class JellyfinSource implements MediaLibrarySource {
       'IsPaused': isPaused,
       'PlaySessionId': playSessionId,
       'CanSeek': true,
+      'AudioStreamIndex': ?audioStreamIndex,
+      'SubtitleStreamIndex': ?subtitleStreamIndex,
     });
   }
 

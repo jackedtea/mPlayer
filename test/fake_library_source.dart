@@ -178,6 +178,8 @@ class FakeLibrarySource implements MediaLibrarySource {
     required Duration position,
     required bool isPaused,
     String? playSessionId,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   }) async {}
 
   @override

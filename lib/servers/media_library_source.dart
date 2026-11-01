@@ -835,11 +835,17 @@ abstract class MediaLibrarySource {
   /// Tells the server where playback got to. Called on start, periodically,
   /// and once on stop — the server is the authority on watch state when two
   /// devices disagree.
+  ///
+  /// The stream indexes are the tracks playing; with "Remember audio/subtitle
+  /// selections" on (the server's default) they become the user's choice for
+  /// this item, on every device. -1 for subtitles is none.
   Future<void> reportProgress(
     String itemId, {
     required Duration position,
     required bool isPaused,
     String? playSessionId,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   });
 
   Future<void> reportStopped(

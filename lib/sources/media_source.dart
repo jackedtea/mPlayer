@@ -125,6 +125,11 @@ class PlayableMedia {
     this.segments = const <MediaSegment>[],
     this.trickplay,
     this.externalSubtitles = const <ExternalSubtitle>[],
+    this.seriesId,
+    this.isDirectPlay = true,
+    this.defaultAudioIndex,
+    this.defaultSubtitleIndex,
+    this.tracksChosen = false,
   });
 
   final MediaRef ref;
@@ -176,6 +181,32 @@ class PlayableMedia {
   /// would otherwise never see.
   final List<ExternalSubtitle> externalSubtitles;
 
+  /// The series an episode belongs to; null for anything else.
+  ///
+  /// What a track choice is remembered against, so that it carries on to
+  /// the next episode rather than stopping at this one.
+  final String? seriesId;
+
+  /// The decoder was handed the server's file untouched.
+  ///
+  /// Only then does the decoder's track list line up with [serverStreams]
+  /// one for one. A transcode carries whichever tracks the server picked,
+  /// and positions in it say nothing about the original's.
+  final bool isDirectPlay;
+
+  /// The server's choice of audio and subtitle, as server stream indexes.
+  ///
+  /// Worked out from the user's server-side playback settings — preferred
+  /// languages, subtitle mode — and from the track last reported playing
+  /// this item, on any device. -1 for subtitles means none.
+  final int? defaultAudioIndex;
+  final int? defaultSubtitleIndex;
+
+  /// The tracks were picked by hand before Play — on the episode page — and
+  /// [defaultAudioIndex]/[defaultSubtitleIndex] are that choice, which
+  /// nothing remembered may override.
+  final bool tracksChosen;
+
   String get title => ref.title;
 
   /// The same media, opened somewhere else.
@@ -195,6 +226,11 @@ class PlayableMedia {
         segments: segments,
         trickplay: trickplay,
         externalSubtitles: externalSubtitles,
+        seriesId: seriesId,
+        isDirectPlay: isDirectPlay,
+        defaultAudioIndex: defaultAudioIndex,
+        defaultSubtitleIndex: defaultSubtitleIndex,
+        tracksChosen: tracksChosen,
       );
 
   /// The labelled stretch [position] falls in, or null outside any.
@@ -255,10 +291,15 @@ abstract interface class MediaSource {
 /// and so a transcode is torn down when playback stops rather than left
 /// running until the server times it out.
 abstract interface class ProgressReporting {
+  /// [audioStreamIndex] and [subtitleStreamIndex] are the tracks playing,
+  /// as server stream indexes, where they can be told — the server keeps
+  /// them as this user's choice for the item. Null leaves its record alone.
   Future<void> reportProgress(
     String itemId, {
     required Duration position,
     required bool isPaused,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   });
 
   Future<void> reportStopped(String itemId, {required Duration position});

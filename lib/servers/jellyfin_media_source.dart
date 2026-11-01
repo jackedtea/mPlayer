@@ -126,6 +126,11 @@ class JellyfinMediaSource
         segments: segments,
         trickplay: item.trickplay,
         externalSubtitles: playback.externalSubtitles,
+        seriesId: item.seriesId,
+        isDirectPlay: playback.isDirectPlay,
+        defaultAudioIndex: playback.defaultAudioIndex,
+        defaultSubtitleIndex: playback.defaultSubtitleIndex,
+        tracksChosen: choice != null,
       );
     } on ServerException catch (e) {
       // The player renders this inline; it must read as a sentence.
@@ -179,6 +184,8 @@ class JellyfinMediaSource
     String itemId, {
     required Duration position,
     required bool isPaused,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   }) async {
     try {
       await library.reportProgress(
@@ -186,6 +193,8 @@ class JellyfinMediaSource
         position: position,
         isPaused: isPaused,
         playSessionId: _sessions[itemId],
+        audioStreamIndex: audioStreamIndex,
+        subtitleStreamIndex: subtitleStreamIndex,
       );
     } catch (e) {
       // A dropped report costs the server one update. The local resume point
