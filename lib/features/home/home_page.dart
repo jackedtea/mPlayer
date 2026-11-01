@@ -6,6 +6,7 @@
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
@@ -19,6 +20,7 @@ import '../servers/pin_lock.dart';
 import '../servers/server_library.dart';
 import '../servers/servers_empty_page.dart';
 import '../servers/servers_list_page.dart';
+import 'favorites_page.dart';
 import '../servers/shelves.dart';
 
 /// The Home tab, which has three faces and picks one rather than navigating.
@@ -80,6 +82,7 @@ class HomePage extends ConsumerWidget {
           ref.invalidate(serverViewsProvider);
           ref.invalidate(latestInViewProvider);
           ref.invalidate(homeExcludesProvider);
+          ref.invalidate(homeFavouritesProvider);
           await ref.read(serverViewsProvider.future);
         },
         child: ListView(
@@ -91,6 +94,15 @@ class HomePage extends ConsumerWidget {
               items: ref.watch(serverNextUpProvider),
               cards: true,
             ),
+            // Below what is in progress and above what is new: starred is a
+            // choice to come back to, which is closer to the first than the
+            // second.
+            if (ref.watch(homeShowFavouritesProvider).value ?? true)
+              _Section(
+                title: l10n.favourites,
+                items: ref.watch(homeFavouritesProvider),
+                onSeeAll: () => context.go('/home/favorites'),
+              ),
             for (final LibraryView view
                 in homeLibraries(views.value ?? const <LibraryView>[]))
               if (!excluded.contains(view.id))
@@ -121,13 +133,21 @@ List<LibraryView> homeLibraries(List<LibraryView> views) {
 /// A header over a shelf, drawn only while the shelf has something or is
 /// still on its way: a title over blank space reads as a row that failed.
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.items, this.cards = false});
+  const _Section({
+    required this.title,
+    required this.items,
+    this.cards = false,
+    this.onSeeAll,
+  });
 
   final String title;
   final AsyncValue<List<ServerItem>> items;
 
   /// Resume-style cards rather than posters.
   final bool cards;
+
+  /// Where the header's "See all" goes; null draws no action.
+  final VoidCallback? onSeeAll;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +159,12 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          SectionHeader(title: title),
+          SectionHeader(
+            title: title,
+            actionLabel:
+                onSeeAll == null ? null : AppLocalizations.of(context).seeAll,
+            onAction: onSeeAll,
+          ),
           if (cards)
             ServerCardShelf(items: items)
           else
@@ -587,6 +612,16 @@ class _HomeCustomizeSheet extends ConsumerWidget {
             title: Text(l10n.customizeHome, style: context.texts.titleLarge),
             subtitle: Text(l10n.customizeHomeSub),
           ),
+          // Not one of the server's rows — it has nowhere to store this one —
+          // so it says it is kept here.
+          SwitchListTile(
+            title: Text(l10n.favourites),
+            subtitle: Text(l10n.onThisDevice),
+            value: ref.watch(homeShowFavouritesProvider).value ?? true,
+            onChanged: (on) =>
+                ref.read(homeShowFavouritesProvider.notifier).set(on),
+          ),
+          const Divider(height: 1),
           if (excluded == null)
             Padding(
               padding: EdgeInsets.all(spacing.xl),

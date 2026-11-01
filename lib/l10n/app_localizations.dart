@@ -428,6 +428,30 @@ abstract class AppLocalizations {
   /// **'Next up'**
   String get nextUp;
 
+  /// No description provided for @favourites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get favourites;
+
+  /// No description provided for @seeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get seeAll;
+
+  /// No description provided for @onThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept on this device'**
+  String get onThisDevice;
+
+  /// No description provided for @noFavouritesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing starred yet. Tap the heart on a film, a show or an episode and it will be here.'**
+  String get noFavouritesYet;
+
   /// No description provided for @recentlyAdded.
   ///
   /// In en, this message translates to:

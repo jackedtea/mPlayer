@@ -11,9 +11,8 @@ import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/no_server_note.dart';
 import '../../widgets/section_header.dart';
-import '../servers/detail_sections.dart';
 import '../servers/server_library.dart';
-import '../servers/shelves.dart';
+import 'kind_sections.dart';
 import 'search_history.dart';
 
 /// Bumped by the navigation bar when Search is tapped while already open.
@@ -222,68 +221,15 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final spacing = context.spacing;
-
     AsyncValue<List<ServerItem>> of(ServerItemKind kind) =>
         ref.watch(searchItemsProvider((query: query, kind: kind)));
 
-    final movies = of(ServerItemKind.movie);
-    final shows = of(ServerItemKind.series);
-    final episodes = of(ServerItemKind.episode);
-    final people = ref.watch(searchPeopleProvider(query));
-
-    bool has<T>(AsyncValue<List<T>> v) => v.value?.isNotEmpty ?? false;
-    final loading = movies.isLoading ||
-        shows.isLoading ||
-        episodes.isLoading ||
-        people.isLoading;
-    final anything =
-        has(movies) || has(shows) || has(episodes) || has(people);
-
-    if (!anything) {
-      // Only once every section has answered: "nothing matched" while three
-      // requests are still out is wrong more often than it is right.
-      return loading
-          ? const Center(child: CircularProgressIndicator())
-          : Center(
-              child: Text(
-                l10n.noResults,
-                style: context.texts.bodyMedium
-                    ?.copyWith(color: context.colors.onSurfaceVariant),
-              ),
-            );
-    }
-
-    Widget section(String title, Widget shelf) => Padding(
-          padding: EdgeInsets.only(bottom: spacing.sectionGap),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[SectionHeader(title: title), shelf],
-          ),
-        );
-
-    return ListView(
-      padding: EdgeInsets.only(
-        top: spacing.sm,
-        bottom: spacing.xl + context.systemBottomInset,
-      ),
-      children: <Widget>[
-        if (has(movies))
-          section(l10n.searchMovies, ServerPosterShelf(items: movies)),
-        if (has(shows))
-          section(l10n.searchShows, ServerPosterShelf(items: shows)),
-        if (has(episodes))
-          section(l10n.searchEpisodes, ServerCardShelf(items: episodes)),
-        if (has(people))
-          section(l10n.searchPeople, PeopleStrip(people: people.value!)),
-        // A section still on its way, under the ones that have arrived.
-        if (loading)
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-      ],
+    return KindSections(
+      movies: of(ServerItemKind.movie),
+      shows: of(ServerItemKind.series),
+      episodes: of(ServerItemKind.episode),
+      people: ref.watch(searchPeopleProvider(query)),
+      emptyText: AppLocalizations.of(context).noResults,
     );
   }
 }

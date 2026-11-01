@@ -191,6 +191,19 @@ class AppLocalizationsVi extends AppLocalizations {
   String get nextUp => 'Tiếp theo';
 
   @override
+  String get favourites => 'Yêu thích';
+
+  @override
+  String get seeAll => 'Xem tất cả';
+
+  @override
+  String get onThisDevice => 'Lưu trên thiết bị này';
+
+  @override
+  String get noFavouritesYet =>
+      'Chưa có mục yêu thích nào. Bấm biểu tượng trái tim trên một phim, series hoặc tập phim để thêm vào đây.';
+
+  @override
   String get recentlyAdded => 'Mới thêm';
 
   @override

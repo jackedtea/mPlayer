@@ -298,6 +298,32 @@ final searchItemsProvider = FutureProvider.family<List<ServerItem>,
   return source.search(query, limit: 24, kinds: <ServerItemKind>{key.kind});
 });
 
+/// One section of the Favorites page: what is starred, of one kind.
+final favouriteItemsProvider =
+    FutureProvider.family<List<ServerItem>, ServerItemKind>((ref, kind) async {
+  final source = ref.watch(connectedServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.favouriteItems(kinds: <ServerItemKind>{kind});
+});
+
+/// The people the user has starred.
+final favouritePeopleProvider = FutureProvider<List<ServerPerson>>((ref) async {
+  final source = ref.watch(connectedServerProvider);
+  if (source == null) return const <ServerPerson>[];
+  return source.favouritePeople();
+});
+
+/// Home's Favorites row: films and shows, which draw as posters. Episodes
+/// are on the Favorites page, where they have a row of their own shape.
+final homeFavouritesProvider = FutureProvider<List<ServerItem>>((ref) async {
+  final source = ref.watch(connectedServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.favouriteItems(
+    kinds: const <ServerItemKind>{ServerItemKind.movie, ServerItemKind.series},
+    limit: 24,
+  );
+});
+
 /// What is announced and not yet out in one TV library.
 final libraryUpcomingProvider =
     FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {

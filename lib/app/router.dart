@@ -13,6 +13,7 @@ import '../features/admin/admin_plugins_page.dart';
 import '../features/admin/admin_tasks_page.dart';
 import '../features/admin/admin_users_page.dart';
 import '../features/downloads/downloads_page.dart';
+import '../features/home/favorites_page.dart';
 import '../features/home/home_page.dart';
 import '../features/libraries/libraries_page.dart';
 import '../features/playback/smoke_test_page.dart';
@@ -58,6 +59,13 @@ GoRouter buildRouter() {
               GoRoute(
                 path: '/home',
                 builder: (context, state) => const HomeTabPage(),
+                routes: <RouteBase>[
+                  // Inside the branch, so the navigation bar stays under it.
+                  GoRoute(
+                    path: 'favorites',
+                    builder: (context, state) => const FavoritesPage(),
+                  ),
+                ],
               ),
             ],
           ),

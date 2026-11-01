@@ -328,24 +328,68 @@ class JellyfinSource implements MediaLibrarySource {
       ServerItemKind.episode,
     },
   }) async {
-    final types = <String>[
-      if (kinds.contains(ServerItemKind.movie)) 'Movie',
-      if (kinds.contains(ServerItemKind.series)) 'Series',
-      if (kinds.contains(ServerItemKind.episode)) 'Episode',
-    ];
+    final types = _itemTypes(kinds);
     if (types.isEmpty) return const <ServerItem>[];
 
     final json = await _get('/Items', <String, String>{
       'userId': _profile.userId,
       'searchTerm': query,
       'recursive': 'true',
-      'includeItemTypes': types.join(','),
+      'includeItemTypes': types,
       'limit': '$limit',
       'fields': _fields,
     });
 
     return _itemsOf(json).map(serverItemFromJson).toList();
   }
+
+  @override
+  Future<List<ServerItem>> favouriteItems({
+    Set<ServerItemKind> kinds = const <ServerItemKind>{
+      ServerItemKind.movie,
+      ServerItemKind.series,
+      ServerItemKind.episode,
+    },
+    int limit = 60,
+  }) async {
+    final types = _itemTypes(kinds);
+    if (types.isEmpty) return const <ServerItem>[];
+
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      'recursive': 'true',
+      'isFavorite': 'true',
+      'includeItemTypes': types,
+      // Most recently starred first would be better and the server cannot
+      // sort by that, so by name: findable, and the same every visit.
+      'sortBy': 'SortName',
+      'limit': '$limit',
+      'fields': _fields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerPerson>> favouritePeople({int limit = 60}) async {
+    final json = await _get('/Persons', <String, String>{
+      'userId': _profile.userId,
+      'isFavorite': 'true',
+      'limit': '$limit',
+      'enableImages': 'true',
+    });
+
+    return <ServerPerson>[
+      for (final Map<String, dynamic> p in _itemsOf(json)) personFromItemJson(p),
+    ];
+  }
+
+  /// The `includeItemTypes` for [kinds], or empty for none this asks about.
+  static String _itemTypes(Set<ServerItemKind> kinds) => <String>[
+        if (kinds.contains(ServerItemKind.movie)) 'Movie',
+        if (kinds.contains(ServerItemKind.series)) 'Series',
+        if (kinds.contains(ServerItemKind.episode)) 'Episode',
+      ].join(',');
 
   @override
   Future<List<ServerItem>> upcoming(String viewId, {int limit = 60}) async {

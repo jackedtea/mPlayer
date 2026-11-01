@@ -836,4 +836,38 @@ void main() {
       expect(source.genreImageUrl(genres.single), isNotNull);
     });
   });
+
+  group('favourites', () {
+    test('starred items across every library, of the kinds asked', () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
+      );
+
+      await source.favouriteItems(kinds: <ServerItemKind>{ServerItemKind.series});
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(adapter.requests.single.uri.path, '/Items');
+      expect(query['isFavorite'], 'true');
+      expect(query['recursive'], 'true');
+      expect(query['includeItemTypes'], 'Series');
+      // Every library: no parent to scope it to.
+      expect(query.containsKey('parentId'), isFalse);
+    });
+
+    test('starred people come from /Persons', () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{
+          'Items': <dynamic>[
+            <String, dynamic>{'Id': 'p1', 'Name': 'Jane Actor'},
+          ],
+        }),
+      );
+
+      final people = await source.favouritePeople();
+
+      expect(adapter.requests.single.uri.path, '/Persons');
+      expect(adapter.requests.single.uri.queryParameters['isFavorite'], 'true');
+      expect(people.single.name, 'Jane Actor');
+    });
+  });
 }

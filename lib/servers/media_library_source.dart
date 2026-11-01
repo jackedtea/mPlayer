@@ -734,6 +734,22 @@ abstract class MediaLibrarySource {
   /// A genre's picture, or null for none.
   Uri? genreImageUrl(LibraryGenre genre, {int? maxWidth});
 
+  /// What the user has starred, across every library, limited to [kinds].
+  ///
+  /// [favourites] answers for one library; this is the Favorites page and
+  /// the Home row, which belong to no library in particular.
+  Future<List<ServerItem>> favouriteItems({
+    Set<ServerItemKind> kinds = const <ServerItemKind>{
+      ServerItemKind.movie,
+      ServerItemKind.series,
+      ServerItemKind.episode,
+    },
+    int limit = 60,
+  });
+
+  /// The people the user has starred.
+  Future<List<ServerPerson>> favouritePeople({int limit = 60});
+
   /// People whose name matches [query] — actors, directors, writers.
   Future<List<ServerPerson>> searchPeople(String query, {int limit = 24});
 

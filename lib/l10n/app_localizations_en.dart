@@ -190,6 +190,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nextUp => 'Next up';
 
   @override
+  String get favourites => 'Favorites';
+
+  @override
+  String get seeAll => 'See all';
+
+  @override
+  String get onThisDevice => 'Kept on this device';
+
+  @override
+  String get noFavouritesYet =>
+      'Nothing starred yet. Tap the heart on a film, a show or an episode and it will be here.';
+
+  @override
   String get recentlyAdded => 'Recently added';
 
   @override

@@ -55,6 +55,10 @@ void invalidateItemViews(WidgetRef ref, {String? itemId, String? seriesId}) {
   ref.invalidate(serverNextUpProvider);
   ref.invalidate(serverLatestProvider);
   ref.invalidate(libraryItemsProvider);
+  // A star added or taken away anywhere shows on Home and the Favorites page
+  // the next time they are drawn, not after a pull to refresh.
+  ref.invalidate(homeFavouritesProvider);
+  ref.invalidate(favouriteItemsProvider);
 }
 
 /// Marks [itemId] watched or unwatched on the server.

@@ -103,6 +103,21 @@ class FakeLibrarySource implements MediaLibrarySource {
       const <ServerItem>[];
 
   @override
+  Future<List<ServerItem>> favouriteItems({
+    Set<ServerItemKind> kinds = const <ServerItemKind>{
+      ServerItemKind.movie,
+      ServerItemKind.series,
+      ServerItemKind.episode,
+    },
+    int limit = 60,
+  }) async =>
+      const <ServerItem>[];
+
+  @override
+  Future<List<ServerPerson>> favouritePeople({int limit = 60}) async =>
+      const <ServerPerson>[];
+
+  @override
   Future<List<ServerItem>> upcoming(String viewId, {int limit = 60}) async =>
       const <ServerItem>[];
 
