@@ -494,6 +494,11 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String itemCountAtLeast(int count) {
+    return '$count+ mục';
+  }
+
+  @override
   String unwatchedCount(int count) {
     return '$count chưa xem';
   }

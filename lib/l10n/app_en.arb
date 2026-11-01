@@ -167,6 +167,8 @@
   "suggestedForYou": "Suggested for you",
   "itemCount": "{count} items",
   "@itemCount": {"placeholders": {"count": {"type": "int"}}},
+  "itemCountAtLeast": "{count}+ items",
+  "@itemCountAtLeast": {"placeholders": {"count": {"type": "int"}}},
   "unwatchedCount": "{count} unwatched",
   "@unwatchedCount": {"placeholders": {"count": {"type": "int"}}},
   "genre": "Genre",

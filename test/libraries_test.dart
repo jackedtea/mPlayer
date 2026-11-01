@@ -23,9 +23,26 @@ class _TwoLibraries extends FakeLibrarySource {
 
   @override
   Future<List<LibraryView>> views() async => const <LibraryView>[
-        LibraryView(id: 'films', name: 'Films', kind: 'movies'),
-        LibraryView(id: 'tv', name: 'Television', kind: 'tvshows'),
-      ];
+    LibraryView(id: 'films', name: 'Films', kind: 'movies'),
+    LibraryView(id: 'tv', name: 'Television', kind: 'tvshows'),
+  ];
+
+  /// Far more than one page, which is the point.
+  @override
+  Future<int> itemCount(String viewId) async => 1234;
+
+  /// Always a full page, as a large library answers.
+  @override
+  Future<List<ServerItem>> items(
+    String viewId, {
+    int startIndex = 0,
+    int limit = 100,
+    ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
+  }) async => <ServerItem>[
+    for (var i = 0; i < limit; i++) ServerItem(id: '$i', title: 'Film $i'),
+  ];
 }
 
 Future<GoRouter> _openLibraries(
@@ -59,8 +76,9 @@ Finder _titled(String name) =>
     find.descendant(of: find.byType(AppBar), matching: find.text(name));
 
 void main() {
-  testWidgets('opens the first library when none has been browsed',
-      (tester) async {
+  testWidgets('opens the first library when none has been browsed', (
+    tester,
+  ) async {
     await _openLibraries(tester);
 
     expect(_titled('Films'), findsOneWidget);
@@ -76,15 +94,17 @@ void main() {
     expect(_titled('Television'), findsOneWidget);
   });
 
-  testWidgets('a library remembered for another server is not used',
-      (tester) async {
+  testWidgets('a library remembered for another server is not used', (
+    tester,
+  ) async {
     await _openLibraries(tester, remembered: <String, String>{'p9': 'tv'});
 
     expect(_titled('Films'), findsOneWidget);
   });
 
-  testWidgets('the title switches library, and the choice is remembered',
-      (tester) async {
+  testWidgets('the title switches library, and the choice is remembered', (
+    tester,
+  ) async {
     await _openLibraries(tester);
 
     await tester.tap(_titled('Films'));
@@ -99,5 +119,41 @@ void main() {
       jsonDecode(prefs.getString('last_library_by_server')!),
       <String, String>{'p1': 'tv'},
     );
+  });
+
+  group('the count in the title', () {
+    testWidgets('is the real total of the library, not the page in hand', (
+      tester,
+    ) async {
+      await _openLibraries(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('1234 items'),
+        ),
+        findsOneWidget,
+      );
+      // And nowhere down in the grid any more.
+      expect(find.text('100 items'), findsNothing);
+    });
+
+    testWidgets('a filtered full page says it may be more', (tester) async {
+      await _openLibraries(tester);
+
+      await tester.tap(find.byTooltip('Sort & filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilterChip, 'Unwatched'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('100+ items'),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }

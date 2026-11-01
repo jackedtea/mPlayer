@@ -103,12 +103,18 @@ class LibraryQuery {
 }
 
 /// One page of a library.
+/// How many items the grid asks for at once. Named because the title's count
+/// needs to know when a filtered answer filled a page — and so may be only
+/// part of what matches.
+const libraryPageSize = 100;
+
 final libraryItemsProvider =
     FutureProvider.family<List<ServerItem>, LibraryQuery>((ref, query) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return const <ServerItem>[];
   return source.items(
     query.viewId,
+    limit: libraryPageSize,
     sort: query.sort,
     order: query.order,
     filter: query.filter,

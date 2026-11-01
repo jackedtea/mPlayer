@@ -950,6 +950,12 @@ abstract class AppLocalizations {
   /// **'{count} items'**
   String itemCount(int count);
 
+  /// No description provided for @itemCountAtLeast.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}+ items'**
+  String itemCountAtLeast(int count);
+
   /// No description provided for @unwatchedCount.
   ///
   /// In en, this message translates to:

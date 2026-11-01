@@ -493,6 +493,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String itemCountAtLeast(int count) {
+    return '$count+ items';
+  }
+
+  @override
   String unwatchedCount(int count) {
     return '$count unwatched';
   }

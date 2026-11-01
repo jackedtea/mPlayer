@@ -158,13 +158,16 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
                 onPressed: () => context.pop(),
               )
             : null,
-        title: _hasTabs
-            ? _LibrarySwitcher(
-                currentId: viewId!,
-                title: _titleFor(ref) ?? widget.title,
-                onSelected: _switchTo,
-              )
-            : Text(_titleFor(ref) ?? widget.title),
+        title: _TitleWithCount(
+          count: _countLabel(viewId),
+          title: _hasTabs
+              ? _LibrarySwitcher(
+                  currentId: viewId!,
+                  title: _titleFor(ref) ?? widget.title,
+                  onSelected: _switchTo,
+                )
+              : Text(_titleFor(ref) ?? widget.title),
+        ),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.grid_view_rounded),
@@ -217,26 +220,64 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
   ///
   /// [viewId] is null only for the route opened with no library behind it,
   /// which still draws the chips and a count of zero.
-  Widget _mainTab(String? viewId) {
-    final spacing = context.spacing;
-    final scheme = context.colors;
+  /// The grid's request, shared by the grid and the count in the title so
+  /// both read one answer.
+  ///
+  /// The narrowing is the server's, not this screen's: a page holds a hundred
+  /// of however many the library has, and filtering those would hide nothing
+  /// past the hundredth while claiming to have filtered a library.
+  AsyncValue<List<ServerItem>> _gridRequest(String? viewId) {
+    if (viewId == null) {
+      return const AsyncValue<List<ServerItem>>.data(<ServerItem>[]);
+    }
+    return ref.watch(
+      libraryItemsProvider(
+        LibraryQuery(
+          viewId,
+          _ordering.sort,
+          order: _ordering.order,
+          filter: _filter,
+        ),
+      ),
+    );
+  }
+
+  /// What the title says under the library's name, or null to say nothing.
+  ///
+  /// Unfiltered, the library's real total — the grid holds one page of it,
+  /// and "100 items" over a library of 2,000 is a number that is simply
+  /// wrong. Filtered, the server's narrowed answer is only known a page at a
+  /// time, so a full page reads "100+" rather than claiming to be all of it.
+  String? _countLabel(String? viewId) {
+    if (widget.browse == LibraryBrowse.playlist) return null;
+
     final l10n = AppLocalizations.of(context);
 
-    // The narrowing is the server's, not this screen's: a page holds a
-    // hundred of however many the library has, and filtering those would hide
-    // nothing past the hundredth while claiming to have filtered a library.
-    final request = viewId == null
-        ? const AsyncValue<List<ServerItem>>.data(<ServerItem>[])
-        : ref.watch(
-            libraryItemsProvider(
-              LibraryQuery(
-                viewId,
-                _ordering.sort,
-                order: _ordering.order,
-                filter: _filter,
-              ),
-            ),
-          );
+    if (viewId != null &&
+        _filter.isEmpty &&
+        widget.browse == LibraryBrowse.library) {
+      final total = ref.watch(libraryItemCountProvider(viewId)).value;
+      // Nothing until the tally lands: "0 items" while it is in flight reads
+      // as an empty library.
+      return total == null ? null : l10n.itemCount(total);
+    }
+
+    final request = _gridRequest(viewId);
+    final items = request.value;
+    if (items == null) return null;
+    if (items.length >= libraryPageSize) {
+      return l10n.itemCountAtLeast(items.length);
+    }
+    // "12 unwatched" only while that is the whole of the narrowing. With a
+    // genre or a year on it too, the sentence would be naming one of several
+    // constraints and reading as the only one.
+    return _filter.count == 1 && _unwatchedOnly
+        ? l10n.unwatchedCount(items.length)
+        : l10n.itemCount(items.length);
+  }
+
+  Widget _mainTab(String? viewId) {
+    final request = _gridRequest(viewId);
     final items = request.value ?? const <ServerItem>[];
 
     return Column(
@@ -246,24 +287,9 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
           filter: _filter,
           onChanged: (next) => setState(() => _filter = next),
         ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            spacing.screenHorizontal(context.windowSize),
-            spacing.xs,
-            spacing.screenHorizontal(context.windowSize),
-            spacing.sm,
-          ),
-          child: Text(
-            // "12 unwatched" only while that is the whole of the narrowing.
-            // With a genre or a year on it too, the sentence would be naming
-            // one of several constraints and reading as the only one.
-            _filter.count == 1 && _unwatchedOnly
-                ? l10n.unwatchedCount(items.length)
-                : l10n.itemCount(items.length),
-            style: context.texts.labelMedium
-                ?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-        ),
+        // The count lives in the title now; a little air keeps the first row
+        // of posters off the tab bar when no filter chips sit between them.
+        if (_filter.isEmpty) SizedBox(height: context.spacing.sm),
         Expanded(
           child: PosterGrid(
             items: items,
@@ -676,6 +702,40 @@ class _EmptyNote extends StatelessWidget {
               ?.copyWith(color: context.colors.onSurfaceVariant),
         ),
       ),
+    );
+  }
+}
+
+/// The app bar's title with the item count under it, in the smaller type
+/// the server home uses for its host line.
+class _TitleWithCount extends StatelessWidget {
+  const _TitleWithCount({required this.title, required this.count});
+
+  final Widget title;
+  final String? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count;
+    if (label == null) return title;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        title,
+        Padding(
+          // Under the switcher's text, not under its ink.
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.sm),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.texts.labelMedium
+                ?.copyWith(color: context.colors.onSurfaceVariant),
+          ),
+        ),
+      ],
     );
   }
 }

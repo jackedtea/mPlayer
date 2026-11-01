@@ -161,6 +161,8 @@
   "@starring": {"placeholders": {"name": {"type": "String"}}},
   "suggestedForYou": "Gợi ý cho bạn",
   "itemCount": "{count} mục",
+  "itemCountAtLeast": "{count}+ mục",
+  "@itemCountAtLeast": {"placeholders": {"count": {"type": "int"}}},
   "unwatchedCount": "{count} chưa xem",
   "genre": "Thể loại",
   "filters": "Bộ lọc",
