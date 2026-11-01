@@ -8,6 +8,7 @@
   "recentlyAddedIn": "Recently added in {library}",
   "@recentlyAddedIn": {"placeholders": {"library": {"type": "String"}}},
   "customizeHome": "Customize home",
+  "refresh": "Refresh",
   "customizeHomeSub": "Choose which libraries show their newest items. Saved to your account on the server, so the web app shows the same.",
   "changeServer": "Switch server",
   "chooseServerFirst": "Open a server from the Home tab first.",

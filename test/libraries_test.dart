@@ -45,9 +45,37 @@ class _TwoLibraries extends FakeLibrarySource {
   ];
 }
 
+/// Counts how often the grid is asked for.
+class _CountingLibraries extends _TwoLibraries {
+  _CountingLibraries();
+
+  int asks = 0;
+
+  @override
+  Future<List<ServerItem>> items(
+    String viewId, {
+    int startIndex = 0,
+    int limit = 100,
+    ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
+  }) {
+    asks++;
+    return super.items(
+      viewId,
+      startIndex: startIndex,
+      limit: limit,
+      sort: sort,
+      order: order,
+      filter: filter,
+    );
+  }
+}
+
 Future<GoRouter> _openLibraries(
   WidgetTester tester, {
   Map<String, String>? remembered,
+  MediaLibrarySource source = const _TwoLibraries(),
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{
     if (remembered != null) 'last_library_by_server': jsonEncode(remembered),
@@ -59,9 +87,7 @@ Future<GoRouter> _openLibraries(
   final router = buildRouter();
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [
-        activeServerProvider.overrideWithValue(const _TwoLibraries()),
-      ],
+      overrides: [activeServerProvider.overrideWithValue(source)],
       child: MPlayerApp(router: router),
     ),
   );
@@ -76,6 +102,17 @@ Finder _titled(String name) =>
     find.descendant(of: find.byType(AppBar), matching: find.text(name));
 
 void main() {
+  testWidgets('Refresh asks the server for the grid again', (tester) async {
+    final source = _CountingLibraries();
+    await _openLibraries(tester, source: source);
+    final before = source.asks;
+
+    await tester.tap(find.byTooltip('Refresh'));
+    await tester.pumpAndSettle();
+
+    expect(source.asks, greaterThan(before));
+  });
+
   testWidgets('opens the first library when none has been browsed', (
     tester,
   ) async {

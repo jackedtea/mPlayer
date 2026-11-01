@@ -140,6 +140,12 @@ abstract class AppLocalizations {
   /// **'Customize home'**
   String get customizeHome;
 
+  /// No description provided for @refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refresh;
+
   /// No description provided for @customizeHomeSub.
   ///
   /// In en, this message translates to:

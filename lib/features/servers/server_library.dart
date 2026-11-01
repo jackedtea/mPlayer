@@ -797,3 +797,40 @@ LibrarySection librarySectionFrom(LibraryView view, {int? itemCount}) {
     icon: iconForLibrary(view.kind),
   );
 }
+
+/// Asks the server again for everything the Home tab shows.
+///
+/// Shared by the app-bar button and pull to refresh, so the two cannot drift
+/// apart. Completes when the libraries have answered — the one request every
+/// other row of the home is laid out against.
+Future<void> refreshHome(WidgetRef ref) async {
+  ref.invalidate(homeResumeProvider);
+  ref.invalidate(serverNextUpProvider);
+  ref.invalidate(serverViewsProvider);
+  ref.invalidate(latestInViewProvider);
+  ref.invalidate(homeExcludesProvider);
+  ref.invalidate(homeFavouritesProvider);
+  await ref.read(serverViewsProvider.future);
+}
+
+/// Asks the server again for everything a library view shows — every tab,
+/// every library's count — and the list of libraries itself.
+///
+/// Whole families rather than the one query on screen: the sort or filter
+/// just left would otherwise come back as it was the last time it was
+/// fetched, which is exactly what someone pressing Refresh does not want.
+void refreshLibraries(WidgetRef ref) {
+  ref.invalidate(serverViewsProvider);
+  ref.invalidate(libraryItemsProvider);
+  ref.invalidate(libraryItemCountProvider);
+  ref.invalidate(libraryFilterOptionsProvider);
+  ref.invalidate(resumeInViewProvider);
+  ref.invalidate(nextUpInViewProvider);
+  ref.invalidate(latestInViewProvider);
+  ref.invalidate(librarySuggestionsProvider);
+  ref.invalidate(libraryCollectionsProvider);
+  ref.invalidate(libraryUpcomingProvider);
+  ref.invalidate(libraryGenresProvider);
+  ref.invalidate(serverPlaylistsProvider);
+  ref.invalidate(playlistItemsProvider);
+}

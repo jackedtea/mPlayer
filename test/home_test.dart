@@ -17,31 +17,34 @@ import 'package:mplayer/servers/media_library_source.dart';
 /// Two libraries with something new in each, and a film left half-watched.
 class _HomeServer extends FakeLibrarySource {
   _HomeServer({Set<String> excludes = const <String>{}})
-      : excludes = <String>{...excludes};
+    : excludes = <String>{...excludes};
 
   final Set<String> excludes;
   final List<Set<String>> saved = <Set<String>>[];
+  int resumeAsks = 0;
 
   @override
   Future<List<LibraryView>> views() async => const <LibraryView>[
-        LibraryView(id: 'films', name: 'Films', kind: 'movies'),
-        LibraryView(id: 'tv', name: 'Television', kind: 'tvshows'),
-        // Assembled by the user, not added by the server: no row.
-        LibraryView(id: 'sets', name: 'Collections', kind: 'boxsets'),
-      ];
+    LibraryView(id: 'films', name: 'Films', kind: 'movies'),
+    LibraryView(id: 'tv', name: 'Television', kind: 'tvshows'),
+    // Assembled by the user, not added by the server: no row.
+    LibraryView(id: 'sets', name: 'Collections', kind: 'boxsets'),
+  ];
 
   @override
-  Future<List<ServerItem>> resumable({int limit = 12, String? viewId}) async =>
-      <ServerItem>[
-        for (var i = 1; i <= 5; i++)
-          ServerItem(
-            id: 'r$i',
-            title: i == 1 ? 'Half watched' : 'Resume $i',
-            kind: ServerItemKind.movie,
-            runtime: const Duration(minutes: 100),
-            position: const Duration(minutes: 40),
-          ),
-      ];
+  Future<List<ServerItem>> resumable({int limit = 12, String? viewId}) async {
+    resumeAsks++;
+    return <ServerItem>[
+      for (var i = 1; i <= 5; i++)
+        ServerItem(
+          id: 'r$i',
+          title: i == 1 ? 'Half watched' : 'Resume $i',
+          kind: ServerItemKind.movie,
+          runtime: const Duration(minutes: 100),
+          position: const Duration(minutes: 40),
+        ),
+    ];
+  }
 
   @override
   Future<List<ServerItem>> items(
@@ -51,10 +54,9 @@ class _HomeServer extends FakeLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
-  }) async =>
-      <ServerItem>[
-        ServerItem(id: 'new-$viewId', title: 'New in $viewId'),
-      ];
+  }) async => <ServerItem>[
+    ServerItem(id: 'new-$viewId', title: 'New in $viewId'),
+  ];
 
   @override
   Future<Set<String>> homeExcludes() async => excludes;
@@ -135,6 +137,17 @@ void main() {
 
     expect(find.text('Recently added in Films'), findsOneWidget);
     expect(find.text('Recently added in Television'), findsNothing);
+  });
+
+  testWidgets('Refresh asks the server again', (tester) async {
+    final server = _HomeServer();
+    await _pump(tester, const Size(400, 900), server);
+    final before = server.resumeAsks;
+
+    await tester.tap(find.byTooltip('Refresh'));
+    await tester.pumpAndSettle();
+
+    expect(server.resumeAsks, greaterThan(before));
   });
 
   testWidgets('hiding a library saves the list to the server', (tester) async {

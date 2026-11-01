@@ -8,6 +8,7 @@
   "recentlyAddedIn": "Mới thêm vào {library}",
   "@recentlyAddedIn": {"placeholders": {"library": {"type": "String"}}},
   "customizeHome": "Tùy chỉnh trang chủ",
+  "refresh": "Làm mới",
   "customizeHomeSub": "Chọn thư viện nào hiện nội dung mới nhất. Được lưu vào tài khoản của bạn trên máy chủ, nên ứng dụng web cũng hiển thị giống vậy.",
   "changeServer": "Đổi máy chủ",
   "chooseServerFirst": "Hãy mở một máy chủ từ tab Trang chủ trước.",

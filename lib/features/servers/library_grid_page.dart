@@ -205,6 +205,11 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
         ),
         actions: <Widget>[
           IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: l10n.refresh,
+            onPressed: () => refreshLibraries(ref),
+          ),
+          IconButton(
             icon: const Icon(Icons.tune_rounded),
             tooltip: l10n.viewOptions,
             onPressed: _pickView,

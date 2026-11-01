@@ -32,6 +32,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customizeHome => 'Customize home';
 
   @override
+  String get refresh => 'Refresh';
+
+  @override
   String get customizeHomeSub =>
       'Choose which libraries show their newest items. Saved to your account on the server, so the web app shows the same.';
 

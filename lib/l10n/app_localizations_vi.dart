@@ -32,6 +32,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get customizeHome => 'Tùy chỉnh trang chủ';
 
   @override
+  String get refresh => 'Làm mới';
+
+  @override
   String get customizeHomeSub =>
       'Chọn thư viện nào hiện nội dung mới nhất. Được lưu vào tài khoản của bạn trên máy chủ, nên ứng dụng web cũng hiển thị giống vậy.';
 

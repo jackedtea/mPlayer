@@ -67,6 +67,14 @@ class HomePage extends ConsumerWidget {
       appBar: AppBar(
         title: const _ServerTitle(),
         actions: <Widget>[
+          // Beside pull to refresh, not instead of it: a pull is invisible
+          // until someone thinks to try it, and on a desktop there is no
+          // finger to pull with.
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: l10n.refresh,
+            onPressed: () => refreshHome(ref),
+          ),
           IconButton(
             icon: const Icon(Icons.tune_rounded),
             tooltip: l10n.customizeHome,
@@ -76,15 +84,7 @@ class HomePage extends ConsumerWidget {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(homeResumeProvider);
-          ref.invalidate(serverNextUpProvider);
-          ref.invalidate(serverViewsProvider);
-          ref.invalidate(latestInViewProvider);
-          ref.invalidate(homeExcludesProvider);
-          ref.invalidate(homeFavouritesProvider);
-          await ref.read(serverViewsProvider.future);
-        },
+        onRefresh: () => refreshHome(ref),
         child: ListView(
           padding: EdgeInsets.only(top: spacing.sm, bottom: spacing.xl),
           children: <Widget>[
