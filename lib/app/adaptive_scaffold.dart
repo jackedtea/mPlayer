@@ -8,7 +8,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-2302import '../features/search/search_page.dart' show searchFocusRequests;
+import '../features/search/search_page.dart' show searchFocusRequests;
 import '../l10n/app_localizations.dart';
 import 'system_ui.dart';
 import 'tokens.dart';
