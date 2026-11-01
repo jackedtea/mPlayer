@@ -6,9 +6,11 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/search/search_page.dart' show searchFocusRequests;
+import '../features/servers/server_library.dart' show connectedServerProvider;
 import '../l10n/app_localizations.dart';
 import 'system_ui.dart';
 import 'tokens.dart';
@@ -78,7 +80,11 @@ enum AppBranch { home, libraries, search, downloads, settings }
 ///
 /// The shell is an `indexedStack`, so switching destinations preserves each
 /// branch's navigation stack and scroll position.
-class AdaptiveScaffold extends StatelessWidget {
+///
+/// **No navigation at all while Home is choosing a server** — the empty state
+/// or the server list. Every other destination browses a server, so offering
+/// them before one is open is four tabs that each say "open a server first".
+class AdaptiveScaffold extends ConsumerWidget {
   const AdaptiveScaffold({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
@@ -98,7 +104,7 @@ class AdaptiveScaffold extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // The shell *is* the app outside the player, so if it is on screen the
     // system bars belong to the user again. Asserting it here rather than
     // trusting the player's teardown makes this self-healing: whatever goes
@@ -111,6 +117,12 @@ class AdaptiveScaffold extends StatelessWidget {
     if (windowEdges.value != WindowEdges.none) {
       unawaited(restoreAppSystemUi());
     }
+
+    // Only on Home: a route reached some other way with no server — a deep
+    // link to Settings, say — keeps its bar, or it would have no way out.
+    final choosingServer = navigationShell.currentIndex == AppBranch.home.index &&
+        ref.watch(connectedServerProvider) == null;
+    if (choosingServer) return Scaffold(body: navigationShell);
 
     return switch (context.windowSize) {
       WindowSize.compact => _CompactShell(shell: navigationShell, onGo: _go),

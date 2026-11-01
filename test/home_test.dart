@@ -32,14 +32,15 @@ class _HomeServer extends FakeLibrarySource {
 
   @override
   Future<List<ServerItem>> resumable({int limit = 12, String? viewId}) async =>
-      const <ServerItem>[
-        ServerItem(
-          id: 'r1',
-          title: 'Half watched',
-          kind: ServerItemKind.movie,
-          runtime: Duration(minutes: 100),
-          position: Duration(minutes: 40),
-        ),
+      <ServerItem>[
+        for (var i = 1; i <= 5; i++)
+          ServerItem(
+            id: 'r$i',
+            title: i == 1 ? 'Half watched' : 'Resume $i',
+            kind: ServerItemKind.movie,
+            runtime: const Duration(minutes: 100),
+            position: const Duration(minutes: 40),
+          ),
       ];
 
   @override
@@ -88,13 +89,46 @@ void main() {
       await _pump(tester, size, _HomeServer());
 
       expect(tester.takeException(), isNull);
-      expect(find.byType(CarouselView), findsOneWidget);
+      expect(find.byType(PageView), findsOneWidget);
       expect(find.text('Half watched'), findsOneWidget);
       expect(find.text('Recently added in Films'), findsOneWidget);
       expect(find.text('Recently added in Television'), findsOneWidget);
       expect(find.text('Recently added in Collections'), findsNothing);
     });
   }
+
+  group('the carousel', () {
+    int page(WidgetTester tester) => tester
+        .widget<PageView>(find.byType(PageView))
+        .controller!
+        .page!
+        .round();
+
+    testWidgets('a hard flick moves one item, not several', (tester) async {
+      await _pump(tester, const Size(400, 900), _HomeServer());
+
+      // Far harder than any thumb: the old carousel ran through several
+      // items on much less.
+      await tester.fling(find.byType(PageView), const Offset(-300, 0), 8000);
+      await tester.pumpAndSettle();
+      expect(page(tester), 1);
+
+      await tester.fling(find.byType(PageView), const Offset(-300, 0), 8000);
+      await tester.pumpAndSettle();
+      expect(page(tester), 2);
+    });
+
+    testWidgets('a dot per item, and tapping one goes there', (tester) async {
+      await _pump(tester, const Size(400, 900), _HomeServer());
+
+      final dots = find.bySemanticsLabel(RegExp(r'^\d+ / 5$'));
+      expect(dots, findsNWidgets(5));
+
+      await tester.tap(find.bySemanticsLabel('4 / 5'));
+      await tester.pumpAndSettle();
+      expect(page(tester), 3);
+    });
+  });
 
   testWidgets('a library hidden on the server has no row', (tester) async {
     await _pump(tester, const Size(400, 900), _HomeServer(excludes: {'tv'}));

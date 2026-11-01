@@ -8,21 +8,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fake_library_source.dart';
+
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/theme.dart';
 import 'package:mplayer/app/tokens.dart';
+import 'package:mplayer/features/servers/server_library.dart';
 
 /// Pumps the real app at a specific logical window size.
 ///
 /// The design fixes behaviour at three widths, so every shell test states the
 /// width it is asserting about rather than relying on the default 800x600.
-Future<void> pumpAppAt(WidgetTester tester, Size size) async {
+/// [connected] opens a server, which is what puts the navigation up: while
+/// Home is choosing one there is none.
+Future<void> pumpAppAt(
+  WidgetTester tester,
+  Size size, {
+  bool connected = false,
+}) async {
   TestWidgetsFlutterBinding.ensureInitialized();
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
 
-  await tester.pumpWidget(const ProviderScope(child: MPlayerApp()));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        if (connected)
+          activeServerProvider.overrideWithValue(const FakeLibrarySource()),
+      ],
+      child: const MPlayerApp(),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -77,7 +94,7 @@ void main() {
 
   group('adaptive shell', () {
     testWidgets('phone width uses a NavigationBar', (tester) async {
-      await pumpAppAt(tester, const Size(400, 800));
+      await pumpAppAt(tester, const Size(400, 800), connected: true);
 
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.byType(NavigationRail), findsNothing);
@@ -85,14 +102,14 @@ void main() {
     });
 
     testWidgets('tablet width uses a NavigationRail', (tester) async {
-      await pumpAppAt(tester, const Size(900, 1000));
+      await pumpAppAt(tester, const Size(900, 1000), connected: true);
 
       expect(find.byType(NavigationRail), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
     });
 
     testWidgets('desktop width uses a NavigationDrawer', (tester) async {
-      await pumpAppAt(tester, const Size(1400, 900));
+      await pumpAppAt(tester, const Size(1400, 900), connected: true);
 
       expect(find.byType(NavigationDrawer), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
@@ -116,8 +133,24 @@ void main() {
       expect(find.text('Scan this network'), findsNothing);
     });
 
+    testWidgets('choosing a server offers no other destination',
+        (tester) async {
+      // Every other tab browses a server, so before one is open they would
+      // each only say "open a server first".
+      for (final Size size in const <Size>[
+        Size(400, 800),
+        Size(900, 1000),
+        Size(1400, 900),
+      ]) {
+        await pumpAppAt(tester, size);
+        expect(find.byType(NavigationBar), findsNothing);
+        expect(find.byType(NavigationRail), findsNothing);
+        expect(find.byType(NavigationDrawer), findsNothing);
+      }
+    });
+
     testWidgets('there is no Files destination left', (tester) async {
-      await pumpAppAt(tester, const Size(400, 800));
+      await pumpAppAt(tester, const Size(400, 800), connected: true);
 
       expect(find.text('Files'), findsNothing);
       for (final String label in <String>[

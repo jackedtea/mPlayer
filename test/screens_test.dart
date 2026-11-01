@@ -26,7 +26,6 @@ const _sizes = <String, Size>{
 const _routes = <String>[
   '/home',
   '/libraries',
-  '/libraries/view',
   '/downloads',
   '/search',
   '/settings',
@@ -150,19 +149,18 @@ void main() {
       router.go('/library');
       await tester.pumpAndSettle();
 
-      // A library opens showing its whole contents. Hiding most of a
-      // collection until the user notices a chip is the wrong first
-      // impression, so Unwatched starts off.
-      final chip = tester.widget<FilterChip>(
-        find.widgetWithText(FilterChip, 'Unwatched'),
-      );
-      expect(chip.selected, isFalse);
+      // A library opens showing its whole contents: nothing narrowed, so no
+      // chip saying what is.
+      expect(find.byType(InputChip), findsNothing);
 
       // Nothing is signed in here, so the grid is empty and says so rather
       // than rendering sample titles.
       expect(find.text('0 items'), findsOneWidget);
 
+      await tester.tap(find.byTooltip('Sort & filter'));
+      await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilterChip, 'Unwatched'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
       await tester.pumpAndSettle();
 
       expect(find.text('0 unwatched'), findsOneWidget);

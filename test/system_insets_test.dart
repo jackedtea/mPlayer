@@ -115,7 +115,10 @@ void main() {
 
     testWidgets('the shell keeps its navigation bar above the system one',
         (tester) async {
-      await pumpWithBars(tester);
+      // Settings: Home has no bar while it is choosing a server.
+      final router = await pumpWithBars(tester);
+      router.go('/settings');
+      await tester.pumpAndSettle();
 
       final bar = tester.getRect(find.byType(NavigationBar));
       final size = tester.view.physicalSize / tester.view.devicePixelRatio;

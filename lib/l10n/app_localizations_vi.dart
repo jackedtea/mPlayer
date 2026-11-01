@@ -197,6 +197,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get libraries => 'Thư viện';
 
   @override
+  String get switchLibrary => 'Chuyển thư viện';
+
+  @override
   String get settingsAdmin => 'Quản trị máy chủ';
 
   @override
@@ -489,9 +492,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String itemCount(int count) {
     return '$count mục';
   }
-
-  @override
-  String get unwatched => 'Chưa xem';
 
   @override
   String unwatchedCount(int count) {
@@ -1362,6 +1362,34 @@ class AppLocalizationsVi extends AppLocalizations {
   String get quickConnectShort => 'Quick Connect';
 
   @override
+  String get quickConnectTitle => 'Quick Connect';
+
+  @override
+  String get quickConnectRowSub =>
+      'Đăng nhập thiết bị khác bằng mã nó hiển thị';
+
+  @override
+  String get quickConnectBody =>
+      'Nhập mã đang hiển thị trên thiết bị bạn muốn đăng nhập. Thiết bị đó sẽ đăng nhập bằng tài khoản của bạn.';
+
+  @override
+  String get quickConnectCode => 'Mã';
+
+  @override
+  String get quickConnectApprove => 'Duyệt';
+
+  @override
+  String get quickConnectApproved => 'Đã đăng nhập thiết bị.';
+
+  @override
+  String get quickConnectUnknownCode =>
+      'Không có thiết bị nào đang chờ với mã này. Hãy kiểm tra lại hoặc lấy mã mới — mã hết hạn sau vài phút.';
+
+  @override
+  String get quickConnectRefused =>
+      'Máy chủ không cho phép. Có thể Quick Connect đang bị tắt trong cài đặt máy chủ.';
+
+  @override
   String get quickConnectSteps =>
       'Mở Cài đặt → Quick Connect trên một thiết bị đã đăng nhập và nhập mã này. Không cần gõ mật khẩu ở đây.';
 
@@ -1536,10 +1564,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get offlineSkipped => 'Ngoại tuyến — sẽ bỏ qua';
 
   @override
-  String get sortBy => 'Sắp xếp theo';
+  String get sortAndFilter => 'Sắp xếp & lọc';
 
   @override
-  String get sortOrder => 'Thứ tự';
+  String get sortBy => 'Sắp xếp theo';
 
   @override
   String get sortAscending => 'Tăng dần';

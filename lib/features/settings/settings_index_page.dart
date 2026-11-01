@@ -10,7 +10,9 @@ import 'package:go_router/go_router.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../admin/admin_providers.dart';
+import '../servers/server_library.dart';
 import 'current_server_card.dart';
+import 'quick_connect_dialog.dart';
 import 'settings_widgets.dart';
 
 /// Screen 1l — the settings index: the current server, then two sections.
@@ -119,6 +121,25 @@ class SettingsIndexPage extends ConsumerWidget {
       body: ListView(
         children: <Widget>[
           const CurrentServerCard(),
+          // Only with a server open: approving a code signs another device
+          // in as the user this app is signed in as.
+          if (ref.watch(connectedServerProvider) != null)
+            ListTile(
+              contentPadding: spacing.screenPadding(context.windowSize),
+              leading: CircleAvatar(
+                radius: 20,
+                backgroundColor: scheme.secondaryContainer,
+                child: Icon(
+                  Icons.phonelink_lock_rounded,
+                  size: 22,
+                  color: scheme.onSecondaryContainer,
+                ),
+              ),
+              title: Text(l10n.quickConnectTitle),
+              subtitle: Text(l10n.quickConnectRowSub),
+              trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
+              onTap: () => showQuickConnectDialog(context),
+            ),
           SettingsSection(title: l10n.settingsSectionApp),
           for (final _SettingsEntry e in _appEntries(l10n)) _tile(context, e),
           if (isAdministrator) ...<Widget>[

@@ -14,15 +14,32 @@ import 'fake_library_source.dart';
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/router.dart';
 import 'package:mplayer/features/servers/servers_list_page.dart';
+import 'package:mplayer/servers/media_library_source.dart';
 import 'package:mplayer/servers/server_registry.dart';
+
+/// Answers Quick Connect approvals with [answer], and keeps the codes.
+class _QuickConnectServer extends FakeLibrarySource {
+  _QuickConnectServer();
+
+  QuickConnectApproval answer = QuickConnectApproval.approved;
+  final List<String> codes = <String>[];
+
+  @override
+  Future<QuickConnectApproval> authorizeQuickConnect(String code) async {
+    codes.add(code);
+    return answer;
+  }
+}
+
+final _server = _QuickConnectServer();
 
 /// Signed in already, without the keychain the real registry reads.
 class _SignedInRegistry extends ServerRegistry {
   @override
-  ServerRegistryState build() => const ServerRegistryState(
-        profiles: [fakeServerProfile],
+  ServerRegistryState build() => ServerRegistryState(
+        profiles: const [fakeServerProfile],
         activeId: 'p1',
-        source: FakeLibrarySource(),
+        source: _server,
         loading: false,
       );
 }
@@ -87,5 +104,49 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('https://media.home.lan'), findsOneWidget);
+  });
+
+  group('Quick Connect', () {
+    setUp(() {
+      _server.answer = QuickConnectApproval.approved;
+      _server.codes.clear();
+    });
+
+    testWidgets('approving a code signs the other device in', (tester) async {
+      await _pump(tester, const Size(400, 900));
+
+      await tester.tap(find.text('Quick Connect'));
+      await tester.pumpAndSettle();
+
+      final approve = find.widgetWithText(FilledButton, 'Approve');
+      // Six digits or nothing to send.
+      await tester.enterText(find.byType(TextField), '12a34');
+      await tester.pump();
+      expect(tester.widget<FilledButton>(approve).onPressed, isNull);
+
+      await tester.enterText(find.byType(TextField), '123456');
+      await tester.pump();
+      await tester.tap(approve);
+      await tester.pumpAndSettle();
+
+      expect(_server.codes, <String>['123456']);
+      expect(find.text('Device signed in.'), findsOneWidget);
+    });
+
+    testWidgets('an unknown code says so and keeps the dialog open',
+        (tester) async {
+      _server.answer = QuickConnectApproval.unknownCode;
+      await _pump(tester, const Size(400, 900));
+
+      await tester.tap(find.text('Quick Connect'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '654321');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Approve'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('No device is waiting'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+    });
   });
 }

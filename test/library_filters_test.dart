@@ -225,15 +225,26 @@ void main() {
   });
 
   group('the library screen', () {
-    testWidgets('the Unwatched chip narrows the request, not the page',
-        (tester) async {
+    Future<void> openOptions(WidgetTester tester) async {
+      await tester.tap(find.byTooltip('Sort & filter'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> apply(WidgetTester tester) async {
+      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a filter narrows the request, not the page', (tester) async {
       final server = _RecordingServer();
       await pumpLibrary(tester, server: server);
 
       expect(server.asked.single.filter, LibraryFilter.none);
 
+      await openOptions(tester);
       await tester.tap(find.widgetWithText(FilterChip, 'Unwatched'));
       await tester.pumpAndSettle();
+      await apply(tester);
 
       // The page holds a hundred of however many the library has; filtering
       // those would hide nothing past the hundredth.
@@ -243,7 +254,7 @@ void main() {
       );
     });
 
-    testWidgets('a genre chosen in the sheet reaches the server',
+    testWidgets('a genre chosen in the dialog reaches the server',
         (tester) async {
       final server = _RecordingServer(
         options: const LibraryFilterOptions(
@@ -252,46 +263,69 @@ void main() {
       );
       await pumpLibrary(tester, server: server);
 
-      await tester.tap(find.widgetWithText(ActionChip, 'Filters'));
-      await tester.pumpAndSettle();
-
+      await openOptions(tester);
       await tester.tap(find.text('Genres'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(CheckboxListTile, 'Drama'));
+      await tester.tap(find.widgetWithText(FilterChip, 'Drama'));
       await tester.pumpAndSettle();
 
-      // Nothing is applied while the sheet is open: a request per checkbox
-      // would rearrange the grid under a sheet the user is still reading.
+      // Nothing is applied while the dialog is open: a request per chip
+      // would rearrange the grid under a dialog the user is still reading.
       expect(server.asked.length, 1);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
-      await tester.pumpAndSettle();
+      await apply(tester);
 
       expect(server.asked.last.filter.genres, <String>{'Drama'});
-      // The chip counts what is on, which is the only thing on screen saying
-      // why the library looks emptier than the user remembers.
-      expect(find.widgetWithText(ActionChip, '1'), findsOneWidget);
+      // The button counts what is on, and the chip over the grid says what.
+      expect(
+        find.descendant(of: find.byType(Badge), matching: find.text('1')),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(InputChip, 'Drama'), findsOneWidget);
     });
 
-    testWidgets('the sort sheet keeps the direction across a change of field',
+    testWidgets('a filter chip over the grid removes just that filter',
+        (tester) async {
+      final server = _RecordingServer(
+        options: const LibraryFilterOptions(genres: <String>['Drama']),
+      );
+      await pumpLibrary(tester, server: server);
+
+      await openOptions(tester);
+      await tester.tap(find.widgetWithText(FilterChip, 'Favourites'));
+      await tester.tap(find.text('Genres'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilterChip, 'Drama'));
+      await apply(tester);
+
+      final drama = find.widgetWithText(InputChip, 'Drama');
+      // The delete glyph, whichever icon the theme draws for it.
+      await tester.tap(
+        find.descendant(of: drama, matching: find.byType(Icon)).last,
+      );
+      await tester.pumpAndSettle();
+
+      expect(server.asked.last.filter.genres, isEmpty);
+      expect(server.asked.last.filter.flags, <ItemFilter>{ItemFilter.favourite});
+    });
+
+    testWidgets('the direction carries across a change of field',
         (tester) async {
       final server = _RecordingServer();
       await pumpLibrary(tester, server: server);
 
-      await tester.tap(find.widgetWithText(ActionChip, 'A–Z'));
+      await openOptions(tester);
+      await tester.tap(find.text('Descending'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(RadioListTile<SortOrder>, 'Descending'));
-      await tester.pumpAndSettle();
+      await apply(tester);
 
       expect(server.asked.last.sort, ServerSort.name);
       expect(server.asked.last.order, SortOrder.descending);
 
-      await tester.tap(find.widgetWithText(ActionChip, 'A–Z'));
+      await openOptions(tester);
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Release date'));
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.widgetWithText(RadioListTile<ServerSort>, 'Release date'),
-      );
-      await tester.pumpAndSettle();
+      await apply(tester);
 
       // A user who chose Descending meant it; flipping back to the new
       // sort's natural direction reads as the app forgetting.
@@ -306,31 +340,38 @@ void main() {
         server: _RecordingServer(collectionKind: 'tvshows'),
       );
 
-      await tester.tap(find.widgetWithText(ActionChip, 'A–Z'));
-      await tester.pumpAndSettle();
+      await openOptions(tester);
 
       expect(find.text('Latest episode added'), findsOneWidget);
-      // A film is neither continuing nor ended, so the section is absent
-      // rather than disabled outside a shows library.
       expect(find.text('Community rating'), findsOneWidget);
+      // And the series status, which a film library has no use for.
+      expect(find.text('Status'), findsOneWidget);
     });
 
     testWidgets('a film is neither continuing nor ended, so it is not asked',
         (tester) async {
       await pumpLibrary(tester, server: _RecordingServer());
 
-      await tester.tap(find.widgetWithText(ActionChip, 'Filters'));
-      await tester.pumpAndSettle();
+      await openOptions(tester);
 
       expect(find.text('Status'), findsNothing);
       expect(find.text('Features'), findsOneWidget);
-      // Nothing came back to filter by, and the sheet says so rather than
+      // Nothing came back to filter by, and the dialog says so rather than
       // drawing four empty headings.
       expect(find.text('Genres'), findsNothing);
       expect(
         find.text('This library holds nothing else to filter by.'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('the filter button is on Browse alone', (tester) async {
+      await pumpLibrary(tester, server: _RecordingServer());
+      expect(find.byTooltip('Sort & filter'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(Tab, 'Collections'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Sort & filter'), findsNothing);
     });
   });
 }

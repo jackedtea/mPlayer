@@ -631,4 +631,37 @@ void main() {
       expect(body['LatestItemsExcludes'], <String>['tv']);
     });
   });
+
+  group('approving a Quick Connect code', () {
+    test('sends the code as this user', () async {
+      final (source, adapter) = sourceWith((_) => _json(true));
+
+      expect(
+        await source.authorizeQuickConnect(' 123456 '),
+        QuickConnectApproval.approved,
+      );
+      final request = adapter.requests.single;
+      expect(request.method, 'POST');
+      expect(request.uri.path, '/QuickConnect/Authorize');
+      expect(request.uri.queryParameters['code'], '123456');
+      expect(request.uri.queryParameters['userId'], 'u1');
+    });
+
+    test('an unknown code is an answer, not a failure', () async {
+      final (source, _) = sourceWith((_) => _json(<String, dynamic>{}, status: 404));
+      expect(
+        await source.authorizeQuickConnect('000000'),
+        QuickConnectApproval.unknownCode,
+      );
+    });
+
+    test('a 403 means Quick Connect is off, not that the session expired',
+        () async {
+      final (source, _) = sourceWith((_) => _json(<String, dynamic>{}, status: 403));
+      expect(
+        await source.authorizeQuickConnect('123456'),
+        QuickConnectApproval.refused,
+      );
+    });
+  });
 }

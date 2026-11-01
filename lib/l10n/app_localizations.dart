@@ -440,6 +440,12 @@ abstract class AppLocalizations {
   /// **'Libraries'**
   String get libraries;
 
+  /// No description provided for @switchLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch library'**
+  String get switchLibrary;
+
   /// No description provided for @settingsAdmin.
   ///
   /// In en, this message translates to:
@@ -943,12 +949,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} items'**
   String itemCount(int count);
-
-  /// No description provided for @unwatched.
-  ///
-  /// In en, this message translates to:
-  /// **'Unwatched'**
-  String get unwatched;
 
   /// No description provided for @unwatchedCount.
   ///
@@ -2540,6 +2540,54 @@ abstract class AppLocalizations {
   /// **'Quick Connect'**
   String get quickConnectShort;
 
+  /// No description provided for @quickConnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Connect'**
+  String get quickConnectTitle;
+
+  /// No description provided for @quickConnectRowSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in another device with the code it shows'**
+  String get quickConnectRowSub;
+
+  /// No description provided for @quickConnectBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code shown on the device you want to sign in. It will be signed in as you.'**
+  String get quickConnectBody;
+
+  /// No description provided for @quickConnectCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get quickConnectCode;
+
+  /// No description provided for @quickConnectApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get quickConnectApprove;
+
+  /// No description provided for @quickConnectApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Device signed in.'**
+  String get quickConnectApproved;
+
+  /// No description provided for @quickConnectUnknownCode.
+  ///
+  /// In en, this message translates to:
+  /// **'No device is waiting with that code. Check it, or get a new one — codes expire after a few minutes.'**
+  String get quickConnectUnknownCode;
+
+  /// No description provided for @quickConnectRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'This server did not allow it. Quick Connect may be turned off in its settings.'**
+  String get quickConnectRefused;
+
   /// No description provided for @quickConnectSteps.
   ///
   /// In en, this message translates to:
@@ -2852,17 +2900,17 @@ abstract class AppLocalizations {
   /// **'Offline — will be skipped'**
   String get offlineSkipped;
 
+  /// No description provided for @sortAndFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort & filter'**
+  String get sortAndFilter;
+
   /// No description provided for @sortBy.
   ///
   /// In en, this message translates to:
   /// **'Sort by'**
   String get sortBy;
-
-  /// No description provided for @sortOrder.
-  ///
-  /// In en, this message translates to:
-  /// **'Sort order'**
-  String get sortOrder;
 
   /// No description provided for @sortAscending.
   ///

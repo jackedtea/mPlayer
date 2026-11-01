@@ -101,6 +101,10 @@ class FakeLibrarySource implements MediaLibrarySource {
   Future<void> setHomeExcludes(Set<String> viewIds) async {}
 
   @override
+  Future<QuickConnectApproval> authorizeQuickConnect(String code) async =>
+      QuickConnectApproval.approved;
+
+  @override
   Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async =>
       const <ServerItem>[];
 

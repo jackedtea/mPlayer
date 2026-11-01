@@ -196,6 +196,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraries => 'Libraries';
 
   @override
+  String get switchLibrary => 'Switch library';
+
+  @override
   String get settingsAdmin => 'Server administration';
 
   @override
@@ -488,9 +491,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String itemCount(int count) {
     return '$count items';
   }
-
-  @override
-  String get unwatched => 'Unwatched';
 
   @override
   String unwatchedCount(int count) {
@@ -1361,6 +1361,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickConnectShort => 'Quick Connect';
 
   @override
+  String get quickConnectTitle => 'Quick Connect';
+
+  @override
+  String get quickConnectRowSub =>
+      'Sign in another device with the code it shows';
+
+  @override
+  String get quickConnectBody =>
+      'Enter the code shown on the device you want to sign in. It will be signed in as you.';
+
+  @override
+  String get quickConnectCode => 'Code';
+
+  @override
+  String get quickConnectApprove => 'Approve';
+
+  @override
+  String get quickConnectApproved => 'Device signed in.';
+
+  @override
+  String get quickConnectUnknownCode =>
+      'No device is waiting with that code. Check it, or get a new one — codes expire after a few minutes.';
+
+  @override
+  String get quickConnectRefused =>
+      'This server did not allow it. Quick Connect may be turned off in its settings.';
+
+  @override
   String get quickConnectSteps =>
       'Open Settings → Quick Connect on any device that is already signed in, and enter the code there. No password is typed here.';
 
@@ -1535,10 +1563,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get offlineSkipped => 'Offline — will be skipped';
 
   @override
-  String get sortBy => 'Sort by';
+  String get sortAndFilter => 'Sort & filter';
 
   @override
-  String get sortOrder => 'Sort order';
+  String get sortBy => 'Sort by';
 
   @override
   String get sortAscending => 'Ascending';

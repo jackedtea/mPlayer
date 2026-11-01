@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -140,12 +141,49 @@ class _Section extends StatelessWidget {
   }
 }
 
-/// The ten most recently played items, as a hero carousel.
-class _ResumeCarousel extends ConsumerWidget {
+/// The ten most recently played items, as a hero carousel with a page
+/// indicator under it.
+///
+/// A [PageView], not Material's `CarouselView`: that one hard-wires its own
+/// snapping physics, under which a light flick runs through three or four
+/// items — and each item here is a specific film the user is choosing
+/// between, so overshooting loses their place. [PageScrollPhysics] moves one
+/// page per swipe however hard it is thrown.
+class _ResumeCarousel extends ConsumerStatefulWidget {
   const _ResumeCarousel();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ResumeCarousel> createState() => _ResumeCarouselState();
+}
+
+class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
+  PageController? _pages;
+  int _index = 0;
+
+  @override
+  void dispose() {
+    _pages?.dispose();
+    super.dispose();
+  }
+
+  /// The controller for [fraction], rebuilt only when the window crosses into
+  /// a size that needs a different one — `viewportFraction` is fixed for a
+  /// controller's lifetime. The page the user was on is carried across.
+  PageController _controllerFor(double fraction) {
+    final current = _pages;
+    if (current != null && current.viewportFraction == fraction) return current;
+
+    final next = PageController(viewportFraction: fraction, initialPage: _index);
+    // Disposed after the frame: the old one is still attached to the
+    // PageView being replaced until then.
+    if (current != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => current.dispose());
+    }
+    return _pages = next;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final request = ref.watch(homeResumeProvider);
     final items = request.value ?? const <ServerItem>[];
     final compact = context.windowSize == WindowSize.compact;
@@ -159,35 +197,151 @@ class _ResumeCarousel extends ConsumerWidget {
       );
     }
 
-    final padding = EdgeInsets.symmetric(
-      horizontal: context.spacing.screenHorizontal(context.windowSize) / 2,
-    );
-    final children = <Widget>[
-      for (final ServerItem item in items) _CarouselCard(item: item),
-    ];
+    // A refresh can return fewer items than the page the user was on.
+    final index = _index.clamp(0, items.length - 1);
 
-    return SizedBox(
-      height: height,
-      // The hero layout on a phone — one large item with a sliver of each
-      // neighbour — and fixed-width cards once there is room for several.
-      // The cards draw their own ink: the carousel's would sit over the play
-      // button and swallow its taps.
-      child: compact
-          ? CarouselView.weighted(
-              flexWeights: const <int>[1, 7, 1],
-              padding: padding,
-              enableSplash: false,
-              itemSnapping: true,
-              children: children,
-            )
-          : CarouselView(
-              itemExtent: 460,
-              shrinkExtent: 200,
-              padding: padding,
-              enableSplash: false,
-              itemSnapping: true,
-              children: children,
+    return Column(
+      children: <Widget>[
+        SizedBox(
+          height: height,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // The hero layout on a phone — one large item with a sliver of
+              // each neighbour — and cards about 460 wide once there is room
+              // for several, starting at the left edge like the shelves.
+              final fraction = compact
+                  ? 0.86
+                  : (460 / constraints.maxWidth).clamp(0.2, 0.86);
+              final pages = _controllerFor(fraction);
+
+              return ScrollConfiguration(
+                // A mouse drags it too: on desktop there is no touch, and a
+                // carousel that only the dots can move feels broken.
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  dragDevices: PointerDeviceKind.values.toSet(),
+                ),
+                child: PageView.builder(
+                  controller: pages,
+                  padEnds: compact,
+                  itemCount: items.length,
+                  onPageChanged: (i) => setState(() => _index = i),
+                  itemBuilder: (context, i) => _CarouselPage(
+                    controller: pages,
+                    index: i,
+                    child: _CarouselCard(item: items[i]),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (items.length > 1)
+          _PageDots(
+            count: items.length,
+            current: index,
+            onSelected: (i) => _pages?.animateToPage(
+              i,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
             ),
+          ),
+      ],
+    );
+  }
+}
+
+/// One page of the carousel: inset from its neighbours, rounded, and a
+/// little smaller the further it sits from the centre, so the page in front
+/// reads as the one in front.
+class _CarouselPage extends StatelessWidget {
+  const _CarouselPage({
+    required this.controller,
+    required this.index,
+    required this.child,
+  });
+
+  final PageController controller;
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        // Before the first layout there is no page to measure against.
+        final page = controller.hasClients && controller.position.haveDimensions
+            ? controller.page ?? controller.initialPage.toDouble()
+            : controller.initialPage.toDouble();
+        final distance = (page - index).abs().clamp(0.0, 1.0);
+
+        return Transform.scale(scale: 1 - distance * 0.08, child: child);
+      },
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: spacing.xs + 2),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(context.radii.sheet),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Which page is showing, as a row of dots; the current one is a pill.
+///
+/// Each dot is also a way there — the only one on a desktop without a
+/// trackpad gesture, and quicker than six swipes on a phone.
+class _PageDots extends StatelessWidget {
+  const _PageDots({
+    required this.count,
+    required this.current,
+    required this.onSelected,
+  });
+
+  final int count;
+  final int current;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+
+    return Padding(
+      padding: EdgeInsets.only(top: context.spacing.xs),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          for (var i = 0; i < count; i++)
+            Semantics(
+              button: true,
+              selected: i == current,
+              label: '${i + 1} / $count',
+              child: InkResponse(
+                onTap: () => onSelected(i),
+                radius: 12,
+                // Wider than the dot itself, so a finger can hit it.
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    width: i == current ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: i == current
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

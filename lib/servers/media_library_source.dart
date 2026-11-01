@@ -808,6 +808,13 @@ abstract class MediaLibrarySource {
 
   Future<void> setFavourite(String itemId, {required bool favourite});
 
+  /// Signs another device in as this user, by the code it is showing.
+  ///
+  /// The other half of Quick Connect: the device being signed in shows a
+  /// code, and one already signed in approves it. Transport failures throw;
+  /// the server's own answers come back as a [QuickConnectApproval].
+  Future<QuickConnectApproval> authorizeQuickConnect(String code);
+
   /// Releases the HTTP client.
   Future<void> dispose();
 }
@@ -868,6 +875,17 @@ enum SeriesStatus { continuing, ended }
 
 /// Something the server holds *alongside* the film itself.
 enum ItemFeature { subtitles, trailer, specialFeature, themeSong, themeVideo }
+
+/// What the server said to a Quick Connect approval.
+enum QuickConnectApproval {
+  approved,
+
+  /// No device is waiting with that code — mistyped, or it expired.
+  unknownCode,
+
+  /// Quick Connect is switched off, or this account may not use it.
+  refused,
+}
 
 /// Everything the filter sheet can narrow a library listing by.
 ///

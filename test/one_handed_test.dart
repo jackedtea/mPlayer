@@ -63,7 +63,7 @@ double _verticalPosition(WidgetTester tester, Finder finder) {
 void main() {
   group('settings is a destination, not a corner', () {
     testWidgets('it is in the bottom navigation bar', (tester) async {
-      await _pump(tester, _phone);
+      await _pump(tester, _phone, server: const _FakeServer());
 
       final bar = find.byType(NavigationBar);
       expect(bar, findsOneWidget);
@@ -102,7 +102,7 @@ void main() {
     });
 
     testWidgets('opening it keeps the navigation bar in reach', (tester) async {
-      await _pump(tester, _phone);
+      await _pump(tester, _phone, server: const _FakeServer());
 
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
@@ -210,8 +210,10 @@ void main() {
       router.push('/library', extra: 'v1');
       await tester.pumpAndSettle();
 
-      final fab = find.byType(FloatingActionButton);
+      // Search above the filter button, both in the thumb's reach.
+      final fab = find.byTooltip('Search');
       expect(fab, findsOneWidget);
+      expect(find.byTooltip('Sort & filter'), findsOneWidget);
       expect(_verticalPosition(tester, fab), greaterThan(0.6));
 
       // And no longer in the corner it used to sit in.

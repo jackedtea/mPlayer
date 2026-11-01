@@ -577,6 +577,37 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
+  Future<QuickConnectApproval> authorizeQuickConnect(String code) async {
+    // Not through `_send`: its 401/403 means "your session expired", and here
+    // the same statuses mean Quick Connect is switched off — signing the user
+    // out over that would be wrong twice over. A 404 is the server failing to
+    // find the code, which is an answer rather than a failure.
+    final Response<dynamic> response;
+    try {
+      response = await _dio.postUri<dynamic>(
+        _url('/QuickConnect/Authorize', <String, String>{
+          'code': code.trim(),
+          'userId': _profile.userId,
+        }),
+        options: Options(headers: _headers),
+      );
+    } on DioException {
+      throw ServerException('Could not reach ${_profile.name}.');
+    }
+
+    return switch (response.statusCode ?? 0) {
+      // The body is a bare `true`; anything else approved nothing.
+      200 => response.data == true
+          ? QuickConnectApproval.approved
+          : QuickConnectApproval.unknownCode,
+      404 => QuickConnectApproval.unknownCode,
+      401 || 403 => QuickConnectApproval.refused,
+      final status =>
+        throw ServerException('${_profile.name} refused the request ($status).'),
+    };
+  }
+
+  @override
   Future<void> dispose() async => _dio.close(force: true);
 
   // ------------------------------------------------------------ plumbing

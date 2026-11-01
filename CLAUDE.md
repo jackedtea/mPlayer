@@ -118,16 +118,27 @@ Also open:
   `UserConfiguration.LatestItemsExcludes` — the same list the web client's
   Home settings edit. Saving posts the **whole** configuration back (the
   server replaces it), to `/Users/Configuration?userId=`.
-- **Libraries** opens a library at `/libraries/view` inside the branch, with
-  four tabs: Browse, Suggestions, Collections, Playlists. Favourites is a Browse
-  filter, not a tab. `/library` above the shell is still what drill-downs and
-  item tiles use.
+- **Libraries** opens straight into the library last browsed on this server
+  (`lastLibraryProvider`, per profile id), else the first. The app-bar title
+  is a switcher; no list of libraries in front. Four tabs: Browse,
+  Suggestions, Collections, Playlists. Sort and filter are one dialog behind a
+  FAB on Browse (`showLibraryOptionsDialog`), with removable chips over the
+  grid for what is on. `/library` above the shell is still what drill-downs
+  and item tiles use.
+- The Home carousel is a `PageView`, not `CarouselView`: the latter hard-wires
+  its snapping physics and a flick runs through several items.
+- **No navigation while Home is choosing a server** (empty state or list):
+  `AdaptiveScaffold` drops the bar/rail/drawer on the Home branch when
+  `connectedServerProvider` is null.
 - **Search**: a second tap on the destination focuses the field
   (`searchFocusRequests`).
 - **Downloads** is a placeholder; nothing feeds its list.
 - **Settings** opens on `CurrentServerCard` (name, host, user, admin badge;
   Edit server / Switch server, or Add server with none), then App settings
   and, for an administrator, Server settings linking straight to `/admin/*`.
+  A Quick Connect row approves another device's code
+  (`POST /QuickConnect/Authorize`); its 401/403 means the feature is off, so it
+  bypasses `_send`, which would read them as an expired session.
 - **Jellyfin only.** Emby was removed on 2026-11-01: `ServerKind` is gone,
   the probe refuses an Emby server with a sentence, and a stored Emby profile
   is skipped on load.

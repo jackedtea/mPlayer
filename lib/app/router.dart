@@ -65,18 +65,9 @@ GoRouter buildRouter() {
             routes: <RouteBase>[
               GoRoute(
                 path: '/libraries',
+                // Opens straight into the last library browsed; the films and
+                // series it opens cover the shell through `/library/...`.
                 builder: (context, state) => const LibrariesPage(),
-                routes: <RouteBase>[
-                  // One library, inside the branch so the navigation bar
-                  // stays under its tabs. `extra` is the library's id. The
-                  // films and series it opens still cover the shell, through
-                  // `/library/...` below.
-                  GoRoute(
-                    path: 'view',
-                    builder: (context, state) =>
-                        LibraryGridPage(viewId: state.extra as String?),
-                  ),
-                ],
               ),
             ],
           ),
@@ -184,9 +175,9 @@ GoRouter buildRouter() {
       ),
       // Server library screens. They live above the shell rather than inside
       // one branch because they are reached from Home, Libraries and Search
-      // alike. A library opened from the Libraries tab is `/libraries/view`
-      // instead, which keeps the bar; this one is a box set or playlist
-      // drilled into, and what every tile opens.
+      // alike. The Libraries tab shows its library in place, which keeps the
+      // bar; this one is a box set or playlist drilled into, and what every
+      // tile opens.
       GoRoute(
         path: '/library',
         parentNavigatorKey: _rootKey,

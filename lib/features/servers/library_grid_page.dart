@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
+import '../libraries/last_library.dart';
 import '../../widgets/poster_tile.dart';
 import '../../widgets/section_header.dart';
 import 'library_filter_sheet.dart';
@@ -45,9 +46,15 @@ class LibraryGridPage extends ConsumerStatefulWidget {
     this.title = 'Movies',
     this.viewId,
     this.browse = LibraryBrowse.library,
+    this.onSwitchLibrary,
   });
 
   final String title;
+
+  /// Set by the Libraries tab, which owns which library is showing and swaps
+  /// this page for another when the title's switcher picks one. Null for a
+  /// library pushed over the shell, which replaces its own route instead.
+  final ValueChanged<String>? onSwitchLibrary;
 
   /// Which library to show. Null renders the empty state — the screen is
   /// always reached from a library tile, so a null id means the route was
@@ -88,7 +95,40 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
   @override
   void initState() {
     super.initState();
-    if (_hasTabs) _tabs = TabController(length: _LibraryTab.values.length, vsync: this);
+    if (_hasTabs) {
+      _tabs = TabController(length: _LibraryTab.values.length, vsync: this)
+        // The filter button belongs to Browse alone, so a tab change has to
+        // rebuild the scaffold that shows or hides it.
+        ..addListener(() {
+          if (mounted) setState(() {});
+        });
+    }
+
+    // Any library opened is the one the Libraries tab should come back to,
+    // however it was reached. After the frame: a provider must not change
+    // while the widget tree is being built.
+    final viewId = widget.viewId;
+    if (_hasTabs && viewId != null) {
+      Future<void>.microtask(() {
+        final profileId = ref.read(activeServerProvider)?.profile.id;
+        if (!mounted || profileId == null) return;
+        ref.read(lastLibraryProvider.notifier).remember(profileId, viewId);
+      });
+    }
+  }
+
+  /// Opens [viewId] in place of the library on screen.
+  void _switchTo(String viewId) {
+    if (viewId == widget.viewId) return;
+
+    final inTab = widget.onSwitchLibrary;
+    if (inTab != null) {
+      inTab(viewId);
+    } else {
+      // Replaced rather than pushed: switching is a sideways move, and back
+      // should leave the library screen, not walk through every one tried.
+      GoRouter.of(context).pushReplacement('/library', extra: viewId);
+    }
   }
 
   @override
@@ -104,19 +144,27 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     final viewId = widget.viewId;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'library-search',
-        tooltip: l10n.navSearch,
-        onPressed: () => context.go('/search'),
-        child: const Icon(Icons.search_rounded),
-      ),
+      // Inside the Libraries tab the navigation bar already carries Search;
+      // a library pushed over the shell has no bar, so it keeps the button.
+      floatingActionButton: _floatingButtons(context),
       appBar: AppBar(
         backgroundColor: scheme.surfaceContainerHigh,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(_titleFor(ref) ?? widget.title),
+        // The Libraries tab's root has nothing under it to go back to.
+        automaticallyImplyLeading: false,
+        leading: context.canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: l10n.actionBack,
+                onPressed: () => context.pop(),
+              )
+            : null,
+        title: _hasTabs
+            ? _LibrarySwitcher(
+                currentId: viewId!,
+                title: _titleFor(ref) ?? widget.title,
+                onSelected: _switchTo,
+              )
+            : Text(_titleFor(ref) ?? widget.title),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.grid_view_rounded),
@@ -194,49 +242,14 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SizedBox(
-          height: 48,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: spacing.screenPadding(context.windowSize),
-            children: <Widget>[
-              FilterChip(
-                label: Text(l10n.unwatched),
-                selected: _unwatchedOnly,
-                onSelected: (v) => setState(() {
-                  _filter = _filter.copyWith(
-                    flags: LibraryFilter.toggled(
-                      _filter.flags,
-                      ItemFilter.unplayed,
-                      v,
-                    ),
-                  );
-                }),
-              ),
-              SizedBox(width: spacing.sm),
-              _MenuChip(
-                label: sortLabel(_ordering.sort, l10n),
-                onTap: _pickSort,
-              ),
-              SizedBox(width: spacing.sm),
-              // The count is what makes a narrowed library explain itself:
-              // without it the only sign that six filters are on is a grid
-              // that looks emptier than the user remembers.
-              ActionChip(
-                avatar: const Icon(Icons.tune_rounded, size: 18),
-                label: Text(
-                  _filter.isEmpty ? l10n.filters : '${_filter.count}',
-                ),
-                tooltip: l10n.filters,
-                onPressed: viewId == null ? null : () => _pickFilters(viewId),
-              ),
-            ],
-          ),
+        _ActiveFilters(
+          filter: _filter,
+          onChanged: (next) => setState(() => _filter = next),
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(
             spacing.screenHorizontal(context.windowSize),
-            spacing.md,
+            spacing.xs,
             spacing.screenHorizontal(context.windowSize),
             spacing.sm,
           ),
@@ -247,7 +260,7 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
             _filter.count == 1 && _unwatchedOnly
                 ? l10n.unwatchedCount(items.length)
                 : l10n.itemCount(items.length),
-            style: context.texts.bodySmall
+            style: context.texts.labelMedium
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ),
@@ -318,27 +331,70 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     return null;
   }
 
-  Future<void> _pickSort() async {
-    final chosen = await showLibrarySortSheet(
-      context,
-      current: _ordering,
-      collectionKind: _collectionKind(),
-    );
-
-    if (chosen == null || !mounted) return;
-    setState(() => _ordering = chosen);
+  /// Whether the grid with its sort and filters is the one on screen — the
+  /// Browse tab, or a box set, which is nothing but that grid.
+  bool get _onGrid {
+    if (widget.browse == LibraryBrowse.playlist) return false;
+    return _tabs == null || _tabs!.index == _LibraryTab.browse.index;
   }
 
-  Future<void> _pickFilters(String viewId) async {
-    final chosen = await showLibraryFilterSheet(
+  /// The filter button, and Search above it for a library pushed over the
+  /// shell — inside the Libraries tab the navigation bar carries Search.
+  Widget? _floatingButtons(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final inTab = widget.onSwitchLibrary != null;
+
+    final filter = _onGrid
+        ? Badge(
+            // The count rides on the button, so a narrowed grid explains
+            // itself even with the chips above it scrolled away.
+            isLabelVisible: !_filter.isEmpty,
+            label: Text('${_filter.count}'),
+            child: FloatingActionButton(
+              heroTag: 'library-options',
+              tooltip: l10n.sortAndFilter,
+              onPressed: _pickOptions,
+              child: const Icon(Icons.tune_rounded),
+            ),
+          )
+        : null;
+    final search = inTab
+        ? null
+        : FloatingActionButton(
+            heroTag: 'library-search',
+            tooltip: l10n.navSearch,
+            mini: filter != null,
+            onPressed: () => context.go('/search'),
+            child: const Icon(Icons.search_rounded),
+          );
+
+    if (filter == null) return search;
+    if (search == null) return filter;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        search,
+        SizedBox(height: context.spacing.md),
+        filter,
+      ],
+    );
+  }
+
+  Future<void> _pickOptions() async {
+    final chosen = await showLibraryOptionsDialog(
       context,
-      viewId: viewId,
-      current: _filter,
+      viewId: widget.viewId,
+      ordering: _ordering,
+      filter: _filter,
       collectionKind: _collectionKind(),
     );
 
     if (chosen == null || !mounted) return;
-    setState(() => _filter = chosen);
+    setState(() {
+      _ordering = chosen.ordering;
+      _filter = chosen.filter;
+    });
   }
 }
 
@@ -624,25 +680,200 @@ class _EmptyNote extends StatelessWidget {
   }
 }
 
-/// Chip that opens a menu — the design draws these with a trailing caret.
-class _MenuChip extends StatelessWidget {
-  const _MenuChip({required this.label, required this.onTap});
+/// The library's name in the app bar, which is also how to move to another
+/// library: tapping it lists them all.
+class _LibrarySwitcher extends ConsumerWidget {
+  const _LibrarySwitcher({
+    required this.currentId,
+    required this.title,
+    required this.onSelected,
+  });
 
-  final String label;
-  final VoidCallback onTap;
+  final String currentId;
+  final String title;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+
+    return Semantics(
+      button: true,
+      hint: l10n.switchLibrary,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(context.radii.card),
+        onTap: () => _open(context),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.sm,
+            vertical: context.spacing.xs,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Flexible(
+                child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 2),
+              const Icon(Icons.arrow_drop_down_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _LibraryPickerSheet(currentId: currentId),
+    );
+    if (chosen != null) onSelected(chosen);
+  }
+}
+
+class _LibraryPickerSheet extends ConsumerWidget {
+  const _LibraryPickerSheet({required this.currentId});
+
+  final String currentId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+    final views = ref.watch(serverViewsProvider).value ?? const <LibraryView>[];
+
+    return ListView(
+      shrinkWrap: true,
+      padding: EdgeInsets.only(bottom: spacing.lg),
+      children: <Widget>[
+        Padding(
+          padding: EdgeInsets.fromLTRB(spacing.xl, 0, spacing.xl, spacing.sm),
+          child: Text(l10n.switchLibrary, style: context.texts.titleLarge),
+        ),
+        for (final LibraryView view in views)
+          Builder(
+            builder: (context) {
+              final count = ref.watch(libraryItemCountProvider(view.id)).value;
+              final section = librarySectionFrom(view, itemCount: count);
+              final selected = view.id == currentId;
+
+              return ListTile(
+                contentPadding: EdgeInsets.symmetric(horizontal: spacing.xl),
+                selected: selected,
+                selectedTileColor: scheme.secondaryContainer,
+                leading: Icon(section.icon),
+                title: Text(view.name),
+                subtitle: count == null
+                    ? null
+                    : Text(l10n.itemCount(section.itemCount)),
+                trailing: selected ? const Icon(Icons.check_rounded) : null,
+                onTap: () => Navigator.of(context).pop(view.id),
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+/// What the grid is narrowed by, one removable chip per constraint, with a
+/// way to clear them all. Nothing at all while nothing is on.
+///
+/// The dialog behind the filter button is where filters are chosen; this is
+/// where they are seen — a count says *that* a library is narrowed, never by
+/// what, and the way out of one stale genre should not be the whole dialog.
+class _ActiveFilters extends StatelessWidget {
+  const _ActiveFilters({required this.filter, required this.onChanged});
+
+  final LibraryFilter filter;
+  final ValueChanged<LibraryFilter> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
+    if (filter.isEmpty) return const SizedBox.shrink();
+
+    final spacing = context.spacing;
+    final l10n = AppLocalizations.of(context);
+    final padding = spacing.screenPadding(context.windowSize);
+
+    Widget chip(String label, LibraryFilter without) => InputChip(
+          label: Text(label),
+          onDeleted: () => onChanged(without),
+          visualDensity: VisualDensity.compact,
+        );
+
+    final chips = <Widget>[
+      for (final ItemFilter flag in filter.flags)
+        chip(
+          flagLabel(flag, l10n),
+          filter.copyWith(
+            flags: LibraryFilter.toggled(filter.flags, flag, false),
+          ),
+        ),
+      for (final SeriesStatus status in filter.status)
+        chip(
+          statusLabel(status, l10n),
+          filter.copyWith(
+            status: LibraryFilter.toggled(filter.status, status, false),
+          ),
+        ),
+      for (final ItemFeature feature in filter.features)
+        chip(
+          featureLabel(feature, l10n),
+          filter.copyWith(
+            features: LibraryFilter.toggled(filter.features, feature, false),
+          ),
+        ),
+      for (final String genre in filter.genres)
+        chip(
+          genre,
+          filter.copyWith(
+            genres: LibraryFilter.toggled(filter.genres, genre, false),
+          ),
+        ),
+      for (final int year in filter.years)
+        chip(
+          '$year',
+          filter.copyWith(
+            years: LibraryFilter.toggled(filter.years, year, false),
+          ),
+        ),
+      for (final String rating in filter.parentalRatings)
+        chip(
+          rating,
+          filter.copyWith(
+            parentalRatings:
+                LibraryFilter.toggled(filter.parentalRatings, rating, false),
+          ),
+        ),
+      for (final String tag in filter.tags)
+        chip(
+          tag,
+          filter.copyWith(tags: LibraryFilter.toggled(filter.tags, tag, false)),
+        ),
+    ];
+
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.fromLTRB(padding.left, 6, padding.right, 2),
         children: <Widget>[
-          Text(label),
-          const SizedBox(width: 2),
-          const Icon(Icons.expand_more_rounded, size: 18),
+          for (final Widget c in chips) ...<Widget>[
+            c,
+            SizedBox(width: spacing.sm),
+          ],
+          TextButton(
+            onPressed: () => onChanged(LibraryFilter.none),
+            child: Text(l10n.clearAll),
+          ),
         ],
       ),
-      onPressed: onTap,
     );
   }
 }
