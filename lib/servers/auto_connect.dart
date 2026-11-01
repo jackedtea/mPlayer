@@ -108,9 +108,27 @@ class ServerSessionController extends Notifier<bool> {
   }
 
   /// Back to the server list.
+  ///
+  /// Locks every PIN-guarded server again on the way: coming back to one,
+  /// even the one just left, asks for its PIN afresh.
   void leave() {
     _registry?.close();
     _registry = null;
+    ref.read(unlockedServersProvider.notifier).lockAll();
     state = false;
   }
+}
+
+/// The PIN-guarded servers opened since launch, or since the last "Switch
+/// server". Memory only, on purpose: a restart asks again.
+final unlockedServersProvider =
+    NotifierProvider<UnlockedServers, Set<String>>(UnlockedServers.new);
+
+class UnlockedServers extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const <String>{};
+
+  void unlock(String profileId) => state = <String>{...state, profileId};
+
+  void lockAll() => state = const <String>{};
 }

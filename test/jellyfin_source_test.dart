@@ -664,4 +664,94 @@ void main() {
       );
     });
   });
+
+  group('signing in with Quick Connect', () {
+    const server = ServerInfo(
+      uri: 'https://media.home.lan',
+      name: 'Home',
+      version: '10.10.7',
+      serverId: 'srv',
+    );
+
+    JellyfinAuth authWith(_FakeAdapter adapter) => JellyfinAuth(
+          identity: _identity,
+          client: Dio(BaseOptions(validateStatus: (_) => true))
+            ..httpClientAdapter = adapter,
+        );
+
+    test('asks for a code with POST, which 10.9 and later require', () async {
+      final adapter = _FakeAdapter(
+        (_) => _json(<String, dynamic>{'Code': '123456', 'Secret': 's3'}),
+      );
+
+      final request = await authWith(adapter).initiateQuickConnect(server);
+
+      expect(request.code, '123456');
+      expect(adapter.requests.single.method, 'POST');
+      // Before any token exists the device still has to name itself, or the
+      // server refuses to open a session for it later.
+      expect(
+        adapter.requests.single.headers['Authorization'],
+        contains('DeviceId="dev1"'),
+      );
+    });
+
+    test('falls back to GET for a 10.8 server that answers 405', () async {
+      final adapter = _FakeAdapter(
+        (options) => options.method == 'POST'
+            ? _json(<String, dynamic>{}, status: 405)
+            : _json(<String, dynamic>{'Code': '1', 'Secret': 's'}),
+      );
+
+      await authWith(adapter).initiateQuickConnect(server);
+
+      expect(adapter.requests.map((r) => r.method), <String>['POST', 'GET']);
+    });
+
+    test('an approved code is exchanged for a session', () async {
+      final adapter = _FakeAdapter((options) {
+        if (options.uri.path == '/QuickConnect/Connect') {
+          return _json(<String, dynamic>{'Authenticated': true});
+        }
+        return _json(<String, dynamic>{
+          'AccessToken': 'tok',
+          'ServerId': 'srv',
+          'User': <String, dynamic>{'Id': 'u1', 'Name': 'nam'},
+        });
+      });
+
+      final result = await authWith(adapter).awaitQuickConnect(
+        server,
+        const QuickConnectRequest(code: '1', secret: 's3'),
+        interval: Duration.zero,
+      );
+
+      expect(result?.token, 'tok');
+      expect(result?.username, 'nam');
+      expect(adapter.requests.first.uri.queryParameters['secret'], 's3');
+      expect(
+        adapter.requests.last.uri.path,
+        '/Users/AuthenticateWithQuickConnect',
+      );
+    });
+
+    test('a cancelled wait stops asking at once', () async {
+      var cancelled = false;
+      final adapter = _FakeAdapter((_) {
+        // The user backs out while the first answer is on its way.
+        cancelled = true;
+        return _json(<String, dynamic>{'Authenticated': false});
+      });
+
+      final result = await authWith(adapter).awaitQuickConnect(
+        server,
+        const QuickConnectRequest(code: '1', secret: 's'),
+        interval: Duration.zero,
+        cancelled: () => cancelled,
+      );
+
+      expect(result, isNull);
+      expect(adapter.requests, hasLength(1));
+    });
+  });
 }

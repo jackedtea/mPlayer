@@ -139,6 +139,23 @@ Also open:
   A Quick Connect row approves another device's code
   (`POST /QuickConnect/Authorize`); its 401/403 means the feature is off, so it
   bypasses `_send`, which would read them as an expired session.
+- **Quick Connect sign-in** (add-server sheet): `POST /QuickConnect/Initiate`
+  first (10.9+ is POST-only; GET only on a 405 for 10.8), then poll
+  `/QuickConnect/Connect` until approved. The poll takes a `cancelled`
+  callback, so Cancel / New code / closing the sheet stop it at once. The
+  choice stays visible but greyed when the server has Quick Connect off.
+  Countdowns are tickers decrementing seconds, not `DateTime.now()` deltas —
+  widget tests' fake time does not move the wall clock.
+- **Server PIN** (`servers/server_pin.dart`, `features/servers/pin_lock.dart`):
+  optional per profile, 4–8 digits. Keychain holds `v1:<salt>:<hash>`
+  (20k rounds SHA-256, via `compute`); the profile holds only
+  `pinProtected`. A guarded server not yet unlocked makes
+  `connectedServerProvider` null — that is what keeps every tab and the
+  navigation bar shut — and Home shows `PinLockPage`. Unlocks are memory only
+  (`unlockedServersProvider`) and "Switch server" locks all again. Five wrong
+  tries pause it 30 s. Changing or removing a PIN asks for the current one.
+  It is a lock on the app's door, not encryption: the token beside it is in
+  the same keychain.
 - **Jellyfin only.** Emby was removed on 2026-11-01: `ServerKind` is gone,
   the probe refuses an Emby server with a sentence, and a stored Emby profile
   is skipped on load.

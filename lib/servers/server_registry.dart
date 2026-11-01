@@ -18,6 +18,7 @@ import 'jellyfin_source.dart';
 import 'media_library_source.dart';
 import 'jellyfin_media_source.dart';
 import 'server_admin.dart';
+import 'server_pin.dart';
 import 'server_profile.dart';
 import 'stream_preferences.dart';
 import '../sources/media_source.dart';
@@ -94,6 +95,29 @@ class ServerRepository {
       }
     } catch (e) {
       debugPrint('Could not store the token for ${profile.id}: $e');
+    }
+  }
+
+  /// The stored hash of the PIN guarding [profile], or null for none.
+  Future<String?> readPinHash(ServerProfile profile) async {
+    try {
+      return await _secure.read(key: profile.pinKey);
+    } catch (e) {
+      debugPrint('Could not read the PIN for ${profile.id}: $e');
+      return null;
+    }
+  }
+
+  /// Stores [hash], or removes the PIN when it is null.
+  Future<void> writePinHash(ServerProfile profile, String? hash) async {
+    try {
+      if (hash == null) {
+        await _secure.delete(key: profile.pinKey);
+      } else {
+        await _secure.write(key: profile.pinKey, value: hash);
+      }
+    } catch (e) {
+      debugPrint('Could not store the PIN for ${profile.id}: $e');
     }
   }
 
@@ -394,9 +418,10 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
     if (profile == null) return;
 
-    // The token first: a profile removed while its token survives leaves a
-    // secret behind with nothing left pointing at it.
+    // The secrets first: a profile removed while its token or PIN survives
+    // leaves something behind with nothing left pointing at it.
     await _repository.writeToken(profile, null);
+    await _repository.writePinHash(profile, null);
 
     final profiles =
         state.profiles.where((p) => p.id != profileId).toList();
@@ -417,6 +442,39 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
   }
 
   /// What the sign-in screens use before there is a profile.
+  /// Guards [profileId] with [pin], or removes its PIN when [pin] is null.
+  ///
+  /// The hash is stretched on a background isolate: twenty thousand rounds
+  /// of SHA-256 on the UI thread is a visible stutter on a slow phone.
+  Future<void> setPin(String profileId, String? pin) async {
+    final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
+    if (profile == null) return;
+
+    final hash = pin == null ? null : await compute(hashPin, pin);
+    await _repository.writePinHash(profile, hash);
+
+    final profiles = <ServerProfile>[
+      for (final ServerProfile p in state.profiles)
+        p.id == profileId ? p.copyWith(pinProtected: hash != null) : p,
+    ];
+    await _repository.saveProfiles(profiles);
+    state = state.copyWith(profiles: profiles);
+  }
+
+  /// Whether [pin] opens [profileId].
+  ///
+  /// A profile flagged as guarded whose hash is missing — a keychain wiped
+  /// under it — answers false: it stays locked, and removing and re-adding
+  /// the server is the way back in, which needs its password anyway.
+  Future<bool> verifyPinFor(String profileId, String pin) async {
+    final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
+    if (profile == null) return false;
+
+    final stored = await _repository.readPinHash(profile);
+    if (stored == null) return false;
+    return compute(_verify, (pin, stored));
+  }
+
   Future<JellyfinAuth> auth() async {
     return JellyfinAuth(identity: await identity());
   }
@@ -497,3 +555,6 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     };
   }
 }
+
+/// [verifyPin] with one argument, which is what `compute` hands over.
+bool _verify((String, String) args) => verifyPin(args.$1, args.$2);

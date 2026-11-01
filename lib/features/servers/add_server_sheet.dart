@@ -6,6 +6,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
@@ -73,8 +74,31 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
   bool _quickConnectAvailable = false;
   bool _quickConnect = false;
   QuickConnectRequest? _quickConnectRequest;
+
+  /// What went wrong finding the server — said under the address.
   String? _error;
+
+  /// What went wrong signing in — said under the account, where the thing to
+  /// fix is. A wrong password reported under the address reads as a wrong
+  /// address.
+  String? _signInError;
+
   bool _obscurePassword = true;
+
+  /// Bumped to abandon a Quick Connect attempt: on cancel, on a new code, and
+  /// when the sheet closes. The poll checks it, so an abandoned code stops
+  /// being asked about at once rather than at its deadline.
+  int _quickConnectAttempt = 0;
+
+  /// Seconds left before the code on screen stops being waited on, counted
+  /// down by [_ticker].
+  int _codeSeconds = 0;
+
+  /// Redraws the countdown once a second while a code is up.
+  Timer? _ticker;
+
+  /// Whether the code was just copied, which the copy button says briefly.
+  bool _copied = false;
 
   Timer? _debounce;
   JellyfinAuth? _auth;
@@ -104,6 +128,8 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
 
   @override
   void dispose() {
+    _quickConnectAttempt++;
+    _ticker?.cancel();
     _debounce?.cancel();
     unawaited(_auth?.dispose());
     _address.dispose();
@@ -148,8 +174,10 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
       setState(() {
         _server = info;
         _quickConnectAvailable = quickConnect;
+        if (!quickConnect) _quickConnect = false;
         _stage = _Stage.found;
         _error = null;
+        _signInError = null;
       });
 
       await _tryStoredSession(info, generation);
@@ -171,7 +199,7 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
 
     setState(() {
       _stage = _Stage.signingIn;
-      _error = null;
+      _signInError = null;
     });
 
     try {
@@ -186,7 +214,7 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
     } on ServerException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.message;
+        _signInError = e.message;
         _stage = _Stage.found;
       });
     }
@@ -203,8 +231,9 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
     final editing = widget.editing;
     if (editing == null) return;
 
-    final token =
-        await ref.read(serverRegistryProvider.notifier).tokenFor(editing.id);
+    final token = await ref
+        .read(serverRegistryProvider.notifier)
+        .tokenFor(editing.id);
     if (token == null || token.isEmpty) return;
     if (!mounted || generation != _probeGeneration) return;
 
@@ -236,45 +265,96 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
     await _finish(server, session);
   }
 
+  /// Asks the server for a code, shows it, and waits for another device to
+  /// approve it. Called again for a new code, which abandons the old one.
   Future<void> _startQuickConnect() async {
     final server = _server;
     if (server == null) return;
 
+    final expired = AppLocalizations.of(context).quickConnectExpired;
+    final attempt = ++_quickConnectAttempt;
+    bool cancelled() => !mounted || attempt != _quickConnectAttempt;
+
     setState(() {
-      _error = null;
+      _signInError = null;
+      _quickConnectRequest = null;
+      _codeSeconds = 0;
+      _copied = false;
       _stage = _Stage.waitingForApproval;
     });
 
     try {
       final auth = await _authService();
       final request = await auth.initiateQuickConnect(server);
+      if (cancelled()) return;
 
-      if (!mounted) return;
-      setState(() => _quickConnectRequest = request);
+      setState(() {
+        _quickConnectRequest = request;
+        _codeSeconds = JellyfinAuth.quickConnectTimeout.inSeconds;
+      });
+      _ticker?.cancel();
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && _codeSeconds > 0) setState(() => _codeSeconds--);
+      });
 
-      final result = await auth.awaitQuickConnect(server, request);
-      if (!mounted) return;
+      final result = await auth.awaitQuickConnect(
+        server,
+        request,
+        cancelled: cancelled,
+      );
+      if (cancelled()) return;
+      _ticker?.cancel();
 
       if (result == null) {
-        // Nobody approved it. Not a failure worth an error colour — the code
-        // simply timed out.
+        // Nobody approved it in time. Said in words, with the way on: the
+        // panel used to vanish back into the form with no reason given.
         setState(() {
           _quickConnectRequest = null;
+          _signInError = expired;
           _stage = _Stage.found;
         });
         return;
       }
 
+      setState(() => _stage = _Stage.signingIn);
       await _finish(server, result);
     } on ServerException catch (e) {
-      if (!mounted) return;
+      if (cancelled()) return;
+      _ticker?.cancel();
       setState(() {
-        _error = e.message;
+        _signInError = e.message;
         _quickConnectRequest = null;
         _stage = _Stage.found;
       });
     }
   }
+
+  /// Backs out of waiting, to the form — not out of the sheet.
+  void _cancelQuickConnect() {
+    _quickConnectAttempt++;
+    _ticker?.cancel();
+    setState(() {
+      _quickConnectRequest = null;
+      _codeSeconds = 0;
+      _stage = _Stage.found;
+    });
+  }
+
+  Future<void> _copyCode() async {
+    final code = _quickConnectRequest?.code;
+    if (code == null) return;
+
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    // Back to the copy glyph, so a second copy has something to confirm.
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  /// What is left of the code's time.
+  Duration get _remaining => Duration(seconds: _codeSeconds);
 
   Future<void> _finish(ServerInfo server, AuthResult result) async {
     final registry = ref.read(serverRegistryProvider.notifier);
@@ -300,20 +380,15 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final l10n = AppLocalizations.of(context);
-    final busy =
-        _stage == _Stage.signingIn || _stage == _Stage.waitingForApproval;
+    final waiting = _stage == _Stage.waitingForApproval;
+    final busy = _stage == _Stage.signingIn || waiting;
 
     return Padding(
       // Lift the sheet above the keyboard rather than letting it overlap.
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            spacing.xl,
-            0,
-            spacing.xl,
-            spacing.xl,
-          ),
+          padding: EdgeInsets.fromLTRB(spacing.xl, 0, spacing.xl, spacing.xl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
@@ -343,11 +418,11 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                           color: context.semantic.success,
                         )
                       : (_error != null
-                          ? Icon(
-                              Icons.error_rounded,
-                              color: context.colors.error,
-                            )
-                          : null),
+                            ? Icon(
+                                Icons.error_rounded,
+                                color: context.colors.error,
+                              )
+                            : null),
                 ),
                 onChanged: (_) => _onAddressChanged(),
               ),
@@ -357,7 +432,10 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: _server != null
-                    ? _ServerCard(key: const ValueKey('found'), server: _server!)
+                    ? _ServerCard(
+                        key: const ValueKey('found'),
+                        server: _server!,
+                      )
                     : Padding(
                         key: const ValueKey('line'),
                         padding: EdgeInsets.symmetric(horizontal: spacing.lg),
@@ -384,13 +462,19 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                     _stage = _Stage.found;
                   }),
                 )
-              else if (_stage == _Stage.waitingForApproval)
-                _QuickConnectPanel(request: _quickConnectRequest)
+              else if (waiting)
+                _QuickConnectPanel(
+                  request: _quickConnectRequest,
+                  remaining: _remaining,
+                  copied: _copied,
+                  onCopy: _copyCode,
+                )
               else ...<Widget>[
-                // Only offered where the server actually has it: a Jellyfin
-                // administrator can switch it off. Before a server is found
-                // there is nothing to choose between.
-                if (_quickConnectAvailable) ...<Widget>[
+                // Offered once a server is found — before that there is
+                // nothing to sign in to. Shown even where the server has it
+                // switched off, greyed with a sentence saying so: a choice
+                // that silently is not there is a feature nobody learns of.
+                if (_server != null) ...<Widget>[
                   SegmentedButton<bool>(
                     segments: <ButtonSegment<bool>>[
                       ButtonSegment<bool>(
@@ -400,14 +484,32 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                       ),
                       ButtonSegment<bool>(
                         value: true,
+                        enabled: _quickConnectAvailable,
                         icon: const Icon(Icons.qr_code_rounded),
                         label: Text(l10n.quickConnectShort),
                       ),
                     ],
                     selected: <bool>{_quickConnect},
-                    onSelectionChanged: (v) =>
-                        setState(() => _quickConnect = v.single),
+                    onSelectionChanged: (v) => setState(() {
+                      _quickConnect = v.single;
+                      _signInError = null;
+                    }),
                   ),
+                  if (!_quickConnectAvailable)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        spacing.xs,
+                        spacing.sm,
+                        spacing.xs,
+                        0,
+                      ),
+                      child: Text(
+                        l10n.quickConnectOff,
+                        style: context.texts.bodySmall?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   SizedBox(height: spacing.md),
                 ],
                 if (_quickConnect)
@@ -461,39 +563,87 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                 ],
               ],
 
+              if (_signInError != null)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    spacing.xs,
+                    spacing.md,
+                    spacing.xs,
+                    0,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Icon(
+                        Icons.error_outline_rounded,
+                        size: 18,
+                        color: context.colors.error,
+                      ),
+                      SizedBox(width: spacing.sm),
+                      Expanded(
+                        child: Text(
+                          _signInError!,
+                          style: context.texts.bodySmall?.copyWith(
+                            color: context.colors.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               SizedBox(height: spacing.xl),
-              SizedBox(
-                height: 52,
-                child: FilledButton(
-                  onPressed: busy
-                      ? null
-                      : _signedInAlready
-                          ? _saveWithStoredSession
-                          : (_quickConnect
+              if (waiting)
+                // While a code is up the primary action is a fresh one — the
+                // likeliest reason to touch anything is a code that expired
+                // or was mistyped on the other device.
+                SizedBox(
+                  height: 52,
+                  child: FilledButton.tonalIcon(
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(l10n.quickConnectNewCode),
+                    onPressed: _quickConnectRequest == null
+                        ? null
+                        : _startQuickConnect,
+                  ),
+                )
+              else
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: busy
+                        ? null
+                        : _signedInAlready
+                        ? _saveWithStoredSession
+                        : (_quickConnect
                               ? (_server == null ? null : _startQuickConnect)
                               : (_canSignIn ? _signIn : null)),
-                  // The spinner sits in the button it belongs to, so the
-                  // button does not vanish from under the thumb that pressed
-                  // it.
-                  child: busy
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: context.colors.onSurfaceVariant,
+                    // The spinner sits in the button it belongs to, so the
+                    // button does not vanish from under the thumb that pressed
+                    // it.
+                    child: busy
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: context.colors.onSurfaceVariant,
+                            ),
+                          )
+                        : Text(
+                            _signedInAlready
+                                ? l10n.save
+                                : (_quickConnect
+                                      ? l10n.getACode
+                                      : l10n.connect),
                           ),
-                        )
-                      : Text(
-                          _signedInAlready
-                              ? l10n.save
-                              : (_quickConnect ? l10n.getACode : l10n.connect),
-                        ),
+                  ),
                 ),
-              ),
               SizedBox(height: spacing.xs),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                // While waiting, back to the form; otherwise out of the sheet.
+                onPressed: waiting
+                    ? _cancelQuickConnect
+                    : () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
             ],
@@ -530,9 +680,14 @@ InputDecoration _fieldDecoration(
     fillColor: context.colors.surfaceContainerHigh,
     prefixIcon: Icon(icon),
     suffixIcon: suffix,
-    border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
-    enabledBorder:
-        OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+    border: OutlineInputBorder(
+      borderRadius: radius,
+      borderSide: BorderSide.none,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: radius,
+      borderSide: BorderSide.none,
+    ),
     focusedBorder: OutlineInputBorder(
       borderRadius: radius,
       borderSide: BorderSide(color: context.colors.primary, width: 2),
@@ -578,8 +733,9 @@ class _SheetHeader extends StatelessWidget {
               SizedBox(height: spacing.xs),
               Text(
                 l10n.addServerSub,
-                style: context.texts.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: context.texts.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -650,8 +806,9 @@ class _ServerCard extends StatelessWidget {
                   server.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.texts.titleSmall
-                      ?.copyWith(color: scheme.onSecondaryContainer),
+                  style: context.texts.titleSmall?.copyWith(
+                    color: scheme.onSecondaryContainer,
+                  ),
                 ),
                 Text(
                   <String>[
@@ -660,8 +817,9 @@ class _ServerCard extends StatelessWidget {
                   ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.texts.bodySmall
-                      ?.copyWith(color: scheme.onSecondaryContainer),
+                  style: context.texts.bodySmall?.copyWith(
+                    color: scheme.onSecondaryContainer,
+                  ),
                 ),
               ],
             ),
@@ -730,17 +888,31 @@ class _DetectionLine extends StatelessWidget {
   }
 }
 
-/// The code to read out, while this device waits for it to be approved.
+/// The code to enter on the other device, how long it has left, and a way to
+/// copy it, while this device waits for it to be approved.
 class _QuickConnectPanel extends StatelessWidget {
-  const _QuickConnectPanel({required this.request});
+  const _QuickConnectPanel({
+    required this.request,
+    required this.remaining,
+    required this.copied,
+    required this.onCopy,
+  });
 
+  /// Null while the server is still issuing the code.
   final QuickConnectRequest? request;
+  final Duration remaining;
+  final bool copied;
+  final VoidCallback onCopy;
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
     final l10n = AppLocalizations.of(context);
+    final code = request?.code;
+    final total = JellyfinAuth.quickConnectTimeout.inSeconds;
+    final minutes = remaining.inMinutes;
+    final seconds = (remaining.inSeconds % 60).toString().padLeft(2, '0');
 
     return Container(
       padding: EdgeInsets.all(spacing.lg),
@@ -752,20 +924,66 @@ class _QuickConnectPanel extends StatelessWidget {
         children: <Widget>[
           Text(l10n.enterCodeInJellyfin, style: context.texts.bodyMedium),
           SizedBox(height: spacing.md),
+          if (code == null)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(),
+            )
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                // Left room for the copy button on the other side, so the
+                // code itself is what sits in the middle.
+                const SizedBox(width: 48),
+                // Shrinks rather than overflowing: six wide-spaced digits at
+                // display size do not fit a narrow phone beside two buttons.
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      code,
+                      style: context.texts.displaySmall?.copyWith(
+                        color: scheme.primary,
+                        fontFeatures: const <FontFeature>[
+                          FontFeature.tabularFigures(),
+                        ],
+                        letterSpacing: 8,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l10n.copyCode,
+                  icon: Icon(copied ? Icons.check_rounded : Icons.copy_rounded),
+                  onPressed: onCopy,
+                ),
+              ],
+            ),
+          SizedBox(height: spacing.md),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: code == null ? null : remaining.inSeconds / total,
+              minHeight: 4,
+            ),
+          ),
+          SizedBox(height: spacing.sm),
           Text(
-            request?.code ?? '…',
-            style: context.texts.displaySmall?.copyWith(
-              color: scheme.primary,
-              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-              letterSpacing: 8,
+            code == null
+                ? l10n.quickConnectRequesting
+                : l10n.quickConnectWaiting('$minutes:$seconds'),
+            style: context.texts.labelMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
           ),
           SizedBox(height: spacing.md),
           Text(
             l10n.quickConnectSteps,
             textAlign: TextAlign.center,
-            style: context.texts.bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: context.texts.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

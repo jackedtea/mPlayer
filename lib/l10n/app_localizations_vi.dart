@@ -852,6 +852,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get audio => 'Âm thanh';
 
   @override
+  String get audioAndSubtitles => 'Âm thanh & phụ đề';
+
+  @override
+  String get noTracks => 'Tệp này không có';
+
+  @override
+  String get close => 'Đóng';
+
+  @override
   String get quality => 'Chất lượng';
 
   @override
@@ -1392,6 +1401,89 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get quickConnectSteps =>
       'Mở Cài đặt → Quick Connect trên một thiết bị đã đăng nhập và nhập mã này. Không cần gõ mật khẩu ở đây.';
+
+  @override
+  String get quickConnectOff =>
+      'Máy chủ này đang tắt Quick Connect. Quản trị viên có thể bật trong bảng điều khiển.';
+
+  @override
+  String get quickConnectNewCode => 'Mã mới';
+
+  @override
+  String get quickConnectExpired =>
+      'Mã đã hết hạn trước khi được duyệt. Hãy lấy mã mới và thử lại.';
+
+  @override
+  String get quickConnectRequesting => 'Đang lấy mã…';
+
+  @override
+  String quickConnectWaiting(String time) {
+    return 'Đang chờ duyệt · còn $time';
+  }
+
+  @override
+  String get copyCode => 'Sao chép mã';
+
+  @override
+  String get pinLockTitle => 'Khoá bằng PIN';
+
+  @override
+  String get pinLockOn => 'Bật — hỏi mỗi lần mở máy chủ này trên thiết bị';
+
+  @override
+  String get pinLockOff => 'Tắt — ai cầm thiết bị này cũng mở được máy chủ';
+
+  @override
+  String get pinEnterTitle => 'Mã PIN';
+
+  @override
+  String get pinEnterBody =>
+      'Máy chủ này được khoá bằng mã PIN trên thiết bị này.';
+
+  @override
+  String get pinUnlock => 'Mở khoá';
+
+  @override
+  String get pinWrong => 'Mã PIN không đúng.';
+
+  @override
+  String pinPaused(String seconds) {
+    return 'Nhập sai quá nhiều lần. Thử lại sau $seconds giây.';
+  }
+
+  @override
+  String get pinSetTitle => 'Đặt mã PIN';
+
+  @override
+  String get pinSetBody =>
+      'Từ 4 đến 8 chữ số. Mã được hỏi mỗi lần mở máy chủ này trên thiết bị và không gửi lên máy chủ.';
+
+  @override
+  String get pinNew => 'Mã PIN mới';
+
+  @override
+  String get pinConfirm => 'Nhập lại mã PIN';
+
+  @override
+  String get pinLength => 'Dùng từ 4 đến 8 chữ số.';
+
+  @override
+  String get pinMismatch => 'Hai mã PIN không khớp.';
+
+  @override
+  String get pinCurrent => 'Nhập mã PIN hiện tại';
+
+  @override
+  String get pinChange => 'Đổi mã PIN';
+
+  @override
+  String get pinRemove => 'Tắt mã PIN';
+
+  @override
+  String get pinSaved => 'Đã lưu mã PIN.';
+
+  @override
+  String get pinRemoved => 'Đã tắt mã PIN.';
 
   @override
   String get removeServer => 'Xoá máy chủ';

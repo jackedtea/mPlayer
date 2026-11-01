@@ -37,6 +37,7 @@ import 'player_ui_state.dart';
 import 'screenshot.dart';
 import '../settings/player_settings.dart';
 import 'stats_overlay.dart';
+import 'track_dialog.dart';
 import 'track_sheet.dart';
 
 /// Screen 1h — the single player, shared by local files, shares and streams.
@@ -446,9 +447,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                             setState(() => _dragProgress = null);
                             controller.seek(state.duration * v);
                           },
-                          onSubtitles: () =>
-                              _pickSubtitle(state, controller),
-                          onAudio: () => _pickAudio(state, controller),
+                          // Both open the one dialog; each button still says
+                          // what is on for its own side.
+                          onSubtitles: () => _pickTracks(controller),
+                          onAudio: () => _pickTracks(controller),
                           onQuality: () => _pickQuality(state, controller),
                           qualityLabel: () {
                             final q = ref.watch(streamQualityProvider);
@@ -537,25 +539,14 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
   // ---------------------------------------------------------------- sheets
 
-  Future<void> _pickSubtitle(
-    PlaybackState state,
-    PlaybackController controller,
-  ) async {
+  /// Audio and subtitles in one dialog, from either button in the controls.
+  Future<void> _pickTracks(PlaybackController controller) async {
     _restartHideTimer();
-    await TrackSheet.show(
-      context: context,
-      title: AppLocalizations.of(context).subtitles,
-      selectedId: state.activeSubtitle?.id,
-      options: <TrackOption>[
-        for (final MediaTrack t in state.subtitleTracks)
-          TrackOption.fromTrack(t),
-      ],
-      onSelected: (o) => controller.setSubtitleTrack(o.track),
-      action: TrackSheetAction(
-        label: AppLocalizations.of(context).openSubtitleFile,
-        icon: Icons.subtitles_outlined,
-        onTap: () => _openSubtitleFile(controller),
-      ),
+    await showAudioSubtitleDialog(
+      context,
+      onAudio: controller.setAudioTrack,
+      onSubtitle: controller.setSubtitleTrack,
+      onOpenSubtitleFile: () => _openSubtitleFile(controller),
     );
   }
 
@@ -570,24 +561,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     if (file == null) return;
 
     await controller.addExternalSubtitle(Uri.file(file.path), title: file.name);
-  }
-
-  Future<void> _pickAudio(
-    PlaybackState state,
-    PlaybackController controller,
-  ) async {
-    _restartHideTimer();
-    await TrackSheet.show(
-      context: context,
-      title: AppLocalizations.of(context).audio,
-      selectedId: state.activeAudio?.id,
-      options: <TrackOption>[
-        for (final MediaTrack t in state.audioTracks) TrackOption.fromTrack(t),
-      ],
-      onSelected: (o) {
-        if (o.track != null) controller.setAudioTrack(o.track!);
-      },
-    );
   }
 
   Future<void> _pickSpeed(

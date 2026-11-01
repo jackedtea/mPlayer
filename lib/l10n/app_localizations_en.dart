@@ -851,6 +851,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get audio => 'Audio';
 
   @override
+  String get audioAndSubtitles => 'Audio & subtitles';
+
+  @override
+  String get noTracks => 'None in this file';
+
+  @override
+  String get close => 'Close';
+
+  @override
   String get quality => 'Quality';
 
   @override
@@ -1391,6 +1400,88 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get quickConnectSteps =>
       'Open Settings → Quick Connect on any device that is already signed in, and enter the code there. No password is typed here.';
+
+  @override
+  String get quickConnectOff =>
+      'Quick Connect is turned off on this server. An administrator can turn it on in the dashboard.';
+
+  @override
+  String get quickConnectNewCode => 'New code';
+
+  @override
+  String get quickConnectExpired =>
+      'The code expired before it was approved. Get a new one and try again.';
+
+  @override
+  String get quickConnectRequesting => 'Getting a code…';
+
+  @override
+  String quickConnectWaiting(String time) {
+    return 'Waiting for approval · $time left';
+  }
+
+  @override
+  String get copyCode => 'Copy code';
+
+  @override
+  String get pinLockTitle => 'PIN lock';
+
+  @override
+  String get pinLockOn => 'On — asked each time this server is opened here';
+
+  @override
+  String get pinLockOff => 'Off — anyone with this device can open this server';
+
+  @override
+  String get pinEnterTitle => 'PIN';
+
+  @override
+  String get pinEnterBody => 'This server is locked with a PIN on this device.';
+
+  @override
+  String get pinUnlock => 'Unlock';
+
+  @override
+  String get pinWrong => 'That PIN is not right.';
+
+  @override
+  String pinPaused(String seconds) {
+    return 'Too many wrong tries. Try again in $seconds s.';
+  }
+
+  @override
+  String get pinSetTitle => 'Set a PIN';
+
+  @override
+  String get pinSetBody =>
+      '4 to 8 digits. It is asked for each time this server is opened on this device, and is not shared with the server.';
+
+  @override
+  String get pinNew => 'New PIN';
+
+  @override
+  String get pinConfirm => 'Confirm PIN';
+
+  @override
+  String get pinLength => 'Use 4 to 8 digits.';
+
+  @override
+  String get pinMismatch => 'The two PINs are not the same.';
+
+  @override
+  String get pinCurrent => 'Enter the current PIN';
+
+  @override
+  String get pinChange => 'Change PIN';
+
+  @override
+  String get pinRemove => 'Turn off PIN';
+
+  @override
+  String get pinSaved => 'PIN saved.';
+
+  @override
+  String get pinRemoved => 'PIN turned off.';
 
   @override
   String get removeServer => 'Remove server';

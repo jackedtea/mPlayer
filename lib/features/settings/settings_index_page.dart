@@ -10,6 +10,9 @@ import 'package:go_router/go_router.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../admin/admin_providers.dart';
+import '../../servers/server_profile.dart';
+import '../../servers/server_registry.dart';
+import '../servers/pin_lock.dart';
 import '../servers/server_library.dart';
 import 'current_server_card.dart';
 import 'quick_connect_dialog.dart';
@@ -140,6 +143,9 @@ class SettingsIndexPage extends ConsumerWidget {
               trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
               onTap: () => showQuickConnectDialog(context),
             ),
+          if (ref.watch(connectedServerProvider) != null &&
+              ref.watch(serverRegistryProvider).active != null)
+            _PinRow(profile: ref.watch(serverRegistryProvider).active!),
           SettingsSection(title: l10n.settingsSectionApp),
           for (final _SettingsEntry e in _appEntries(l10n)) _tile(context, e),
           if (isAdministrator) ...<Widget>[
@@ -220,4 +226,35 @@ class _SettingsEntry {
 
   /// Where the row goes, or null when it goes nowhere yet.
   String? get destination => path ?? (route == null ? null : '/settings/$route');
+}
+
+/// Whether the current server asks for a PIN, and the way to change that.
+class _PinRow extends ConsumerWidget {
+  const _PinRow({required this.profile});
+
+  final ServerProfile profile;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+
+    return ListTile(
+      contentPadding: spacing.screenPadding(context.windowSize),
+      leading: CircleAvatar(
+        radius: 20,
+        backgroundColor: scheme.secondaryContainer,
+        child: Icon(
+          profile.pinProtected ? Icons.lock_rounded : Icons.lock_open_rounded,
+          size: 22,
+          color: scheme.onSecondaryContainer,
+        ),
+      ),
+      title: Text(l10n.pinLockTitle),
+      subtitle: Text(profile.pinProtected ? l10n.pinLockOn : l10n.pinLockOff),
+      trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
+      onTap: () => managePin(context, ref, profile),
+    );
+  }
 }

@@ -88,7 +88,7 @@ class TrackSheet extends StatelessWidget {
               shrinkWrap: true,
               children: <Widget>[
                 for (final TrackOption option in options)
-                  _Row(
+                  TrackRow(
                     option: option,
                     selected: option.id == selectedId,
                     onTap: () {
@@ -134,8 +134,12 @@ class TrackSheetAction {
   final VoidCallback onTap;
 }
 
-class _Row extends StatelessWidget {
-  const _Row({
+/// One selectable row: a label, an optional detail line and still, and a
+/// tick on the current one. Shared by [TrackSheet] and the audio-and-subtitle
+/// dialog, so a track looks the same in both.
+class TrackRow extends StatelessWidget {
+  const TrackRow({
+    super.key,
     required this.option,
     required this.selected,
     required this.onTap,

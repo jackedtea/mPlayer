@@ -159,6 +159,52 @@ void main() {
     });
   });
 
+  group('PIN', () {
+    test('only a hash reaches the keychain, and the flag the profile',
+        () async {
+      final prefs = await SharedPreferences.getInstance();
+      final container = containerWith(ServerRepository(prefs: prefs));
+      final registry = await registryOf(container);
+      final profile = await registry.add(info: _info, auth: _auth);
+
+      await registry.setPin(profile.id, '2468');
+
+      expect(keychain[profile.pinKey], startsWith('v1:'));
+      expect(keychain[profile.pinKey], isNot(contains('2468')));
+      expect(prefs.getStringList('configured_servers_v1')!.single,
+          isNot(contains('2468')));
+      expect(container.read(serverRegistryProvider).active!.pinProtected, isTrue);
+
+      expect(await registry.verifyPinFor(profile.id, '2468'), isTrue);
+      expect(await registry.verifyPinFor(profile.id, '1357'), isFalse);
+    });
+
+    test('turning it off removes the hash and the flag', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final container = containerWith(ServerRepository(prefs: prefs));
+      final registry = await registryOf(container);
+      final profile = await registry.add(info: _info, auth: _auth);
+
+      await registry.setPin(profile.id, '2468');
+      await registry.setPin(profile.id, null);
+
+      expect(keychain.containsKey(profile.pinKey), isFalse);
+      expect(container.read(serverRegistryProvider).active!.pinProtected, isFalse);
+    });
+
+    test('removing the server leaves no PIN behind', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final container = containerWith(ServerRepository(prefs: prefs));
+      final registry = await registryOf(container);
+      final profile = await registry.add(info: _info, auth: _auth);
+
+      await registry.setPin(profile.id, '2468');
+      await registry.remove(profile.id);
+
+      expect(keychain.containsKey(profile.pinKey), isFalse);
+    });
+  });
+
   group('device id', () {
     test('is generated once and kept', () async {
       // Jellyfin files sessions and tokens under it, so a new one per launch

@@ -15,6 +15,7 @@ import '../../servers/server_registry.dart';
 import '../../widgets/gradient_art.dart';
 import '../../widgets/remote_art.dart';
 import '../../widgets/section_header.dart';
+import '../servers/pin_lock.dart';
 import '../servers/server_library.dart';
 import '../servers/servers_empty_page.dart';
 import '../servers/servers_list_page.dart';
@@ -23,7 +24,8 @@ import '../servers/shelves.dart';
 /// The Home tab, which has three faces and picks one rather than navigating.
 ///
 /// Nothing configured is the empty state; a server not opened yet this launch
-/// is the server list; otherwise it is the server's home. Choosing here keeps
+/// is the server list; a PIN-guarded one not unlocked yet is its lock;
+/// otherwise it is the server's home. Choosing here keeps
 /// the tab's root the same route whichever face is up, so tapping Home in the
 /// bar always comes back to *this* — never to a list stacked under it.
 class HomeTabPage extends ConsumerWidget {
@@ -32,9 +34,16 @@ class HomeTabPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(connectedServerProvider) != null) return const HomePage();
-    if (ref.watch(serverRegistryProvider).hasServer) {
-      return const ServersListPage();
+
+    final registry = ref.watch(serverRegistryProvider);
+    final active = registry.active;
+    if (active != null &&
+        registry.source != null &&
+        ref.watch(serverSessionProvider) &&
+        ref.watch(serverLockedProvider)) {
+      return PinLockPage(profile: active);
     }
+    if (registry.hasServer) return const ServersListPage();
     return const ServersEmptyPage();
   }
 }

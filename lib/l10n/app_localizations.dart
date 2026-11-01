@@ -1628,6 +1628,24 @@ abstract class AppLocalizations {
   /// **'Audio'**
   String get audio;
 
+  /// No description provided for @audioAndSubtitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio & subtitles'**
+  String get audioAndSubtitles;
+
+  /// No description provided for @noTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'None in this file'**
+  String get noTracks;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
   /// No description provided for @quality.
   ///
   /// In en, this message translates to:
@@ -2593,6 +2611,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open Settings → Quick Connect on any device that is already signed in, and enter the code there. No password is typed here.'**
   String get quickConnectSteps;
+
+  /// No description provided for @quickConnectOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Connect is turned off on this server. An administrator can turn it on in the dashboard.'**
+  String get quickConnectOff;
+
+  /// No description provided for @quickConnectNewCode.
+  ///
+  /// In en, this message translates to:
+  /// **'New code'**
+  String get quickConnectNewCode;
+
+  /// No description provided for @quickConnectExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The code expired before it was approved. Get a new one and try again.'**
+  String get quickConnectExpired;
+
+  /// No description provided for @quickConnectRequesting.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting a code…'**
+  String get quickConnectRequesting;
+
+  /// No description provided for @quickConnectWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for approval · {time} left'**
+  String quickConnectWaiting(String time);
+
+  /// No description provided for @copyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get copyCode;
+
+  /// No description provided for @pinLockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN lock'**
+  String get pinLockTitle;
+
+  /// No description provided for @pinLockOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On — asked each time this server is opened here'**
+  String get pinLockOn;
+
+  /// No description provided for @pinLockOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off — anyone with this device can open this server'**
+  String get pinLockOff;
+
+  /// No description provided for @pinEnterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN'**
+  String get pinEnterTitle;
+
+  /// No description provided for @pinEnterBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This server is locked with a PIN on this device.'**
+  String get pinEnterBody;
+
+  /// No description provided for @pinUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get pinUnlock;
+
+  /// No description provided for @pinWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'That PIN is not right.'**
+  String get pinWrong;
+
+  /// No description provided for @pinPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many wrong tries. Try again in {seconds} s.'**
+  String pinPaused(String seconds);
+
+  /// No description provided for @pinSetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a PIN'**
+  String get pinSetTitle;
+
+  /// No description provided for @pinSetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'4 to 8 digits. It is asked for each time this server is opened on this device, and is not shared with the server.'**
+  String get pinSetBody;
+
+  /// No description provided for @pinNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New PIN'**
+  String get pinNew;
+
+  /// No description provided for @pinConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm PIN'**
+  String get pinConfirm;
+
+  /// No description provided for @pinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 4 to 8 digits.'**
+  String get pinLength;
+
+  /// No description provided for @pinMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The two PINs are not the same.'**
+  String get pinMismatch;
+
+  /// No description provided for @pinCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the current PIN'**
+  String get pinCurrent;
+
+  /// No description provided for @pinChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change PIN'**
+  String get pinChange;
+
+  /// No description provided for @pinRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off PIN'**
+  String get pinRemove;
+
+  /// No description provided for @pinSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN saved.'**
+  String get pinSaved;
+
+  /// No description provided for @pinRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN turned off.'**
+  String get pinRemoved;
 
   /// No description provided for @removeServer.
   ///

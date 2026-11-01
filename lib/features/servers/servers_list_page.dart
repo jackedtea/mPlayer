@@ -85,7 +85,27 @@ class _ServerTile extends ConsumerWidget {
         active ? Icons.dns_rounded : Icons.dns_outlined,
         color: active ? scheme.primary : null,
       ),
-      title: Text(profile.name),
+      title: Row(
+        children: <Widget>[
+          Flexible(
+            child: Text(
+              profile.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // Said before the tap, so a PIN screen is not a surprise.
+          if (profile.pinProtected) ...<Widget>[
+            const SizedBox(width: 6),
+            Icon(
+              Icons.lock_rounded,
+              size: 16,
+              color: scheme.onSurfaceVariant,
+              semanticLabel: l10n.pinLockTitle,
+            ),
+          ],
+        ],
+      ),
       subtitle: Text(
         hostLineFor(profile),
         maxLines: 1,

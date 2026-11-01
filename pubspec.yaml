@@ -60,6 +60,8 @@ dependencies:
   package_info_plus: ^10.2.1
   url_launcher: ^6.3.2
   cached_network_image: ^3.4.1
+  # The server PIN's hash. Already in the tree through other packages.
+  crypto: ^3.0.7
 dependency_overrides:
   media_kit_libs_android_video:
     path: packages/media_kit_libs_android_video

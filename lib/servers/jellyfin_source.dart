@@ -960,10 +960,11 @@ class JellyfinAuth {
 
     Response<dynamic> response;
     try {
-      // 10.7 and later accept GET; older builds required POST.
-      response = await _dio.getUri<dynamic>(url, options: options);
+      // 10.9 and later take POST only; 10.7 and 10.8 took GET, and say so
+      // with a 405.
+      response = await _dio.postUri<dynamic>(url, options: options);
       if (response.statusCode == 405) {
-        response = await _dio.postUri<dynamic>(url, options: options);
+        response = await _dio.getUri<dynamic>(url, options: options);
       }
     } on DioException {
       throw ServerException('Could not reach ${server.name}.');
@@ -988,17 +989,21 @@ class JellyfinAuth {
   /// Waits for the user to approve [request] on another device.
   ///
   /// Returns null when [timeout] passes without approval, which is a person
-  /// walking away rather than a failure. A 404 mid-poll is terminal: the
-  /// secret expired or was revoked on the server.
+  /// walking away rather than a failure — or as soon as [cancelled] says so,
+  /// which is the user backing out or asking for a new code. Without that the
+  /// loop would go on asking about an abandoned code until the deadline.
+  /// A 404 mid-poll is terminal: the secret expired or was revoked.
   Future<AuthResult?> awaitQuickConnect(
     ServerInfo server,
     QuickConnectRequest request, {
-    Duration timeout = const Duration(minutes: 3),
+    Duration timeout = quickConnectTimeout,
     Duration interval = const Duration(seconds: 3),
+    bool Function()? cancelled,
   }) async {
     final deadline = DateTime.now().add(timeout);
+    bool stop() => cancelled?.call() ?? false;
 
-    while (DateTime.now().isBefore(deadline)) {
+    while (DateTime.now().isBefore(deadline) && !stop()) {
       final Response<dynamic> response;
       try {
         response = await _dio.getUri<dynamic>(
@@ -1019,6 +1024,8 @@ class JellyfinAuth {
         throw const ServerException('That code expired. Start again.');
       }
 
+      if (stop()) return null;
+
       final data = response.data;
       if (data is Map && data['Authenticated'] == true) {
         return _exchangeQuickConnect(server, request.secret);
@@ -1029,6 +1036,9 @@ class JellyfinAuth {
 
     return null;
   }
+
+  /// How long a code is waited on before it is given up as expired.
+  static const quickConnectTimeout = Duration(minutes: 3);
 
   Future<AuthResult> _exchangeQuickConnect(
     ServerInfo server,

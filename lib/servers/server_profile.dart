@@ -21,6 +21,7 @@ class ServerProfile {
     this.serverId = '',
     this.lastUsed,
     this.isAdministrator = false,
+    this.pinProtected = false,
   });
 
   /// Throws for a profile this build cannot use, which the repository skips.
@@ -40,6 +41,7 @@ class ServerProfile {
       username: json['username'] as String? ?? '',
       serverId: json['serverId'] as String? ?? '',
       isAdministrator: json['isAdministrator'] as bool? ?? false,
+      pinProtected: json['pinProtected'] as bool? ?? false,
       lastUsed: switch (json['lastUsed']) {
         final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
         _ => null,
@@ -78,7 +80,15 @@ class ServerProfile {
   /// every screen answers 403.
   final bool isAdministrator;
 
+  /// Whether opening this server asks for a PIN first.
+  ///
+  /// Only the flag lives here, so the list can draw a lock without touching
+  /// the keychain. The PIN's hash is in the keychain under [pinKey].
+  final bool pinProtected;
+
   String get credentialKey => 'server_token_$id';
+
+  String get pinKey => 'server_pin_$id';
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
@@ -88,6 +98,7 @@ class ServerProfile {
         'username': username,
         'serverId': serverId,
         'isAdministrator': isAdministrator,
+        'pinProtected': pinProtected,
         'lastUsed': lastUsed?.millisecondsSinceEpoch,
       };
 
@@ -99,6 +110,7 @@ class ServerProfile {
     String? serverId,
     DateTime? lastUsed,
     bool? isAdministrator,
+    bool? pinProtected,
   }) {
     return ServerProfile(
       id: id,
@@ -108,6 +120,7 @@ class ServerProfile {
       username: username ?? this.username,
       serverId: serverId ?? this.serverId,
       isAdministrator: isAdministrator ?? this.isAdministrator,
+      pinProtected: pinProtected ?? this.pinProtected,
       lastUsed: lastUsed ?? this.lastUsed,
     );
   }

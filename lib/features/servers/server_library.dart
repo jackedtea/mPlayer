@@ -39,6 +39,10 @@ final activeServerProvider = Provider<MediaLibrarySource?>(
 /// Home is still asking which server to open. No profiles at all with a client
 /// anyway is a test overriding [activeServerProvider], and is taken at its
 /// word.
+///
+/// Nor while the server is PIN-guarded and not yet unlocked — this is the one
+/// place every tab reads, so locking it here is what keeps Libraries and
+/// Search from being a way around the PIN screen.
 final connectedServerProvider = Provider<MediaLibrarySource?>((ref) {
   final source = ref.watch(activeServerProvider);
   if (source == null) return null;
@@ -47,7 +51,16 @@ final connectedServerProvider = Provider<MediaLibrarySource?>((ref) {
   final hasProfiles = ref.watch(
     serverRegistryProvider.select((r) => r.hasServer),
   );
-  return entered || !hasProfiles ? source : null;
+  if (!entered && hasProfiles) return null;
+
+  return ref.watch(serverLockedProvider) ? null : source;
+});
+
+/// Whether the active server asks for a PIN that has not been given yet.
+final serverLockedProvider = Provider<bool>((ref) {
+  final active = ref.watch(serverRegistryProvider.select((r) => r.active));
+  if (active == null || !active.pinProtected) return false;
+  return !ref.watch(unlockedServersProvider).contains(active.id);
 });
 
 /// A library, the order it is being read in, and what is being left out.
