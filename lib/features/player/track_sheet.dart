@@ -66,9 +66,9 @@ class TrackSheet extends StatelessWidget {
         children: <Widget>[
           Padding(
             padding: EdgeInsets.fromLTRB(
-              spacing.lg,
+              spacing.xl,
               spacing.sm,
-              spacing.lg,
+              spacing.xl,
               spacing.md,
             ),
             child: Text(
@@ -162,7 +162,7 @@ class TrackRow extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.lg),
+      contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.xl),
       // 16:9 at the height of a two-line tile, so the rows stay the size the
       // sheet already is: a chapter list that suddenly doubles in height on
       // a server and not on a local file reads as two different sheets.

@@ -93,9 +93,9 @@ class MoreMenu extends ConsumerWidget {
             // under the rows' text rather than their leading icon; the outer
             // margin is the rows' own.
             padding: EdgeInsets.fromLTRB(
-              context.spacing.lg - context.spacing.sm,
+              context.spacing.xl - context.spacing.sm,
               0,
-              context.spacing.lg - context.spacing.sm,
+              context.spacing.xl - context.spacing.sm,
               context.spacing.xs,
             ),
             child: Row(
@@ -230,9 +230,9 @@ class MoreMenu extends ConsumerWidget {
             if (stats.hwdec != null || stats.videoDecoder != null)
               Padding(
                 padding: EdgeInsets.fromLTRB(
-                  context.spacing.lg,
+                  context.spacing.xl,
                   context.spacing.md,
-                  context.spacing.lg,
+                  context.spacing.xl,
                   context.spacing.xs,
                 ),
                 child: Text(
@@ -417,7 +417,7 @@ class _Row extends StatelessWidget {
         // family.
         visualDensity: VisualDensity.compact,
         onTap: onTap,
-        contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.lg),
+        contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.xl),
         leading: Icon(icon, color: Colors.white, size: 22),
         title: Text(label, style: const TextStyle(color: Colors.white)),
         trailing: value == null

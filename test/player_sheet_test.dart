@@ -124,7 +124,7 @@ void main() {
           .first,
     );
     // The rows' own margin, and nothing for the bars on top of it.
-    expect(icon.left - surface, 16);
+    expect(icon.left - surface, 24);
   });
 
   testWidgets('More keeps the same side margin as the track sheets',
