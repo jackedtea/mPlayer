@@ -64,6 +64,7 @@ class ServerItem {
     this.genres = const <String>[],
     this.people = const <ServerPerson>[],
     this.childCount,
+    this.episodeCount,
     this.tags = const <String>[],
     this.studios = const <String>[],
     this.status,
@@ -163,6 +164,10 @@ class ServerItem {
 
   /// Seasons on a series, episodes on a season.
   final int? childCount;
+
+  /// Every episode under a series, across its seasons — `ChildCount` on a
+  /// series counts seasons, which is not what a card's count should say.
+  final int? episodeCount;
 
   /// The server's own chapter list, with the stills it generated.
   ///

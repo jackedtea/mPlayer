@@ -1670,6 +1670,32 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get viewOptions => 'View options';
+
+  @override
+  String get showOnCards => 'Show on cards';
+
+  @override
+  String get cardYear => 'Year';
+
+  @override
+  String get cardCount => 'Number of items';
+
+  @override
+  String get cardCountSub => 'Episodes in a series, films in a collection';
+
+  @override
+  String get cardStatus => 'Status';
+
+  @override
+  String get cardStatusSub => 'Whether a series is still running';
+
+  @override
+  String episodeCountShort(int count) {
+    return '$count ep';
+  }
+
+  @override
   String get sortName => 'A–Z';
 
   @override

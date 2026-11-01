@@ -205,9 +205,9 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
         ),
         actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.grid_view_rounded),
-            tooltip: l10n.gridSize,
-            onPressed: _pickColumns,
+            icon: const Icon(Icons.tune_rounded),
+            tooltip: l10n.viewOptions,
+            onPressed: _pickView,
           ),
           // Search moved to the FAB: it is the frequent action here, and the
           // top-right corner is the one place a thumb cannot reach. Grid size
@@ -359,36 +359,19 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     return '';
   }
 
-  Future<void> _pickColumns() async {
-    final l10n = AppLocalizations.of(context);
-    final current = ref.read(libraryColumnsProvider);
-
-    final chosen = await showModalBottomSheet<int>(
+  /// How the grid is drawn: posters per row, and what each card says.
+  ///
+  /// Everything applies as it is changed, with the grid behind the sheet
+  /// redrawing under it — a choice about how cards look is judged by looking.
+  Future<void> _pickView() {
+    return showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            for (
-              var n = LibraryColumnsController.minColumns;
-              n <= LibraryColumnsController.maxColumns;
-              n++
-            )
-              ListTile(
-                leading: const Icon(Icons.grid_view_rounded),
-                title: Text(l10n.gridColumns(n)),
-                trailing: n == current ? const Icon(Icons.check_rounded) : null,
-                onTap: () => Navigator.of(sheetContext).pop(n),
-              ),
-          ],
-        ),
-      ),
+      showDragHandle: true,
+      builder: (_) => const _ViewSheet(),
     );
-
-    if (chosen == null) return;
-    await ref.read(libraryColumnsProvider.notifier).set(chosen);
   }
+
 
   /// The library's own name, once the views have loaded.
   String? _titleFor(WidgetRef ref) {
@@ -892,6 +875,8 @@ class PosterGrid extends ConsumerWidget {
       ref.watch(libraryColumnsProvider),
       MediaQuery.sizeOf(context).width,
     );
+    final info = ref.watch(libraryCardInfoProvider);
+    final l10n = AppLocalizations.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -917,11 +902,17 @@ class PosterGrid extends ConsumerWidget {
             crossAxisSpacing: 0,
             // Fixed height, not an aspect ratio: the caption is two lines of
             // text, whose height does not scale with the column width.
-            mainAxisExtent: PosterTile.outerHeight(context, posterHeight),
+            mainAxisExtent: PosterTile.outerHeight(
+              context,
+              posterHeight,
+              withCaption: info.caption,
+            ),
           ),
           itemCount: items.length,
           itemBuilder: (context, i) => PosterTile(
             item: libraryItemFrom(items[i]),
+            caption: info.caption ? cardCaption(items[i], l10n, info) : null,
+            badge: info.count ? cardCount(items[i], l10n) : null,
             artUrl: artUrlFor(ref, items[i], maxWidth: 300),
             width: posterWidth,
             posterHeight: posterHeight,
@@ -953,6 +944,85 @@ class _EmptyNote extends StatelessWidget {
           style: context.texts.bodyMedium?.copyWith(
             color: context.colors.onSurfaceVariant,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Posters per row, then which facts the cards carry.
+class _ViewSheet extends ConsumerWidget {
+  const _ViewSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final spacing = context.spacing;
+    final columns = ref.watch(libraryColumnsProvider);
+    final info = ref.watch(libraryCardInfoProvider);
+    final setInfo = ref.read(libraryCardInfoProvider.notifier).set;
+
+    Widget heading(String text) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            spacing.lg,
+            spacing.md,
+            spacing.lg,
+            spacing.sm,
+          ),
+          child: Text(
+            text,
+            style: context.texts.titleSmall
+                ?.copyWith(color: context.colors.primary),
+          ),
+        );
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(bottom: spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            heading(l10n.gridSize),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: spacing.lg),
+              child: Wrap(
+                spacing: spacing.sm,
+                runSpacing: spacing.sm,
+                children: <Widget>[
+                  for (
+                    var n = LibraryColumnsController.minColumns;
+                    n <= LibraryColumnsController.maxColumns;
+                    n++
+                  )
+                    ChoiceChip(
+                      label: Text(l10n.gridColumns(n)),
+                      selected: n == columns,
+                      onSelected: (_) =>
+                          ref.read(libraryColumnsProvider.notifier).set(n),
+                    ),
+                ],
+              ),
+            ),
+            heading(l10n.showOnCards),
+            SwitchListTile(
+              title: Text(l10n.cardYear),
+              value: info.year,
+              onChanged: (on) => setInfo(info.copyWith(year: on)),
+            ),
+            SwitchListTile(
+              title: Text(l10n.cardCount),
+              subtitle: Text(l10n.cardCountSub),
+              value: info.count,
+              onChanged: (on) => setInfo(info.copyWith(count: on)),
+            ),
+            SwitchListTile(
+              title: Text(l10n.cardStatus),
+              subtitle: Text(l10n.cardStatusSub),
+              value: info.status,
+              onChanged: (on) => setInfo(info.copyWith(status: on)),
+            ),
+          ],
         ),
       ),
     );

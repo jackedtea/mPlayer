@@ -3104,6 +3104,54 @@ abstract class AppLocalizations {
   /// **'{count} per row'**
   String gridColumns(int count);
 
+  /// No description provided for @viewOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'View options'**
+  String get viewOptions;
+
+  /// No description provided for @showOnCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Show on cards'**
+  String get showOnCards;
+
+  /// No description provided for @cardYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get cardYear;
+
+  /// No description provided for @cardCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of items'**
+  String get cardCount;
+
+  /// No description provided for @cardCountSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Episodes in a series, films in a collection'**
+  String get cardCountSub;
+
+  /// No description provided for @cardStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get cardStatus;
+
+  /// No description provided for @cardStatusSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Whether a series is still running'**
+  String get cardStatusSub;
+
+  /// No description provided for @episodeCountShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} ep'**
+  String episodeCountShort(int count);
+
   /// No description provided for @sortName.
   ///
   /// In en, this message translates to:

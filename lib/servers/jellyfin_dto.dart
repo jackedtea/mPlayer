@@ -165,6 +165,7 @@ ServerItem serverItemFromJson(
           ),
     ],
     childCount: json['ChildCount'] as int?,
+    episodeCount: json['RecursiveItemCount'] as int?,
     tags: <String>[
       for (final Object? t in (json['Tags'] as List?) ?? const <Object?>[])
         if (t is String) t,

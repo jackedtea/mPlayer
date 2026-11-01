@@ -724,8 +724,9 @@ class JellyfinSource implements MediaLibrarySource {
   // No `Tags`: nothing renders the server's keywords any more, and a series
   // carries dozens of them. Asked for on every listing that is a hundred
   // items' worth of words the app throws away.
+  // `RecursiveItemCount` for the episode count a series card can show.
   static const _fields = 'Overview,ProductionYear,Genres,People,ChildCount,'
-      'PrimaryImageAspectRatio,Studios,Status,EndDate';
+      'RecursiveItemCount,PrimaryImageAspectRatio,Studios,Status,EndDate';
 
   // `OriginalTitle` is detail-only for the same reason: a grid draws one
   // title per poster, and the second one only ever appears under the first

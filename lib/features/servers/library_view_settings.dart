@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, immutable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -68,4 +68,87 @@ int columnsForWidth(int setting, double width) {
     _ => 0,
   };
   return setting + extra;
+}
+
+/// Which facts a library's poster cards carry under and over the artwork.
+@immutable
+class LibraryCardInfo {
+  const LibraryCardInfo({
+    this.year = true,
+    this.count = true,
+    this.status = true,
+  });
+
+  /// The release year, or a series' span of years, under the title.
+  final bool year;
+
+  /// How many episodes a series holds, or films a box set, over the poster.
+  final bool count;
+
+  /// Whether a series is still running, beside the year.
+  final bool status;
+
+  /// Whether anything goes on the line under the title — which decides how
+  /// tall a grid cell is, so it has to be known before any card is drawn.
+  bool get caption => year || status;
+
+  LibraryCardInfo copyWith({bool? year, bool? count, bool? status}) {
+    return LibraryCardInfo(
+      year: year ?? this.year,
+      count: count ?? this.count,
+      status: status ?? this.status,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is LibraryCardInfo &&
+      other.year == year &&
+      other.count == count &&
+      other.status == status;
+
+  @override
+  int get hashCode => Object.hash(year, count, status);
+}
+
+/// What the library cards show. All on by default: each is a fact the user
+/// would otherwise open the item to learn.
+final libraryCardInfoProvider =
+    NotifierProvider<LibraryCardInfoController, LibraryCardInfo>(
+  LibraryCardInfoController.new,
+);
+
+class LibraryCardInfoController extends Notifier<LibraryCardInfo> {
+  static const _yearKey = 'library_card_year';
+  static const _countKey = 'library_card_count';
+  static const _statusKey = 'library_card_status';
+
+  @override
+  LibraryCardInfo build() {
+    // As with the columns: the default paints now, the stored choice a frame
+    // later, rather than holding the first frame for a disk read.
+    Future<void>.microtask(_restore);
+    return const LibraryCardInfo();
+  }
+
+  Future<void> _restore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      state = LibraryCardInfo(
+        year: prefs.getBool(_yearKey) ?? true,
+        count: prefs.getBool(_countKey) ?? true,
+        status: prefs.getBool(_statusKey) ?? true,
+      );
+    } catch (e) {
+      debugPrint('Unreadable library card settings, using the defaults: $e');
+    }
+  }
+
+  Future<void> set(LibraryCardInfo next) async {
+    state = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_yearKey, next.year);
+    await prefs.setBool(_countKey, next.count);
+    await prefs.setBool(_statusKey, next.status);
+  }
 }

@@ -1673,6 +1673,32 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get viewOptions => 'Tuỳ chọn hiển thị';
+
+  @override
+  String get showOnCards => 'Hiện trên thẻ';
+
+  @override
+  String get cardYear => 'Năm';
+
+  @override
+  String get cardCount => 'Số lượng';
+
+  @override
+  String get cardCountSub => 'Số tập của series, số phim của bộ sưu tập';
+
+  @override
+  String get cardStatus => 'Trạng thái';
+
+  @override
+  String get cardStatusSub => 'Series còn đang chiếu hay đã kết thúc';
+
+  @override
+  String episodeCountShort(int count) {
+    return '$count tập';
+  }
+
+  @override
   String get sortName => 'A–Z';
 
   @override

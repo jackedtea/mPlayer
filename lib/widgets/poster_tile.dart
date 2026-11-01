@@ -25,6 +25,8 @@ class PosterTile extends StatelessWidget {
     this.onTap,
     this.artUrl,
     this.titleLines = defaultTitleLines,
+    this.caption,
+    this.badge,
   });
 
   /// Two, because one truncates most of what a media server holds: a title
@@ -45,6 +47,14 @@ class PosterTile extends StatelessWidget {
   /// height is the same whether the title needs them, so a grid row stays
   /// level however long its neighbours' titles are.
   final int titleLines;
+
+  /// A line under the title — "2019–2023 · Ended". Null draws none; a grid
+  /// that shows captions passes an empty string for an item without one, so
+  /// every cell keeps the same height.
+  final String? caption;
+
+  /// A count over the top-left of the artwork — "24 ep". Null for none.
+  final String? badge;
 
   static double outerWidth(BuildContext context, double width) =>
       width + context.spacing.hitInset * 2;
@@ -84,9 +94,11 @@ class PosterTile extends StatelessWidget {
     BuildContext context,
     double posterHeight, {
     int titleLines = defaultTitleLines,
+    bool withCaption = false,
   }) =>
       posterHeight +
       captionHeight(context, lines: titleLines) +
+      (withCaption ? titleHeight(context, lines: 1) : 0) +
       context.spacing.hitInset * 2;
 
   @override
@@ -124,6 +136,12 @@ class PosterTile extends StatelessWidget {
                           top: spacing.xs + 2,
                           child: const _WatchedBadge(),
                         ),
+                      if (badge != null)
+                        Positioned(
+                          left: spacing.xs + 2,
+                          top: spacing.xs + 2,
+                          child: _CountBadge(label: badge!),
+                        ),
                     ],
                   ),
                 ),
@@ -146,6 +164,18 @@ class PosterTile extends StatelessWidget {
                   ),
                 ),
               ),
+              if (caption != null)
+                SizedBox(
+                  height: titleHeight(context, lines: 1),
+                  width: double.infinity,
+                  child: Text(
+                    caption!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.bodySmall
+                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                  ),
+                ),
             ],
           ),
         ),
@@ -172,6 +202,32 @@ class _WatchedBadge extends StatelessWidget {
         Icons.check_rounded,
         size: 14,
         color: context.colors.onPrimary,
+      ),
+    );
+  }
+}
+
+/// A small count over the artwork, readable on any poster.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

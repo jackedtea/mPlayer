@@ -23,6 +23,7 @@ import '../player/playback_state.dart';
 import '../../servers/auto_connect.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
+import 'library_view_settings.dart';
 import '../../sources/media_source.dart';
 
 /// The signed-in client, or null when nothing is signed in.
@@ -582,6 +583,40 @@ LibraryItem libraryItemFrom(ServerItem item) {
     year: item.year?.toString() ?? '',
     watched: item.played,
   );
+}
+
+/// The line under a library card's title: the year — a series' span of them
+/// once it has ended — and whether a series is still running.
+String cardCaption(ServerItem item, AppLocalizations l10n, LibraryCardInfo info) {
+  final parts = <String>[];
+  final year = item.year;
+  if (info.year && year != null) {
+    final end = item.endYear;
+    parts.add(end != null && end != year ? '$year–$end' : '$year');
+  }
+  if (info.status && item.kind == ServerItemKind.series) {
+    switch (item.status) {
+      case 'Continuing':
+        parts.add(l10n.statusContinuing);
+      case 'Ended':
+        parts.add(l10n.statusEnded);
+    }
+  }
+  return parts.join(' · ');
+}
+
+/// The count over a library card: a series' episodes, a box set's films.
+/// Null for anything else, and for a count the server did not give.
+String? cardCount(ServerItem item, AppLocalizations l10n) {
+  final n = switch (item.kind) {
+    ServerItemKind.series => item.episodeCount,
+    ServerItemKind.collection => item.childCount,
+    _ => null,
+  };
+  if (n == null || n <= 0) return null;
+  return item.kind == ServerItemKind.series
+      ? l10n.episodeCountShort(n)
+      : '$n';
 }
 
 /// A card on the Continue-watching or Next-up shelf.
