@@ -4,6 +4,7 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -216,7 +217,14 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                     Tab(text: l10n.about),
                   ],
                 ),
-                scheme.surface,
+                background: scheme.surface,
+                divider: context.semantic.divider,
+                // The page is drawn edge to edge for the backdrop, so a header
+                // pinned at the top would sit under the status bar — the tabs
+                // overlapped by the clock, with the episode list showing
+                // through behind both.
+                topInset: context.systemTopInset,
+                brightness: Theme.of(context).brightness,
               ),
             ),
         ],
@@ -289,26 +297,68 @@ String _yearRange(ServerItem item) {
 }
 
 /// Keeps the season tabs pinned while the episode list scrolls under them.
+///
+/// **Taller than the tabs by the status bar.** The page runs edge to edge so
+/// the backdrop reaches the top of the screen, which put a header pinned at
+/// y = 0 under the clock and the signal bars, with the episodes scrolling
+/// past behind them. The extra strip is the page's own colour, so pinned it
+/// is a solid band under the status bar and in the flow it reads as a little
+/// space above the tabs. A delegate's extent cannot change with where it sits,
+/// which is why the strip is always there rather than only once pinned.
 class _TabBarHeader extends SliverPersistentHeaderDelegate {
-  _TabBarHeader(this.tabBar, this.background);
+  _TabBarHeader(
+    this.tabBar, {
+    required this.background,
+    required this.divider,
+    required this.topInset,
+    required this.brightness,
+  });
 
   final TabBar tabBar;
   final Color background;
+  final Color divider;
+  final double topInset;
+  final Brightness brightness;
+
+  double get _extent => tabBar.preferredSize.height + topInset;
 
   @override
-  double get minExtent => tabBar.preferredSize.height;
+  double get minExtent => _extent;
 
   @override
-  double get maxExtent => tabBar.preferredSize.height;
+  double get maxExtent => _extent;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
-    return ColoredBox(color: background, child: tabBar);
+    // Under the status bar while pinned, the system draws its icons over the
+    // page colour rather than over the backdrop — so they follow the theme
+    // here, not the picture.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: background,
+          // A hairline only once the episodes are scrolling under it, the
+          // cue that the tabs are now holding still.
+          border: overlaps ? Border(bottom: BorderSide(color: divider)) : null,
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(top: topInset),
+          child: tabBar,
+        ),
+      ),
+    );
   }
 
   @override
   bool shouldRebuild(_TabBarHeader old) =>
-      old.tabBar != tabBar || old.background != background;
+      old.tabBar != tabBar ||
+      old.background != background ||
+      old.divider != divider ||
+      old.topInset != topInset ||
+      old.brightness != brightness;
 }
 
 /// The server item behind the row at [index] of season [seasonIndex].

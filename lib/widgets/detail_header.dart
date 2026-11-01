@@ -6,6 +6,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../app/tokens.dart';
@@ -224,30 +225,55 @@ class _Backdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = context.colors;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        GradientArt(seed: seed),
-        RemoteArt(url: artUrl),
-        // Only the bottom third, unlike the old header: nothing is written
-        // over the middle of this picture any more, so darkening it would
-        // cost the artwork for nothing. The fade is there to end the picture
-        // in the page's own colour rather than at a visible seam.
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[
-                Colors.transparent,
-                scheme.surface.withValues(alpha: 0.7),
-                scheme.surface,
-              ],
-              stops: const <double>[0.62, 0.88, 1.0],
+    // Light status-bar icons over the picture, which is under them whenever
+    // the header is at the top of the screen; the page below annotates its
+    // own colour once it scrolls up there instead.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          GradientArt(seed: seed),
+          RemoteArt(url: artUrl),
+          // A shade along the top edge only, under the status bar: white icons
+          // over a pale poster were unreadable, and this is the strip of the
+          // picture the clock covers anyway.
+          Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              height: context.systemTopInset * 2.5,
+              width: double.infinity,
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[Color(0x66000000), Color(0x00000000)],
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+          // Only the bottom third, unlike the old header: nothing is written
+          // over the middle of this picture any more, so darkening it would
+          // cost the artwork for nothing. The fade is there to end the picture
+          // in the page's own colour rather than at a visible seam.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Colors.transparent,
+                  scheme.surface.withValues(alpha: 0.7),
+                  scheme.surface,
+                ],
+                stops: const <double>[0.62, 0.88, 1.0],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
