@@ -1024,7 +1024,7 @@ class _Scrubber extends StatelessWidget {
             ),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              trackHeight: 4,
+              trackHeight: _trackHeight,
               // White, not the accent. Everything else drawn over the video
               // is white — the inactive track, the buffered stretch, the
               // times either side of it — and an accent track put the one
@@ -1051,6 +1051,12 @@ class _Scrubber extends StatelessWidget {
   }
 }
 
+/// How thick the scrubber's track is — the slider's and the buffered
+/// stretch's alike, which have to agree or the two bands visibly misalign.
+/// Six rather than Material's four: over a moving picture the thinner line
+/// was hard to find, and harder to aim at.
+const double _trackHeight = 6;
+
 /// The read-ahead stretch, drawn as a dimmer version of the played track.
 class _BufferedTrack extends CustomPainter {
   _BufferedTrack({required this.progress, required this.colour});
@@ -1060,9 +1066,9 @@ class _BufferedTrack extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 4 logical pixels, matching `trackHeight`, and rounded at both ends the
-    // way Material draws the track itself.
-    const height = 4.0;
+    // The slider's own `trackHeight`, and rounded at both ends the way
+    // Material draws the track itself.
+    const height = _trackHeight;
     final top = (size.height - height) / 2;
 
     canvas.drawRRect(

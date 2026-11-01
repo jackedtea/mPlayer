@@ -762,5 +762,21 @@ void main() {
       expect(disc.color!.a, greaterThan(0.3));
       expect((disc.shape! as CircleBorder).side, isNot(BorderSide.none));
     });
+
+    testWidgets('the scrubber track is thicker than the default',
+        (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: const PlaybackState(
+          duration: Duration(minutes: 20),
+          buffered: Duration(minutes: 5),
+        ),
+      );
+
+      final slider = find.byType(Slider);
+      final theme = SliderTheme.of(tester.element(slider));
+      expect(theme.trackHeight, 6);
+    });
   });
 }
