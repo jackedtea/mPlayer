@@ -82,12 +82,21 @@ class MoreMenu extends ConsumerWidget {
     return SafeArea(
       child: ListView(
         shrinkWrap: true,
-        padding: EdgeInsets.zero,
+        // The track sheets' top and bottom spacing.
+        padding: EdgeInsets.only(
+          top: context.spacing.sm,
+          bottom: context.spacing.sm,
+        ),
         children: <Widget>[
           Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacing.md,
-              vertical: context.spacing.xs,
+            // Tiles are as wide as a quarter of the row, so their icons sit
+            // under the rows' text rather than their leading icon; the outer
+            // margin is the rows' own.
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.xl - context.spacing.sm,
+              0,
+              context.spacing.xl - context.spacing.sm,
+              context.spacing.xs,
             ),
             child: Row(
               children: <Widget>[
@@ -400,15 +409,14 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 48,
       child: ListTile(
+        // Dense for height only — the sheet has to hold its rows on a phone
+        // on its side — with the same side margin as the track sheets, so
+        // the two read as one family.
         dense: true,
         onTap: onTap,
-        // Tighter than a settings list: this is a menu over a film, on a
-        // screen that is short because the phone is on its side.
-        visualDensity: VisualDensity.compact,
-        minLeadingWidth: 24,
-        contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.lg),
+        contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.xl),
         leading: Icon(icon, color: Colors.white, size: 22),
         title: Text(label, style: const TextStyle(color: Colors.white)),
         trailing: value == null

@@ -4,9 +4,12 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/app/theme.dart';
+import 'package:mplayer/features/player/more_menu.dart';
 import 'package:mplayer/features/player/stable_insets.dart';
 import 'package:mplayer/features/player/track_sheet.dart';
 import 'package:mplayer/l10n/app_localizations.dart';
@@ -76,5 +79,71 @@ void main() {
 
     final shown = await _openWith(tester, bars: true);
     expect(shown.top, greaterThan(28));
+  });
+
+  testWidgets('More keeps the same side margin as the track sheets',
+      (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(872, 393);
+    addTearDown(tester.view.reset);
+
+    // The edge of the sheet, and how far in from it a row's first thing is.
+    double inset(Finder sheet, Finder first) =>
+        tester.getTopLeft(first).dx - tester.getTopLeft(sheet).dx;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: buildTheme(Brightness.dark),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Column(
+                children: <Widget>[
+                  TextButton(
+                    onPressed: () => MoreMenu.show(context),
+                    child: const Text('more'),
+                  ),
+                  TextButton(
+                    onPressed: () => TrackSheet.show(
+                      context: context,
+                      title: 'Playback quality',
+                      selectedId: null,
+                      options: const <TrackOption>[
+                        TrackOption(id: 'a', label: 'Original'),
+                      ],
+                      onSelected: (_) {},
+                    ),
+                    child: const Text('quality'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('quality'));
+    await tester.pumpAndSettle();
+    final quality = inset(find.byType(BottomSheet), find.text('Original'));
+    await tester.tapAt(const Offset(436, 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('more'));
+    await tester.pumpAndSettle();
+    final more = inset(
+      find.byType(BottomSheet),
+      find
+          .descendant(
+            of: find.widgetWithText(ListTile, 'Sleep timer'),
+            matching: find.byType(Icon),
+          )
+          .first,
+    );
+
+    expect(more, quality);
   });
 }
