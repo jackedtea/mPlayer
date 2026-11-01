@@ -447,10 +447,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                             setState(() => _dragProgress = null);
                             controller.seek(state.duration * v);
                           },
-                          // Both open the one dialog; each button still says
-                          // what is on for its own side.
-                          onSubtitles: () => _pickTracks(controller),
-                          onAudio: () => _pickTracks(controller),
+                          onTracks: () => _pickTracks(controller),
                           onQuality: () => _pickQuality(state, controller),
                           qualityLabel: () {
                             final q = ref.watch(streamQualityProvider);
@@ -460,7 +457,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                   ).qualityOriginal
                                 : q.label;
                           }(),
-                          onSpeed: () => _pickSpeed(state, controller),
                           onLock: () {
                             ref
                                 .read(playerUiProvider.notifier)
@@ -474,21 +470,22 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                                 .read(playerUiProvider.notifier)
                                 .cycleRotation();
                           },
-                          onLoop: () {
-                            _restartHideTimer();
-                            controller.cycleLoop();
-                          },
                           onZoom: () {
                             _restartHideTimer();
                             ref.read(playerUiProvider.notifier).cycleAspect();
                           },
-                          onScreenshot: () => _takeScreenshot(controller),
-                          onBackgroundPlay: _toggleBackgroundPlay,
-                          backgroundPlay: settings.backgroundAudio,
                           onChapters: () =>
                               _showChapters(state, controller),
                           onFullscreen: _toggleFullscreen,
-                          onMore: () => MoreMenu.show(context),
+                          onMore: () => MoreMenu.show(
+                            context,
+                            onSpeed: () => _pickSpeed(
+                              ref.read(playbackControllerProvider),
+                              controller,
+                            ),
+                            onScreenshot: () => _takeScreenshot(controller),
+                            onBackgroundPlay: _toggleBackgroundPlay,
+                          ),
                           onPip: pip.supported ? _enterPip : null,
                           onCast: _pickCastDevice,
                           // The same amounts the gestures use; the buttons used

@@ -170,6 +170,12 @@ Also open:
   the archive and start a detached PowerShell/sh script that waits for the
   PID, unpacks over the install dir, and restarts the app in `finally` — a
   non-writable install dir is refused up front.
+- **Player chrome**: one audio-and-subtitle button (top bar) opening the
+  two-pane `AudioSubtitleDialog`; the bottom bar is lock, rotation, zoom,
+  chapters, fullscreen. Background play, speed, loop and screenshot are a
+  quick-action tile row at the top of the More sheet, which gave up its
+  rotation/aspect rows (duplicates of bar buttons) to stay within a
+  landscape phone's height.
 - **Jellyfin only.** Emby was removed on 2026-11-01: `ServerKind` is gone,
   the probe refuses an Emby server with a sentence, and a stored Emby profile
   is skipped on load.

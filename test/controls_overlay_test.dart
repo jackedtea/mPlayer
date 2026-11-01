@@ -40,12 +40,9 @@ Future<void> pumpControls(
   double bottomInset = 0,
   MediaSegment? skipSegment,
   bool chromeVisible = true,
-  bool backgroundPlay = false,
   VoidCallback? onNext,
-  VoidCallback? onLoop,
   VoidCallback? onZoom,
-  VoidCallback? onScreenshot,
-  VoidCallback? onBackgroundPlay,
+  VoidCallback? onTracks,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
@@ -76,20 +73,14 @@ Future<void> pumpControls(
           onScrubStart: (_) {},
           onScrubUpdate: (_) {},
           onScrubEnd: (_) {},
-          onSubtitles: () {},
-          onAudio: () {},
+          onTracks: onTracks ?? () {},
           onQuality: () {},
-          onSpeed: () {},
           onLock: () {},
           onRotate: () {},
           onChapters: () {},
           onFullscreen: () {},
           onMore: () {},
-          onLoop: onLoop ?? () {},
           onZoom: onZoom ?? () {},
-          onScreenshot: onScreenshot ?? () {},
-          onBackgroundPlay: onBackgroundPlay ?? () {},
-          backgroundPlay: backgroundPlay,
           onSkipIntro: (_) {},
           skipSegment: skipSegment,
           onSkipSegment: (_) {},
@@ -370,20 +361,31 @@ void main() {
     ) async {
       await pumpControls(tester, const Size(400, 900));
 
-      // Nine buttons sharing one row rather than any of them falling off it.
+      // Five buttons sharing one row rather than any of them falling off it.
       expect(tester.takeException(), isNull);
       for (final IconData icon in <IconData>[
-        Icons.headphones_battery_rounded,
         Icons.lock_open_rounded,
         Icons.screen_rotation_rounded,
-        Icons.speed_rounded,
-        Icons.repeat_rounded,
-        Icons.photo_camera_rounded,
         Icons.zoom_out_map_rounded,
         Icons.segment_rounded,
         Icons.fullscreen_rounded,
       ]) {
         expect(find.byIcon(icon), findsOneWidget, reason: '$icon');
+      }
+    });
+
+    testWidgets('what moved to the More sheet is off the bar', (tester) async {
+      await pumpControls(tester, const Size(900, 500));
+
+      // Set once a film, not reached for during one: background play, speed,
+      // loop and screenshot are tiles at the top of the More sheet now.
+      for (final IconData icon in <IconData>[
+        Icons.headphones_battery_rounded,
+        Icons.speed_rounded,
+        Icons.repeat_rounded,
+        Icons.photo_camera_rounded,
+      ]) {
+        expect(find.byIcon(icon), findsNothing, reason: '$icon');
       }
     });
 
@@ -403,11 +405,8 @@ void main() {
       // Everything that changes how the file plays is bottom left; everything
       // that acts on the frame in front of the viewer is bottom right.
       for (final IconData icon in <IconData>[
-        Icons.headphones_battery_rounded,
         Icons.lock_open_rounded,
         Icons.screen_rotation_rounded,
-        Icons.speed_rounded,
-        Icons.repeat_rounded,
       ]) {
         expect(
           tester.getCenter(find.byIcon(icon)).dx,
@@ -417,7 +416,6 @@ void main() {
       }
 
       for (final IconData icon in <IconData>[
-        Icons.photo_camera_rounded,
         Icons.zoom_out_map_rounded,
         Icons.segment_rounded,
         Icons.fullscreen_rounded,
@@ -440,7 +438,6 @@ void main() {
       // and the corner is what says so.
       for (final IconData icon in <IconData>[
         Icons.subtitles_off_rounded,
-        Icons.graphic_eq_rounded,
         Icons.hd_rounded,
       ]) {
         final centre = tester.getCenter(find.byIcon(icon));
@@ -453,8 +450,35 @@ void main() {
       await pumpControls(tester, const Size(900, 500), transcoding: true);
 
       expect(find.byIcon(Icons.subtitles_off_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.graphic_eq_rounded), findsOneWidget);
       expect(find.byIcon(Icons.hd_rounded), findsOneWidget);
+    });
+
+    testWidgets('audio and subtitles are one button that names both',
+        (tester) async {
+      var opened = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        onTracks: () => opened++,
+        state: const PlaybackState(
+          activeAudio: MediaTrack(
+            id: '1',
+            kind: TrackKind.audio,
+            label: 'Japanese',
+          ),
+        ),
+      );
+
+      // One dialog behind it, so one button in front of it.
+      expect(find.byIcon(Icons.graphic_eq_rounded), findsNothing);
+      expect(
+        find.byTooltip('Audio: Japanese · Subtitles: Off'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byIcon(Icons.subtitles_off_rounded));
+      await tester.pump();
+      expect(opened, 1);
     });
 
     testWidgets('a narrow phone fits the whole top bar', (tester) async {
@@ -465,100 +489,7 @@ void main() {
     });
   });
 
-  group('loop', () {
-    testWidgets('off draws the plain glyph untinted', (tester) async {
-      await pumpControls(tester, const Size(900, 500));
-
-      expect(find.byTooltip('Loop: Off'), findsOneWidget);
-      expect(iconColour(tester, Icons.repeat_rounded), Colors.white);
-    });
-
-    testWidgets('repeat-one gets its own glyph', (tester) async {
-      await pumpControls(
-        tester,
-        const Size(900, 500),
-        state: const PlaybackState(loop: LoopMode.one),
-      );
-
-      expect(find.byTooltip('Loop: Repeat this video'), findsOneWidget);
-      expect(
-        iconColour(tester, Icons.repeat_one_rounded),
-        isNot(Colors.white),
-      );
-    });
-
-    testWidgets('repeat-all names the folder', (tester) async {
-      await pumpControls(
-        tester,
-        const Size(900, 500),
-        state: const PlaybackState(loop: LoopMode.all),
-      );
-
-      expect(find.byTooltip('Loop: Repeat the folder'), findsOneWidget);
-    });
-
-    testWidgets('cycles when pressed', (tester) async {
-      var cycled = 0;
-      await pumpControls(
-        tester,
-        const Size(900, 500),
-        onLoop: () => cycled++,
-      );
-
-      await tester.tap(find.byIcon(Icons.repeat_rounded));
-      await tester.pump();
-
-      expect(cycled, 1);
-    });
-  });
-
-  group('background play', () {
-    testWidgets('says which way it is set', (tester) async {
-      await pumpControls(tester, const Size(900, 500));
-      expect(find.byIcon(Icons.headphones_battery_rounded), findsOneWidget);
-
-      await pumpControls(
-        tester,
-        const Size(900, 500),
-        backgroundPlay: true,
-      );
-      expect(
-        iconColour(tester, Icons.headphones_rounded),
-        isNot(Colors.white),
-      );
-    });
-
-    testWidgets('toggles when pressed', (tester) async {
-      var toggled = 0;
-      await pumpControls(
-        tester,
-        const Size(900, 500),
-        onBackgroundPlay: () => toggled++,
-      );
-
-      await tester.tap(find.byIcon(Icons.headphones_battery_rounded));
-      await tester.pump();
-
-      expect(toggled, 1);
-    });
-  });
-
-  group('screenshot and zoom', () {
-    testWidgets('the grab reports what it does', (tester) async {
-      var grabbed = 0;
-      await pumpControls(
-        tester,
-        const Size(900, 500),
-        onScreenshot: () => grabbed++,
-      );
-
-      expect(find.byTooltip('Take a screenshot'), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.photo_camera_rounded));
-      await tester.pump();
-
-      expect(grabbed, 1);
-    });
-
+  group('zoom', () {
     testWidgets('zoom names the aspect mode it is on', (tester) async {
       await pumpControls(
         tester,
@@ -607,19 +538,6 @@ void main() {
       expect(find.byIcon(Icons.subtitles_off_rounded), findsNothing);
     });
 
-    testWidgets('a non-default speed is visible without a label', (
-      tester,
-    ) async {
-      await pumpControls(
-        tester,
-        const Size(400, 900),
-        state: const PlaybackState(speed: 1.5),
-      );
-
-      // Playing at 1.5x is easy to forget; the tint is the only cue left.
-      expect(find.byTooltip('Speed: 1.50×'), findsOneWidget);
-      expect(iconColour(tester, Icons.speed_rounded), isNot(Colors.white));
-    });
   });
 
   group('loading', () {

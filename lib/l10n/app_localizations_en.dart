@@ -911,6 +911,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get audioAndSubtitles => 'Audio & subtitles';
 
   @override
+  String tracksValue(String audio, String subtitles) {
+    return 'Audio: $audio · Subtitles: $subtitles';
+  }
+
+  @override
+  String get quickBackground => 'Background';
+
+  @override
+  String get quickSpeed => 'Speed';
+
+  @override
+  String get quickScreenshot => 'Screenshot';
+
+  @override
   String get noTracks => 'None in this file';
 
   @override
@@ -972,9 +986,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get castTo => 'Cast';
-
-  @override
-  String get aspectRatio => 'Aspect ratio';
 
   @override
   String get aspectFit => 'Fit';
@@ -1041,16 +1052,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String subtitlesValue(String track) {
-    return 'Subtitles: $track';
-  }
-
-  @override
-  String audioValue(String track) {
-    return 'Audio: $track';
-  }
-
-  @override
   String get loop => 'Loop';
 
   @override
@@ -1060,17 +1061,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loopAll => 'Repeat the folder';
 
   @override
-  String loopValue(String mode) {
-    return 'Loop: $mode';
-  }
-
-  @override
   String qualityValue(String label) {
     return 'Quality: $label';
   }
-
-  @override
-  String get screenshot => 'Take a screenshot';
 
   @override
   String screenshotSaved(String folder) {
@@ -1079,11 +1072,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get screenshotFailed => 'Could not take a screenshot of this frame';
-
-  @override
-  String speedValue(String speed) {
-    return 'Speed: $speed×';
-  }
 
   @override
   String get audioDelay => 'Audio delay';

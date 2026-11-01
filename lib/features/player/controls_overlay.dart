@@ -35,21 +35,15 @@ class ControlsOverlay extends StatelessWidget {
     required this.onScrubStart,
     required this.onScrubUpdate,
     required this.onScrubEnd,
-    required this.onSubtitles,
-    required this.onAudio,
+    required this.onTracks,
     required this.onQuality,
     this.qualityLabel,
-    required this.onSpeed,
     required this.onLock,
     required this.onRotate,
     required this.onChapters,
     required this.onFullscreen,
     required this.onMore,
-    required this.onLoop,
     required this.onZoom,
-    required this.onScreenshot,
-    required this.onBackgroundPlay,
-    this.backgroundPlay = false,
     this.onPip,
     this.onCast,
     this.skipBack = const Duration(seconds: 10),
@@ -79,35 +73,25 @@ class ControlsOverlay extends StatelessWidget {
   final ValueChanged<double> onScrubStart;
   final ValueChanged<double> onScrubUpdate;
   final ValueChanged<double> onScrubEnd;
-  final VoidCallback onSubtitles;
-  final VoidCallback onAudio;
+  /// Opens the audio-and-subtitle dialog. One button for both: they are one
+  /// dialog, and two buttons opening the same thing cost the top row a slot.
+  final VoidCallback onTracks;
   final VoidCallback onQuality;
 
   /// What the quality pill reads. Null falls back to "Original", which is
   /// also the default the setting starts on.
   final String? qualityLabel;
-  final VoidCallback onSpeed;
   final VoidCallback onLock;
   final VoidCallback onRotate;
   final VoidCallback onChapters;
   final VoidCallback onFullscreen;
+  /// The overflow sheet — which now also holds background play, speed, loop
+  /// and screenshot. Each is set once a film rather than reached for during
+  /// one, so they gave their places on the bar to the controls that are.
   final VoidCallback onMore;
-
-  /// Steps the loop control on; the mode itself is read from [state].
-  final VoidCallback onLoop;
 
   /// Cycles how the frame fills the screen — fit, fill, stretch.
   final VoidCallback onZoom;
-
-  /// Writes the frame on screen to a file.
-  final VoidCallback onScreenshot;
-
-  /// Turns the background-audio preference on or off from the player, rather
-  /// than making the viewer leave the film to reach Settings.
-  final VoidCallback onBackgroundPlay;
-
-  /// Whether that preference is currently on, so the glyph can say so.
-  final bool backgroundPlay;
 
   /// Null where the platform has no picture in picture — desktop, and the
   /// Android devices whose manufacturer left it out. The button is hidden
@@ -467,25 +451,19 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
                 _SmallIcon(
-                  // Off is worth seeing without opening the sheet, so the
-                  // glyph says so.
+                  // The subtitle glyph, because whether subtitles are on is
+                  // the half worth seeing without opening anything; the
+                  // tooltip names both.
                   icon: subtitleOn
                       ? Icons.subtitles_rounded
                       : Icons.subtitles_off_rounded,
-                  tooltip: l10n.subtitlesValue(
+                  tooltip: l10n.tracksValue(
+                    state.activeAudio?.label ?? l10n.defaultLabel,
                     state.activeSubtitle?.label ?? l10n.off,
                   ),
                   colour: subtitleOn ? accent : null,
                   extent: extent,
-                  onTap: this_.onSubtitles,
-                ),
-                _SmallIcon(
-                  icon: Icons.graphic_eq_rounded,
-                  tooltip: l10n.audioValue(
-                    state.activeAudio?.label ?? l10n.defaultLabel,
-                  ),
-                  extent: extent,
-                  onTap: this_.onAudio,
+                  onTap: this_.onTracks,
                 ),
                 // Quality only means something when the far end can re-encode.
                 // A local file, a share or a WebDAV stream is served as-is, so
@@ -1140,7 +1118,7 @@ class _ControlRow extends StatelessWidget {
 
   final ControlsOverlay this_;
 
-  /// Nine buttons at their natural width, plus a little air between the two
+  /// Five buttons at their natural width, plus a little air between the two
   /// groups.
   static const _shareWidthBelow = 420.0;
 
@@ -1171,23 +1149,14 @@ class _ControlRow extends StatelessWidget {
     );
   }
 
-  /// Bottom left — background play, lock, rotation, speed, loop.
+  /// Bottom left — lock and rotation, the two a viewer reaches for while
+  /// settling in to watch.
   List<Widget> _playbackIcons(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final state = this_.state;
     final ui = this_.ui;
     final accent = context.colors.primaryContainer;
-    final speedChanged = (state.speed - 1.0).abs() > 0.01;
 
     return <Widget>[
-      _SmallIcon(
-        icon: this_.backgroundPlay
-            ? Icons.headphones_rounded
-            : Icons.headphones_battery_rounded,
-        tooltip: l10n.backgroundAudio,
-        colour: this_.backgroundPlay ? accent : null,
-        onTap: this_.onBackgroundPlay,
-      ),
       _SmallIcon(
         icon: ui.locked ? Icons.lock_rounded : Icons.lock_open_rounded,
         tooltip: l10n.lockPlayer,
@@ -1200,35 +1169,16 @@ class _ControlRow extends StatelessWidget {
         colour: ui.rotation == RotationMode.auto ? null : accent,
         onTap: this_.onRotate,
       ),
-      _SmallIcon(
-        icon: Icons.speed_rounded,
-        // Playing at anything but normal speed is easy to forget and hard to
-        // notice; the tint is the only cue left once the label is gone.
-        tooltip: l10n.speedValue(state.speed.toStringAsFixed(2)),
-        colour: speedChanged ? accent : null,
-        onTap: this_.onSpeed,
-      ),
-      _SmallIcon(
-        icon: _loopIcon(state.loop),
-        tooltip: l10n.loopValue(loopLabel(l10n, state.loop)),
-        colour: state.loop == LoopMode.off ? null : accent,
-        onTap: this_.onLoop,
-      ),
     ];
   }
 
-  /// Bottom right — screenshot, zoom, chapters, fullscreen.
+  /// Bottom right — zoom, chapters, fullscreen.
   List<Widget> _viewIcons(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final ui = this_.ui;
     final accent = context.colors.primaryContainer;
 
     return <Widget>[
-      _SmallIcon(
-        icon: Icons.photo_camera_rounded,
-        tooltip: l10n.screenshot,
-        onTap: this_.onScreenshot,
-      ),
       _SmallIcon(
         // Zoom is the aspect cycle: fit, fill, stretch is what "zoom" does to
         // a frame that is not the shape of the screen, and there is no second
@@ -1251,14 +1201,6 @@ class _ControlRow extends StatelessWidget {
     ];
   }
 }
-
-/// Repeat-one gets its own glyph; the folder loop and "off" share one and are
-/// told apart by the tint, the way every other stateful control in the row is.
-IconData _loopIcon(LoopMode mode) => switch (mode) {
-      LoopMode.off => Icons.repeat_rounded,
-      LoopMode.one => Icons.repeat_one_rounded,
-      LoopMode.all => Icons.repeat_on_rounded,
-    };
 
 /// What the loop control's tooltip names its current mode.
 ///

@@ -22,6 +22,9 @@ Future<void> openMoreMenu(
   double navigationBar = 48,
   double statusBar = 0,
   double sideBar = 0,
+  VoidCallback? onSpeed,
+  VoidCallback? onScreenshot,
+  VoidCallback? onBackgroundPlay,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
@@ -46,7 +49,12 @@ Future<void> openMoreMenu(
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
-              onPressed: () => MoreMenu.show(context),
+              onPressed: () => MoreMenu.show(
+                context,
+                onSpeed: onSpeed ?? () {},
+                onScreenshot: onScreenshot ?? () {},
+                onBackgroundPlay: onBackgroundPlay ?? () {},
+              ),
               child: const Text('open'),
             ),
           ),
@@ -77,9 +85,14 @@ void main() {
       // phone on its side has room for.
       expect(find.text('Lock player'), findsNothing);
 
+      // Rotation and aspect are buttons on the bar, and came off the sheet
+      // to make room for the quick actions.
+      expect(find.text('Rotation'), findsNothing);
+      expect(find.text('Aspect ratio'), findsNothing);
+
       for (final String label in <String>[
-        'Rotation',
-        'Aspect ratio',
+        'Background',
+        'Loop',
         'Sleep timer',
         'Audio delay',
         'Decoder',
@@ -129,7 +142,7 @@ void main() {
       );
 
       expect(
-        tester.getRect(find.text('Auto')).right,
+        tester.getRect(find.text('Auto (safe)')).right,
         lessThanOrEqualTo(872 - 48),
       );
       expect(
@@ -144,9 +157,9 @@ void main() {
       await openMoreMenu(tester, size: const Size(1280, 300));
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Rotation'), findsOneWidget);
+      expect(find.text('Sleep timer'), findsOneWidget);
 
-      await tester.drag(find.text('Rotation'), const Offset(0, -200));
+      await tester.drag(find.text('Sleep timer'), const Offset(0, -200));
       await tester.pumpAndSettle();
 
       expect(find.text('Player settings'), findsOneWidget);
@@ -200,6 +213,75 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Decoding now'), findsNothing);
+    });
+  });
+
+  group('the quick actions', () {
+    testWidgets('sit above the rows, one tile each', (tester) async {
+      await openMoreMenu(tester);
+
+      expect(tester.takeException(), isNull);
+      for (final String label in <String>[
+        'Background',
+        'Speed',
+        'Loop',
+        'Screenshot',
+      ]) {
+        expect(
+          tester.getRect(find.text(label)).bottom,
+          lessThan(tester.getRect(find.text('Sleep timer')).top),
+          reason: label,
+        );
+      }
+      // Normal speed and no loop say so rather than leaving a blank.
+      expect(find.text('1.00×'), findsOneWidget);
+    });
+
+    testWidgets('loop cycles in place and says what it is on',
+        (tester) async {
+      await openMoreMenu(tester);
+
+      await tester.tap(find.text('Loop'));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.repeat_one_rounded), findsOneWidget);
+      expect(find.text('Repeat this video'), findsOneWidget);
+      // Still open: the next tap is often the same tile again.
+      expect(find.text('Sleep timer'), findsOneWidget);
+    });
+
+    testWidgets('speed and screenshot close the sheet before acting',
+        (tester) async {
+      var speed = 0;
+      var grabbed = 0;
+      await openMoreMenu(
+        tester,
+        onSpeed: () => speed++,
+        onScreenshot: () => grabbed++,
+      );
+
+      await tester.tap(find.text('Speed'));
+      await tester.pumpAndSettle();
+      expect(speed, 1);
+      expect(find.text('Sleep timer'), findsNothing);
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Screenshot'));
+      await tester.pumpAndSettle();
+      expect(grabbed, 1);
+      expect(find.text('Sleep timer'), findsNothing);
+    });
+
+    testWidgets('background play toggles without closing', (tester) async {
+      var toggled = 0;
+      await openMoreMenu(tester, onBackgroundPlay: () => toggled++);
+
+      await tester.tap(find.text('Background'));
+      await tester.pumpAndSettle();
+
+      expect(toggled, 1);
+      expect(find.text('Sleep timer'), findsOneWidget);
     });
   });
 }

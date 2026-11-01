@@ -1730,6 +1730,30 @@ abstract class AppLocalizations {
   /// **'Audio & subtitles'**
   String get audioAndSubtitles;
 
+  /// No description provided for @tracksValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio: {audio} · Subtitles: {subtitles}'**
+  String tracksValue(String audio, String subtitles);
+
+  /// No description provided for @quickBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get quickBackground;
+
+  /// No description provided for @quickSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get quickSpeed;
+
+  /// No description provided for @quickScreenshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshot'**
+  String get quickScreenshot;
+
   /// No description provided for @noTracks.
   ///
   /// In en, this message translates to:
@@ -1856,12 +1880,6 @@ abstract class AppLocalizations {
   /// **'Cast'**
   String get castTo;
 
-  /// No description provided for @aspectRatio.
-  ///
-  /// In en, this message translates to:
-  /// **'Aspect ratio'**
-  String get aspectRatio;
-
   /// No description provided for @aspectFit.
   ///
   /// In en, this message translates to:
@@ -1970,18 +1988,6 @@ abstract class AppLocalizations {
   /// **'Rotation: {mode}'**
   String rotationValue(String mode);
 
-  /// No description provided for @subtitlesValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Subtitles: {track}'**
-  String subtitlesValue(String track);
-
-  /// No description provided for @audioValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Audio: {track}'**
-  String audioValue(String track);
-
   /// No description provided for @loop.
   ///
   /// In en, this message translates to:
@@ -2000,23 +2006,11 @@ abstract class AppLocalizations {
   /// **'Repeat the folder'**
   String get loopAll;
 
-  /// No description provided for @loopValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Loop: {mode}'**
-  String loopValue(String mode);
-
   /// No description provided for @qualityValue.
   ///
   /// In en, this message translates to:
   /// **'Quality: {label}'**
   String qualityValue(String label);
-
-  /// No description provided for @screenshot.
-  ///
-  /// In en, this message translates to:
-  /// **'Take a screenshot'**
-  String get screenshot;
 
   /// No description provided for @screenshotSaved.
   ///
@@ -2029,12 +2023,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not take a screenshot of this frame'**
   String get screenshotFailed;
-
-  /// No description provided for @speedValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Speed: {speed}×'**
-  String speedValue(String speed);
 
   /// No description provided for @audioDelay.
   ///

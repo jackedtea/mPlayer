@@ -11,12 +11,20 @@ import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../settings/player_settings.dart';
 import '../settings/player_settings_page.dart';
+import 'controls_overlay.dart' show loopLabel;
 import 'playback_controller.dart';
 import 'playback_state.dart';
 import 'player_ui_state.dart';
 
-/// The player's overflow sheet: rotation, aspect, sleep timer, audio delay
-/// and the decoder, then stats and the settings page below a divider.
+/// The player's overflow sheet: a row of quick actions — background play,
+/// speed, loop, screenshot — then sleep timer, audio delay and the decoder,
+/// then stats and the settings page below a divider.
+///
+/// The quick actions were buttons on the bar. They are set once a film rather
+/// than reached for during one, and as one row of tiles they cost the sheet
+/// a single row's height rather than four. Rotation and aspect left to make
+/// room: both are buttons on the bar, and a row repeating a button is a row
+/// the sheet cannot afford.
 ///
 /// Seven rows is the ceiling, not a coincidence. The shortest screen the
 /// player is held on is a phone on its side — 393 points — and the theme's
@@ -24,9 +32,30 @@ import 'player_ui_state.dart';
 /// scrolled to without the sheet having cost a swipe first. A row added here
 /// has to earn its place against the ones already in it.
 class MoreMenu extends ConsumerWidget {
-  const MoreMenu({super.key});
+  const MoreMenu({
+    super.key,
+    this.onSpeed,
+    this.onScreenshot,
+    this.onBackgroundPlay,
+  });
 
-  static Future<void> show(BuildContext context) {
+  /// Opens the speed picker. The sheet closes first: the picker is a sheet of
+  /// its own, and two stacked over a film is one too many.
+  final VoidCallback? onSpeed;
+
+  /// Grabs the frame. The sheet closes first, so the confirmation that
+  /// follows is not hidden under it.
+  final VoidCallback? onScreenshot;
+
+  /// Flips the background-audio preference; the tile follows the setting.
+  final VoidCallback? onBackgroundPlay;
+
+  static Future<void> show(
+    BuildContext context, {
+    VoidCallback? onSpeed,
+    VoidCallback? onScreenshot,
+    VoidCallback? onBackgroundPlay,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF1A2125),
@@ -43,7 +72,11 @@ class MoreMenu extends ConsumerWidget {
       // sheet takes the whole window and keeps clear of the navigation bar
       // through the `SafeArea` in its own build, which is the inset that
       // actually overlaps it.
-      builder: (_) => const MoreMenu(),
+      builder: (_) => MoreMenu(
+        onSpeed: onSpeed,
+        onScreenshot: onScreenshot,
+        onBackgroundPlay: onBackgroundPlay,
+      ),
     );
   }
 
@@ -52,6 +85,9 @@ class MoreMenu extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final ui = ref.watch(playerUiProvider);
     final controller = ref.read(playerUiProvider.notifier);
+    final playback = ref.watch(playbackControllerProvider);
+    final background = ref.watch(playerSettingsProvider).backgroundAudio;
+    final speedChanged = (playback.speed - 1.0).abs() > 0.01;
 
     // SafeArea for the navigation bar, which `useSafeArea` deliberately
     // leaves to the sheet itself; the list scrolls rather than clips on a
@@ -61,18 +97,58 @@ class MoreMenu extends ConsumerWidget {
         shrinkWrap: true,
         padding: EdgeInsets.zero,
         children: <Widget>[
-          _Row(
-            icon: ui.rotation.icon,
-            label: l10n.rotation,
-            value: ui.rotation.label(l10n),
-            onTap: controller.cycleRotation,
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.md,
+              vertical: context.spacing.xs,
+            ),
+            child: Row(
+              children: <Widget>[
+                if (onBackgroundPlay != null)
+                  _QuickAction(
+                    icon: background
+                        ? Icons.headphones_rounded
+                        : Icons.headphones_battery_rounded,
+                    label: l10n.quickBackground,
+                    value: background ? l10n.on : l10n.off,
+                    active: background,
+                    onTap: onBackgroundPlay!,
+                  ),
+                if (onSpeed != null)
+                  _QuickAction(
+                    icon: Icons.speed_rounded,
+                    label: l10n.quickSpeed,
+                    // Anything but normal is easy to forget and hard to
+                    // notice; the tint is the reminder.
+                    value: '${playback.speed.toStringAsFixed(2)}×',
+                    active: speedChanged,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onSpeed!();
+                    },
+                  ),
+                _QuickAction(
+                  icon: _loopIcon(playback.loop),
+                  label: l10n.loop,
+                  value: loopLabel(l10n, playback.loop),
+                  active: playback.loop != LoopMode.off,
+                  onTap: () => ref
+                      .read(playbackControllerProvider.notifier)
+                      .cycleLoop(),
+                ),
+                if (onScreenshot != null)
+                  _QuickAction(
+                    icon: Icons.photo_camera_rounded,
+                    label: l10n.quickScreenshot,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onScreenshot!();
+                    },
+                  ),
+              ],
+            ),
           ),
-          _Row(
-            icon: Icons.aspect_ratio_rounded,
-            label: l10n.aspectRatio,
-            value: ui.aspect.label(l10n),
-            onTap: controller.cycleAspect,
-          ),
+          const Divider(height: 1, color: Colors.white24),
           _Row(
             icon: Icons.bedtime_rounded,
             label: l10n.sleepTimer,
@@ -248,6 +324,81 @@ String _decodingNow(AppLocalizations l10n, PlaybackStats stats) {
       : hwdec;
 
   return codec == null ? how : '$codec · $how';
+}
+
+/// Repeat-one gets its own glyph; the folder loop and "off" share one and are
+/// told apart by the tint, the way every other stateful control in the row is.
+IconData _loopIcon(LoopMode mode) => switch (mode) {
+      LoopMode.off => Icons.repeat_rounded,
+      LoopMode.one => Icons.repeat_one_rounded,
+      LoopMode.all => Icons.repeat_on_rounded,
+    };
+
+
+/// One tile in the quick-action row: an icon that lights up while its
+/// setting is on, its name, and its value underneath.
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.value,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? value;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.colors.primaryContainer;
+    final muted = Colors.white.withValues(alpha: 0.6);
+
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(context.radii.card),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: active
+                      ? accent.withValues(alpha: 0.22)
+                      : Colors.white.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: active ? accent : Colors.white),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+              if (value != null)
+                Text(
+                  value!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: active ? accent : muted, fontSize: 11),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Row extends StatelessWidget {

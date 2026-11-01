@@ -911,6 +911,20 @@ class AppLocalizationsVi extends AppLocalizations {
   String get audioAndSubtitles => 'Âm thanh & phụ đề';
 
   @override
+  String tracksValue(String audio, String subtitles) {
+    return 'Âm thanh: $audio · Phụ đề: $subtitles';
+  }
+
+  @override
+  String get quickBackground => 'Phát nền';
+
+  @override
+  String get quickSpeed => 'Tốc độ';
+
+  @override
+  String get quickScreenshot => 'Chụp ảnh';
+
+  @override
   String get noTracks => 'Tệp này không có';
 
   @override
@@ -972,9 +986,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get castTo => 'Truyền';
-
-  @override
-  String get aspectRatio => 'Tỉ lệ khung hình';
 
   @override
   String get aspectFit => 'Vừa khung';
@@ -1041,16 +1052,6 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String subtitlesValue(String track) {
-    return 'Phụ đề: $track';
-  }
-
-  @override
-  String audioValue(String track) {
-    return 'Âm thanh: $track';
-  }
-
-  @override
   String get loop => 'Lặp';
 
   @override
@@ -1060,17 +1061,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get loopAll => 'Lặp lại cả thư mục';
 
   @override
-  String loopValue(String mode) {
-    return 'Lặp: $mode';
-  }
-
-  @override
   String qualityValue(String label) {
     return 'Chất lượng: $label';
   }
-
-  @override
-  String get screenshot => 'Chụp ảnh màn hình';
 
   @override
   String screenshotSaved(String folder) {
@@ -1079,11 +1072,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get screenshotFailed => 'Không chụp được khung hình này';
-
-  @override
-  String speedValue(String speed) {
-    return 'Tốc độ: $speed×';
-  }
 
   @override
   String get audioDelay => 'Độ trễ âm thanh';
