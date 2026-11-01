@@ -506,6 +506,14 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+/// The secondary transport discs: dark enough to stand off a bright frame,
+/// light enough not to blot out the picture behind them.
+const _discFill = Color(0x73000000);
+
+/// A step that cannot be taken — the first or last of a series — still drawn,
+/// so the row keeps its shape, but plainly off.
+const _disabledGlyph = Color(0x66FFFFFF);
+
 class _Transport extends StatelessWidget {
   const _Transport({required this.this_});
 
@@ -527,10 +535,9 @@ class _Transport extends StatelessWidget {
             icon: Icons.skip_previous_rounded,
             size: 48,
             iconSize: 26,
-            background: Colors.white.withValues(alpha: 0.12),
-            foreground: queue.hasPrevious
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.3),
+            background: _discFill,
+            outlined: true,
+            foreground: queue.hasPrevious ? Colors.white : _disabledGlyph,
             tooltip: AppLocalizations.of(context).previousFile,
             onPressed: queue.hasPrevious ? this_.onPrevious : null,
           ),
@@ -540,7 +547,8 @@ class _Transport extends StatelessWidget {
           icon: _replayIcon(this_.skipBack),
           size: 56,
           iconSize: 28,
-          background: Colors.white.withValues(alpha: 0.12),
+          background: _discFill,
+          outlined: true,
           foreground: Colors.white,
           tooltip: AppLocalizations.of(context)
               .back10(this_.skipBack.inSeconds),
@@ -551,20 +559,21 @@ class _Transport extends StatelessWidget {
         ),
         const SizedBox(width: 28),
         if (this_.state.buffering && this_.state.error == null)
-          const _TransportSpinner(size: 80)
+          const _TransportSpinner(size: 76)
         else
           CircleButton(
             icon: this_.state.playing
                 ? Icons.pause_rounded
                 : Icons.play_arrow_rounded,
-            size: 80,
-            iconSize: 42,
-            // No fill: the glyph carries the control on its own, and at 42pt
-            // over a scrimmed frame it reads without a disc behind it. The
-            // ink ripple still lands, since the Material is only transparent,
-            // not absent.
-            background: Colors.transparent,
-            foreground: Colors.white,
+            size: 76,
+            iconSize: 44,
+            // A solid light disc with a dark glyph: the one control on the
+            // screen that has to be found at a glance, and the only shape
+            // that holds up over any frame. A bare white glyph vanished into
+            // bright animation, and the scrim only darkens the edges.
+            background: Colors.white.withValues(alpha: 0.94),
+            foreground: const Color(0xFF111416),
+            shadow: true,
             tooltip: this_.state.playing
                 ? AppLocalizations.of(context).pause
                 : AppLocalizations.of(context).play,
@@ -575,7 +584,8 @@ class _Transport extends StatelessWidget {
           icon: _forwardIcon(this_.skipForward),
           size: 56,
           iconSize: 28,
-          background: Colors.white.withValues(alpha: 0.12),
+          background: _discFill,
+          outlined: true,
           foreground: Colors.white,
           tooltip: AppLocalizations.of(context)
               .forward30(this_.skipForward.inSeconds),
@@ -590,10 +600,9 @@ class _Transport extends StatelessWidget {
             icon: Icons.skip_next_rounded,
             size: 48,
             iconSize: 26,
-            background: Colors.white.withValues(alpha: 0.12),
-            foreground: queue.hasNext
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.3),
+            background: _discFill,
+            outlined: true,
+            foreground: queue.hasNext ? Colors.white : _disabledGlyph,
             tooltip: AppLocalizations.of(context).nextFile,
             onPressed: queue.hasNext ? this_.onNext : null,
           ),
@@ -1258,6 +1267,8 @@ class CircleButton extends StatelessWidget {
     required this.foreground,
     required this.tooltip,
     required this.onPressed,
+    this.outlined = false,
+    this.shadow = false,
   });
 
   final IconData icon;
@@ -1267,6 +1278,13 @@ class CircleButton extends StatelessWidget {
   final Color foreground;
   final String tooltip;
 
+  /// A thin light ring round the disc, which is what separates a dark disc
+  /// from a dark frame.
+  final bool outlined;
+
+  /// A soft drop shadow under the disc, lifting it off the picture.
+  final bool shadow;
+
   /// Null renders the button inert rather than removing it, so the transport
   /// row keeps its shape at the ends of a playlist.
   final VoidCallback? onPressed;
@@ -1275,16 +1293,45 @@ class CircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: background,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Icon(icon, size: iconSize, color: foreground),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: shadow
+              ? const <BoxShadow>[
+                  BoxShadow(
+                    color: Color(0x66000000),
+                    blurRadius: 16,
+                    offset: Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: background,
+          shape: CircleBorder(
+            side: outlined
+                ? BorderSide(color: Colors.white.withValues(alpha: 0.22))
+                : BorderSide.none,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Icon(
+                icon,
+                size: iconSize,
+                color: foreground,
+                // A glyph over a picture needs its own edge as well as the
+                // disc's; a dark one on a light disc does not.
+                shadows: outlined
+                    ? const <Shadow>[
+                        Shadow(color: Color(0x99000000), blurRadius: 6),
+                      ]
+                    : null,
+              ),
+            ),
           ),
         ),
       ),

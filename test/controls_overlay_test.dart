@@ -728,4 +728,39 @@ void main() {
       expect(find.text('Skip intro'), findsNothing);
     });
   });
+
+  group('the transport stands out on any frame', () {
+    Material discOf(WidgetTester tester, IconData icon) => tester.widget<Material>(
+          find
+              .ancestor(of: find.byIcon(icon), matching: find.byType(Material))
+              .first,
+        );
+
+    testWidgets('play is a solid light disc with a dark glyph',
+        (tester) async {
+      await pumpControls(tester, const Size(900, 500));
+
+      final disc = discOf(tester, Icons.play_arrow_rounded);
+      // A bare white glyph vanished into bright animation.
+      expect(disc.color!.a, greaterThan(0.9));
+      expect(disc.color!.computeLuminance(), greaterThan(0.8));
+      expect(
+        tester
+            .widget<Icon>(find.byIcon(Icons.play_arrow_rounded))
+            .color!
+            .computeLuminance(),
+        lessThan(0.1),
+      );
+    });
+
+    testWidgets('the skips are dark, ringed discs', (tester) async {
+      await pumpControls(tester, const Size(900, 500));
+
+      final disc = discOf(tester, Icons.replay_10_rounded);
+      // Dark, not the faint white that disappeared over a light frame.
+      expect(disc.color!.computeLuminance(), lessThan(0.05));
+      expect(disc.color!.a, greaterThan(0.3));
+      expect((disc.shape! as CircleBorder).side, isNot(BorderSide.none));
+    });
+  });
 }
