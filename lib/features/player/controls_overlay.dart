@@ -956,8 +956,14 @@ class _BottomBar extends StatelessWidget {
   );
 }
 
-/// Slider plus chapter ticks. The ticks are painted behind the slider so the
-/// thumb and the active track still read on top of them.
+/// The seek bar: one track split into a segment per chapter, filled to the
+/// buffered point in a lighter white and to the playhead in solid white, with
+/// a thin upright bar for the thumb.
+///
+/// Drawn by the slider's own track and thumb shapes rather than by painters
+/// stacked behind it, so the three fills, the gaps and the thumb all share
+/// the one rectangle the slider lays out — and the slider keeps the drag,
+/// the keyboard and the semantics.
 class _Scrubber extends StatelessWidget {
   const _Scrubber({
     required this.value,
@@ -980,138 +986,207 @@ class _Scrubber extends StatelessWidget {
   final ValueChanged<double> onUpdate;
   final ValueChanged<double> onEnd;
 
+  /// Where the chapters begin, as fractions of the file — the gaps.
+  List<double> get _breaks {
+    final total = duration.inMilliseconds;
+    if (total <= 0) return const <double>[];
+    return <double>[
+      for (final MediaChapter chapter in chapters)
+        if (chapter.start > Duration.zero)
+          chapter.start.inMilliseconds / total,
+    ]..sort();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final playable = duration > Duration.zero;
     return SizedBox(
       height: 32,
-      child: Stack(
-        alignment: Alignment.center,
-        children: <Widget>[
-          if (chapters.isNotEmpty && duration > Duration.zero)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Padding(
-                  // Line the ticks up with the slider's usable track, which
-                  // is inset by the thumb radius at both ends.
-                  padding: const EdgeInsets.symmetric(horizontal: 7),
-                  child: CustomPaint(
-                    painter: _ChapterTicks(
-                      chapters: chapters,
-                      duration: duration,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          // Behind the slider, and above the chapter ticks: the buffered
-          // stretch is context for the track, not a control, so the thumb and
-          // the played portion both draw over it.
-          if (buffered > 0.001 && duration > Duration.zero)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Padding(
-                  // The same inset the ticks use — the slider's usable track
-                  // is shortened by the thumb radius at each end.
-                  padding: const EdgeInsets.symmetric(horizontal: 7),
-                  child: CustomPaint(
-                    painter: _BufferedTrack(
-                      progress: buffered.clamp(0.0, 1.0),
-                      colour: Colors.white.withValues(alpha: 0.45),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: _trackHeight,
-              // White, not the accent. Everything else drawn over the video
-              // is white — the inactive track, the buffered stretch, the
-              // times either side of it — and an accent track put the one
-              // coloured thing on the screen next to three shades of grey.
-              // It also keeps the scrubber legible under a custom accent the
-              // theme is free to make as pale as it likes.
-              activeTrackColor: Colors.white,
-              inactiveTrackColor: Colors.white.withValues(alpha: 0.30),
-              thumbColor: Colors.white,
-              overlayColor: Colors.white.withValues(alpha: 0.24),
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 13),
-            ),
-            child: Slider(
-              value: value.clamp(0.0, 1.0),
-              onChanged: duration > Duration.zero ? onUpdate : null,
-              onChangeStart: onStart,
-              onChangeEnd: onEnd,
-            ),
-          ),
-        ],
+      child: SliderTheme(
+        data: SliderTheme.of(context).copyWith(
+          trackHeight: _trackHeight,
+          trackShape: _SegmentedTrackShape(breaks: _breaks),
+          thumbShape: const _BarThumbShape(),
+          // The bar is its own feedback; a halo round it would be a disc
+          // behind a line.
+          overlayColor: Colors.transparent,
+          overlayShape: const RoundSliderOverlayShape(overlayRadius: 13),
+          // White, not the accent. Everything else drawn over the video is
+          // white — the times either side, the icons — and an accent track
+          // was the one coloured thing on the screen. It also keeps the bar
+          // legible under any accent the theme picks.
+          activeTrackColor: Colors.white,
+          secondaryActiveTrackColor: Colors.white.withValues(alpha: 0.55),
+          inactiveTrackColor: Colors.white.withValues(alpha: 0.28),
+          thumbColor: Colors.white,
+          disabledActiveTrackColor: Colors.white.withValues(alpha: 0.28),
+          disabledInactiveTrackColor: Colors.white.withValues(alpha: 0.28),
+          disabledSecondaryActiveTrackColor:
+              Colors.white.withValues(alpha: 0.28),
+          disabledThumbColor: Colors.transparent,
+        ),
+        child: Slider(
+          value: value.clamp(0.0, 1.0),
+          // Zero is the honest answer for a file with nothing read ahead,
+          // and draws nothing rather than an empty band.
+          secondaryTrackValue:
+              playable && buffered > 0.001 ? buffered.clamp(0.0, 1.0) : null,
+          onChanged: playable ? onUpdate : null,
+          onChangeStart: onStart,
+          onChangeEnd: onEnd,
+        ),
       ),
     );
   }
 }
 
-/// How thick the scrubber's track is — the slider's and the buffered
-/// stretch's alike, which have to agree or the two bands visibly misalign.
-/// Six rather than Material's four: over a moving picture the thinner line
-/// was hard to find, and harder to aim at.
+/// How thick the scrubber's track is. Six rather than Material's four: over
+/// a moving picture the thinner line was hard to find, and harder to aim at.
 const double _trackHeight = 6;
 
-/// The read-ahead stretch, drawn as a dimmer version of the played track.
-class _BufferedTrack extends CustomPainter {
-  _BufferedTrack({required this.progress, required this.colour});
+/// The space between two chapters' segments.
+const double _chapterGap = 4;
 
-  final double progress;
-  final Color colour;
+/// A rounded track broken at each chapter start, every segment filled from
+/// the left: played, then buffered, then the rest.
+class _SegmentedTrackShape extends SliderTrackShape with BaseSliderTrackShape {
+  const _SegmentedTrackShape({required this.breaks});
+
+  /// Chapter starts, 0..1, sorted.
+  final List<double> breaks;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    // The slider's own `trackHeight`, and rounded at both ends the way
-    // Material draws the track itself.
-    const height = _trackHeight;
-    final top = (size.height - height) / 2;
+  bool get isRounded => true;
 
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, top, size.width * progress, height),
-        const Radius.circular(height / 2),
-      ),
-      Paint()..color = colour,
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required Offset thumbCenter,
+    Offset? secondaryOffset,
+    bool isEnabled = false,
+    bool isDiscrete = false,
+    required TextDirection textDirection,
+  }) {
+    final track = getPreferredRect(
+      parentBox: parentBox,
+      offset: offset,
+      sliderTheme: sliderTheme,
+      isEnabled: isEnabled,
+      isDiscrete: isDiscrete,
     );
-  }
+    if (track.width <= 0) return;
 
-  @override
-  bool shouldRepaint(_BufferedTrack old) =>
-      old.progress != progress || old.colour != colour;
-}
+    final canvas = context.canvas;
+    final radius = Radius.circular(track.height / 2);
+    final played = thumbCenter.dx;
+    final buffered = secondaryOffset?.dx ?? track.left;
 
-class _ChapterTicks extends CustomPainter {
-  _ChapterTicks({required this.chapters, required this.duration});
+    final rest = Paint()
+      ..color = (isEnabled
+          ? sliderTheme.inactiveTrackColor
+          : sliderTheme.disabledInactiveTrackColor)!;
+    final ahead = Paint()
+      ..color = (isEnabled
+          ? sliderTheme.secondaryActiveTrackColor
+          : sliderTheme.disabledSecondaryActiveTrackColor)!;
+    final done = Paint()
+      ..color = (isEnabled
+          ? sliderTheme.activeTrackColor
+          : sliderTheme.disabledActiveTrackColor)!;
 
-  final List<MediaChapter> chapters;
-  final Duration duration;
+    // Segment edges in pixels. A chapter too close to its neighbour or to an
+    // end is dropped: a sliver of track a few pixels long reads as a glitch.
+    final edges = <double>[track.left];
+    for (final double fraction in breaks) {
+      final x = track.left + track.width * fraction;
+      if (x - edges.last >= _chapterGap * 2 &&
+          track.right - x >= _chapterGap * 2) {
+        edges.add(x);
+      }
+    }
+    edges.add(track.right);
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withValues(alpha: 0.55);
-    final total = duration.inMilliseconds;
-    if (total <= 0) return;
-
-    for (final MediaChapter chapter in chapters) {
-      // A tick at zero would sit under the thumb's start position and read
-      // as a glitch rather than a marker.
-      if (chapter.start <= Duration.zero) continue;
-      final x = size.width * (chapter.start.inMilliseconds / total);
-      canvas.drawRect(
-        Rect.fromLTWH(x - 1, (size.height - 10) / 2, 2, 10),
-        paint,
+    for (var i = 0; i < edges.length - 1; i++) {
+      final left = edges[i] + (i == 0 ? 0 : _chapterGap / 2);
+      final last = i == edges.length - 2;
+      final right = edges[i + 1] - (last ? 0 : _chapterGap / 2);
+      final segment = RRect.fromLTRBR(
+        left,
+        track.top,
+        right,
+        track.bottom,
+        radius,
       );
+
+      canvas
+        ..save()
+        ..clipRRect(segment)
+        ..drawRect(segment.outerRect, rest);
+      if (buffered > left) {
+        canvas.drawRect(
+          Rect.fromLTRB(left, track.top, buffered, track.bottom),
+          ahead,
+        );
+      }
+      if (played > left) {
+        canvas.drawRect(
+          Rect.fromLTRB(left, track.top, played, track.bottom),
+          done,
+        );
+      }
+      canvas.restore();
     }
   }
+}
+
+/// The playhead: a thin upright bar standing proud of the track, rather than
+/// a disc sitting on it.
+class _BarThumbShape extends SliderComponentShape {
+  const _BarThumbShape();
+
+  static const Size _size = Size(4, 20);
 
   @override
-  bool shouldRepaint(_ChapterTicks old) =>
-      old.duration != duration || old.chapters != chapters;
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) => _size;
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final colour = enableAnimation.value > 0
+        ? sliderTheme.thumbColor!
+        : sliderTheme.disabledThumbColor!;
+    // A little taller while held, so the thumb under a finger still shows
+    // which way it is going.
+    final height = _size.height + 4 * activationAnimation.value;
+    final bar = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center, width: _size.width, height: height),
+      Radius.circular(_size.width / 2),
+    );
+    context.canvas
+      ..drawRRect(
+        bar.shift(const Offset(0, 1)),
+        Paint()
+          ..color = const Color(0x66000000)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+      )
+      ..drawRRect(bar, Paint()..color = colour);
+  }
 }
 
 /// How the file is played, bottom left; how it is shown, bottom right.

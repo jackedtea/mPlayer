@@ -326,13 +326,8 @@ void main() {
         ),
       );
 
-      expect(
-        find.byWidgetPredicate(
-          (w) => w is CustomPaint && w.painter.runtimeType.toString()
-              .contains('_BufferedTrack'),
-        ),
-        findsOneWidget,
-      );
+      final slider = tester.widget<Slider>(find.byType(Slider));
+      expect(slider.secondaryTrackValue, closeTo(0.3, 0.001));
     });
 
     testWidgets('a local file with nothing buffered draws none',
@@ -345,13 +340,8 @@ void main() {
         state: const PlaybackState(duration: Duration(minutes: 10)),
       );
 
-      expect(
-        find.byWidgetPredicate(
-          (w) => w is CustomPaint && w.painter.runtimeType.toString()
-              .contains('_BufferedTrack'),
-        ),
-        findsNothing,
-      );
+      final slider = tester.widget<Slider>(find.byType(Slider));
+      expect(slider.secondaryTrackValue, isNull);
     });
   });
 
