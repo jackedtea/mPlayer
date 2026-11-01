@@ -156,4 +156,26 @@ void main() {
       expect(selection.isEmpty, isTrue);
     });
   });
+
+  group('track language names', () {
+    test('every spelling of a language reads the same', () {
+      for (final String raw in <String>['vie', 'vi', 'VIE', 'vi-VN', 'Vietnamese']) {
+        expect(trackLanguageName(raw), 'Tiếng Việt', reason: raw);
+        expect(trackLanguageTag(raw), 'VI', reason: raw);
+      }
+      expect(trackLanguageName('ger'), trackLanguageName('deu'));
+    });
+
+    test('a language outside the preferences still has a name', () {
+      expect(trackLanguageName('ita'), 'Italiano');
+      // Unknown to both lists: the code, which still tells tracks apart.
+      expect(trackLanguageName('kat'), 'KAT');
+    });
+
+    test('an unlabelled track has no language rather than a guess', () {
+      expect(trackLanguageName('und'), isNull);
+      expect(trackLanguageName(null), isNull);
+      expect(trackLanguageTag(''), isNull);
+    });
+  });
 }

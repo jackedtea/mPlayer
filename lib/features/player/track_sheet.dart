@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
+import '../../core/languages.dart';
 import 'playback_state.dart';
 
 /// Bottom sheet for picking a subtitle or audio stream, and for speed.
@@ -143,17 +144,25 @@ class TrackRow extends StatelessWidget {
     required this.option,
     required this.selected,
     required this.onTap,
+    this.badgeSlot = false,
   });
 
   final TrackOption option;
   final bool selected;
   final VoidCallback onTap;
 
+  /// Keeps the badge's width free on a row that has none — Off, Auto, an
+  /// unlabelled track — so the titles in a list of tracks line up.
+  final bool badgeSlot;
+
+  static const _badgeWidth = 34.0;
+
   @override
   Widget build(BuildContext context) {
     final accent = context.colors.primaryContainer;
 
     final thumbnail = option.thumbnail;
+    final badge = option.badge;
 
     return ListTile(
       onTap: onTap,
@@ -162,7 +171,13 @@ class TrackRow extends StatelessWidget {
       // sheet already is: a chapter list that suddenly doubles in height on
       // a server and not on a local file reads as two different sheets.
       leading: thumbnail == null
-          ? null
+          ? (badge != null
+              ? _LanguageBadge(
+                  tag: badge,
+                  width: _badgeWidth,
+                  selected: selected,
+                )
+              : (badgeSlot ? const SizedBox(width: _badgeWidth) : null))
           : ClipRRect(
               borderRadius: BorderRadius.circular(context.radii.thumb),
               child: Container(
@@ -179,6 +194,7 @@ class TrackRow extends StatelessWidget {
                 ),
               ),
             ),
+      minLeadingWidth: badge != null || badgeSlot ? _badgeWidth : null,
       title: Text(
         option.label,
         style: TextStyle(color: selected ? accent : Colors.white),
@@ -194,6 +210,47 @@ class TrackRow extends StatelessWidget {
   }
 }
 
+/// A track's language as a short tag in a box — "EN", "VI" — so a list of
+/// tracks can be scanned by language before any title is read.
+class _LanguageBadge extends StatelessWidget {
+  const _LanguageBadge({
+    required this.tag,
+    required this.width,
+    required this.selected,
+  });
+
+  final String tag;
+  final double width;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.colors.primaryContainer;
+    final colour = selected ? accent : Colors.white.withValues(alpha: 0.8);
+
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        border: Border.all(color: colour.withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        tag,
+        maxLines: 1,
+        overflow: TextOverflow.clip,
+        style: TextStyle(
+          color: colour,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
 /// One row in a [TrackSheet]. Wraps a [MediaTrack] or a plain value such as a
 /// playback speed, which has no track behind it.
 @immutable
@@ -205,18 +262,35 @@ class TrackOption {
     this.track,
     this.value,
     this.thumbnail,
+    this.badge,
   });
 
-  factory TrackOption.fromTrack(MediaTrack track) => TrackOption(
-        id: track.id,
-        label: track.label,
-        // An image-based track can be selected but will not appear, so say
-        // so here rather than letting the user wonder what broke.
-        detail: track.isImageBased
-            ? 'Image-based (${track.codec}) — cannot be displayed yet'
-            : (track.isDefault ? 'Default' : null),
-        track: track,
-      );
+  factory TrackOption.fromTrack(MediaTrack track) {
+    final placeholder = track.isOff || track.isAuto;
+    final language = placeholder ? null : trackLanguageName(track.language);
+    // Said in the detail line unless the title already says it: a track
+    // labelled "English 5.1" gains nothing from "English" under it.
+    final sayLanguage = language != null &&
+        !track.label.toLowerCase().contains(language.toLowerCase());
+
+    final notes = <String>[
+      if (sayLanguage) language,
+      // An image-based track can be selected but will not appear, so say so
+      // here rather than letting the user wonder what broke.
+      if (track.isImageBased)
+        'Image-based (${track.codec}) — cannot be displayed yet'
+      else if (track.isDefault)
+        'Default',
+    ];
+
+    return TrackOption(
+      id: track.id,
+      label: track.label,
+      detail: notes.isEmpty ? null : notes.join(' · '),
+      badge: placeholder ? null : trackLanguageTag(track.language),
+      track: track,
+    );
+  }
 
   final String id;
   final String label;
@@ -234,4 +308,8 @@ class TrackOption {
   /// timestamps and no pictures — so a row without it is the normal case,
   /// not a missing image.
   final Uri? thumbnail;
+
+  /// The short language tag drawn at the start of an audio or subtitle row,
+  /// or null where the track does not name one.
+  final String? badge;
 }

@@ -18,14 +18,21 @@ const _english = MediaTrack(
   id: '1',
   kind: TrackKind.audio,
   label: 'English 5.1',
+  language: 'eng',
   isDefault: true,
 );
-const _japanese = MediaTrack(id: '2', kind: TrackKind.audio, label: 'Japanese');
+const _japanese = MediaTrack(
+  id: '2',
+  kind: TrackKind.audio,
+  label: 'Japanese',
+  language: 'jpn',
+);
 const _off = MediaTrack(id: 'no', kind: TrackKind.subtitle, label: 'Off');
 const _subs = MediaTrack(
   id: '3',
   kind: TrackKind.subtitle,
   label: 'English SDH',
+  language: 'vie',
 );
 
 /// A player with two audio tracks and one subtitle, no decoder behind it.
@@ -149,5 +156,29 @@ void main() {
 
     expect(calls, <String>['file']);
     expect(find.byType(AudioSubtitleDialog), findsNothing);
+  });
+
+  testWidgets('each track says its language', (tester) async {
+    await _open(tester, const Size(1400, 900));
+
+    // A tag to scan by, whatever the muxer wrote: `eng`, `jpn`, `vie`.
+    expect(find.text('EN'), findsOneWidget);
+    expect(find.text('JA'), findsOneWidget);
+    expect(find.text('VI'), findsOneWidget);
+    // The full name, in its own language, where the title does not
+    // already carry it...
+    expect(find.text('日本語'), findsOneWidget);
+    expect(find.text('Tiếng Việt'), findsOneWidget);
+    // ...and not where it does: "English 5.1" needs no "English" under it.
+    expect(find.text('Default'), findsOneWidget);
+    expect(find.textContaining('English ·'), findsNothing);
+    // Off has no language to show.
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, 'Off'),
+        matching: find.text('VI'),
+      ),
+      findsNothing,
+    );
   });
 }

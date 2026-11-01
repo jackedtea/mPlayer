@@ -59,7 +59,66 @@ const _aliases = <String, String>{
   'spa': 'es', 'esp': 'es', 'spanish': 'es',
   'por': 'pt', 'portuguese': 'pt',
   'rus': 'ru', 'russian': 'ru',
+  // Common on film and series tracks, though not offered as a preference.
+  'ita': 'it', 'italian': 'it',
+  'hin': 'hi', 'hindi': 'hi',
+  'ara': 'ar', 'arabic': 'ar',
+  'tur': 'tr', 'turkish': 'tr',
+  'pol': 'pl', 'polish': 'pl',
+  'nld': 'nl', 'dut': 'nl', 'dutch': 'nl',
+  'swe': 'sv', 'swedish': 'sv',
+  'nor': 'no', 'nob': 'no', 'norwegian': 'no',
+  'dan': 'da', 'danish': 'da',
+  'fin': 'fi', 'finnish': 'fi',
+  'ces': 'cs', 'cze': 'cs', 'czech': 'cs',
+  'ell': 'el', 'gre': 'el', 'greek': 'el',
+  'heb': 'he', 'hebrew': 'he',
+  'hun': 'hu', 'hungarian': 'hu',
+  'ukr': 'uk', 'ukrainian': 'uk',
+  'msa': 'ms', 'may': 'ms', 'malay': 'ms',
+  'fil': 'tl', 'tgl': 'tl', 'filipino': 'tl', 'tagalog': 'tl',
+  'ron': 'ro', 'rum': 'ro', 'romanian': 'ro',
 };
+
+/// Names for the languages a track is likely to be in, beyond the ones
+/// offered as a preference — each in its own language, as the picker names
+/// them, so a viewer looks for their own language under the name they know.
+const _trackLanguageNames = <String, String>{
+  'it': 'Italiano',
+  'hi': 'हिन्दी',
+  'ar': 'العربية',
+  'tr': 'Türkçe',
+  'pl': 'Polski',
+  'nl': 'Nederlands',
+  'sv': 'Svenska',
+  'no': 'Norsk',
+  'da': 'Dansk',
+  'fi': 'Suomi',
+  'cs': 'Čeština',
+  'el': 'Ελληνικά',
+  'he': 'עברית',
+  'hu': 'Magyar',
+  'uk': 'Українська',
+  'ms': 'Bahasa Melayu',
+  'tl': 'Filipino',
+  'ro': 'Română',
+};
+
+/// What a track's language is called, or null when the track does not say.
+///
+/// The name from [languageOptions] or the wider list above; a code neither
+/// knows comes back upper-cased, which still tells two tracks apart.
+String? trackLanguageName(String? raw) {
+  final code = canonicalLanguage(raw);
+  if (code == null) return null;
+  for (final LanguageOption option in languageOptions) {
+    if (option.code == code) return option.label;
+  }
+  return _trackLanguageNames[code] ?? code.toUpperCase();
+}
+
+/// The short tag for a track's language — "EN", "VI" — or null.
+String? trackLanguageTag(String? raw) => canonicalLanguage(raw)?.toUpperCase();
 
 /// Reduces a track's language label to a two-letter code, or null when it
 /// carries no usable one.

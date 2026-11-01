@@ -239,6 +239,9 @@ class _Column extends StatelessWidget {
                         option: option,
                         selected: option.id == selectedId,
                         onTap: () => onSelected(option),
+                        // The titles line up whether or not a row has a
+                        // language to show.
+                        badgeSlot: options.any((o) => o.badge != null),
                       ),
                   ],
                 ),
