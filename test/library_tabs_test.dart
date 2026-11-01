@@ -86,6 +86,39 @@ class _FakeServer extends FakeLibrarySource {
         ];
 
   @override
+  Future<List<ServerItem>> upcoming(String viewId, {int limit = 60}) async =>
+      empty
+          ? const <ServerItem>[]
+          : <ServerItem>[
+              ServerItem(
+                id: 'u1',
+                title: 'The Return',
+                kind: ServerItemKind.episode,
+                seriesTitle: 'Harbour Lights',
+                seasonNumber: 2,
+                episodeNumber: 1,
+                premiereDate: DateTime(2026, 11, 20, 21),
+              ),
+              ServerItem(
+                id: 'u2',
+                title: 'The Storm',
+                kind: ServerItemKind.episode,
+                seriesTitle: 'Harbour Lights',
+                seasonNumber: 2,
+                episodeNumber: 2,
+                premiereDate: DateTime(2026, 11, 27, 21),
+              ),
+            ];
+
+  @override
+  Future<List<LibraryGenre>> genres(String viewId) async => empty
+      ? const <LibraryGenre>[]
+      : const <LibraryGenre>[
+          LibraryGenre(id: 'g1', name: 'Drama'),
+          LibraryGenre(id: 'g2', name: 'Science Fiction'),
+        ];
+
+  @override
   Future<List<ServerItem>> playlistItems(String playlistId) async =>
       const <ServerItem>[
         ServerItem(id: 'm4', title: 'In the playlist', kind: ServerItemKind.movie),
@@ -149,17 +182,58 @@ Future<void> pumpLibrary(
 
 void main() {
   group('the tab bar', () {
-    testWidgets('a library carries Browse, Suggestions, Collections and '
-        'Playlists', (tester) async {
+    List<String> tabLabels(WidgetTester tester) => <String>[
+          for (final Tab tab in tester.widgetList<Tab>(find.byType(Tab)))
+            tab.text ?? '',
+        ];
+
+    testWidgets('a film library has Genres before Collections',
+        (tester) async {
       await pumpLibrary(tester, server: const _FakeServer());
 
-      expect(find.widgetWithText(Tab, 'Browse'), findsOneWidget);
-      expect(find.widgetWithText(Tab, 'Suggestions'), findsOneWidget);
-      expect(find.widgetWithText(Tab, 'Collections'), findsOneWidget);
-      expect(find.widgetWithText(Tab, 'Playlists'), findsOneWidget);
-      // Starred items are a Browse filter, not a tab of their own.
+      expect(tabLabels(tester), <String>[
+        'Browse',
+        'Suggestions',
+        'Genres',
+        'Collections',
+        'Playlists',
+      ]);
+      // Starred items are a Browse filter, not a tab of their own; and films
+      // have no schedule to follow.
       expect(find.widgetWithText(Tab, 'Favourites'), findsNothing);
-      expect(find.byType(Tab), findsNWidgets(4));
+      expect(find.widgetWithText(Tab, 'Upcoming'), findsNothing);
+    });
+
+    testWidgets('a shows library adds Upcoming, also before Collections',
+        (tester) async {
+      await pumpLibrary(
+        tester,
+        server: const _FakeServer(collectionKind: 'tvshows'),
+      );
+
+      expect(tabLabels(tester), <String>[
+        'Browse',
+        'Suggestions',
+        'Upcoming',
+        'Genres',
+        'Collections',
+        'Playlists',
+      ]);
+    });
+
+    testWidgets('a library of anything else keeps the common tabs',
+        (tester) async {
+      await pumpLibrary(
+        tester,
+        server: const _FakeServer(collectionKind: 'homevideos'),
+      );
+
+      expect(tabLabels(tester), <String>[
+        'Browse',
+        'Suggestions',
+        'Collections',
+        'Playlists',
+      ]);
     });
 
     testWidgets('Browse is Browse whatever the library holds', (tester) async {
@@ -283,6 +357,7 @@ void main() {
 
         for (final String label in <String>[
           'Suggestions',
+          'Genres',
           'Collections',
           'Playlists',
         ]) {
@@ -298,5 +373,67 @@ void main() {
         }
       });
     }
+  });
+
+  group('upcoming and genres', () {
+    testWidgets('upcoming episodes sit under the day they air',
+        (tester) async {
+      await pumpLibrary(
+        tester,
+        server: const _FakeServer(collectionKind: 'tvshows'),
+      );
+
+      await tester.tap(find.widgetWithText(Tab, 'Upcoming'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Friday, November 20'), findsOneWidget);
+      expect(find.text('Friday, November 27'), findsOneWidget);
+      expect(find.text('S2E1 · The Return'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Friday, November 20')).dy,
+        lessThan(tester.getTopLeft(find.text('S2E1 · The Return')).dy),
+      );
+    });
+
+    testWidgets('a genre opens the library narrowed to it', (tester) async {
+      await pumpLibrary(tester, server: const _FakeServer());
+
+      await tester.tap(find.widgetWithText(Tab, 'Genres'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Science Fiction'));
+      await tester.pumpAndSettle();
+
+      // The grid, with the genre as an ordinary removable filter.
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Science Fiction'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(InputChip, 'Science Fiction'), findsOneWidget);
+      expect(find.byType(TabBar), findsNothing);
+    });
+
+    testWidgets('an empty library says so on both tabs', (tester) async {
+      await pumpLibrary(
+        tester,
+        server: const _FakeServer(collectionKind: 'tvshows', empty: true),
+      );
+
+      await tester.tap(find.widgetWithText(Tab, 'Upcoming'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Nothing in this library is scheduled to air yet.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.widgetWithText(Tab, 'Genres'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Nothing in this library is filed under a genre.'),
+        findsOneWidget,
+      );
+    });
   });
 }

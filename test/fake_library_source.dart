@@ -103,6 +103,17 @@ class FakeLibrarySource implements MediaLibrarySource {
       const <ServerItem>[];
 
   @override
+  Future<List<ServerItem>> upcoming(String viewId, {int limit = 60}) async =>
+      const <ServerItem>[];
+
+  @override
+  Future<List<LibraryGenre>> genres(String viewId) async =>
+      const <LibraryGenre>[];
+
+  @override
+  Uri? genreImageUrl(LibraryGenre genre, {int? maxWidth}) => null;
+
+  @override
   Future<List<ServerPerson>> searchPeople(
     String query, {
     int limit = 24,

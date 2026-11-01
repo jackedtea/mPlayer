@@ -298,6 +298,22 @@ final searchItemsProvider = FutureProvider.family<List<ServerItem>,
   return source.search(query, limit: 24, kinds: <ServerItemKind>{key.kind});
 });
 
+/// What is announced and not yet out in one TV library.
+final libraryUpcomingProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.upcoming(viewId);
+});
+
+/// The genres one library's items carry.
+final libraryGenresProvider =
+    FutureProvider.family<List<LibraryGenre>, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <LibraryGenre>[];
+  return source.genres(viewId);
+});
+
 /// The People section of the search screen.
 final searchPeopleProvider =
     FutureProvider.family<List<ServerPerson>, String>((ref, query) async {

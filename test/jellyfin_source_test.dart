@@ -791,4 +791,49 @@ void main() {
       expect(source.personImageUrl(people.single), isNotNull);
     });
   });
+
+  group('library tabs', () {
+    test('upcoming asks the shows route, scoped to the library', () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{
+          'Items': <dynamic>[
+            <String, dynamic>{
+              'Id': 'e1',
+              'Name': 'The Return',
+              'Type': 'Episode',
+              'PremiereDate': '2026-11-20T21:00:00.0000000Z',
+            },
+          ],
+        }),
+      );
+
+      final items = await source.upcoming('tv');
+
+      expect(adapter.requests.single.uri.path, '/Shows/Upcoming');
+      expect(adapter.requests.single.uri.queryParameters['parentId'], 'tv');
+      expect(items.single.premiereDate?.toUtc(), DateTime.utc(2026, 11, 20, 21));
+    });
+
+    test('genres come from /Genres, nameless ones dropped', () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{
+          'Items': <dynamic>[
+            <String, dynamic>{
+              'Id': 'g1',
+              'Name': 'Drama',
+              'ImageTags': <String, dynamic>{'Primary': 't'},
+            },
+            <String, dynamic>{'Id': 'g2', 'Name': ' '},
+          ],
+        }),
+      );
+
+      final genres = await source.genres('films');
+
+      expect(adapter.requests.single.uri.path, '/Genres');
+      expect(adapter.requests.single.uri.queryParameters['parentId'], 'films');
+      expect(genres.map((g) => g.name), <String>['Drama']);
+      expect(source.genreImageUrl(genres.single), isNotNull);
+    });
+  });
 }

@@ -264,7 +264,7 @@ void main() {
       await pumpLibrary(tester, server: server);
 
       await openOptions(tester);
-      await tester.tap(find.text('Genres'));
+      await tester.tap(find.widgetWithText(ExpansionTile, 'Genres'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilterChip, 'Drama'));
       await tester.pumpAndSettle();
@@ -293,7 +293,7 @@ void main() {
 
       await openOptions(tester);
       await tester.tap(find.widgetWithText(FilterChip, 'Favourites'));
-      await tester.tap(find.text('Genres'));
+      await tester.tap(find.widgetWithText(ExpansionTile, 'Genres'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilterChip, 'Drama'));
       await apply(tester);
@@ -358,7 +358,7 @@ void main() {
       expect(find.text('Features'), findsOneWidget);
       // Nothing came back to filter by, and the dialog says so rather than
       // drawing four empty headings.
-      expect(find.text('Genres'), findsNothing);
+      expect(find.widgetWithText(ExpansionTile, 'Genres'), findsNothing);
       expect(
         find.text('This library holds nothing else to filter by.'),
         findsOneWidget,

@@ -178,6 +178,8 @@ ServerItem serverItemFromJson(
     // one field here that has to be parsed out of a timestamp.
     endYear: DateTime.tryParse(json['EndDate'] as String? ?? '')?.year,
     playlistEntryId: json['PlaylistItemId'] as String?,
+    premiereDate: DateTime.tryParse(json['PremiereDate'] as String? ?? '')
+        ?.toLocal(),
     chapters: serverChaptersFromJson(json),
     trickplay: base == null
         ? null
@@ -854,6 +856,23 @@ Uri? backdropImageUrlFor(
 
 /// A person's headshot. Same route as an item's — a person *is* an item to
 /// the server — but the tag lives on the credit rather than in `ImageTags`.
+/// A genre as `/Genres` lists it.
+LibraryGenre genreFromJson(Map<String, dynamic> json) {
+  final tags = json['ImageTags'];
+  return LibraryGenre(
+    id: json['Id'] as String? ?? '',
+    name: (json['Name'] as String? ?? '').trim(),
+    imageTag: tags is Map ? tags['Primary'] as String? : null,
+  );
+}
+
+/// A genre's own artwork, when the server has made one.
+Uri? genreImageUrlFor(LibraryGenre genre, {required Uri base, int? maxWidth}) {
+  final tag = genre.imageTag;
+  if (tag == null || tag.isEmpty || genre.id.isEmpty) return null;
+  return _primaryImageUrl(base, genre.id, tag, maxWidth);
+}
+
 /// A person as `/Persons` lists them: a whole item rather than a credit, so
 /// there is no role, and the headshot is under `ImageTags` rather than
 /// `PrimaryImageTag`.

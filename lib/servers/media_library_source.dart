@@ -69,6 +69,7 @@ class ServerItem {
     this.status,
     this.endYear,
     this.playlistEntryId,
+    this.premiereDate,
     this.chapters = const <ServerChapter>[],
     this.trickplay,
   });
@@ -155,6 +156,10 @@ class ServerItem {
   /// same film can sit in a playlist twice, and a removal names the entry
   /// rather than the film. Null everywhere outside a playlist listing.
   final String? playlistEntryId;
+
+  /// When it first airs or aired. What the Upcoming tab groups by — a date
+  /// not yet reached is the whole point of an entry there.
+  final DateTime? premiereDate;
 
   /// Seasons on a series, episodes on a season.
   final int? childCount;
@@ -718,6 +723,17 @@ abstract class MediaLibrarySource {
     },
   });
 
+  /// Episodes of the series in [viewId] that are announced and not yet out,
+  /// soonest first. TV only: films have no schedule to follow.
+  Future<List<ServerItem>> upcoming(String viewId, {int limit = 60});
+
+  /// The genres the items in [viewId] carry, each with its own artwork when
+  /// the server has generated some.
+  Future<List<LibraryGenre>> genres(String viewId);
+
+  /// A genre's picture, or null for none.
+  Uri? genreImageUrl(LibraryGenre genre, {int? maxWidth});
+
   /// People whose name matches [query] — actors, directors, writers.
   Future<List<ServerPerson>> searchPeople(String query, {int limit = 24});
 
@@ -890,6 +906,18 @@ enum SeriesStatus { continuing, ended }
 
 /// Something the server holds *alongside* the film itself.
 enum ItemFeature { subtitles, trailer, specialFeature, themeSong, themeVideo }
+
+/// One genre of a library, as the Genres tab lists them.
+@immutable
+class LibraryGenre {
+  const LibraryGenre({required this.id, required this.name, this.imageTag});
+
+  final String id;
+
+  /// Also what the library grid filters by: genres are filtered by name.
+  final String name;
+  final String? imageTag;
+}
 
 /// What the server said to a Quick Connect approval.
 enum QuickConnectApproval {

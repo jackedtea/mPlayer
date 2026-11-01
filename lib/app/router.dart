@@ -193,6 +193,8 @@ GoRouter buildRouter() {
           viewId: state.extra as String?,
           title: state.uri.queryParameters['title'] ?? 'Library',
           browse: LibraryBrowse.fromQuery(state.uri.queryParameters['browse']),
+          // A genre tile's grid: the library, narrowed to that genre.
+          genre: state.uri.queryParameters['genre'],
         ),
         routes: <RouteBase>[
           GoRoute(

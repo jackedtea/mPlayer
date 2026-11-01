@@ -446,6 +446,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabSuggestions => 'Suggestions';
 
   @override
+  String get tabUpcoming => 'Upcoming';
+
+  @override
+  String get tabGenres => 'Genres';
+
+  @override
+  String get noUpcoming => 'Nothing in this library is scheduled to air yet.';
+
+  @override
+  String get noGenres => 'Nothing in this library is filed under a genre.';
+
+  @override
+  String get upcomingUndated => 'Date not announced';
+
+  @override
   String get tabCollections => 'Collections';
 
   @override

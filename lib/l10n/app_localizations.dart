@@ -878,6 +878,36 @@ abstract class AppLocalizations {
   /// **'Suggestions'**
   String get tabSuggestions;
 
+  /// No description provided for @tabUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get tabUpcoming;
+
+  /// No description provided for @tabGenres.
+  ///
+  /// In en, this message translates to:
+  /// **'Genres'**
+  String get tabGenres;
+
+  /// No description provided for @noUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in this library is scheduled to air yet.'**
+  String get noUpcoming;
+
+  /// No description provided for @noGenres.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in this library is filed under a genre.'**
+  String get noGenres;
+
+  /// No description provided for @upcomingUndated.
+  ///
+  /// In en, this message translates to:
+  /// **'Date not announced'**
+  String get upcomingUndated;
+
   /// No description provided for @tabCollections.
   ///
   /// In en, this message translates to:

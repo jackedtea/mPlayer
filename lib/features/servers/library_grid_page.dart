@@ -6,12 +6,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../libraries/last_library.dart';
+import '../../widgets/gradient_art.dart';
 import '../../widgets/poster_tile.dart';
+import '../../widgets/remote_art.dart';
 import '../../widgets/section_header.dart';
 import 'library_filter_sheet.dart';
 import 'library_view_settings.dart';
@@ -30,10 +33,10 @@ enum LibraryBrowse {
   playlist;
 
   static LibraryBrowse fromQuery(String? value) => switch (value) {
-        'collection' => LibraryBrowse.collection,
-        'playlist' => LibraryBrowse.playlist,
-        _ => LibraryBrowse.library,
-      };
+    'collection' => LibraryBrowse.collection,
+    'playlist' => LibraryBrowse.playlist,
+    _ => LibraryBrowse.library,
+  };
 }
 
 /// Screen 1e — one library, as a poster grid with filters.
@@ -47,9 +50,14 @@ class LibraryGridPage extends ConsumerStatefulWidget {
     this.viewId,
     this.browse = LibraryBrowse.library,
     this.onSwitchLibrary,
+    this.genre,
   });
 
   final String title;
+
+  /// Opens the grid already narrowed to this genre — what a tile on the
+  /// Genres tab opens. Still an ordinary filter: removable like any other.
+  final String? genre;
 
   /// Set by the Libraries tab, which owns which library is showing and swaps
   /// this page for another when the title's switcher picks one. Null for a
@@ -72,11 +80,13 @@ class LibraryGridPage extends ConsumerStatefulWidget {
 }
 
 class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// Empty by default: a library opens showing everything in it. Hiding most
   /// of a collection until the user notices a chip is the wrong first
   /// impression.
-  LibraryFilter _filter = LibraryFilter.none;
+  late LibraryFilter _filter = widget.genre == null
+      ? LibraryFilter.none
+      : LibraryFilter(genres: <String>{widget.genre!});
 
   LibraryOrdering _ordering = const LibraryOrdering(ServerSort.name);
 
@@ -89,20 +99,39 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
 
   TabController? _tabs;
 
+  /// The tabs on show, which depend on what the library holds — and that is
+  /// only known once `/UserViews` lands, so they can change once after the
+  /// first frame.
+  List<_LibraryTab> _shown = _LibraryTab.forKind('');
+
   bool get _hasTabs =>
       widget.browse == LibraryBrowse.library && widget.viewId != null;
+
+  /// The controller for [tabs], rebuilt when their number changes. The tab
+  /// the user was on is kept where it still exists.
+  TabController _controllerFor(List<_LibraryTab> tabs) {
+    final existing = _tabs;
+    if (existing != null && existing.length == tabs.length) return existing;
+
+    final was = existing == null ? _LibraryTab.browse : _shown[existing.index];
+    final index = tabs.indexOf(was);
+    existing?.dispose();
+    return _tabs =
+        TabController(
+            length: tabs.length,
+            initialIndex: index < 0 ? 0 : index,
+            vsync: this,
+          )
+          // The filter button belongs to Browse alone, so a tab change has to
+          // rebuild the scaffold that shows or hides it.
+          ..addListener(() {
+            if (mounted) setState(() {});
+          });
+  }
 
   @override
   void initState() {
     super.initState();
-    if (_hasTabs) {
-      _tabs = TabController(length: _LibraryTab.values.length, vsync: this)
-        // The filter button belongs to Browse alone, so a tab change has to
-        // rebuild the scaffold that shows or hides it.
-        ..addListener(() {
-          if (mounted) setState(() {});
-        });
-    }
 
     // Any library opened is the one the Libraries tab should come back to,
     // however it was reached. After the frame: a provider must not change
@@ -142,6 +171,12 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     final scheme = context.colors;
     final l10n = AppLocalizations.of(context);
     final viewId = widget.viewId;
+
+    final tabs = _LibraryTab.forKind(_collectionKind());
+    if (_hasTabs) {
+      _controllerFor(tabs);
+      _shown = tabs;
+    }
 
     return Scaffold(
       // Inside the Libraries tab the navigation bar already carries Search;
@@ -188,7 +223,7 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 tabs: <Widget>[
-                  for (final _LibraryTab tab in _LibraryTab.values)
+                  for (final _LibraryTab tab in _shown)
                     Tab(text: tab.label(l10n)),
                 ],
               )
@@ -204,22 +239,28 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
               LibraryBrowse.playlist => _PlaylistItems(playlistId: viewId),
               LibraryBrowse.collection => _mainTab(viewId),
               LibraryBrowse.library => TabBarView(
-                  controller: _tabs,
-                  children: <Widget>[
-                    _mainTab(viewId),
-                    _SuggestionsTab(viewId: viewId, kind: _collectionKind()),
-                    _CollectionsTab(viewId: viewId),
-                    const _PlaylistsTab(),
-                  ],
-                ),
+                controller: _tabs,
+                children: <Widget>[
+                  for (final _LibraryTab tab in _shown)
+                    switch (tab) {
+                      _LibraryTab.browse => _mainTab(viewId),
+                      _LibraryTab.suggestions => _SuggestionsTab(
+                        viewId: viewId,
+                        kind: _collectionKind(),
+                      ),
+                      _LibraryTab.upcoming => _UpcomingTab(viewId: viewId),
+                      _LibraryTab.genres => _GenresTab(viewId: viewId),
+                      _LibraryTab.collections => _CollectionsTab(
+                        viewId: viewId,
+                      ),
+                      _LibraryTab.playlists => const _PlaylistsTab(),
+                    },
+                ],
+              ),
             },
     );
   }
 
-  /// The grid of everything in the library, with the chips above it.
-  ///
-  /// [viewId] is null only for the route opened with no library behind it,
-  /// which still draws the chips and a count of zero.
   /// The grid's request, shared by the grid and the count in the title so
   /// both read one answer.
   ///
@@ -276,6 +317,10 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
         : l10n.itemCount(items.length);
   }
 
+  /// The grid of everything in the library, with the chips above it.
+  ///
+  /// [viewId] is null only for the route opened with no library behind it,
+  /// which still draws the chips and a count of zero.
   Widget _mainTab(String? viewId) {
     final request = _gridRequest(viewId);
     final items = request.value ?? const <ServerItem>[];
@@ -325,9 +370,11 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            for (var n = LibraryColumnsController.minColumns;
-                n <= LibraryColumnsController.maxColumns;
-                n++)
+            for (
+              var n = LibraryColumnsController.minColumns;
+              n <= LibraryColumnsController.maxColumns;
+              n++
+            )
               ListTile(
                 leading: const Icon(Icons.grid_view_rounded),
                 title: Text(l10n.gridColumns(n)),
@@ -361,7 +408,8 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
   /// Browse tab, or a box set, which is nothing but that grid.
   bool get _onGrid {
     if (widget.browse == LibraryBrowse.playlist) return false;
-    return _tabs == null || _tabs!.index == _LibraryTab.browse.index;
+    final tabs = _tabs;
+    return tabs == null || _shown[tabs.index] == _LibraryTab.browse;
   }
 
   /// The filter button, and Search above it for a library pushed over the
@@ -424,25 +472,226 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
   }
 }
 
-/// The tabs a library screen carries.
+/// The tabs a library screen carries, in the order Jellyfin's own web
+/// client puts them.
 ///
 /// No Favourites tab: starred items are one of the Browse grid's filters
-/// already, and a tab that repeats a filter is a fifth label crammed into a
-/// phone's width for nothing.
+/// already, and a tab that repeats a filter is a label crammed into a phone's
+/// width for nothing.
 enum _LibraryTab {
-  /// Everything in the library, with the sort and filter chips.
+  /// Everything in the library, with the sort and filter button.
   browse,
   suggestions,
+
+  /// What is announced and not yet out. TV only — films have no schedule.
+  upcoming,
+
+  /// One tile per genre, each opening the grid narrowed to it.
+  genres,
   collections,
   playlists;
+
+  /// The tabs a library of [kind] has. Upcoming only for TV; Genres for the
+  /// two kinds whose items the server files by genre. An unknown kind — the
+  /// views not loaded yet — gets the tabs every library has.
+  static List<_LibraryTab> forKind(String kind) => <_LibraryTab>[
+    browse,
+    suggestions,
+    if (kind == 'tvshows') upcoming,
+    if (kind == 'movies' || kind == 'tvshows') genres,
+    collections,
+    playlists,
+  ];
 
   String label(AppLocalizations l10n) {
     return switch (this) {
       _LibraryTab.browse => l10n.tabBrowse,
       _LibraryTab.suggestions => l10n.tabSuggestions,
+      _LibraryTab.upcoming => l10n.tabUpcoming,
+      _LibraryTab.genres => l10n.tabGenres,
       _LibraryTab.collections => l10n.tabCollections,
       _LibraryTab.playlists => l10n.tabPlaylists,
     };
+  }
+}
+
+/// Episodes announced and not yet out, under a heading per air date.
+class _UpcomingTab extends ConsumerWidget {
+  const _UpcomingTab({required this.viewId});
+
+  final String viewId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final request = ref.watch(libraryUpcomingProvider(viewId));
+    final items = request.value ?? const <ServerItem>[];
+
+    if (items.isEmpty) {
+      return request.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _EmptyNote(text: l10n.noUpcoming);
+    }
+
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final dayFormat = DateFormat.MMMMEEEEd(locale);
+
+    // In the order the server sent them, which is soonest first; an episode
+    // with no date yet goes under its own heading at the end.
+    final byDay = <String, List<ServerItem>>{};
+    final undated = <ServerItem>[];
+    for (final ServerItem item in items) {
+      final date = item.premiereDate;
+      if (date == null) {
+        undated.add(item);
+      } else {
+        byDay
+            .putIfAbsent(dayFormat.format(date), () => <ServerItem>[])
+            .add(item);
+      }
+    }
+    if (undated.isNotEmpty) byDay[l10n.upcomingUndated] = undated;
+
+    return ListView(
+      padding: EdgeInsets.only(bottom: spacing.xl + context.systemBottomInset),
+      children: <Widget>[
+        for (final MapEntry<String, List<ServerItem>> day
+            in byDay.entries) ...<Widget>[
+          SectionHeader(title: day.key),
+          for (final ServerItem episode in day.value)
+            ListTile(
+              contentPadding: spacing.screenPadding(context.windowSize),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(context.radii.thumb),
+                child: SizedBox(
+                  width: 96,
+                  height: 54,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      GradientArt(seed: episode.seriesTitle ?? episode.title),
+                      RemoteArt(url: artUrlFor(ref, episode, maxWidth: 240)),
+                    ],
+                  ),
+                ),
+              ),
+              title: Text(
+                episode.seriesTitle ?? episode.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                <String>[
+                  episodeCode(episode),
+                  episode.title,
+                ].where((p) => p.isNotEmpty).join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
+              onTap: () => openServerItem(context, episode),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A tile per genre, each opening the library's grid narrowed to it.
+class _GenresTab extends ConsumerWidget {
+  const _GenresTab({required this.viewId});
+
+  final String viewId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final spacing = context.spacing;
+    final request = ref.watch(libraryGenresProvider(viewId));
+    final genres = request.value ?? const <LibraryGenre>[];
+    final source = ref.watch(activeServerProvider);
+
+    if (genres.isEmpty) {
+      return request.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _EmptyNote(text: l10n.noGenres);
+    }
+
+    final gutter = spacing.screenHorizontal(context.windowSize);
+
+    return GridView.builder(
+      padding: EdgeInsets.fromLTRB(
+        gutter,
+        spacing.md,
+        gutter,
+        spacing.xl + context.systemBottomInset,
+      ),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 220,
+        childAspectRatio: 16 / 9,
+        mainAxisSpacing: spacing.md,
+        crossAxisSpacing: spacing.md,
+      ),
+      itemCount: genres.length,
+      itemBuilder: (context, i) {
+        final genre = genres[i];
+        return ClipRRect(
+          borderRadius: context.radii.cardAll,
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              GradientArt(seed: genre.name),
+              RemoteArt(url: source?.genreImageUrl(genre, maxWidth: 440)),
+              // The name has to read over whatever picture is behind it.
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[Color(0x00000000), Color(0xB3000000)],
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: EdgeInsets.all(spacing.md),
+                  child: Text(
+                    genre.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.titleMedium?.copyWith(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  // The library's own grid, narrowed by a removable filter
+                  // rather than a separate genre screen: sort, filter and
+                  // the poster size all work as they do everywhere else.
+                  onTap: () => context.push(
+                    Uri(
+                      path: '/library',
+                      queryParameters: <String, String>{
+                        'title': genre.name,
+                        'browse': 'collection',
+                        'genre': genre.name,
+                      },
+                    ).toString(),
+                    extra: viewId,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -468,7 +717,8 @@ class _SuggestionsTab extends ConsumerWidget {
     final latest = ref.watch(latestInViewProvider(viewId));
     final shelves = ref.watch(librarySuggestionsProvider(viewId));
 
-    final hasAnything = (resume.value?.isNotEmpty ?? false) ||
+    final hasAnything =
+        (resume.value?.isNotEmpty ?? false) ||
         (nextUp.value?.isNotEmpty ?? false) ||
         (latest.value?.isNotEmpty ?? false) ||
         (shelves.value?.isNotEmpty ?? false);
@@ -476,7 +726,8 @@ class _SuggestionsTab extends ConsumerWidget {
     // Only once every request has answered. A tab that says "nothing to
     // suggest" while four shelves are still in flight is wrong more often
     // than it is right.
-    final settled = !resume.isLoading &&
+    final settled =
+        !resume.isLoading &&
         !nextUp.isLoading &&
         !latest.isLoading &&
         !shelves.isLoading;
@@ -513,7 +764,9 @@ class _SuggestionsTab extends ConsumerWidget {
         for (final ServerShelf shelf
             in shelves.value ?? const <ServerShelf>[]) ...<Widget>[
           SectionHeader(title: _shelfTitle(l10n, shelf)),
-          ServerPosterShelf(items: AsyncValue<List<ServerItem>>.data(shelf.items)),
+          ServerPosterShelf(
+            items: AsyncValue<List<ServerItem>>.data(shelf.items),
+          ),
           SizedBox(height: spacing.sectionGap),
         ],
       ],
@@ -532,15 +785,14 @@ String _shelfTitle(AppLocalizations l10n, ServerShelf shelf) {
   if (shelf.subject.isEmpty) return l10n.suggestedForYou;
 
   return switch (shelf.kind) {
-    SuggestionKind.similarToRecentlyPlayed =>
-      l10n.becauseYouWatched(shelf.subject),
+    SuggestionKind.similarToRecentlyPlayed => l10n.becauseYouWatched(
+      shelf.subject,
+    ),
     SuggestionKind.similarToLiked => l10n.becauseYouLike(shelf.subject),
     SuggestionKind.directorFromRecentlyPlayed ||
-    SuggestionKind.likedDirector =>
-      l10n.directedBy(shelf.subject),
+    SuggestionKind.likedDirector => l10n.directedBy(shelf.subject),
     SuggestionKind.actorFromRecentlyPlayed ||
-    SuggestionKind.likedActor =>
-      l10n.starring(shelf.subject),
+    SuggestionKind.likedActor => l10n.starring(shelf.subject),
     SuggestionKind.unknown => l10n.suggestedForYou,
   };
 }
@@ -698,8 +950,9 @@ class _EmptyNote extends StatelessWidget {
         child: Text(
           text,
           textAlign: TextAlign.center,
-          style: context.texts.bodyMedium
-              ?.copyWith(color: context.colors.onSurfaceVariant),
+          style: context.texts.bodyMedium?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
         ),
       ),
     );
@@ -731,8 +984,9 @@ class _TitleWithCount extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.texts.labelMedium
-                ?.copyWith(color: context.colors.onSurfaceVariant),
+            style: context.texts.labelMedium?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -772,7 +1026,11 @@ class _LibrarySwitcher extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Flexible(
-                child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 2),
               const Icon(Icons.arrow_drop_down_rounded),
@@ -862,10 +1120,10 @@ class _ActiveFilters extends StatelessWidget {
     final padding = spacing.screenPadding(context.windowSize);
 
     Widget chip(String label, LibraryFilter without) => InputChip(
-          label: Text(label),
-          onDeleted: () => onChanged(without),
-          visualDensity: VisualDensity.compact,
-        );
+      label: Text(label),
+      onDeleted: () => onChanged(without),
+      visualDensity: VisualDensity.compact,
+    );
 
     final chips = <Widget>[
       for (final ItemFilter flag in filter.flags)
@@ -907,8 +1165,11 @@ class _ActiveFilters extends StatelessWidget {
         chip(
           rating,
           filter.copyWith(
-            parentalRatings:
-                LibraryFilter.toggled(filter.parentalRatings, rating, false),
+            parentalRatings: LibraryFilter.toggled(
+              filter.parentalRatings,
+              rating,
+              false,
+            ),
           ),
         ),
       for (final String tag in filter.tags)

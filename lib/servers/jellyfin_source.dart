@@ -348,6 +348,37 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
+  Future<List<ServerItem>> upcoming(String viewId, {int limit = 60}) async {
+    final json = await _get('/Shows/Upcoming', <String, String>{
+      'userId': _profile.userId,
+      'parentId': viewId,
+      'limit': '$limit',
+      'fields': _fields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<LibraryGenre>> genres(String viewId) async {
+    final json = await _get('/Genres', <String, String>{
+      'userId': _profile.userId,
+      'parentId': viewId,
+      'sortBy': 'SortName',
+      'enableImages': 'true',
+    });
+
+    return <LibraryGenre>[
+      for (final Map<String, dynamic> g in _itemsOf(json))
+        if ((g['Name'] as String? ?? '').trim().isNotEmpty) genreFromJson(g),
+    ];
+  }
+
+  @override
+  Uri? genreImageUrl(LibraryGenre genre, {int? maxWidth}) =>
+      genreImageUrlFor(genre, base: _base, maxWidth: maxWidth);
+
+  @override
   Future<List<ServerPerson>> searchPeople(String query, {int limit = 24}) async {
     final json = await _get('/Persons', <String, String>{
       'userId': _profile.userId,

@@ -447,6 +447,23 @@ class AppLocalizationsVi extends AppLocalizations {
   String get tabSuggestions => 'Gợi ý';
 
   @override
+  String get tabUpcoming => 'Sắp chiếu';
+
+  @override
+  String get tabGenres => 'Thể loại';
+
+  @override
+  String get noUpcoming =>
+      'Chưa có tập nào trong thư viện này được lên lịch chiếu.';
+
+  @override
+  String get noGenres =>
+      'Thư viện này chưa có nội dung nào được xếp theo thể loại.';
+
+  @override
+  String get upcomingUndated => 'Chưa có ngày chiếu';
+
+  @override
   String get tabCollections => 'Bộ sưu tập';
 
   @override
