@@ -836,6 +836,12 @@ abstract class AppLocalizations {
   /// **'Server renamed.'**
   String get adminRenamed;
 
+  /// No description provided for @renameServerLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Only on this device. The server and its other apps keep the name it has.'**
+  String get renameServerLocal;
+
   /// No description provided for @adminRestart.
   ///
   /// In en, this message translates to:

@@ -372,7 +372,9 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     if (profile == null) return;
 
     final updated = profile.copyWith(
-      name: info.name,
+      // A name given on this device outlives the server's: editing the
+      // address must not quietly undo a rename.
+      name: profile.nameIsCustom ? profile.name : info.name,
       uri: info.uri,
       userId: auth.userId,
       username: auth.username,
@@ -406,11 +408,19 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     await activate(updated.id);
   }
 
-  Future<void> rename(String profileId, String name) async {
+  /// Renames a profile. [custom] says the name was given on this device
+  /// rather than set on the server, so re-reading the server keeps it.
+  Future<void> rename(
+    String profileId,
+    String name, {
+    bool custom = true,
+  }) async {
     final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
     if (profile == null || name.trim().isEmpty) return;
 
-    await _replace(profile.copyWith(name: name.trim()));
+    await _replace(
+      profile.copyWith(name: name.trim(), nameIsCustom: custom),
+    );
   }
 
   /// Forgets a server and its token.

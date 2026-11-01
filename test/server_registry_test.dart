@@ -93,22 +93,24 @@ void main() {
       expect(state.signedOutId, isNull);
     });
 
-    test('a profile whose token is gone asks for a password, not an error',
-        () async {
-      final prefs = await SharedPreferences.getInstance();
-      final container = containerWith(ServerRepository(prefs: prefs));
-      final registry = await registryOf(container);
-      final profile = await registry.add(info: _info, auth: _auth);
+    test(
+      'a profile whose token is gone asks for a password, not an error',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final container = containerWith(ServerRepository(prefs: prefs));
+        final registry = await registryOf(container);
+        final profile = await registry.add(info: _info, auth: _auth);
 
-      // What a cleared keychain looks like: the profile is still there.
-      keychain.remove(profile.credentialKey);
-      await registry.activate(profile.id);
+        // What a cleared keychain looks like: the profile is still there.
+        keychain.remove(profile.credentialKey);
+        await registry.activate(profile.id);
 
-      final state = container.read(serverRegistryProvider);
-      expect(state.signedOutId, profile.id);
-      expect(state.source, isNull);
-      expect(state.profiles, hasLength(1));
-    });
+        final state = container.read(serverRegistryProvider);
+        expect(state.signedOutId, profile.id);
+        expect(state.source, isNull);
+        expect(state.profiles, hasLength(1));
+      },
+    );
 
     test('one unreadable profile does not hide the rest', () async {
       SharedPreferences.setMockInitialValues(<String, Object>{
@@ -160,24 +162,31 @@ void main() {
   });
 
   group('PIN', () {
-    test('only a hash reaches the keychain, and the flag the profile',
-        () async {
-      final prefs = await SharedPreferences.getInstance();
-      final container = containerWith(ServerRepository(prefs: prefs));
-      final registry = await registryOf(container);
-      final profile = await registry.add(info: _info, auth: _auth);
+    test(
+      'only a hash reaches the keychain, and the flag the profile',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final container = containerWith(ServerRepository(prefs: prefs));
+        final registry = await registryOf(container);
+        final profile = await registry.add(info: _info, auth: _auth);
 
-      await registry.setPin(profile.id, '2468');
+        await registry.setPin(profile.id, '2468');
 
-      expect(keychain[profile.pinKey], startsWith('v1:'));
-      expect(keychain[profile.pinKey], isNot(contains('2468')));
-      expect(prefs.getStringList('configured_servers_v1')!.single,
-          isNot(contains('2468')));
-      expect(container.read(serverRegistryProvider).active!.pinProtected, isTrue);
+        expect(keychain[profile.pinKey], startsWith('v1:'));
+        expect(keychain[profile.pinKey], isNot(contains('2468')));
+        expect(
+          prefs.getStringList('configured_servers_v1')!.single,
+          isNot(contains('2468')),
+        );
+        expect(
+          container.read(serverRegistryProvider).active!.pinProtected,
+          isTrue,
+        );
 
-      expect(await registry.verifyPinFor(profile.id, '2468'), isTrue);
-      expect(await registry.verifyPinFor(profile.id, '1357'), isFalse);
-    });
+        expect(await registry.verifyPinFor(profile.id, '2468'), isTrue);
+        expect(await registry.verifyPinFor(profile.id, '1357'), isFalse);
+      },
+    );
 
     test('turning it off removes the hash and the flag', () async {
       final prefs = await SharedPreferences.getInstance();
@@ -189,7 +198,10 @@ void main() {
       await registry.setPin(profile.id, null);
 
       expect(keychain.containsKey(profile.pinKey), isFalse);
-      expect(container.read(serverRegistryProvider).active!.pinProtected, isFalse);
+      expect(
+        container.read(serverRegistryProvider).active!.pinProtected,
+        isFalse,
+      );
     });
 
     test('removing the server leaves no PIN behind', () async {
@@ -288,8 +300,62 @@ void main() {
       expect(keychain[renamed.credentialKey], 'tok123');
     });
 
-    test('signing in again replaces the token and clears the prompt',
-        () async {
+    test('a name given on this device survives editing the server', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final container = containerWith(ServerRepository(prefs: prefs));
+      final registry = await registryOf(container);
+      final profile = await registry.add(info: _info, auth: _auth);
+
+      await registry.rename(profile.id, 'Living room');
+      await registry.updateProfile(profile.id, info: _info, auth: _auth);
+
+      final kept = container.read(serverRegistryProvider).profiles.single;
+      expect(kept.name, 'Living room');
+      expect(kept.nameIsCustom, isTrue);
+    });
+
+    test(
+      "a rename made on the server follows the server's name later",
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final container = containerWith(ServerRepository(prefs: prefs));
+        final registry = await registryOf(container);
+        final profile = await registry.add(info: _info, auth: _auth);
+
+        await registry.rename(profile.id, 'Living room', custom: false);
+        await registry.updateProfile(
+          profile.id,
+          info: const ServerInfo(
+            uri: 'https://media.home.lan',
+            name: 'Den',
+            version: '10.9',
+            serverId: 'srv1',
+          ),
+          auth: _auth,
+        );
+
+        expect(
+          container.read(serverRegistryProvider).profiles.single.name,
+          'Den',
+        );
+      },
+    );
+
+    test('the custom flag survives a restart', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final first = containerWith(ServerRepository(prefs: prefs));
+      final registry = await registryOf(first);
+      final profile = await registry.add(info: _info, auth: _auth);
+      await registry.rename(profile.id, 'Living room');
+
+      final second = containerWith(ServerRepository(prefs: prefs));
+      await registryOf(second);
+      final back = second.read(serverRegistryProvider).profiles.single;
+      expect(back.name, 'Living room');
+      expect(back.nameIsCustom, isTrue);
+    });
+
+    test('signing in again replaces the token and clears the prompt', () async {
       final prefs = await SharedPreferences.getInstance();
       final container = containerWith(ServerRepository(prefs: prefs));
       final registry = await registryOf(container);

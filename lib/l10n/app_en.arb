@@ -141,6 +141,7 @@
   "adminRename": "Rename server",
   "adminRenameHint": "Server name",
   "adminRenamed": "Server renamed.",
+  "renameServerLocal": "Only on this device. The server and its other apps keep the name it has.",
   "adminRestart": "Restart server",
   "adminRestartQuestion": "Restart {name}?",
   "@adminRestartQuestion": {"placeholders": {"name": {"type": "String"}}},

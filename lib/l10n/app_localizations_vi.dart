@@ -421,6 +421,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminRenamed => 'Đã đổi tên máy chủ.';
 
   @override
+  String get renameServerLocal =>
+      'Chỉ trên thiết bị này. Máy chủ và các ứng dụng khác vẫn giữ tên hiện tại.';
+
+  @override
   String get adminRestart => 'Khởi động lại máy chủ';
 
   @override

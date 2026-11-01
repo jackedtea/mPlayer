@@ -22,6 +22,7 @@ class ServerProfile {
     this.lastUsed,
     this.isAdministrator = false,
     this.pinProtected = false,
+    this.nameIsCustom = false,
   });
 
   /// Throws for a profile this build cannot use, which the repository skips.
@@ -42,6 +43,7 @@ class ServerProfile {
       serverId: json['serverId'] as String? ?? '',
       isAdministrator: json['isAdministrator'] as bool? ?? false,
       pinProtected: json['pinProtected'] as bool? ?? false,
+      nameIsCustom: json['nameIsCustom'] as bool? ?? false,
       lastUsed: switch (json['lastUsed']) {
         final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
         _ => null,
@@ -55,6 +57,11 @@ class ServerProfile {
 
   /// What the server calls itself, or what the user renamed it to.
   final String name;
+
+  /// [name] was given on this device rather than read from the server, so
+  /// re-reading the server's details keeps it. False after a rename made on
+  /// the server itself, which is then the server's own name again.
+  final bool nameIsCustom;
 
   /// Base URL, normalised: scheme, host, port, and any path prefix the server
   /// sits behind. Never a trailing slash — see [normaliseServerUrl].
@@ -99,6 +106,7 @@ class ServerProfile {
         'serverId': serverId,
         'isAdministrator': isAdministrator,
         'pinProtected': pinProtected,
+        'nameIsCustom': nameIsCustom,
         'lastUsed': lastUsed?.millisecondsSinceEpoch,
       };
 
@@ -111,6 +119,7 @@ class ServerProfile {
     DateTime? lastUsed,
     bool? isAdministrator,
     bool? pinProtected,
+    bool? nameIsCustom,
   }) {
     return ServerProfile(
       id: id,
@@ -121,6 +130,7 @@ class ServerProfile {
       serverId: serverId ?? this.serverId,
       isAdministrator: isAdministrator ?? this.isAdministrator,
       pinProtected: pinProtected ?? this.pinProtected,
+      nameIsCustom: nameIsCustom ?? this.nameIsCustom,
       lastUsed: lastUsed ?? this.lastUsed,
     );
   }

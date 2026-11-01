@@ -149,4 +149,21 @@ void main() {
       expect(find.byType(AlertDialog), findsOneWidget);
     });
   });
+
+  testWidgets('renaming without admin rights names it on this device only',
+      (tester) async {
+    await _pump(tester, const Size(360, 800));
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Rename server'));
+    await tester.pumpAndSettle();
+
+    // Said before Save, so the web app not changing is no surprise.
+    expect(find.textContaining('Only on this device'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Living room');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Living room'), findsOneWidget);
+  });
 }

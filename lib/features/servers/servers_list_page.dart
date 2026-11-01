@@ -12,6 +12,7 @@ import '../../servers/auto_connect.dart';
 import '../../servers/server_profile.dart';
 import '../../servers/server_registry.dart';
 import 'add_server_sheet.dart';
+import 'rename_server.dart';
 
 /// The Home tab's face once anything is configured and no server has been
 /// opened yet this launch — or after "Switch server".
@@ -116,6 +117,10 @@ class _ServerTile extends ConsumerWidget {
         onSelected: (action) => _run(context, ref, action),
         itemBuilder: (_) => <PopupMenuEntry<_ServerAction>>[
           PopupMenuItem<_ServerAction>(
+            value: _ServerAction.rename,
+            child: Text(l10n.adminRename),
+          ),
+          PopupMenuItem<_ServerAction>(
             value: _ServerAction.edit,
             child: Text(l10n.editServer),
           ),
@@ -150,6 +155,9 @@ class _ServerTile extends ConsumerWidget {
     _ServerAction action,
   ) async {
     switch (action) {
+      case _ServerAction.rename:
+        await renameServer(context, ref, profile);
+
       case _ServerAction.edit:
         await AddServerSheet.show(context, editing: profile);
 
@@ -181,7 +189,7 @@ class _ServerTile extends ConsumerWidget {
   }
 }
 
-enum _ServerAction { edit, remove }
+enum _ServerAction { rename, edit, remove }
 
 /// "10.1.1.5:8096 · dev" — the scheme is noise in a list.
 String hostLineFor(ServerProfile profile) {
