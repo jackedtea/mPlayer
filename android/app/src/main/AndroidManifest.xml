@@ -26,6 +26,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <!--
+      Handing a downloaded update to the system installer. The installer
+      still asks the user to confirm every install, and Android's own
+      "Install unknown apps" switch for mPlayer has to be on first.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
+    <!--
       **No media-read permissions.** READ_MEDIA_VIDEO, READ_EXTERNAL_STORAGE
       and READ_MEDIA_VISUAL_USER_SELECTED were here for the Files tab, which
       was built from MediaStore because scoped storage forbids listing shared
@@ -125,6 +132,20 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON"/>
             </intent-filter>
         </service>
+
+        <!--
+          Lets the package installer read a downloaded update. Only the
+          updates folder in the cache is shared; see res/xml/update_paths.xml.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths"/>
+        </provider>
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

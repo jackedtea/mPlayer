@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/locale_controller.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/updater.dart';
 import '../../servers/auto_connect.dart';
 import 'settings_widgets.dart';
 
@@ -40,6 +41,13 @@ class GeneralSettingsPage extends ConsumerWidget {
           value: autoConnect,
           onChanged: (on) =>
               ref.read(autoConnectProvider.notifier).setEnabled(on),
+        ),
+        SettingsSwitchRow(
+          title: l10n.autoUpdateCheck,
+          subtitle: l10n.autoUpdateCheckSub,
+          value: ref.watch(updateSettingsProvider).value?.autoCheck ?? true,
+          onChanged: (on) =>
+              ref.read(updateSettingsProvider.notifier).setAutoCheck(on),
         ),
       ],
     );

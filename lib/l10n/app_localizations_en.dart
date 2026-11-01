@@ -823,6 +823,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkForUpdates => 'Check for updates';
 
   @override
+  String get autoUpdateCheck => 'Check for updates automatically';
+
+  @override
+  String get autoUpdateCheckSub =>
+      'Once a day, from GitHub. Nothing about you is sent';
+
+  @override
+  String get updateOfferBody =>
+      'A newer version of mPlayer is ready to install.';
+
+  @override
+  String updateOfferBodySized(String size) {
+    return 'A newer version of mPlayer is ready to install ($size MB).';
+  }
+
+  @override
+  String get updateNow => 'Update now';
+
+  @override
+  String get updateLater => 'Later';
+
+  @override
+  String get updateSkip => 'Skip this version';
+
+  @override
+  String get updateOpenPage => 'Open release page';
+
+  @override
+  String get updateDownloading => 'Downloading the update…';
+
+  @override
+  String get updateInstalling => 'Installing — mPlayer will restart.';
+
+  @override
+  String get updateInstallerOpened =>
+      'The installer is open. Confirm there to finish updating.';
+
+  @override
+  String get updateNeedsPermission =>
+      'Allow mPlayer to install apps in the settings page that just opened, then come back and try again.';
+
+  @override
+  String get updateNotWritable =>
+      'mPlayer cannot write to the folder it is installed in, so it cannot update itself. Download the new version from the release page instead.';
+
+  @override
+  String get updateFailed =>
+      'The update could not be installed. You can download it from the release page instead.';
+
+  @override
+  String get updateDownloadFailed =>
+      'The download did not finish. Check the connection and try again, or download it from the release page.';
+
+  @override
+  String get updateTryAgain => 'Try again';
+
+  @override
   String get releaseNotes => 'Release notes';
 
   @override
@@ -1170,7 +1227,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkForUpdatesSub =>
-      'Asks GitHub once. Nothing about you or the device is sent';
+      'Asks GitHub. Nothing about you or the device is sent';
 
   @override
   String get diagnosticsSub =>
@@ -1252,11 +1309,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Share and server credentials go to the platform secure storage, never into ordinary preferences alongside the rest of the settings.';
 
   @override
-  String get privacyUpdates => 'Update checks are manual';
+  String get privacyUpdates => 'Update checks go to GitHub only';
 
   @override
   String get privacyUpdatesBody =>
-      'Nothing is checked on launch. Pressing \"Check for updates\" makes one anonymous request to the GitHub releases API — no identifier is sent with it.';
+      'While \"Check for updates automatically\" is on, mPlayer asks the GitHub releases API once a day whether a newer build exists — one anonymous request, with no identifier. Turn it off in Settings → General and checks happen only when you press \"Check for updates\". Updates download from the same release page.';
 
   @override
   String get privacyCasting => 'Casting opens a server on your network';

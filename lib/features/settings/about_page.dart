@@ -4,14 +4,17 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/tokens.dart';
 import '../../core/update_check.dart';
+import '../../core/updater.dart';
 import '../../l10n/app_localizations.dart';
 import 'settings_widgets.dart';
+import 'update_dialog.dart';
 
 /// Screen 1m, About.
 ///
@@ -19,19 +22,19 @@ import 'settings_widgets.dart';
 /// cannot drift from what was installed. The update chip only makes a claim
 /// once it has actually asked: "Up to date" printed unconditionally is worth
 /// less than nothing.
-class AboutPage extends StatefulWidget {
+class AboutPage extends ConsumerStatefulWidget {
   const AboutPage({super.key});
 
   @override
-  State<AboutPage> createState() => _AboutPageState();
+  ConsumerState<AboutPage> createState() => _AboutPageState();
 }
 
 enum _UpdateState { unknown, checking, current, available, failed }
 
-class _AboutPageState extends State<AboutPage> {
+class _AboutPageState extends ConsumerState<AboutPage> {
   PackageInfo? _info;
   _UpdateState _update = _UpdateState.unknown;
-  ReleaseInfo? _latest;
+  UpdateAvailable? _found;
 
   @override
   void initState() {
@@ -165,7 +168,7 @@ class _AboutPageState extends State<AboutPage> {
       _UpdateState.available => (
           Icons.new_releases_rounded,
           scheme.primary,
-          l10n.updateAvailable(_latest?.version ?? ''),
+          l10n.updateAvailable(_found?.release.version ?? ''),
         ),
       _UpdateState.failed => (
           Icons.cloud_off_rounded,
@@ -186,8 +189,8 @@ class _AboutPageState extends State<AboutPage> {
       side: BorderSide.none,
       // Only the "there is a newer one" chip does anything: it is the one
       // state where the user has somewhere to go.
-      onPressed: _update == _UpdateState.available
-          ? () => _open(context, _latest?.url ?? releasesUrl)
+      onPressed: _update == _UpdateState.available && _found != null
+          ? () => showUpdateDialog(context, _found!)
           : null,
     );
   }
@@ -195,18 +198,21 @@ class _AboutPageState extends State<AboutPage> {
   Future<void> _checkForUpdates() async {
     setState(() => _update = _UpdateState.checking);
 
-    final latest = await latestRelease();
+    // The same check the launch makes, on the same channel — a dev build
+    // asks about dev builds — minus the once-a-day limit and the skip list:
+    // a pressed button always says what is there.
+    final found = await ref.read(updaterProvider).check();
     if (!mounted) return;
 
     setState(() {
-      _latest = latest;
-      _update = switch (latest) {
-        null => _UpdateState.failed,
-        final r when isNewerVersion(r.version, _version) =>
-          _UpdateState.available,
-        _ => _UpdateState.current,
+      _found = found is UpdateAvailable ? found : null;
+      _update = switch (found) {
+        UpdateFailed() => _UpdateState.failed,
+        UpdateAvailable() => _UpdateState.available,
+        UpdateUpToDate() => _UpdateState.current,
       };
     });
+    if (found is UpdateAvailable) await showUpdateDialog(context, found);
   }
 
   Future<void> _open(BuildContext context, String url) async {

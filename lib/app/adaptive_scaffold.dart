@@ -10,7 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/search/search_page.dart' show searchFocusRequests;
+import '../core/updater.dart';
 import '../features/servers/server_library.dart' show connectedServerProvider;
+import '../features/settings/update_dialog.dart';
 import '../l10n/app_localizations.dart';
 import 'system_ui.dart';
 import 'tokens.dart';
@@ -122,14 +124,54 @@ class AdaptiveScaffold extends ConsumerWidget {
     // link to Settings, say — keeps its bar, or it would have no way out.
     final choosingServer = navigationShell.currentIndex == AppBranch.home.index &&
         ref.watch(connectedServerProvider) == null;
-    if (choosingServer) return Scaffold(body: navigationShell);
-
-    return switch (context.windowSize) {
-      WindowSize.compact => _CompactShell(shell: navigationShell, onGo: _go),
-      WindowSize.medium => _RailShell(shell: navigationShell, onGo: _go),
-      WindowSize.large => _DrawerShell(shell: navigationShell, onGo: _go),
-    };
+    // The update check rides on the shell: it is up from launch, inside the
+    // navigator a dialog needs, and not under the player — so a prompt never
+    // lands on top of a film. One wrapper whatever the face, so its state
+    // (and its one check) survives the shell changing shape.
+    return _AutomaticUpdateCheck(
+      child: choosingServer
+          ? Scaffold(body: navigationShell)
+          : switch (context.windowSize) {
+              WindowSize.compact =>
+                _CompactShell(shell: navigationShell, onGo: _go),
+              WindowSize.medium => _RailShell(shell: navigationShell, onGo: _go),
+              WindowSize.large =>
+                _DrawerShell(shell: navigationShell, onGo: _go),
+            },
+    );
   }
+}
+
+/// Runs the launch's update check once, and offers what it finds.
+///
+/// Every condition — release build, switched on, a day since the last, not
+/// a version the user skipped — is [Updater.checkAutomatically]'s; this only
+/// decides where the answer is shown.
+class _AutomaticUpdateCheck extends ConsumerStatefulWidget {
+  const _AutomaticUpdateCheck({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_AutomaticUpdateCheck> createState() =>
+      _AutomaticUpdateCheckState();
+}
+
+class _AutomaticUpdateCheckState extends ConsumerState<_AutomaticUpdateCheck> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+  }
+
+  Future<void> _check() async {
+    final found = await ref.read(updaterProvider).checkAutomatically();
+    if (found == null || !mounted) return;
+    await showUpdateDialog(context, found, automatic: true);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _CompactShell extends StatelessWidget {

@@ -7,7 +7,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Three channels, where there were six.
+ * Four channels: three for the player, one for installing updates.
  *
  * Gone with the device library: [MediaStoreChannel] (the system media index),
  * `SafChannel` (folders the user granted explicitly) and `IntentChannel` (the
@@ -72,6 +72,14 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             CastChannel.EVENTS,
         ).setStreamHandler(chromecast.streamHandler())
+
+        val updates = UpdateChannel(this)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            UpdateChannel.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            updates.handle(call.method, call.arguments as? Map<*, *>, result)
+        }
     }
 
     /**

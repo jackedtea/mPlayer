@@ -1574,6 +1574,102 @@ abstract class AppLocalizations {
   /// **'Check for updates'**
   String get checkForUpdates;
 
+  /// No description provided for @autoUpdateCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates automatically'**
+  String get autoUpdateCheck;
+
+  /// No description provided for @autoUpdateCheckSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Once a day, from GitHub. Nothing about you is sent'**
+  String get autoUpdateCheckSub;
+
+  /// No description provided for @updateOfferBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A newer version of mPlayer is ready to install.'**
+  String get updateOfferBody;
+
+  /// No description provided for @updateOfferBodySized.
+  ///
+  /// In en, this message translates to:
+  /// **'A newer version of mPlayer is ready to install ({size} MB).'**
+  String updateOfferBodySized(String size);
+
+  /// No description provided for @updateNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Update now'**
+  String get updateNow;
+
+  /// No description provided for @updateLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get updateLater;
+
+  /// No description provided for @updateSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip this version'**
+  String get updateSkip;
+
+  /// No description provided for @updateOpenPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open release page'**
+  String get updateOpenPage;
+
+  /// No description provided for @updateDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading the update…'**
+  String get updateDownloading;
+
+  /// No description provided for @updateInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing — mPlayer will restart.'**
+  String get updateInstalling;
+
+  /// No description provided for @updateInstallerOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'The installer is open. Confirm there to finish updating.'**
+  String get updateInstallerOpened;
+
+  /// No description provided for @updateNeedsPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow mPlayer to install apps in the settings page that just opened, then come back and try again.'**
+  String get updateNeedsPermission;
+
+  /// No description provided for @updateNotWritable.
+  ///
+  /// In en, this message translates to:
+  /// **'mPlayer cannot write to the folder it is installed in, so it cannot update itself. Download the new version from the release page instead.'**
+  String get updateNotWritable;
+
+  /// No description provided for @updateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The update could not be installed. You can download it from the release page instead.'**
+  String get updateFailed;
+
+  /// No description provided for @updateDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The download did not finish. Check the connection and try again, or download it from the release page.'**
+  String get updateDownloadFailed;
+
+  /// No description provided for @updateTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get updateTryAgain;
+
   /// No description provided for @releaseNotes.
   ///
   /// In en, this message translates to:
@@ -2201,7 +2297,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkForUpdatesSub.
   ///
   /// In en, this message translates to:
-  /// **'Asks GitHub once. Nothing about you or the device is sent'**
+  /// **'Asks GitHub. Nothing about you or the device is sent'**
   String get checkForUpdatesSub;
 
   /// No description provided for @diagnosticsSub.
@@ -2345,13 +2441,13 @@ abstract class AppLocalizations {
   /// No description provided for @privacyUpdates.
   ///
   /// In en, this message translates to:
-  /// **'Update checks are manual'**
+  /// **'Update checks go to GitHub only'**
   String get privacyUpdates;
 
   /// No description provided for @privacyUpdatesBody.
   ///
   /// In en, this message translates to:
-  /// **'Nothing is checked on launch. Pressing \"Check for updates\" makes one anonymous request to the GitHub releases API — no identifier is sent with it.'**
+  /// **'While \"Check for updates automatically\" is on, mPlayer asks the GitHub releases API once a day whether a newer build exists — one anonymous request, with no identifier. Turn it off in Settings → General and checks happen only when you press \"Check for updates\". Updates download from the same release page.'**
   String get privacyUpdatesBody;
 
   /// No description provided for @privacyCasting.

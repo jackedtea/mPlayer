@@ -89,6 +89,11 @@ dependencies {
     // so the picker simply lists no Chromecasts. DLNA needs none of this and
     // is what covers Windows and Linux.
     implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
+
+    // FileProvider, for handing a downloaded update to the package installer.
+    // Already in the tree through the Cast SDK; declared so the app does not
+    // depend on another library's choices to compile.
+    implementation("androidx.core:core-ktx:1.13.1")
 }
 
 kotlin {

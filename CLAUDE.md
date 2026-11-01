@@ -156,6 +156,20 @@ Also open:
   tries pause it 30 s. Changing or removing a PIN asks for the current one.
   It is a lock on the app's door, not encryption: the token beside it is in
   the same keychain.
+- **Updates** (`core/update_check.dart`, `core/updater.dart`,
+  `features/settings/update_dialog.dart`). Channel-aware: a release build
+  asks `/releases/latest` and compares numbers; a dev build (`-dev-<sha>`)
+  scans for the newest `dev-*` prerelease and compares commits, because
+  "latest" never points at a prerelease. The launch check lives in
+  `AdaptiveScaffold` (never over the player), runs in **release builds
+  only** (`updateAutoCheckAllowedProvider` = `kReleaseMode`, which also keeps
+  widget tests off the network), at most every 20 h, honours a skipped tag,
+  and has a switch in General. Install: Android downloads the ABI's APK into
+  `cache/updates/` and `UpdateChannel.kt` hands it to the system installer
+  through a FileProvider (`REQUEST_INSTALL_PACKAGES`); Windows/Linux download
+  the archive and start a detached PowerShell/sh script that waits for the
+  PID, unpacks over the install dir, and restarts the app in `finally` — a
+  non-writable install dir is refused up front.
 - **Jellyfin only.** Emby was removed on 2026-11-01: `ServerKind` is gone,
   the probe refuses an Emby server with a sentence, and a stored Emby profile
   is skipped on load.

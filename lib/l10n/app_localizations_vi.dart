@@ -824,6 +824,62 @@ class AppLocalizationsVi extends AppLocalizations {
   String get checkForUpdates => 'Kiểm tra cập nhật';
 
   @override
+  String get autoUpdateCheck => 'Tự động kiểm tra cập nhật';
+
+  @override
+  String get autoUpdateCheckSub =>
+      'Mỗi ngày một lần, từ GitHub. Không gửi thông tin nào về bạn';
+
+  @override
+  String get updateOfferBody => 'Đã có phiên bản mPlayer mới để cài đặt.';
+
+  @override
+  String updateOfferBodySized(String size) {
+    return 'Đã có phiên bản mPlayer mới để cài đặt ($size MB).';
+  }
+
+  @override
+  String get updateNow => 'Cập nhật ngay';
+
+  @override
+  String get updateLater => 'Để sau';
+
+  @override
+  String get updateSkip => 'Bỏ qua phiên bản này';
+
+  @override
+  String get updateOpenPage => 'Mở trang release';
+
+  @override
+  String get updateDownloading => 'Đang tải bản cập nhật…';
+
+  @override
+  String get updateInstalling => 'Đang cài đặt — mPlayer sẽ khởi động lại.';
+
+  @override
+  String get updateInstallerOpened =>
+      'Trình cài đặt đã mở. Xác nhận ở đó để hoàn tất cập nhật.';
+
+  @override
+  String get updateNeedsPermission =>
+      'Hãy cho phép mPlayer cài ứng dụng trong trang cài đặt vừa mở, rồi quay lại và thử lại.';
+
+  @override
+  String get updateNotWritable =>
+      'mPlayer không ghi được vào thư mục cài đặt nên không tự cập nhật được. Hãy tải bản mới từ trang release.';
+
+  @override
+  String get updateFailed =>
+      'Không cài được bản cập nhật. Bạn có thể tải từ trang release.';
+
+  @override
+  String get updateDownloadFailed =>
+      'Tải chưa xong. Kiểm tra kết nối rồi thử lại, hoặc tải từ trang release.';
+
+  @override
+  String get updateTryAgain => 'Thử lại';
+
+  @override
   String get releaseNotes => 'Ghi chú phát hành';
 
   @override
@@ -1252,11 +1308,11 @@ class AppLocalizationsVi extends AppLocalizations {
       'Thông tin đăng nhập chia sẻ và máy chủ đi vào bộ lưu trữ bảo mật của nền tảng, không bao giờ nằm chung với các cài đặt thường.';
 
   @override
-  String get privacyUpdates => 'Kiểm tra cập nhật là thủ công';
+  String get privacyUpdates => 'Kiểm tra cập nhật chỉ gửi tới GitHub';
 
   @override
   String get privacyUpdatesBody =>
-      'Không kiểm tra gì lúc khởi động. Bấm \"Kiểm tra cập nhật\" mới gửi một yêu cầu ẩn danh tới API releases của GitHub — không kèm định danh nào.';
+      'Khi bật \"Tự động kiểm tra cập nhật\", mPlayer hỏi API releases của GitHub mỗi ngày một lần xem có bản mới không — một yêu cầu ẩn danh, không kèm mã định danh nào. Tắt trong Cài đặt → Chung thì chỉ kiểm tra khi bạn bấm \"Kiểm tra cập nhật\". Bản cập nhật được tải từ chính trang release đó.';
 
   @override
   String get privacyCasting =>
