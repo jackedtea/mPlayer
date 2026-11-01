@@ -18,7 +18,9 @@ import '../../servers/server_registry.dart';
 import '../settings/player_settings.dart';
 import '../../sources/media_source.dart';
 import 'playback_state.dart';
+import 'remembered_tracks.dart';
 import 'segment_skipper.dart';
+import 'server_tracks.dart';
 import 'smart_subtitles.dart';
 
 /// Hand-written, per the project's no-codegen rule for Riverpod.
@@ -65,9 +67,14 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// before the end can bounce the viewer out a second time.
   final Set<MediaSegment> _skipped = <MediaSegment>{};
 
-  /// Smart subtitles run once per file, on the first real track list. Rerunning
-  /// on every later one would undo a track the user picked by hand.
-  bool _smartSubtitlesApplied = false;
+  /// The starting tracks are chosen once per file, on the first real track
+  /// list. Rerunning on every later one would undo a track the user picked
+  /// by hand.
+  bool _startingTracksApplied = false;
+
+  /// The server's subtitle for this file, when it is one of the sidecar
+  /// files not yet in the decoder's list; picked up as soon as it arrives.
+  int? _pendingServerSubtitle;
 
   bool get autoPlayNext => ref.read(playerSettingsProvider).autoPlayNext;
 
@@ -128,7 +135,8 @@ class PlaybackController extends Notifier<PlaybackState> {
 
     // Otherwise a second file inherits the first one's chapter list.
     _chaptersLoaded = false;
-    _smartSubtitlesApplied = false;
+    _startingTracksApplied = false;
+    _pendingServerSubtitle = null;
     _lastPosition = null;
     _skipped.clear();
     // The next file may well decode differently from this one — the setting
@@ -527,6 +535,182 @@ class PlaybackController extends Notifier<PlaybackState> {
     );
   }
 
+  /// A track the user picked in the audio and subtitle dialog.
+  ///
+  /// Remembered for the series (or the film) so the next episode opens on
+  /// it, and reported to the server at once, which keeps it as the choice for
+  /// this item on every device. Tracks set by any other path — smart
+  /// subtitles, the server's own default — are not the user's choice and are
+  /// not remembered.
+  Future<void> chooseAudioTrack(MediaTrack track) async {
+    await setAudioTrack(track);
+    final media = state.media;
+    if (media == null) return;
+    await ref
+        .read(rememberedTracksProvider.notifier)
+        .rememberAudio(_trackGroup(media), track);
+    await _reportToSource(media, paused: !state.playing, audio: track);
+  }
+
+  /// As [chooseAudioTrack]; null is subtitles off, and that is remembered too.
+  Future<void> chooseSubtitleTrack(MediaTrack? track) async {
+    await setSubtitleTrack(track);
+    final media = state.media;
+    if (media == null) return;
+    _pendingServerSubtitle = null;
+    await ref
+        .read(rememberedTracksProvider.notifier)
+        .rememberSubtitle(_trackGroup(media), track);
+    await _reportToSource(
+      media,
+      paused: !state.playing,
+      subtitle: track ?? _offTrack,
+    );
+  }
+
+  static const MediaTrack _offTrack =
+      MediaTrack(id: 'no', kind: TrackKind.subtitle, label: 'Off');
+
+  /// What a choice is remembered against: the series for an episode, the
+  /// item for anything else, and the server either way — two servers' ids
+  /// can meet.
+  String _trackGroup(PlayableMedia media) =>
+      '${media.ref.sourceId}:${media.seriesId ?? media.ref.itemId}';
+
+  /// Chooses the tracks a file opens on.
+  ///
+  /// In order, each deciding only what the one before left open:
+  ///
+  /// 1. Tracks picked on the episode page before Play — the server was told,
+  ///    and its default *is* that choice. Nothing remembered overrides it.
+  /// 2. What the user last picked by hand in this series (or this film).
+  ///    The server remembers per item only, so this is what carries a choice
+  ///    on to the next episode.
+  /// 3. Smart subtitles, with a preferred language set.
+  /// 4. The server's default: the user's server-side language and subtitle
+  ///    settings, and the track last reported on this item from any device.
+  ///
+  /// libmpv's own "auto" — whatever the muxer flagged — only where none of
+  /// these could say.
+  Future<void> _applyStartingTracks() async {
+    final media = state.media;
+    if (media == null) return;
+
+    if (media.tracksChosen) {
+      final (audio, subtitle) = await _applyServerDefaults(media);
+      // A choice made before Play is a choice made by hand.
+      final memory = ref.read(rememberedTracksProvider.notifier);
+      final group = _trackGroup(media);
+      if (audio != null) await memory.rememberAudio(group, audio);
+      if (subtitle != null) {
+        await memory.rememberSubtitle(group, subtitle.isOff ? null : subtitle);
+      }
+      return;
+    }
+
+    final remembered = await ref
+        .read(rememberedTracksProvider.notifier)
+        .forGroup(_trackGroup(media));
+    // The viewer may have stepped on while that was read.
+    if (!identical(state.media, media)) return;
+
+    var audioDone = false;
+    var subtitleDone = false;
+
+    if (remembered?.audio case final RememberedTrack audio) {
+      final track = matchRemembered(state.audioTracks, audio);
+      if (track != null) {
+        await setAudioTrack(track);
+        audioDone = true;
+      }
+    }
+    if (remembered?.subtitle case final RememberedTrack subtitle) {
+      if (subtitle.off) {
+        await setSubtitleTrack(null);
+        subtitleDone = true;
+      } else {
+        final track = matchRemembered(state.subtitleTracks, subtitle);
+        if (track != null) {
+          await setSubtitleTrack(track);
+          subtitleDone = true;
+        }
+      }
+    }
+    if (audioDone && subtitleDone) return;
+
+    // Smart subtitles decide audio and subtitles together, so only where
+    // memory decided neither.
+    if (!audioDone && !subtitleDone && await applySmartSubtitles()) return;
+
+    await _applyServerDefaults(
+      media,
+      audio: !audioDone,
+      subtitle: !subtitleDone,
+    );
+  }
+
+  /// Selects the server's default tracks, where they can be found in the
+  /// decoder's list, and returns what was selected.
+  Future<(MediaTrack?, MediaTrack?)> _applyServerDefaults(
+    PlayableMedia media, {
+    bool audio = true,
+    bool subtitle = true,
+  }) async {
+    MediaTrack? audioTrack;
+    MediaTrack? subtitleTrack;
+
+    // On a transcode the server's choice is in the stream already, and the
+    // decoder's list says nothing about which of the original's it is; the
+    // lookups answer null there.
+    final audioIndex = media.defaultAudioIndex;
+    if (audio && audioIndex != null) {
+      audioTrack = trackForServerIndex(
+        audioIndex,
+        TrackKind.audio,
+        state.audioTracks,
+        media,
+      );
+      if (audioTrack != null) await setAudioTrack(audioTrack);
+    }
+
+    final subtitleIndex = media.defaultSubtitleIndex;
+    if (subtitle && subtitleIndex != null && media.isDirectPlay) {
+      if (subtitleIndex == serverSubtitlesOff) {
+        await setSubtitleTrack(null);
+        subtitleTrack = _offTrack;
+      } else {
+        subtitleTrack = trackForServerIndex(
+          subtitleIndex,
+          TrackKind.subtitle,
+          state.subtitleTracks,
+          media,
+        );
+        if (subtitleTrack != null) {
+          await setSubtitleTrack(subtitleTrack);
+        } else {
+          _pendingServerSubtitle = subtitleIndex;
+        }
+      }
+    }
+    return (audioTrack, subtitleTrack);
+  }
+
+  /// The server's sidecar subtitle, once the decoder has listed it.
+  Future<void> _applyPendingServerSubtitle() async {
+    final index = _pendingServerSubtitle;
+    final media = state.media;
+    if (index == null || media == null) return;
+    final track = trackForServerIndex(
+      index,
+      TrackKind.subtitle,
+      state.subtitleTracks,
+      media,
+    );
+    if (track == null) return;
+    _pendingServerSubtitle = null;
+    await setSubtitleTrack(track);
+  }
+
   void _listen(Player player) {
     final s = player.stream;
     _subs.addAll(<StreamSubscription<void>>[
@@ -577,9 +761,11 @@ class PlaybackController extends Notifier<PlaybackState> {
         // before a file is demuxed; waiting for a real track keeps the rule
         // from running against nothing.
         final real = state.audioTracks.where((x) => !x.isAuto && !x.isOff);
-        if (!_smartSubtitlesApplied && real.isNotEmpty) {
-          _smartSubtitlesApplied = true;
-          unawaited(applySmartSubtitles());
+        if (!_startingTracksApplied && real.isNotEmpty) {
+          _startingTracksApplied = true;
+          unawaited(_applyStartingTracks());
+        } else {
+          unawaited(_applyPendingServerSubtitle());
         }
 
         // A demuxed file is the earliest point mpv has chosen a decoder for
@@ -639,14 +825,29 @@ class PlaybackController extends Notifier<PlaybackState> {
     await _reportToSource(media, paused: !state.playing);
   }
 
-  /// Passes the position on to a source that keeps watch state of its own.
-  Future<void> _reportToSource(PlayableMedia media, {required bool paused}) {
+  /// Passes the position on to a source that keeps watch state of its own,
+  /// with the tracks playing — [audio] and [subtitle] where the caller knows
+  /// better than the state, which catches up a moment after a switch.
+  Future<void> _reportToSource(
+    PlayableMedia media, {
+    required bool paused,
+    MediaTrack? audio,
+    MediaTrack? subtitle,
+  }) {
     final source = ref.read(mediaSourcesProvider)[media.ref.sourceId];
     if (source case final ProgressReporting reporter) {
+      final playingAudio = audio ?? state.activeAudio;
+      final playingSubtitle = subtitle ?? state.activeSubtitle;
       return reporter.reportProgress(
         media.ref.itemId,
         position: state.position,
         isPaused: paused,
+        audioStreamIndex: playingAudio == null
+            ? null
+            : serverIndexOf(playingAudio, state.audioTracks, media),
+        subtitleStreamIndex: playingSubtitle == null
+            ? null
+            : serverIndexOf(playingSubtitle, state.subtitleTracks, media),
       );
     }
     return Future<void>.value();
@@ -801,9 +1002,11 @@ class PlaybackController extends Notifier<PlaybackState> {
   ///
   /// Public so the settings page can re-run it when the preference changes
   /// mid-film — the alternative is telling the user to reopen the file.
-  Future<void> applySmartSubtitles() async {
+  ///
+  /// True when it selected anything.
+  Future<bool> applySmartSubtitles() async {
     final settings = ref.read(playerSettingsProvider);
-    if (!settings.smartSubtitles) return;
+    if (!settings.smartSubtitles) return false;
 
     final selection = smartSelection(
       audioTracks: state.audioTracks,
@@ -811,7 +1014,7 @@ class PlaybackController extends Notifier<PlaybackState> {
       activeAudio: state.activeAudio,
       preferred: settings.preferredLanguage,
     );
-    if (selection.isEmpty) return;
+    if (selection.isEmpty) return false;
 
     final audio = selection.audio;
     if (audio != null) await setAudioTrack(audio);
@@ -821,6 +1024,7 @@ class PlaybackController extends Notifier<PlaybackState> {
     } else if (selection.subtitle != null) {
       await setSubtitleTrack(selection.subtitle);
     }
+    return true;
   }
 
   /// Loads a subtitle file that is not in the container.
@@ -1038,7 +1242,8 @@ class PlaybackController extends Notifier<PlaybackState> {
     _player = null;
     _videoController = null;
     _chaptersLoaded = false;
-    _smartSubtitlesApplied = false;
+    _startingTracksApplied = false;
+    _pendingServerSubtitle = null;
 
     if (player == null) return;
 

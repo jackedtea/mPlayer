@@ -545,8 +545,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _restartHideTimer();
     await showAudioSubtitleDialog(
       context,
-      onAudio: controller.setAudioTrack,
-      onSubtitle: controller.setSubtitleTrack,
+      onAudio: controller.chooseAudioTrack,
+      onSubtitle: controller.chooseSubtitleTrack,
       onOpenSubtitleFile: () => _openSubtitleFile(controller),
     );
   }
