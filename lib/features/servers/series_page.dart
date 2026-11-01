@@ -153,7 +153,10 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
       // the user reaches the episode list, which is the reason they came.
       bottomNavigationBar: compact
           ? ItemPrimaryActionBar(
-              item: item,
+              // The episode, not the series: it is what has a position, so
+              // the label reads "Continue watching" when there is one.
+              item: nextEpisodeOf(episodes) ?? item,
+              caption: nextEpisodeCaption(nextEpisodeOf(episodes), l10n),
               onPlay: () => _playNext(episodes, item),
             )
           : null,
@@ -530,6 +533,17 @@ ServerItem? nextEpisodeOf(List<ServerItem> episodes) {
       .firstOrNull;
   final unwatched = episodes.where((e) => !e.played).firstOrNull;
   return started ?? unwatched ?? episodes.first;
+}
+
+/// "S1E3 · The Long Night · 41m left" — the line under Play.
+String? nextEpisodeCaption(ServerItem? episode, AppLocalizations l10n) {
+  if (episode == null) return null;
+  final parts = <String>[
+    episodeCode(episode),
+    episode.title,
+    remainingLabel(episode, l10n),
+  ].where((p) => p.trim().isNotEmpty).toList();
+  return parts.isEmpty ? null : parts.join(' · ');
 }
 
 /// The server item behind the row at [index] of season [seasonIndex].

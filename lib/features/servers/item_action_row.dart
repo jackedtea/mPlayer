@@ -383,12 +383,18 @@ class ItemPrimaryActionBar extends StatelessWidget {
     required this.item,
     required this.onPlay,
     this.onStartOver,
+    this.caption,
   });
 
   final ServerItem item;
 
   /// Resume where the server says the user got to.
   final VoidCallback onPlay;
+
+  /// A second line on the button saying what it will play — the episode a
+  /// series resolves to, which the button alone cannot say. Null for one
+  /// line.
+  final String? caption;
 
   /// Play from the beginning. Null hides it.
   final VoidCallback? onStartOver;
@@ -421,7 +427,7 @@ class ItemPrimaryActionBar extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: SizedBox(
-                  height: 52,
+                  height: caption == null ? 52 : 56,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
                       shape: RoundedRectangleBorder(
@@ -430,7 +436,25 @@ class ItemPrimaryActionBar extends StatelessWidget {
                     ),
                     onPressed: onPlay,
                     icon: const Icon(Icons.play_arrow_rounded),
-                    label: Text(started ? l10n.continueWatching : l10n.play),
+                    label: caption == null
+                        ? Text(started ? l10n.continueWatching : l10n.play)
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(started ? l10n.continueWatching : l10n.play),
+                              Text(
+                                caption!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.texts.labelSmall?.copyWith(
+                                  color: scheme.onPrimary.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
               ),

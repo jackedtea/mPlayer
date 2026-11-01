@@ -94,4 +94,27 @@ void main() {
     expect(tab.top, greaterThanOrEqualTo(_statusBar + kToolbarHeight - 1));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Play says which episode it will play', (tester) async {
+    await _open(tester);
+
+    final bar = find.byType(FilledButton).last;
+    // The part-watched episode, not the first unwatched one after it...
+    expect(
+      find.descendant(of: bar, matching: find.textContaining('S1E2')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: bar,
+        matching: find.textContaining('Episode title 2'),
+      ),
+      findsOneWidget,
+    );
+    // ...and, since it has a position, offers to carry on rather than play.
+    expect(
+      find.descendant(of: bar, matching: find.text('Continue watching')),
+      findsOneWidget,
+    );
+  });
 }
