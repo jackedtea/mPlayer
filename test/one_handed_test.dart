@@ -68,11 +68,10 @@ void main() {
       final bar = find.byType(NavigationBar);
       expect(bar, findsOneWidget);
 
-      // Three destinations again, as the design asked for — Storage left a
-      // gap when the device library went, and Settings fills it.
+      // Home, Libraries, Search, Downloads, Settings.
       expect(
         find.descendant(of: bar, matching: find.byType(NavigationDestination)),
-        findsNWidgets(3),
+        findsNWidgets(5),
       );
       expect(
         find.descendant(of: bar, matching: find.text('Settings')),
@@ -90,7 +89,7 @@ void main() {
         (tester) async {
       await _pump(tester, _phone);
 
-      // The empty state is what `/servers` shows with nothing signed in, and
+      // The empty state is what `/home` shows with nothing signed in, and
       // it used to put Settings in the top-right corner. So did the list
       // behind it.
       expect(
@@ -180,6 +179,30 @@ void main() {
     });
   });
 
+  group('the Search tab', () {
+    testWidgets('a second tap on it puts the cursor in the field',
+        (tester) async {
+      await _pump(tester, _phone, server: const _FakeServer());
+
+      final destination = find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Search'),
+      );
+      EditableText field() =>
+          tester.widget<EditableText>(find.byType(EditableText));
+
+      // The first tap opens the tab and leaves the keyboard down, so the
+      // recent searches under the field are not covered on arrival.
+      await tester.tap(destination);
+      await tester.pumpAndSettle();
+      expect(field().focusNode.hasFocus, isFalse);
+
+      await tester.tap(destination);
+      await tester.pumpAndSettle();
+      expect(field().focusNode.hasFocus, isTrue);
+    });
+  });
+
   group('search is reachable from the browse screens', () {
     testWidgets('the library grid offers it as a button near the thumb',
         (tester) async {
@@ -201,14 +224,17 @@ void main() {
       );
     });
 
-    testWidgets('so does the server home', (tester) async {
+    testWidgets('the server home keeps the navigation bar under it',
+        (tester) async {
       final router = await _pump(tester, _phone, server: const _FakeServer());
-      router.push('/servers/home');
+      router.go('/home');
       await tester.pumpAndSettle();
 
-      final fab = find.byType(FloatingActionButton);
-      expect(fab, findsOneWidget);
-      expect(_verticalPosition(tester, fab), greaterThan(0.6));
+      // Search is a destination in the bar, so the home needs no FAB for it.
+      final bar = find.byType(NavigationBar);
+      expect(bar, findsOneWidget);
+      expect(_verticalPosition(tester, bar), greaterThan(0.85));
+      expect(find.byType(FloatingActionButton), findsNothing);
 
       // The cast button that used to sit beside it was a stub that reported
       // "not implemented"; casting belongs to the player, which has the

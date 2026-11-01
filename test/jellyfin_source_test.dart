@@ -50,7 +50,6 @@ ResponseBody _json(Object body, {int status = 200}) {
 
 const _profile = ServerProfile(
   id: 'p1',
-  kind: ServerKind.jellyfin,
   name: 'Home',
   uri: 'https://media.home.lan',
   userId: 'u1',
@@ -252,52 +251,6 @@ void main() {
       expect((await source.filterOptions('v1')).isEmpty, isTrue);
     });
 
-    test('Emby has no aggregate filters route, so its facets are read instead',
-        () async {
-      // Emby 4.9.5 answers 404 for `/Items/Filters` and serves each facet as
-      // a listing of named items. Note `/OfficialRatings`, not the
-      // `/Items/OfficialRatings` its siblings suggest.
-      final adapter = _FakeAdapter(
-        (options) => _json(<String, dynamic>{
-          'Items': <dynamic>[
-            <String, dynamic>{'Name': options.uri.path == '/Years' ? '2024' : 'Drama'},
-            // A nameless row is dropped rather than becoming an empty
-            // checkbox nobody can read.
-            <String, dynamic>{'Id': 'no-name'},
-          ],
-        }),
-      );
-      final dio = Dio(BaseOptions(validateStatus: (_) => true))
-        ..httpClientAdapter = adapter;
-
-      final emby = JellyfinSource(
-        profile: const ServerProfile(
-          id: 'p2',
-          kind: ServerKind.emby,
-          name: 'Emby',
-          uri: 'https://media.home.lan',
-          userId: 'u1',
-          username: 'nam',
-        ),
-        token: 'tok',
-        identity: _identity,
-        client: dio,
-      );
-
-      final options = await emby.filterOptions('v1');
-
-      expect(
-        adapter.requests.map((r) => r.uri.path).toSet(),
-        <String>{'/Genres', '/OfficialRatings', '/Tags', '/Years'},
-      );
-      // Without `recursive` the server only considers the view's direct
-      // children and every facet comes back empty.
-      for (final RequestOptions request in adapter.requests) {
-        expect(request.uri.queryParameters['recursive'], 'true');
-      }
-      expect(options.genres, <String>['Drama']);
-      expect(options.years, <int>[2024]);
-    });
 
     test('a reverse-proxy prefix survives into every path', () async {
       final adapter = _FakeAdapter(
@@ -309,7 +262,6 @@ void main() {
       final source = JellyfinSource(
         profile: const ServerProfile(
           id: 'p2',
-          kind: ServerKind.jellyfin,
           name: 'Proxied',
           uri: 'https://home.example.com/jellyfin',
           userId: 'u1',
@@ -427,13 +379,13 @@ void main() {
   });
 
   group('sign-in', () {
-    test('probe reads the public info and spots Emby', () async {
+    test('probe reads the public info', () async {
       final adapter = _FakeAdapter(
         (_) => _json(<String, dynamic>{
           'ServerName': 'Living room',
-          'Version': '4.9.0',
+          'Version': '10.10.7',
           'Id': 'srv1',
-          'ProductName': 'Emby Server',
+          'ProductName': 'Jellyfin Server',
         }),
       );
       final dio = Dio(BaseOptions(validateStatus: (_) => true))
@@ -443,14 +395,35 @@ void main() {
       final info = await auth.probe('media.home.lan');
 
       expect(info.name, 'Living room');
-      expect(info.kind, ServerKind.emby);
+      expect(info.version, '10.10.7');
       // The typed address had no scheme; probing must still have worked.
       expect(info.uri, 'http://media.home.lan');
       expect(adapter.requests.single.uri.path, '/System/Info/Public');
     });
 
-    test('Emby 4.9 is recognised even though it omits ProductName', () async {
-      // The trap: an Emby server filed as Jellyfin gets called on routes it
+    test('an Emby server is refused before any password is asked for',
+        () async {
+      final dio = Dio(BaseOptions(validateStatus: (_) => true))
+        ..httpClientAdapter = _FakeAdapter(
+          (_) => _json(<String, dynamic>{
+            'ServerName': 'Living room',
+            'Id': 'srv1',
+            'ProductName': 'Emby Server',
+          }),
+        );
+
+      final auth = JellyfinAuth(identity: _identity, client: dio);
+      await expectLater(
+        auth.probe('http://host'),
+        throwsA(
+          isA<ServerException>()
+              .having((e) => e.message, 'message', contains('Emby')),
+        ),
+      );
+    });
+
+    test('so is Emby 4.9, which omits ProductName', () async {
+      // The trap: an Emby server taken for Jellyfin gets called on routes it
       // does not have. `RemoteAddresses` is the only signal it gives.
       final dio = Dio(BaseOptions(validateStatus: (_) => true))
         ..httpClientAdapter = _FakeAdapter(
@@ -462,7 +435,10 @@ void main() {
         );
 
       final auth = JellyfinAuth(identity: _identity, client: dio);
-      expect((await auth.probe('http://host')).kind, ServerKind.emby);
+      await expectLater(
+        auth.probe('http://host'),
+        throwsA(isA<ServerException>()),
+      );
     });
 
     test('a server naming itself Jellyfin is Jellyfin', () async {
@@ -476,7 +452,7 @@ void main() {
         );
 
       final auth = JellyfinAuth(identity: _identity, client: dio);
-      expect((await auth.probe('http://host')).kind, ServerKind.jellyfin);
+      expect((await auth.probe('http://host')).name, 'Home');
     });
 
     test('something that is not a server says so', () async {
@@ -510,7 +486,6 @@ void main() {
           name: 'Home',
           version: '10.9',
           serverId: 'srv1',
-          kind: ServerKind.jellyfin,
         ),
         username: 'nam',
         password: 'hunter2',
@@ -540,7 +515,6 @@ void main() {
             name: 'Home',
             version: '10.9',
             serverId: 's',
-            kind: ServerKind.jellyfin,
           ),
           username: 'nam',
           password: 'wrong',
@@ -590,32 +564,6 @@ void main() {
       expect(await source.segments('item-1'), isEmpty);
     });
 
-    test('Emby is never asked at all', () async {
-      final adapter = _FakeAdapter(
-        (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
-      );
-      final dio = Dio(BaseOptions(validateStatus: (_) => true))
-        ..httpClientAdapter = adapter;
-
-      final emby = JellyfinSource(
-        profile: const ServerProfile(
-          id: 'p2',
-          kind: ServerKind.emby,
-          name: 'Emby',
-          uri: 'https://emby.home.lan',
-          userId: 'u1',
-          username: 'nam',
-        ),
-        token: 'tok',
-        identity: _identity,
-        client: dio,
-      );
-
-      expect(await emby.segments('item-1'), isEmpty);
-      // Emby has no such route; calling it would be one wasted round trip
-      // per press of Play.
-      expect(adapter.requests, isEmpty);
-    });
   });
 
   group('the detail fetch', () {
@@ -639,6 +587,48 @@ void main() {
         adapter.requests.single.uri.queryParameters['fields'],
         isNot(contains('Chapters')),
       );
+    });
+  });
+
+  group('the home screen libraries', () {
+    test('are read from the user configuration', () async {
+      final (source, _) = sourceWith(
+        (_) => _json(<String, dynamic>{
+          'Id': 'u1',
+          'Configuration': <String, dynamic>{
+            'LatestItemsExcludes': <String>['music'],
+          },
+        }),
+      );
+
+      expect(await source.homeExcludes(), <String>{'music'});
+    });
+
+    test('are saved with the rest of the configuration intact', () async {
+      final (source, adapter) = sourceWith((options) {
+        if (options.method == 'GET') {
+          return _json(<String, dynamic>{
+            'Configuration': <String, dynamic>{
+              'SubtitleMode': 'Smart',
+              'LatestItemsExcludes': <String>[],
+            },
+          });
+        }
+        return ResponseBody.fromString('', 204);
+      });
+
+      await source.setHomeExcludes(<String>{'tv'});
+
+      final post = adapter.requests.last;
+      expect(post.method, 'POST');
+      // Jellyfin 10.9 dropped `/Users/{id}/Configuration` for this.
+      expect(post.uri.path, '/Users/Configuration');
+      expect(post.uri.queryParameters['userId'], 'u1');
+      // The server replaces the whole configuration with what it is sent,
+      // so a body carrying one field would reset every other preference.
+      final body = post.data as Map<String, dynamic>;
+      expect(body['SubtitleMode'], 'Smart');
+      expect(body['LatestItemsExcludes'], <String>['tv']);
     });
   });
 }

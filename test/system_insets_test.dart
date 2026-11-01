@@ -28,7 +28,7 @@ const _statusBar = 48.0;
 const _navigationBar = 56.0;
 
 void main() {
-  // `/files`, `/browse` and `/downloads` are gone with the device library.
+  // `/files` and `/browse` are gone with the device library.
 
   Future<GoRouter> pumpWithBars(WidgetTester tester) async {
     tester.view.devicePixelRatio = 1.0;
@@ -66,12 +66,14 @@ void main() {
     }
 
     for (final String route in <String>[
-      '/servers',
+      '/home',
+  '/libraries',
+  '/libraries/view',
+  '/downloads',
       '/search',
       '/settings',
       '/library',
-      '/servers/home',
-    ]) {
+        ]) {
       testWidgets('$route is inset from both bars', (tester) async {
         final router = await pumpWithBars(tester);
         router.go(route);

@@ -130,15 +130,15 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
         bottom: _hasTabs
             ? TabBar(
                 controller: _tabs,
-                // More tabs than fit a phone, and cramming five labels into
-                // 360dp makes every one of them unreadable. Scrolling is the
+                // More tabs than fit a phone — four labels like "Suggestions"
+                // and "Collections" do not share 360dp readably. Scrolling is the
                 // Material answer and the design's series screen already uses
                 // a TabBar, so this is the same component doing the same job.
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 tabs: <Widget>[
                   for (final _LibraryTab tab in _LibraryTab.values)
-                    Tab(text: tab.label(l10n, _collectionKind())),
+                    Tab(text: tab.label(l10n)),
                 ],
               )
             : null,
@@ -157,7 +157,6 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
                   children: <Widget>[
                     _mainTab(viewId),
                     _SuggestionsTab(viewId: viewId, kind: _collectionKind()),
-                    _FavouritesTab(viewId: viewId),
                     _CollectionsTab(viewId: viewId),
                     const _PlaylistsTab(),
                   ],
@@ -343,27 +342,22 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
   }
 }
 
-/// The tabs a library screen carries, in the order Jellyfin's own clients use.
+/// The tabs a library screen carries.
+///
+/// No Favourites tab: starred items are one of the Browse grid's filters
+/// already, and a tab that repeats a filter is a fifth label crammed into a
+/// phone's width for nothing.
 enum _LibraryTab {
-  /// Everything in the library. Named after what the library holds, because
-  /// "All" over a shelf of films says less than "Movies" does.
-  all,
+  /// Everything in the library, with the sort and filter chips.
+  browse,
   suggestions,
-  favourites,
   collections,
   playlists;
 
-  String label(AppLocalizations l10n, String collectionKind) {
+  String label(AppLocalizations l10n) {
     return switch (this) {
-      _LibraryTab.all => switch (collectionKind) {
-          'movies' => l10n.tabMovies,
-          'tvshows' => l10n.tabShows,
-          // A music library, a folder, or a library whose type has not
-          // arrived yet. "All" is true of every one of them.
-          _ => l10n.tabItems,
-        },
+      _LibraryTab.browse => l10n.tabBrowse,
       _LibraryTab.suggestions => l10n.tabSuggestions,
-      _LibraryTab.favourites => l10n.tabFavourites,
       _LibraryTab.collections => l10n.tabCollections,
       _LibraryTab.playlists => l10n.tabPlaylists,
     };
@@ -467,24 +461,6 @@ String _shelfTitle(AppLocalizations l10n, ServerShelf shelf) {
       l10n.starring(shelf.subject),
     SuggestionKind.unknown => l10n.suggestedForYou,
   };
-}
-
-class _FavouritesTab extends ConsumerWidget {
-  const _FavouritesTab({required this.viewId});
-
-  final String viewId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final request = ref.watch(libraryFavouritesProvider(viewId));
-
-    return PosterGrid(
-      items: request.value ?? const <ServerItem>[],
-      loading: request.isLoading,
-      emptyText: AppLocalizations.of(context).noFavourites,
-      onTap: (item) => openServerItem(context, item),
-    );
-  }
 }
 
 class _CollectionsTab extends ConsumerWidget {

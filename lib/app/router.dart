@@ -13,6 +13,8 @@ import '../features/admin/admin_plugins_page.dart';
 import '../features/admin/admin_tasks_page.dart';
 import '../features/admin/admin_users_page.dart';
 import '../features/downloads/downloads_page.dart';
+import '../features/home/home_page.dart';
+import '../features/libraries/libraries_page.dart';
 import '../features/playback/smoke_test_page.dart';
 import '../features/player/playback_controller.dart';
 import '../features/player/playback_state.dart';
@@ -23,8 +25,6 @@ import '../features/servers/library_grid_page.dart';
 import '../features/servers/person_page.dart';
 import '../features/servers/movie_detail_page.dart';
 import '../features/servers/series_page.dart';
-import '../features/servers/servers_empty_page.dart';
-import '../features/servers/servers_home_page.dart';
 import '../features/settings/about_page.dart';
 import '../features/settings/appearance_page.dart';
 import '../features/settings/audio_settings_page.dart';
@@ -39,16 +39,15 @@ import 'adaptive_scaffold.dart';
 
 final _rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
-/// Servers is the initial location, and it is still not a login wall: with
-/// nothing configured it is an empty state that offers to add one.
+/// Home is the initial location, and it is still not a login wall: with
+/// nothing configured it is an empty state that offers to add one, and with a
+/// server not opened yet it is the server list. See [HomeTabPage].
 ///
-/// It used to be Files, for a device library the app could play by itself.
-/// That library is gone — mPlayer plays what a media server gives it — so the
-/// server list is both the first screen and where everything starts.
+/// The branches are in [AppBranch] order.
 GoRouter buildRouter() {
   return GoRouter(
     navigatorKey: _rootKey,
-    initialLocation: '/servers',
+    initialLocation: '/home',
     routes: <RouteBase>[
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -57,8 +56,27 @@ GoRouter buildRouter() {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: '/servers',
-                builder: (context, state) => const ServersEmptyPage(),
+                path: '/home',
+                builder: (context, state) => const HomeTabPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: '/libraries',
+                builder: (context, state) => const LibrariesPage(),
+                routes: <RouteBase>[
+                  // One library, inside the branch so the navigation bar
+                  // stays under its tabs. `extra` is the library's id. The
+                  // films and series it opens still cover the shell, through
+                  // `/library/...` below.
+                  GoRoute(
+                    path: 'view',
+                    builder: (context, state) =>
+                        LibraryGridPage(viewId: state.extra as String?),
+                  ),
+                ],
               ),
             ],
           ),
@@ -70,14 +88,20 @@ GoRouter buildRouter() {
               ),
             ],
           ),
+          // Not built yet; the tab holds its place in the bar.
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: '/downloads',
+                builder: (context, state) => const DownloadsPage(),
+              ),
+            ],
+          ),
           // **Settings is a destination, not an app-bar button.**
           //
           // It used to sit above the shell, reached by an icon in the
           // top-right corner of two screens — the one corner of a tall phone
-          // a thumb cannot reach without shifting grip. A third branch puts
-          // it in the bottom bar instead, which is both within reach and what
-          // the design's 3-destination bar asked for before Storage was
-          // removed and left only two.
+          // a thumb cannot reach without shifting grip.
           //
           // Its sub-pages are nested *inside* the branch on purpose: the
           // navigation bar stays visible while the user is in them, so
@@ -127,14 +151,6 @@ GoRouter buildRouter() {
           ),
         ],
       ),
-      // Server library screens. They live above the shell rather than inside
-      // the Server branch because they are reached from Search too, not only
-      // from the servers home.
-      GoRoute(
-        path: '/servers/home',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => const ServersHomePage(),
-      ),
       // Administration. Above the shell like the library screens, because it
       // is reached from Settings and replaces the whole window rather than
       // living inside a tab.
@@ -166,6 +182,11 @@ GoRouter buildRouter() {
           ),
         ],
       ),
+      // Server library screens. They live above the shell rather than inside
+      // one branch because they are reached from Home, Libraries and Search
+      // alike. A library opened from the Libraries tab is `/libraries/view`
+      // instead, which keeps the bar; this one is a box set or playlist
+      // drilled into, and what every tile opens.
       GoRoute(
         path: '/library',
         parentNavigatorKey: _rootKey,
@@ -208,11 +229,6 @@ GoRouter buildRouter() {
                 SeriesPage(seriesId: state.extra as String?),
           ),
         ],
-      ),
-      GoRoute(
-        path: '/downloads',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => const DownloadsPage(),
       ),
       // The player is fullscreen and above the shell for every source alike.
       // It takes an already-resolved handle rather than an id, so the title

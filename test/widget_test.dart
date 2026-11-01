@@ -101,10 +101,10 @@ void main() {
   });
 
   group('startup', () {
-    testWidgets('opens on Servers as an empty state, not a login wall',
+    testWidgets('opens on Home as an empty state, not a login wall',
         (tester) async {
       // It used to open on Files, so the app had something to play before any
-      // server existed. There is nothing local to play now, so Servers is the
+      // server existed. There is nothing local to play now, so Home is the
       // first screen — and it still has to be an empty state that offers to
       // add one, never a gate that demands it.
       await pumpAppAt(tester, const Size(400, 800));
@@ -120,8 +120,22 @@ void main() {
       await pumpAppAt(tester, const Size(400, 800));
 
       expect(find.text('Files'), findsNothing);
-      expect(find.text('Servers'), findsOneWidget);
-      expect(find.text('Search'), findsOneWidget);
+      for (final String label in <String>[
+        'Home',
+        'Libraries',
+        'Search',
+        'Downloads',
+        'Settings',
+      ]) {
+        expect(
+          find.descendant(
+            of: find.byType(NavigationBar),
+            matching: find.text(label),
+          ),
+          findsOneWidget,
+          reason: label,
+        );
+      }
     });
 
     testWidgets('add-server sheet asks for an address before anything else', (
@@ -142,10 +156,9 @@ void main() {
       expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
 
       // Quick Connect is *not* offered yet: nothing is known about the
-      // server, and Emby answers 404 to every Quick Connect route while a
-      // Jellyfin administrator can switch the feature off. Offering it before
+      // server, and a Jellyfin administrator can switch the feature off. Offering it before
       // asking would be a switch that sometimes cannot work.
-      expect(find.byType(SwitchListTile), findsNothing);
+      expect(find.byType(SegmentedButton<bool>), findsNothing);
 
       // Connect stays disabled until an address has been detected.
       final connect = tester.widget<FilledButton>(

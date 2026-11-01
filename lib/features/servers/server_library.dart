@@ -20,6 +20,7 @@ import '../../l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../player/playback_state.dart';
+import '../../servers/auto_connect.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
 import '../../sources/media_source.dart';
@@ -28,6 +29,26 @@ import '../../sources/media_source.dart';
 final activeServerProvider = Provider<MediaLibrarySource?>(
   (ref) => ref.watch(serverRegistryProvider).source,
 );
+
+/// The server the tabs should browse, or null when they should not browse
+/// one yet.
+///
+/// A client existing is not enough: the registry signs the last profile back
+/// in at launch whether or not the user wanted to go there, and with
+/// [autoConnectProvider] off the Libraries tab must not quietly show it while
+/// Home is still asking which server to open. No profiles at all with a client
+/// anyway is a test overriding [activeServerProvider], and is taken at its
+/// word.
+final connectedServerProvider = Provider<MediaLibrarySource?>((ref) {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return null;
+
+  final entered = ref.watch(serverSessionProvider);
+  final hasProfiles = ref.watch(
+    serverRegistryProvider.select((r) => r.hasServer),
+  );
+  return entered || !hasProfiles ? source : null;
+});
 
 /// A library, the order it is being read in, and what is being left out.
 ///
@@ -133,20 +154,61 @@ final serverLatestProvider = FutureProvider<List<ServerItem>>((ref) async {
   return items.take(20).toList();
 });
 
+/// The ten things most recently played and left part-way, for the Home
+/// carousel.
+final homeResumeProvider = FutureProvider<List<ServerItem>>((ref) async {
+  final source = ref.watch(connectedServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.resumable(limit: 10);
+});
+
+/// The libraries hidden from Home's "Recently added" rows.
+///
+/// Kept on the server, in the user's own configuration, so it is the same list
+/// the web client's Home settings edit — changing it here changes it there,
+/// and a second device signed in as the same user agrees with both.
+final homeExcludesProvider =
+    AsyncNotifierProvider<HomeExcludesController, Set<String>>(
+  HomeExcludesController.new,
+);
+
+class HomeExcludesController extends AsyncNotifier<Set<String>> {
+  @override
+  Future<Set<String>> build() async {
+    final source = ref.watch(connectedServerProvider);
+    if (source == null) return const <String>{};
+    return source.homeExcludes();
+  }
+
+  /// Shows or hides one library's row.
+  ///
+  /// Applied before the server answers, so the switch moves under the thumb,
+  /// and put back if the server refuses — the row must not claim a choice
+  /// that was never saved.
+  Future<void> setShown(String viewId, {required bool shown}) async {
+    final source = ref.read(connectedServerProvider);
+    final previous = state.value;
+    if (source == null || previous == null) return;
+
+    final next = <String>{...previous};
+    shown ? next.remove(viewId) : next.add(viewId);
+    state = AsyncValue<Set<String>>.data(next);
+
+    try {
+      await source.setHomeExcludes(next);
+    } on ServerException {
+      state = AsyncValue<Set<String>>.data(previous);
+      rethrow;
+    }
+  }
+}
+
 /// The newest additions inside one library, for the filtered shelf.
 final latestInViewProvider =
     FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return const <ServerItem>[];
   return source.items(viewId, limit: 20, sort: ServerSort.dateAdded);
-});
-
-/// What the user has starred inside one library.
-final libraryFavouritesProvider =
-    FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
-  final source = ref.watch(activeServerProvider);
-  if (source == null) return const <ServerItem>[];
-  return source.favourites(viewId);
 });
 
 /// The box sets one library feeds.

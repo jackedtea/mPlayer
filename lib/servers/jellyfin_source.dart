@@ -112,8 +112,8 @@ class JellyfinSource implements MediaLibrarySource {
       // Without this a library returns its folders rather than its films.
       'recursive': 'true',
       // BoxSet is here for the Collections library, whose entries are box
-      // sets rather than films. Jellyfin happens to return them anyway, but
-      // Emby honours the filter, and without it that library comes back empty.
+      // sets rather than films. Jellyfin happens to return them anyway; asking
+      // keeps that from depending on a server quirk.
       'includeItemTypes': 'Movie,Series,Video,BoxSet',
       'sortBy': sortByFor(sort),
       'sortOrder': sortOrderFor(sort, order),
@@ -134,10 +134,6 @@ class JellyfinSource implements MediaLibrarySource {
 
   @override
   Future<LibraryFilterOptions> filterOptions(String viewId) async {
-    // Emby answers 404 here — the aggregate route is Jellyfin's alone — so
-    // its four facets are read separately and put back together.
-    if (_profile.kind != ServerKind.jellyfin) return _facetOptions(viewId);
-
     try {
       final json = await _get('/Items/Filters', <String, String>{
         'userId': _profile.userId,
@@ -150,42 +146,6 @@ class JellyfinSource implements MediaLibrarySource {
       // watch-state and feature filters need nothing from this call.
       debugPrint('No filter values for $viewId: $e');
       return LibraryFilterOptions.empty;
-    }
-  }
-
-  Future<LibraryFilterOptions> _facetOptions(String viewId) async {
-    final facets = await Future.wait(<Future<List<String>>>[
-      _facet('/Genres', viewId),
-      _facet('/OfficialRatings', viewId),
-      _facet('/Tags', viewId),
-      _facet('/Years', viewId),
-    ]);
-
-    return LibraryFilterOptions(
-      genres: facets[0],
-      parentalRatings: facets[1],
-      tags: facets[2],
-      years: <int>[
-        for (final String year in facets[3])
-          if (int.tryParse(year) != null) int.parse(year),
-      ],
-    );
-  }
-
-  Future<List<String>> _facet(String path, String viewId) async {
-    try {
-      final json = await _get(path, <String, String>{
-        'userId': _profile.userId,
-        'parentId': viewId,
-        // Required: without it the server only considers the view's direct
-        // children and every facet comes back empty.
-        'recursive': 'true',
-      });
-
-      return facetNamesFromJson(json);
-    } catch (e) {
-      debugPrint('No $path facet for $viewId: $e');
-      return const <String>[];
     }
   }
 
@@ -227,13 +187,11 @@ class JellyfinSource implements MediaLibrarySource {
 
   @override
   Future<List<MediaSegment>> segments(String itemId) async {
-    // Jellyfin 10.10 and later only, and Emby has nothing like it. An older
-    // server answers 404, which `_get` would turn into a sentence about a
-    // refused request — so this is the one call that swallows its failure:
-    // no segments is the correct answer for most items on most servers, and
-    // it must not stop a film from playing.
-    if (_profile.kind != ServerKind.jellyfin) return const <MediaSegment>[];
-
+    // Jellyfin 10.10 and later only. An older server answers 404, which
+    // `_get` would turn into a sentence about a refused request — so this is
+    // the one call that swallows its failure: no segments is the correct
+    // answer for most items on most servers, and it must not stop a film from
+    // playing.
     try {
       final json = await _get('/MediaSegments/$itemId', <String, String>{
         'includeSegmentTypes': supportedSegmentKinds
@@ -402,6 +360,41 @@ class JellyfinSource implements MediaLibrarySource {
     });
 
     return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  // ---------------------------------------------------------- home
+
+  @override
+  Future<Set<String>> homeExcludes() async {
+    final config = await _userConfiguration();
+    final ids = config['LatestItemsExcludes'];
+    return ids is List ? ids.whereType<String>().toSet() : const <String>{};
+  }
+
+  @override
+  Future<void> setHomeExcludes(Set<String> viewIds) async {
+    // The whole configuration goes back, not the one field: the server
+    // replaces what it holds with what it is sent, and a body carrying only
+    // `LatestItemsExcludes` would reset the user's audio language, subtitle
+    // mode and every other preference to its default.
+    final config = await _userConfiguration();
+    config['LatestItemsExcludes'] = viewIds.toList();
+
+    // Jellyfin 10.9 moved the route here and dropped `/Users/{id}/...`.
+    await _post(
+      '/Users/Configuration',
+      config,
+      <String, String>{'userId': _profile.userId},
+    );
+  }
+
+  /// The user's own preferences, as the server stores them.
+  Future<Map<String, dynamic>> _userConfiguration() async {
+    final json = await _get('/Users/${_profile.userId}', const <String, String>{});
+    final config = json['Configuration'];
+    return config is Map<String, dynamic>
+        ? <String, dynamic>{...config}
+        : <String, dynamic>{};
   }
 
   // ---------------------------------------------------------- playlists
@@ -711,23 +704,21 @@ class JellyfinSource implements MediaLibrarySource {
   }
 }
 
-/// Which of the two servers answered.
+/// Whether the public info came from an Emby server rather than Jellyfin.
 ///
-/// `ProductName` is the obvious signal and Jellyfin sets it — but **Emby 4.9
-/// omits it entirely**, so a client that only looks there files every modern
-/// Emby as Jellyfin and then calls routes it does not have. Emby is the only
-/// one of the two that returns `RemoteAddresses`, which is the fallback.
-ServerKind dialectFromPublicInfo(Map<Object?, Object?> json) {
+/// Emby answers `/System/Info/Public` too, so a probe that only checks for a
+/// 200 would sign in to one and then call routes it does not have. The
+/// two share an ancestor; `ProductName` tells them apart where it is set, and
+/// **Emby 4.9 omits it entirely** — `RemoteAddresses`, which only Emby
+/// returns, is the fallback.
+bool isEmbyPublicInfo(Map<Object?, Object?> json) {
   final productName = json['ProductName'];
   if (productName is String && productName.isNotEmpty) {
     final normalised = productName.toLowerCase();
-    if (normalised.contains('jellyfin')) return ServerKind.jellyfin;
-    if (normalised.contains('emby')) return ServerKind.emby;
+    if (normalised.contains('jellyfin')) return false;
+    if (normalised.contains('emby')) return true;
   }
-  if (json.containsKey('RemoteAddresses')) return ServerKind.emby;
-
-  // Neither signal: assume the one this client actually implements.
-  return ServerKind.jellyfin;
+  return json.containsKey('RemoteAddresses');
 }
 
 /// Where the probe ended up, which is not always where it was sent.
@@ -789,6 +780,14 @@ class JellyfinAuth {
       );
     }
 
+    // Refused here, before a password is typed, with a sentence that says
+    // why — rather than signing in and failing on the first library.
+    if (isEmbyPublicInfo(data)) {
+      throw const ServerException(
+        'This is an Emby server. mPlayer works with Jellyfin only.',
+      );
+    }
+
     return ServerInfo(
       // Whatever the request finally reached: a server behind a redirect from
       // http to https answers here, and storing the address the user typed
@@ -797,7 +796,6 @@ class JellyfinAuth {
       name: data['ServerName'] as String? ?? url,
       version: data['Version'] as String? ?? '',
       serverId: data['Id'] as String? ?? '',
-      kind: dialectFromPublicInfo(data),
     );
   }
 
@@ -901,12 +899,9 @@ class JellyfinAuth {
 
   /// Whether the server offers Quick Connect at all.
   ///
-  /// **Emby answers 404 to every `/QuickConnect/*` route**, and an
-  /// administrator can switch the feature off in Jellyfin, so the switch in
-  /// the UI has to be led by this rather than by hope.
+  /// An administrator can switch the feature off, so the switch in the UI
+  /// has to be led by this rather than by hope.
   Future<bool> isQuickConnectEnabled(ServerInfo server) async {
-    if (server.kind != ServerKind.jellyfin) return false;
-
     try {
       final response = await _dio.getUri<dynamic>(
         Uri.parse('${server.uri}/QuickConnect/Enabled'),
@@ -1078,14 +1073,12 @@ class ServerInfo {
     required this.name,
     required this.version,
     required this.serverId,
-    required this.kind,
   });
 
   final String uri;
   final String name;
   final String version;
   final String serverId;
-  final ServerKind kind;
 }
 
 @immutable

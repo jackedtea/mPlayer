@@ -22,9 +22,12 @@ const _sizes = <String, Size>{
 /// Every reachable destination. `/player` is excluded — it needs a resolved
 /// handle passed as `extra`, and its no-handle fallback is covered separately.
 ///
-/// `/files`, `/browse` and `/downloads` are gone with the device library.
+/// `/files` and `/browse` are gone with the device library.
 const _routes = <String>[
-  '/servers',
+  '/home',
+  '/libraries',
+  '/libraries/view',
+  '/downloads',
   '/search',
   '/settings',
   '/settings/appearance',
@@ -35,7 +38,6 @@ const _routes = <String>[
   '/settings/about',
   '/settings/diagnostics',
   '/settings/privacy',
-  '/servers/home',
   '/library',
   '/library/movie',
   '/library/series',
@@ -107,9 +109,9 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
-      // With no server signed in this is the empty answer rather than
-      // sample groups.
-      expect(find.text('Nothing matched that'), findsOneWidget);
+      // With no server signed in this says where to open one, rather than
+      // claiming the server had nothing — there is no server to have asked.
+      expect(find.text('Open a server from the Home tab first.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

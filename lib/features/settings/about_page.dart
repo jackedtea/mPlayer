@@ -139,7 +139,7 @@ class _AboutPageState extends State<AboutPage> {
           ),
           child: Text(
             'mPlayer is not affiliated with, endorsed by, or sponsored by the '
-            'Jellyfin, Emby or Plex projects.',
+            'Jellyfin project.',
             style: context.texts.bodySmall?.copyWith(color: scheme.outline),
           ),
         ),

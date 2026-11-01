@@ -706,6 +706,15 @@ abstract class MediaLibrarySource {
 
   Future<List<ServerItem>> search(String query, {int limit = 40});
 
+  /// The libraries this user has hidden from Home's "Recently added" rows.
+  ///
+  /// The server keeps this — `LatestItemsExcludes` in the user's
+  /// configuration — so it is the list the web client's Home settings edit.
+  Future<Set<String>> homeExcludes();
+
+  /// Replaces the list [homeExcludes] reads.
+  Future<void> setHomeExcludes(Set<String> viewIds);
+
   /// Everything [personId] appears in.
   ///
   /// Films and series only: an actor credited on forty episodes of one show

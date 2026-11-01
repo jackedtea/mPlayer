@@ -300,7 +300,6 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
       // server's own id — the same server reached by two addresses would then
       // share one token entry.
       id: 'server-${DateTime.now().microsecondsSinceEpoch}',
-      kind: info.kind,
       name: info.name,
       uri: info.uri,
       userId: auth.userId,
@@ -349,7 +348,6 @@ class ServerRegistry extends Notifier<ServerRegistryState> {
     if (profile == null) return;
 
     final updated = profile.copyWith(
-      kind: info.kind,
       name: info.name,
       uri: info.uri,
       userId: auth.userId,

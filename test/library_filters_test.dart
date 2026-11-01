@@ -71,6 +71,10 @@ Future<void> pumpLibrary(
   );
   await tester.pumpAndSettle();
 
+  // The app opens on Home, whose "Recently added" rows ask the same route
+  // for the newest items. Only what the grid asks is under test here.
+  if (server is _RecordingServer) server.asked.clear();
+
   router.push('/library?title=Films', extra: 'v1');
   await tester.pumpAndSettle();
 }
@@ -218,18 +222,6 @@ void main() {
       expect(options.parentalRatings, isEmpty);
     });
 
-    test('a nameless facet row is dropped rather than shown blank', () {
-      expect(
-        facetNamesFromJson(<String, dynamic>{
-          'Items': <dynamic>[
-            <String, dynamic>{'Name': 'Drama'},
-            <String, dynamic>{'Id': 'no-name'},
-            <String, dynamic>{'Name': ''},
-          ],
-        }),
-        <String>['Drama'],
-      );
-    });
   });
 
   group('the library screen', () {

@@ -4,36 +4,24 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
-import '../../servers/server_registry.dart';
-import 'servers_list_page.dart';
 import 'add_server_sheet.dart';
 
-/// Screen 1c — the Server tab with nothing configured.
+/// Screen 1c — the Home tab with nothing configured.
 ///
 /// Still an empty state and never a login wall, but the copy had to change:
 /// it used to say local playback already worked without a server, which was
 /// the whole reason this was opt-in. A server is the only thing the app plays
 /// from now, so the copy says what to add and what it gets.
-class ServersEmptyPage extends ConsumerWidget {
+///
+/// Which face the tab shows is [HomeTabPage]'s decision, not this page's.
+class ServersEmptyPage extends StatelessWidget {
   const ServersEmptyPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // The Server tab is one destination with two faces: nothing configured
-    // yet, or the list of what is. Choosing here keeps the tab's back stack
-    // from growing an empty state under every visit to the list.
-    //
-    // The list rather than a server's own screen: dropping straight into
-    // whichever was used last left that screen with a back button pointing at
-    // nothing, and a second server unreachable.
-    if (ref.watch(serverRegistryProvider).hasServer) {
-      return const ServersListPage();
-    }
-
+  Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
 

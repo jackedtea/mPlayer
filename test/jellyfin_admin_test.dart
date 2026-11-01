@@ -49,7 +49,6 @@ ResponseBody _json(Object body, {int status = 200}) {
 
 const _profile = ServerProfile(
   id: 'p1',
-  kind: ServerKind.jellyfin,
   name: 'Home',
   uri: 'https://media.home.lan',
   userId: 'u1',

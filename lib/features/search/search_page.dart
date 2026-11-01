@@ -13,8 +13,16 @@ import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
 import '../servers/server_library.dart';
+import '../../widgets/no_server_note.dart';
 import '../../widgets/section_header.dart';
 import 'search_results.dart';
+
+/// Bumped by the navigation bar when Search is tapped while already open.
+///
+/// The same gesture as Google Play's: the first tap opens the tab, the second
+/// puts the cursor in the field. A counter rather than a flag, so every
+/// re-tap is a change a listener sees, including the third and the fourth.
+final ValueNotifier<int> searchFocusRequests = ValueNotifier<int>(0);
 
 /// Screen 1n — search the signed-in server.
 ///
@@ -38,6 +46,7 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final List<RecentSearch> _recents = <RecentSearch>[];
   final TextEditingController _query = TextEditingController();
+  final FocusNode _focus = FocusNode();
 
   /// Empty means the idle state; anything else shows grouped results.
   String _submitted = '';
@@ -45,9 +54,26 @@ class _SearchPageState extends State<SearchPage> {
   bool get _isActive => _submitted.isNotEmpty;
 
   @override
+  void initState() {
+    super.initState();
+    searchFocusRequests.addListener(_focusField);
+  }
+
+  @override
   void dispose() {
+    searchFocusRequests.removeListener(_focusField);
+    _focus.dispose();
     _query.dispose();
     super.dispose();
+  }
+
+  void _focusField() {
+    if (!mounted) return;
+    _focus.requestFocus();
+    // The whole query selected, so typing replaces it — a re-tap is a new
+    // search far more often than an edit of the last one.
+    _query.selection =
+        TextSelection(baseOffset: 0, extentOffset: _query.text.length);
   }
 
   @override
@@ -70,6 +96,7 @@ class _SearchPageState extends State<SearchPage> {
               ),
               child: SearchBar(
                 controller: _query,
+                focusNode: _focus,
                 hintText: l10n.searchEverything,
                 // Back replaces the magnifier once a query is active, so
                 // there is always a way out of the results.
@@ -195,6 +222,7 @@ class _ServerResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final profile = ref.watch(serverRegistryProvider).active;
+    if (ref.watch(connectedServerProvider) == null) return const NoServerNote();
     final request = ref.watch(serverSearchProvider(query));
 
     final items = request.value ?? const <ServerItem>[];

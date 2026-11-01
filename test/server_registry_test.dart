@@ -10,7 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/servers/jellyfin_source.dart';
-import 'package:mplayer/servers/server_profile.dart';
 import 'package:mplayer/servers/server_registry.dart';
 
 import 'fake_keychain.dart';
@@ -20,7 +19,6 @@ const _info = ServerInfo(
   name: 'Home',
   version: '10.9',
   serverId: 'srv1',
-  kind: ServerKind.jellyfin,
 );
 
 const _auth = AuthResult(
@@ -133,6 +131,32 @@ void main() {
       expect(profiles, hasLength(1));
       expect(profiles.single.name, 'Good');
     });
+
+    test('a profile saved for an Emby server is dropped', () async {
+      // Emby support is gone; a kept profile would sign in and then fail on
+      // every Jellyfin-only route behind it.
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'configured_servers_v1': <String>[
+          jsonEncode(<String, dynamic>{
+            'id': 'p1',
+            'kind': 'emby',
+            'name': 'Old Emby',
+            'uri': 'https://emby.lan',
+          }),
+          jsonEncode(<String, dynamic>{
+            'id': 'p2',
+            'kind': 'jellyfin',
+            'name': 'Good',
+            'uri': 'https://ok.lan',
+          }),
+        ],
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final profiles = await ServerRepository(prefs: prefs).loadProfiles();
+
+      expect(profiles.map((p) => p.name), <String>['Good']);
+    });
   });
 
   group('device id', () {
@@ -192,7 +216,6 @@ void main() {
           name: 'Other',
           version: '10.9',
           serverId: 'srv2',
-          kind: ServerKind.jellyfin,
         ),
         auth: _auth,
       );

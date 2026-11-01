@@ -110,17 +110,77 @@ abstract class AppLocalizations {
   /// **'Files'**
   String get navStorage;
 
-  /// No description provided for @navServer.
-  ///
-  /// In en, this message translates to:
-  /// **'Servers'**
-  String get navServer;
-
   /// No description provided for @navSearch.
   ///
   /// In en, this message translates to:
   /// **'Search'**
   String get navSearch;
+
+  /// No description provided for @navHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get navHome;
+
+  /// No description provided for @tabBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse'**
+  String get tabBrowse;
+
+  /// No description provided for @recentlyAddedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently added in {library}'**
+  String recentlyAddedIn(String library);
+
+  /// No description provided for @customizeHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize home'**
+  String get customizeHome;
+
+  /// No description provided for @customizeHomeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which libraries show their newest items. Saved to your account on the server, so the web app shows the same.'**
+  String get customizeHomeSub;
+
+  /// No description provided for @changeServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch server'**
+  String get changeServer;
+
+  /// No description provided for @chooseServerFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a server from the Home tab first.'**
+  String get chooseServerFirst;
+
+  /// No description provided for @settingsSectionApp.
+  ///
+  /// In en, this message translates to:
+  /// **'App settings'**
+  String get settingsSectionApp;
+
+  /// No description provided for @settingsSectionServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server settings'**
+  String get settingsSectionServer;
+
+  /// No description provided for @noDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing downloaded'**
+  String get noDownloads;
+
+  /// No description provided for @downloadsComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving films and episodes for offline viewing is coming in a later version.'**
+  String get downloadsComingSoon;
 
   /// No description provided for @settings.
   ///
@@ -317,7 +377,7 @@ abstract class AppLocalizations {
   /// No description provided for @otherServersNotice.
   ///
   /// In en, this message translates to:
-  /// **'Emby and Plex servers can be added here too — the tab is not Jellyfin-only.'**
+  /// **'mPlayer works with Jellyfin servers. Emby and Plex are not supported.'**
   String get otherServersNotice;
 
   /// No description provided for @previewConnectedServer.
@@ -379,12 +439,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Libraries'**
   String get libraries;
-
-  /// No description provided for @tabMovies.
-  ///
-  /// In en, this message translates to:
-  /// **'Movies'**
-  String get tabMovies;
 
   /// No description provided for @settingsAdmin.
   ///
@@ -812,29 +866,11 @@ abstract class AppLocalizations {
   /// **'Run'**
   String get actionRun;
 
-  /// No description provided for @tabShows.
-  ///
-  /// In en, this message translates to:
-  /// **'Shows'**
-  String get tabShows;
-
-  /// No description provided for @tabItems.
-  ///
-  /// In en, this message translates to:
-  /// **'All'**
-  String get tabItems;
-
   /// No description provided for @tabSuggestions.
   ///
   /// In en, this message translates to:
   /// **'Suggestions'**
   String get tabSuggestions;
-
-  /// No description provided for @tabFavourites.
-  ///
-  /// In en, this message translates to:
-  /// **'Favourites'**
-  String get tabFavourites;
 
   /// No description provided for @tabCollections.
   ///
@@ -847,12 +883,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Playlists'**
   String get tabPlaylists;
-
-  /// No description provided for @noFavourites.
-  ///
-  /// In en, this message translates to:
-  /// **'Nothing starred in this library yet.'**
-  String get noFavourites;
 
   /// No description provided for @noCollections.
   ///
@@ -1003,12 +1033,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Where to look'**
   String get whereToLook;
-
-  /// No description provided for @allSources.
-  ///
-  /// In en, this message translates to:
-  /// **'All sources'**
-  String get allSources;
 
   /// No description provided for @backToSources.
   ///
@@ -1219,6 +1243,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Default library view'**
   String get defaultLibraryView;
+
+  /// No description provided for @autoConnectServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the last server on launch'**
+  String get autoConnectServer;
+
+  /// No description provided for @autoConnectServerSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip the server list and sign in to the server used most recently'**
+  String get autoConnectServerSub;
 
   /// No description provided for @density.
   ///
@@ -1577,7 +1613,7 @@ abstract class AppLocalizations {
   /// No description provided for @notAffiliated.
   ///
   /// In en, this message translates to:
-  /// **'mPlayer is not affiliated with, endorsed by, or sponsored by the Jellyfin, Emby or Plex projects.'**
+  /// **'mPlayer is not affiliated with, endorsed by, or sponsored by the Jellyfin project.'**
   String get notAffiliated;
 
   /// No description provided for @subtitles.
@@ -2480,6 +2516,36 @@ abstract class AppLocalizations {
   /// **'Add server'**
   String get addServer;
 
+  /// No description provided for @addServerSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to your Jellyfin server to browse and play its libraries.'**
+  String get addServerSub;
+
+  /// No description provided for @addServerStepServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get addServerStepServer;
+
+  /// No description provided for @addServerStepAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get addServerStepAccount;
+
+  /// No description provided for @quickConnectShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Connect'**
+  String get quickConnectShort;
+
+  /// No description provided for @quickConnectSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings → Quick Connect on any device that is already signed in, and enter the code there. No password is typed here.'**
+  String get quickConnectSteps;
+
   /// No description provided for @removeServer.
   ///
   /// In en, this message translates to:
@@ -2551,12 +2617,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Password'**
   String get password;
-
-  /// No description provided for @quickConnectInstead.
-  ///
-  /// In en, this message translates to:
-  /// **'Quick connect instead'**
-  String get quickConnectInstead;
 
   /// No description provided for @quickConnectHint.
   ///

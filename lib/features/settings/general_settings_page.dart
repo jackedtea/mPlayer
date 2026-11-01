@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/locale_controller.dart';
 import '../../l10n/app_localizations.dart';
+import '../../servers/auto_connect.dart';
 import 'settings_widgets.dart';
 
 /// Screen 1l, General. The design lists language here.
@@ -18,6 +19,7 @@ class GeneralSettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final locale = ref.watch(localeProvider);
+    final autoConnect = ref.watch(autoConnectProvider);
 
     return SettingsScaffold(
       title: l10n.settingsGeneral,
@@ -31,6 +33,13 @@ class GeneralSettingsPage extends ConsumerWidget {
         SettingsValueRow(
           title: l10n.defaultLibraryView,
           value: l10n.viewGrid,
+        ),
+        SettingsSwitchRow(
+          title: l10n.autoConnectServer,
+          subtitle: l10n.autoConnectServerSub,
+          value: autoConnect,
+          onChanged: (on) =>
+              ref.read(autoConnectProvider.notifier).setEnabled(on),
         ),
       ],
     );

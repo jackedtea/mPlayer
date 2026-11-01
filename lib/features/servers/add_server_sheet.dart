@@ -13,6 +13,7 @@ import '../../servers/jellyfin_source.dart';
 import '../../servers/media_library_source.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/server_profile.dart';
+import '../../servers/auto_connect.dart';
 import '../../servers/server_registry.dart';
 
 /// Screen 1c, second frame — the modal "Add a server" bottom sheet.
@@ -37,6 +38,7 @@ class AddServerSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      showDragHandle: true,
       builder: (_) => AddServerSheet(editing: editing),
     );
   }
@@ -280,6 +282,11 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
 
     if (editing == null) {
       await registry.add(info: server, auth: result);
+      // A server just added is the one the user wants to be in, whether or
+      // not launches open the last one by themselves.
+      if (ref.read(serverRegistryProvider).source != null) {
+        ref.read(serverSessionProvider.notifier).enter();
+      }
     } else {
       await registry.updateProfile(editing.id, info: server, auth: result);
     }
@@ -292,7 +299,9 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
-    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+    final busy =
+        _stage == _Stage.signingIn || _stage == _Stage.waitingForApproval;
 
     return Padding(
       // Lift the sheet above the keyboard rather than letting it overlap.
@@ -309,96 +318,135 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  widget.editing == null
-                      ? AppLocalizations.of(context).addServer
-                      : AppLocalizations.of(context).editServer,
-                  style: context.texts.headlineSmall,
-                ),
-              ),
-              SizedBox(height: spacing.xl - spacing.xs),
+              _SheetHeader(editing: widget.editing != null),
+              SizedBox(height: spacing.xl),
+
+              // ---------------------------------------------- 1. server
+              _StepLabel(number: 1, text: l10n.addServerStepServer),
+              SizedBox(height: spacing.sm),
               TextField(
                 controller: _address,
                 autofocus: widget.editing == null,
                 keyboardType: TextInputType.url,
                 autocorrect: false,
-                enabled: _stage != _Stage.waitingForApproval,
-                decoration: InputDecoration(
-                  filled: true,
-                  labelText: AppLocalizations.of(context).serverAddress,
+                enabled: !busy,
+                decoration: _fieldDecoration(
+                  context,
+                  label: l10n.serverAddress,
+                  icon: Icons.link_rounded,
                   // Not translated: an address is an address, and the design
                   // uses this exact one as its example.
-                  hintText: 'http://192.168.1.20:8096',
-                  border: const UnderlineInputBorder(),
+                  hint: 'http://192.168.1.20:8096',
+                  suffix: _server != null
+                      ? Icon(
+                          Icons.check_circle_rounded,
+                          color: context.semantic.success,
+                        )
+                      : (_error != null
+                          ? Icon(
+                              Icons.error_rounded,
+                              color: context.colors.error,
+                            )
+                          : null),
                 ),
                 onChanged: (_) => _onAddressChanged(),
               ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  spacing.lg,
-                  spacing.xs,
-                  spacing.lg,
-                  0,
-                ),
-                child: _DetectionLine(server: _server, error: _error),
+              SizedBox(height: spacing.sm),
+              // A found server is a card, so the step reads as done; until
+              // then the line under the field prompts or says what is wrong.
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _server != null
+                    ? _ServerCard(key: const ValueKey('found'), server: _server!)
+                    : Padding(
+                        key: const ValueKey('line'),
+                        padding: EdgeInsets.symmetric(horizontal: spacing.lg),
+                        child: _DetectionLine(error: _error),
+                      ),
               ),
+              SizedBox(height: spacing.xl),
 
+              // --------------------------------------------- 2. account
+              _StepLabel(number: 2, text: l10n.addServerStepAccount),
+              SizedBox(height: spacing.sm),
               if (_signedInAlready)
                 // No password field, because none is needed: the credential
                 // already stored was just checked against this address and
                 // accepted. Asking again would be asking the user to re-prove
                 // something the app can verify for itself.
-                Padding(
-                  padding: EdgeInsets.only(top: spacing.lg),
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      Icons.verified_user_rounded,
-                      color: context.semantic.success,
-                    ),
-                    title: Text(
-                      AppLocalizations.of(context)
-                          .signedInAs(_existingSession!.username),
-                    ),
-                    subtitle: Text(AppLocalizations.of(context).signInAgain),
-                    trailing: TextButton(
-                      // A way out for the case this cannot detect: the account
-                      // itself is being changed, not just the address.
-                      onPressed: () => setState(() {
-                        _existingSession = null;
-                        _password.clear();
-                        _stage = _Stage.found;
-                      }),
-                      child: Text(AppLocalizations.of(context).change),
-                    ),
-                  ),
+                _SignedInCard(
+                  username: _existingSession!.username,
+                  // A way out for the case this cannot detect: the account
+                  // itself is being changed, not just the address.
+                  onChange: () => setState(() {
+                    _existingSession = null;
+                    _password.clear();
+                    _stage = _Stage.found;
+                  }),
                 )
               else if (_stage == _Stage.waitingForApproval)
                 _QuickConnectPanel(request: _quickConnectRequest)
               else ...<Widget>[
-                SizedBox(height: spacing.xl - spacing.xs),
-                if (!_quickConnect) ...<Widget>[
+                // Only offered where the server actually has it: a Jellyfin
+                // administrator can switch it off. Before a server is found
+                // there is nothing to choose between.
+                if (_quickConnectAvailable) ...<Widget>[
+                  SegmentedButton<bool>(
+                    segments: <ButtonSegment<bool>>[
+                      ButtonSegment<bool>(
+                        value: false,
+                        icon: const Icon(Icons.password_rounded),
+                        label: Text(l10n.password),
+                      ),
+                      ButtonSegment<bool>(
+                        value: true,
+                        icon: const Icon(Icons.qr_code_rounded),
+                        label: Text(l10n.quickConnectShort),
+                      ),
+                    ],
+                    selected: <bool>{_quickConnect},
+                    onSelectionChanged: (v) =>
+                        setState(() => _quickConnect = v.single),
+                  ),
+                  SizedBox(height: spacing.md),
+                ],
+                if (_quickConnect)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: spacing.xs),
+                    child: Text(
+                      l10n.quickConnectHint,
+                      style: context.texts.bodySmall?.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                else ...<Widget>[
                   TextField(
                     controller: _username,
                     autocorrect: false,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context).username,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const <String>[AutofillHints.username],
+                    decoration: _fieldDecoration(
+                      context,
+                      label: l10n.username,
+                      icon: Icons.person_outline_rounded,
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
-                  SizedBox(height: spacing.lg),
+                  SizedBox(height: spacing.md),
                   TextField(
                     controller: _password,
                     obscureText: _obscurePassword,
+                    autofillHints: const <String>[AutofillHints.password],
                     onSubmitted: (_) => _canSignIn ? _signIn() : null,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context).password,
-                      suffixIcon: IconButton(
+                    decoration: _fieldDecoration(
+                      context,
+                      label: l10n.password,
+                      icon: Icons.lock_outline_rounded,
+                      suffix: IconButton(
                         tooltip: _obscurePassword
-                            ? AppLocalizations.of(context).showPassword
-                            : AppLocalizations.of(context).hidePassword,
+                            ? l10n.showPassword
+                            : l10n.hidePassword,
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_off_rounded
@@ -411,62 +459,42 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
                     ),
                   ),
                 ],
-                SizedBox(height: spacing.lg),
-                // Only offered where the server actually has it: Emby answers
-                // 404 to every Quick Connect route, and a Jellyfin admin can
-                // switch it off.
-                if (_quickConnectAvailable)
-                  SwitchListTile(
-                    value: _quickConnect,
-                    onChanged: (v) => setState(() => _quickConnect = v),
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      AppLocalizations.of(context).quickConnectInstead,
-                    ),
-                    subtitle: Text(
-                      AppLocalizations.of(context).quickConnectHint,
-                    ),
-                  ),
               ],
 
-              SizedBox(height: spacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: <Widget>[
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(AppLocalizations.of(context).cancel),
-                  ),
-                  SizedBox(width: spacing.sm),
-                  if (_stage == _Stage.signingIn ||
-                      _stage == _Stage.waitingForApproval)
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: spacing.lg),
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: scheme.primary,
-                        ),
-                      ),
-                    )
-                  else
-                    FilledButton(
-                      onPressed: _signedInAlready
+              SizedBox(height: spacing.xl),
+              SizedBox(
+                height: 52,
+                child: FilledButton(
+                  onPressed: busy
+                      ? null
+                      : _signedInAlready
                           ? _saveWithStoredSession
                           : (_quickConnect
                               ? (_server == null ? null : _startQuickConnect)
                               : (_canSignIn ? _signIn : null)),
-                      child: Text(
-                        _signedInAlready
-                            ? AppLocalizations.of(context).save
-                            : (_quickConnect
-                                  ? AppLocalizations.of(context).getACode
-                                  : AppLocalizations.of(context).connect),
-                      ),
-                    ),
-                ],
+                  // The spinner sits in the button it belongs to, so the
+                  // button does not vanish from under the thumb that pressed
+                  // it.
+                  child: busy
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        )
+                      : Text(
+                          _signedInAlready
+                              ? l10n.save
+                              : (_quickConnect ? l10n.getACode : l10n.connect),
+                        ),
+                ),
+              ),
+              SizedBox(height: spacing.xs),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
               ),
             ],
           ),
@@ -485,17 +513,203 @@ class _AddServerSheetState extends ConsumerState<AddServerSheet> {
       _stage == _Stage.found;
 }
 
-/// The line under the address field: what was found, or what went wrong.
-class _DetectionLine extends StatelessWidget {
-  const _DetectionLine({required this.server, required this.error});
+/// The rounded, filled field every input on the sheet uses.
+InputDecoration _fieldDecoration(
+  BuildContext context, {
+  required String label,
+  required IconData icon,
+  String? hint,
+  Widget? suffix,
+}) {
+  final radius = BorderRadius.circular(context.radii.card);
 
-  final ServerInfo? server;
+  return InputDecoration(
+    labelText: label,
+    hintText: hint,
+    filled: true,
+    fillColor: context.colors.surfaceContainerHigh,
+    prefixIcon: Icon(icon),
+    suffixIcon: suffix,
+    border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+    enabledBorder:
+        OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: radius,
+      borderSide: BorderSide(color: context.colors.primary, width: 2),
+    ),
+  );
+}
+
+/// The app mark, the title, and a sentence saying what the sheet is for.
+class _SheetHeader extends StatelessWidget {
+  const _SheetHeader({required this.editing});
+
+  final bool editing;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: scheme.primaryContainer,
+            borderRadius: BorderRadius.circular(context.radii.card),
+          ),
+          child: Icon(
+            editing ? Icons.edit_rounded : Icons.dns_rounded,
+            color: scheme.onPrimaryContainer,
+          ),
+        ),
+        SizedBox(width: spacing.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                editing ? l10n.editServer : l10n.addServer,
+                style: context.texts.headlineSmall,
+              ),
+              SizedBox(height: spacing.xs),
+              Text(
+                l10n.addServerSub,
+                style: context.texts.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "① Server" — the numbered heading over each half of the sheet.
+class _StepLabel extends StatelessWidget {
+  const _StepLabel({required this.number, required this.text});
+
+  final int number;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+
+    return Row(
+      children: <Widget>[
+        CircleAvatar(
+          radius: 10,
+          backgroundColor: scheme.primary,
+          child: Text(
+            '$number',
+            style: context.texts.labelSmall?.copyWith(color: scheme.onPrimary),
+          ),
+        ),
+        SizedBox(width: context.spacing.sm),
+        Text(
+          text,
+          style: context.texts.titleSmall?.copyWith(color: scheme.primary),
+        ),
+      ],
+    );
+  }
+}
+
+/// The server the address answered with.
+class _ServerCard extends StatelessWidget {
+  const _ServerCard({super.key, required this.server});
+
+  final ServerInfo server;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final host = Uri.tryParse(server.uri)?.authority ?? server.uri;
+
+    return Container(
+      padding: EdgeInsets.all(spacing.md),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: context.radii.cardAll,
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.check_circle_rounded, color: context.semantic.success),
+          SizedBox(width: spacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  server.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.titleSmall
+                      ?.copyWith(color: scheme.onSecondaryContainer),
+                ),
+                Text(
+                  <String>[
+                    'Jellyfin ${server.version}'.trim(),
+                    host,
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.bodySmall
+                      ?.copyWith(color: scheme.onSecondaryContainer),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The stored session that still opens the server being edited.
+class _SignedInCard extends StatelessWidget {
+  const _SignedInCard({required this.username, required this.onChange});
+
+  final String username;
+  final VoidCallback onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colors.surfaceContainerHigh,
+        borderRadius: context.radii.cardAll,
+      ),
+      child: ListTile(
+        leading: Icon(
+          Icons.verified_user_rounded,
+          color: context.semantic.success,
+        ),
+        title: Text(l10n.signedInAs(username)),
+        subtitle: Text(l10n.signInAgain),
+        trailing: TextButton(onPressed: onChange, child: Text(l10n.change)),
+      ),
+    );
+  }
+}
+
+/// The line under the address field: a prompt, or what went wrong.
+class _DetectionLine extends StatelessWidget {
+  const _DetectionLine({required this.error});
+
   final String? error;
 
   @override
   Widget build(BuildContext context) {
     final scheme = context.colors;
-    final semantic = context.semantic;
 
     if (error != null) {
       return Text(
@@ -509,28 +723,6 @@ class _DetectionLine extends StatelessWidget {
     // vanished under the address field on the way to typing one — motion
     // reporting on the app's own busywork rather than on anything the user
     // asked about. The outcome is what matters, and it arrives either way.
-    //
-    // The line keeps its idle prompt rather than collapsing, so the fields
-    // below do not jump each time.
-
-    final found = server;
-    if (found != null) {
-      return Row(
-        children: <Widget>[
-          Icon(Icons.check_circle_rounded, size: 14, color: semantic.success),
-          SizedBox(width: context.spacing.sm),
-          Expanded(
-            child: Text(
-              '${found.kind.label} ${found.version} · ${found.name}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.texts.bodySmall?.copyWith(color: semantic.success),
-            ),
-          ),
-        ],
-      );
-    }
-
     return Text(
       AppLocalizations.of(context).detectHint,
       style: context.texts.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
@@ -548,39 +740,29 @@ class _QuickConnectPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
 
-    return Padding(
-      padding: EdgeInsets.only(top: spacing.xl),
+    return Container(
+      padding: EdgeInsets.all(spacing.lg),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: context.radii.cardAll,
+      ),
       child: Column(
         children: <Widget>[
-          Text(
-            AppLocalizations.of(context).enterCodeInJellyfin,
-            style: context.texts.bodyMedium,
-          ),
+          Text(l10n.enterCodeInJellyfin, style: context.texts.bodyMedium),
           SizedBox(height: spacing.md),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.xl,
-              vertical: spacing.md,
-            ),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHigh,
-              borderRadius: context.radii.cardAll,
-            ),
-            child: Text(
-              request?.code ?? '…',
-              style: context.texts.headlineMedium?.copyWith(
-                fontFeatures: const <FontFeature>[
-                  FontFeature.tabularFigures(),
-                ],
-                letterSpacing: 6,
-              ),
+          Text(
+            request?.code ?? '…',
+            style: context.texts.displaySmall?.copyWith(
+              color: scheme.primary,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+              letterSpacing: 8,
             ),
           ),
           SizedBox(height: spacing.md),
           Text(
-            'Settings → Quick Connect on any device already signed in. '
-            'No password is typed here.',
+            l10n.quickConnectSteps,
             textAlign: TextAlign.center,
             style: context.texts.bodySmall
                 ?.copyWith(color: scheme.onSurfaceVariant),

@@ -108,7 +108,7 @@ class _ServerCard extends ConsumerWidget {
     final resolved = info;
     final lines = <String>[
       if (resolved != null && resolved.version.isNotEmpty)
-        '${profile?.kind.label ?? ''} ${resolved.version}'.trim(),
+        'Jellyfin ${resolved.version}',
       if (resolved != null)
         <String>[resolved.operatingSystem, resolved.architecture]
             .where((s) => s.isNotEmpty)

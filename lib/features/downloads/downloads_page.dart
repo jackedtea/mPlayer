@@ -4,13 +4,17 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/library_models.dart';
-import '../../core/sample_library.dart';
+import '../../l10n/app_localizations.dart';
 
-/// Screen 1i — offline copies.
+/// Screen 1i — offline copies, and the Downloads tab.
+///
+/// **Not built yet.** The tab exists so the bar has its final shape; nothing
+/// feeds the list, so it always shows the empty state. It used to show the
+/// sample library's downloads, which in a tab of its own would read as real
+/// files on the device. The tiles stay for when the download manager lands.
 ///
 /// Status is carried by colour as well as words: green for available, error
 /// for blocked, primary for active. The colours come from the scheme, so this
@@ -21,23 +25,11 @@ class DownloadsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
-    final downloads = SampleLibrary.downloads;
+    const downloads = <DownloadItem>[];
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text('Downloads'),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
-            tooltip: 'More',
-            onPressed: () => _notYet(context, 'Download settings'),
-          ),
-        ],
-      ),
+      // No back arrow: this is a navigation destination now.
+      appBar: AppBar(title: Text(AppLocalizations.of(context).downloads)),
       body: downloads.isEmpty
           ? const _EmptyState()
           : ListView.separated(
@@ -175,11 +167,13 @@ class _EmptyState extends StatelessWidget {
               color: scheme.outline,
             ),
             SizedBox(height: spacing.lg),
-            Text('Nothing downloaded', style: context.texts.titleMedium),
+            Text(
+              AppLocalizations.of(context).noDownloads,
+              style: context.texts.titleMedium,
+            ),
             SizedBox(height: spacing.sm),
             Text(
-              'Downloads are queued on Wi-Fi by default and expire per the '
-              "server's policy.",
+              AppLocalizations.of(context).downloadsComingSoon,
               textAlign: TextAlign.center,
               style: context.texts.bodySmall
                   ?.copyWith(color: scheme.onSurfaceVariant),

@@ -15,10 +15,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navStorage => 'Files';
 
   @override
-  String get navServer => 'Servers';
+  String get navSearch => 'Search';
 
   @override
-  String get navSearch => 'Search';
+  String get navHome => 'Home';
+
+  @override
+  String get tabBrowse => 'Browse';
+
+  @override
+  String recentlyAddedIn(String library) {
+    return 'Recently added in $library';
+  }
+
+  @override
+  String get customizeHome => 'Customize home';
+
+  @override
+  String get customizeHomeSub =>
+      'Choose which libraries show their newest items. Saved to your account on the server, so the web app shows the same.';
+
+  @override
+  String get changeServer => 'Switch server';
+
+  @override
+  String get chooseServerFirst => 'Open a server from the Home tab first.';
+
+  @override
+  String get settingsSectionApp => 'App settings';
+
+  @override
+  String get settingsSectionServer => 'Server settings';
+
+  @override
+  String get noDownloads => 'Nothing downloaded';
+
+  @override
+  String get downloadsComingSoon =>
+      'Saving films and episodes for offline viewing is coming in a later version.';
 
   @override
   String get settings => 'Settings';
@@ -129,7 +163,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get otherServersNotice =>
-      'Emby and Plex servers can be added here too — the tab is not Jellyfin-only.';
+      'mPlayer works with Jellyfin servers. Emby and Plex are not supported.';
 
   @override
   String get previewConnectedServer => 'Preview a connected server';
@@ -160,9 +194,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraries => 'Libraries';
-
-  @override
-  String get tabMovies => 'Movies';
 
   @override
   String get settingsAdmin => 'Server administration';
@@ -409,25 +440,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionRun => 'Run';
 
   @override
-  String get tabShows => 'Shows';
-
-  @override
-  String get tabItems => 'All';
-
-  @override
   String get tabSuggestions => 'Suggestions';
-
-  @override
-  String get tabFavourites => 'Favourites';
 
   @override
   String get tabCollections => 'Collections';
 
   @override
   String get tabPlaylists => 'Playlists';
-
-  @override
-  String get noFavourites => 'Nothing starred in this library yet.';
 
   @override
   String get noCollections => 'No collections draw on this library.';
@@ -516,9 +535,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get whereToLook => 'Where to look';
-
-  @override
-  String get allSources => 'All sources';
 
   @override
   String get backToSources => 'Back to sources';
@@ -627,6 +643,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get defaultLibraryView => 'Default library view';
+
+  @override
+  String get autoConnectServer => 'Open the last server on launch';
+
+  @override
+  String get autoConnectServerSub =>
+      'Skip the server list and sign in to the server used most recently';
 
   @override
   String get density => 'Density';
@@ -819,7 +842,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notAffiliated =>
-      'mPlayer is not affiliated with, endorsed by, or sponsored by the Jellyfin, Emby or Plex projects.';
+      'mPlayer is not affiliated with, endorsed by, or sponsored by the Jellyfin project.';
 
   @override
   String get subtitles => 'Subtitles';
@@ -1325,6 +1348,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addServer => 'Add server';
 
   @override
+  String get addServerSub =>
+      'Sign in to your Jellyfin server to browse and play its libraries.';
+
+  @override
+  String get addServerStepServer => 'Server';
+
+  @override
+  String get addServerStepAccount => 'Account';
+
+  @override
+  String get quickConnectShort => 'Quick Connect';
+
+  @override
+  String get quickConnectSteps =>
+      'Open Settings → Quick Connect on any device that is already signed in, and enter the code there. No password is typed here.';
+
+  @override
   String get removeServer => 'Remove server';
 
   @override
@@ -1366,9 +1406,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get password => 'Password';
-
-  @override
-  String get quickConnectInstead => 'Quick connect instead';
 
   @override
   String get quickConnectHint => 'Approve from another signed-in device';

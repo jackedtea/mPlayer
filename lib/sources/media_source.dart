@@ -231,8 +231,8 @@ class MediaSourceException implements Exception {
 /// One place media comes from.
 ///
 /// One implementation today, `JellyfinMediaSource`. The player depends on
-/// this interface alone and not on Jellyfin, which is what would let an Emby
-/// or Plex driver land beside it without the player noticing.
+/// this interface alone and not on Jellyfin, which is what would let another
+/// server's driver land beside it without the player noticing.
 abstract interface class MediaSource {
   /// Matches the `id` of the [MediaSourceRef] this source was configured from.
   String get id;

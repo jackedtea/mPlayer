@@ -15,10 +15,44 @@ class AppLocalizationsVi extends AppLocalizations {
   String get navStorage => 'Tệp';
 
   @override
-  String get navServer => 'Máy chủ';
+  String get navSearch => 'Tìm kiếm';
 
   @override
-  String get navSearch => 'Tìm kiếm';
+  String get navHome => 'Trang chủ';
+
+  @override
+  String get tabBrowse => 'Duyệt';
+
+  @override
+  String recentlyAddedIn(String library) {
+    return 'Mới thêm vào $library';
+  }
+
+  @override
+  String get customizeHome => 'Tùy chỉnh trang chủ';
+
+  @override
+  String get customizeHomeSub =>
+      'Chọn thư viện nào hiện nội dung mới nhất. Được lưu vào tài khoản của bạn trên máy chủ, nên ứng dụng web cũng hiển thị giống vậy.';
+
+  @override
+  String get changeServer => 'Đổi máy chủ';
+
+  @override
+  String get chooseServerFirst => 'Hãy mở một máy chủ từ tab Trang chủ trước.';
+
+  @override
+  String get settingsSectionApp => 'Cài đặt ứng dụng';
+
+  @override
+  String get settingsSectionServer => 'Cài đặt máy chủ';
+
+  @override
+  String get noDownloads => 'Chưa tải xuống gì';
+
+  @override
+  String get downloadsComingSoon =>
+      'Tính năng lưu phim và tập phim để xem ngoại tuyến sẽ có trong phiên bản sau.';
 
   @override
   String get settings => 'Cài đặt';
@@ -129,7 +163,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get otherServersNotice =>
-      'Máy chủ Emby và Plex cũng thêm được ở đây — tab này không chỉ dành cho Jellyfin.';
+      'mPlayer dùng với máy chủ Jellyfin. Emby và Plex không được hỗ trợ.';
 
   @override
   String get previewConnectedServer => 'Xem thử máy chủ đã kết nối';
@@ -161,9 +195,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get libraries => 'Thư viện';
-
-  @override
-  String get tabMovies => 'Phim lẻ';
 
   @override
   String get settingsAdmin => 'Quản trị máy chủ';
@@ -410,26 +441,13 @@ class AppLocalizationsVi extends AppLocalizations {
   String get actionRun => 'Chạy';
 
   @override
-  String get tabShows => 'Phim bộ';
-
-  @override
-  String get tabItems => 'Tất cả';
-
-  @override
   String get tabSuggestions => 'Gợi ý';
-
-  @override
-  String get tabFavourites => 'Yêu thích';
 
   @override
   String get tabCollections => 'Bộ sưu tập';
 
   @override
   String get tabPlaylists => 'Danh sách phát';
-
-  @override
-  String get noFavourites =>
-      'Chưa có mục nào được đánh dấu trong thư viện này.';
 
   @override
   String get noCollections => 'Không có bộ sưu tập nào lấy từ thư viện này.';
@@ -518,9 +536,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get whereToLook => 'Tìm ở đâu';
-
-  @override
-  String get allSources => 'Mọi nguồn';
 
   @override
   String get backToSources => 'Quay lại danh sách nguồn';
@@ -629,6 +644,13 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get defaultLibraryView => 'Kiểu xem thư viện mặc định';
+
+  @override
+  String get autoConnectServer => 'Tự động vào máy chủ gần nhất';
+
+  @override
+  String get autoConnectServerSub =>
+      'Bỏ qua danh sách máy chủ và đăng nhập vào máy chủ dùng gần đây nhất';
 
   @override
   String get density => 'Mật độ';
@@ -821,7 +843,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get notAffiliated =>
-      'mPlayer không liên kết, không được bảo trợ hay tài trợ bởi các dự án Jellyfin, Emby hay Plex.';
+      'mPlayer không liên kết, không được bảo trợ hay tài trợ bởi dự án Jellyfin.';
 
   @override
   String get subtitles => 'Phụ đề';
@@ -1327,6 +1349,23 @@ class AppLocalizationsVi extends AppLocalizations {
   String get addServer => 'Thêm máy chủ';
 
   @override
+  String get addServerSub =>
+      'Đăng nhập máy chủ Jellyfin để duyệt và phát thư viện của bạn.';
+
+  @override
+  String get addServerStepServer => 'Máy chủ';
+
+  @override
+  String get addServerStepAccount => 'Tài khoản';
+
+  @override
+  String get quickConnectShort => 'Quick Connect';
+
+  @override
+  String get quickConnectSteps =>
+      'Mở Cài đặt → Quick Connect trên một thiết bị đã đăng nhập và nhập mã này. Không cần gõ mật khẩu ở đây.';
+
+  @override
   String get removeServer => 'Xoá máy chủ';
 
   @override
@@ -1368,9 +1407,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get password => 'Mật khẩu';
-
-  @override
-  String get quickConnectInstead => 'Dùng Quick Connect';
 
   @override
   String get quickConnectHint => 'Duyệt từ một thiết bị đã đăng nhập';

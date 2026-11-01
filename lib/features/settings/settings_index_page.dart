@@ -10,12 +10,15 @@ import 'package:go_router/go_router.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../admin/admin_providers.dart';
+import 'current_server_card.dart';
+import 'settings_widgets.dart';
 
-/// Screen 1l — the settings index.
+/// Screen 1l — the settings index: the current server, then two sections.
 ///
-/// Section order is fixed by the design: Appearance, General, Player, Audio,
-/// Subtitle, About. Each destination page arrives with build step 7; the rows
-/// exist now so the shell is navigable and the order is locked in.
+/// **App settings** change this installation only, in the design's fixed
+/// order: Appearance, General, Player, Audio, Subtitle, About. **Server
+/// settings** change the server for everyone on it, and appear only for an
+/// administrator.
 class SettingsIndexPage extends ConsumerWidget {
   const SettingsIndexPage({super.key});
 
@@ -23,13 +26,7 @@ class SettingsIndexPage extends ConsumerWidget {
   /// has no page yet; it follows the same section+tile pattern and is built
   /// when its settings actually exist.
   ///
-  /// [isAdministrator] adds one row at the end. It is absent rather than
-  /// disabled for anyone else: a permanently greyed row inviting a user to
-  /// administer a server they cannot is worse than no row.
-  static List<_SettingsEntry> _entriesFor(
-    AppLocalizations l10n, {
-    bool isAdministrator = false,
-  }) {
+  static List<_SettingsEntry> _appEntries(AppLocalizations l10n) {
     return <_SettingsEntry>[
       _SettingsEntry(
         title: l10n.settingsAppearance,
@@ -67,16 +64,43 @@ class SettingsIndexPage extends ConsumerWidget {
         icon: Icons.info_rounded,
         route: 'about',
       ),
-      if (isAdministrator)
-        _SettingsEntry(
-          title: l10n.settingsAdmin,
-          subtitle: l10n.settingsAdminSub,
-          icon: Icons.admin_panel_settings_rounded,
-          // Outside `/settings`, because it belongs to the server rather than
-          // to this installation — every other row here changes something on
-          // this device only.
-          path: '/admin',
-        ),
+    ];
+  }
+
+  /// Absent rather than disabled for anyone but an administrator: a
+  /// permanently greyed section inviting a user to administer a server they
+  /// cannot is worse than no section.
+  ///
+  /// Every path is outside `/settings`, because these belong to the server
+  /// rather than to this installation.
+  static List<_SettingsEntry> _serverEntries(AppLocalizations l10n) {
+    return <_SettingsEntry>[
+      _SettingsEntry(
+        title: l10n.settingsAdmin,
+        subtitle: l10n.settingsAdminSub,
+        icon: Icons.admin_panel_settings_rounded,
+        path: '/admin',
+      ),
+      _SettingsEntry(
+        title: l10n.adminUsers,
+        icon: Icons.people_rounded,
+        path: '/admin/users',
+      ),
+      _SettingsEntry(
+        title: l10n.adminTasks,
+        icon: Icons.schedule_rounded,
+        path: '/admin/tasks',
+      ),
+      _SettingsEntry(
+        title: l10n.adminActivity,
+        icon: Icons.history_rounded,
+        path: '/admin/activity',
+      ),
+      _SettingsEntry(
+        title: l10n.adminPlugins,
+        icon: Icons.extension_rounded,
+        path: '/admin/plugins',
+      ),
     ];
   }
 
@@ -94,27 +118,14 @@ class SettingsIndexPage extends ConsumerWidget {
       appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         children: <Widget>[
-          for (final _SettingsEntry e
-              in _entriesFor(l10n, isAdministrator: isAdministrator))
-            ListTile(
-              contentPadding: spacing.screenPadding(context.windowSize),
-              minVerticalPadding: spacing.lg,
-              leading: CircleAvatar(
-                radius: 20,
-                backgroundColor: scheme.primaryContainer,
-                child: Icon(e.icon, size: 22, color: scheme.onPrimaryContainer),
-              ),
-              title: Text(e.title),
-              subtitle: Text(e.subtitle),
-              trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
-              onTap: e.destination == null
-                  ? () => ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l10n.notImplemented(e.title)),
-                        ),
-                      )
-                  : () => context.push(e.destination!),
-            ),
+          const CurrentServerCard(),
+          SettingsSection(title: l10n.settingsSectionApp),
+          for (final _SettingsEntry e in _appEntries(l10n)) _tile(context, e),
+          if (isAdministrator) ...<Widget>[
+            SettingsSection(title: l10n.settingsSectionServer),
+            for (final _SettingsEntry e in _serverEntries(l10n))
+              _tile(context, e),
+          ],
           Padding(
             padding: EdgeInsets.symmetric(
               horizontal: spacing.screenHorizontal(context.windowSize),
@@ -137,20 +148,45 @@ class SettingsIndexPage extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _tile(BuildContext context, _SettingsEntry e) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+    final subtitle = e.subtitle;
+
+    return ListTile(
+      contentPadding: spacing.screenPadding(context.windowSize),
+      minVerticalPadding: spacing.lg,
+      leading: CircleAvatar(
+        radius: 20,
+        backgroundColor: scheme.primaryContainer,
+        child: Icon(e.icon, size: 22, color: scheme.onPrimaryContainer),
+      ),
+      title: Text(e.title),
+      subtitle: subtitle == null ? null : Text(subtitle),
+      trailing: Icon(Icons.chevron_right_rounded, color: scheme.outline),
+      onTap: e.destination == null
+          ? () => ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l10n.notImplemented(e.title))),
+              )
+          : () => context.push(e.destination!),
+    );
+  }
 }
 
 @immutable
 class _SettingsEntry {
   const _SettingsEntry({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.icon,
     this.route,
     this.path,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final IconData icon;
 
   /// Relative to `/settings`; null means the page does not exist yet, or that

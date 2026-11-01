@@ -5,20 +5,21 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../servers/auto_connect.dart';
 import '../../servers/server_profile.dart';
 import '../../servers/server_registry.dart';
 import 'add_server_sheet.dart';
 
-/// What the Server tab opens on once anything is configured.
+/// The Home tab's face once anything is configured and no server has been
+/// opened yet this launch — or after "Switch server".
 ///
-/// The tab used to drop straight into whichever server was used last, which
-/// left its screen with a back button pointing at nothing and no way to reach
-/// a second server at all. The list is the tab's root now, so opening a
-/// server is a push with something real underneath it.
+/// Opening a server is not a navigation: it marks the session entered, and
+/// [HomeTabPage] swaps this list for the server's home in the same tab. With
+/// [autoConnectProvider] on, that happens by itself at launch and this list
+/// is never seen unless the stored sign-in has lapsed.
 class ServersListPage extends ConsumerWidget {
   const ServersListPage({super.key});
 
@@ -109,15 +110,18 @@ class _ServerTile extends ConsumerWidget {
   }
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
-    final router = GoRouter.of(context);
+    final session = ref.read(serverSessionProvider.notifier);
 
-    // Activated before the push, not after: the home screen reads the active
-    // server on its first build, and pushing first would show it the previous
+    // Activated before entering, not after: the home reads the active server
+    // on its first build, and entering first would show it the previous
     // one's libraries for a frame.
     if (!active) {
       await ref.read(serverRegistryProvider.notifier).activate(profile.id);
     }
-    router.push('/servers/home');
+    // A lapsed sign-in leaves no client; the home has nothing to show then,
+    // and the list stays up.
+    if (ref.read(serverRegistryProvider).source == null) return;
+    session.enter();
   }
 
   Future<void> _run(

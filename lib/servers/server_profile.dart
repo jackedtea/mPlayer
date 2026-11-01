@@ -5,18 +5,6 @@
 
 import 'package:flutter/foundation.dart';
 
-/// Which media server this is. Jellyfin and Emby share an ancestor and most
-/// of an API, but they have diverged enough that the differences have to be
-/// named rather than guessed at.
-enum ServerKind {
-  jellyfin('Jellyfin'),
-  emby('Emby');
-
-  const ServerKind(this.label);
-
-  final String label;
-}
-
 /// A server the user has signed in to.
 ///
 /// Holds **no token**, for the same reason [SourceConfig] holds no password:
@@ -26,7 +14,6 @@ enum ServerKind {
 class ServerProfile {
   const ServerProfile({
     required this.id,
-    required this.kind,
     required this.name,
     required this.uri,
     required this.userId,
@@ -36,14 +23,17 @@ class ServerProfile {
     this.isAdministrator = false,
   });
 
+  /// Throws for a profile this build cannot use, which the repository skips.
   factory ServerProfile.fromJson(Map<String, dynamic> json) {
+    // Emby support was removed. A profile saved for one would sign in and
+    // then be called on Jellyfin-only routes, so it is dropped on load rather
+    // than kept as a server that fails on every screen.
+    if (json['kind'] == 'emby') {
+      throw const FormatException('Emby servers are no longer supported.');
+    }
+
     return ServerProfile(
       id: json['id'] as String,
-      kind: ServerKind.values.firstWhere(
-        (k) => k.name == json['kind'],
-        // A profile written by a newer build must not stop the app starting.
-        orElse: () => ServerKind.jellyfin,
-      ),
       name: json['name'] as String? ?? '',
       uri: json['uri'] as String? ?? '',
       userId: json['userId'] as String? ?? '',
@@ -60,8 +50,6 @@ class ServerProfile {
   /// Ours, not the server's, and stable across edits — it is what the token
   /// is filed under, so renaming a server must not orphan its credentials.
   final String id;
-
-  final ServerKind kind;
 
   /// What the server calls itself, or what the user renamed it to.
   final String name;
@@ -94,7 +82,6 @@ class ServerProfile {
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
-        'kind': kind.name,
         'name': name,
         'uri': uri,
         'userId': userId,
@@ -105,7 +92,6 @@ class ServerProfile {
       };
 
   ServerProfile copyWith({
-    ServerKind? kind,
     String? name,
     String? uri,
     String? userId,
@@ -116,10 +102,6 @@ class ServerProfile {
   }) {
     return ServerProfile(
       id: id,
-      // Editable: a server reached at a new address may turn out to be an
-      // Emby where a Jellyfin used to be, and the dialect decides which
-      // routes the client calls.
-      kind: kind ?? this.kind,
       name: name ?? this.name,
       uri: uri ?? this.uri,
       userId: userId ?? this.userId,

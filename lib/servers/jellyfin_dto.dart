@@ -72,8 +72,8 @@ String authorizationHeader({
   String field(String name, String value) =>
       '$name="${Uri.encodeComponent(value)}"';
 
-  // Both Jellyfin and Emby refuse to create a session without a client, a
-  // device and a version, so each falls back to something non-empty rather
+  // Jellyfin refuses to create a session without a client, a device and a
+  // version, so each falls back to something non-empty rather
   // than being sent blank.
   final resolvedClient = _meaningful(client).isEmpty
       ? 'mPlayer'
@@ -558,22 +558,6 @@ LibraryFilterOptions filterOptionsFromJson(Map<String, dynamic> json) {
     tags: _names(json['Tags']),
     years: _years(json['Years']),
   );
-}
-
-/// The same four lists, reassembled from the per-facet routes.
-///
-/// Emby has no aggregate route — it answers 404 — and serves each facet as a
-/// listing of named items instead. The ratings one is `/OfficialRatings`,
-/// not the `/Items/OfficialRatings` its siblings suggest.
-List<String> facetNamesFromJson(Map<String, dynamic> json) {
-  final items = json['Items'];
-  if (items is! List) return const <String>[];
-
-  return <String>[
-    for (final Object? entry in items)
-      if (entry is Map<String, dynamic> && entry['Name'] is String)
-        if ((entry['Name'] as String).isNotEmpty) entry['Name'] as String,
-  ];
 }
 
 List<String> _names(Object? raw) {

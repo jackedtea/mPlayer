@@ -243,7 +243,7 @@ class JellyfinMediaSource
   /// "Jellyfin · direct play" / "Jellyfin · transcoding · 8.0 Mbps".
   String _sourceLine(ServerPlayback playback) {
     final parts = <String>[
-      library.profile.kind.label,
+      'Jellyfin',
       playback.isDirectPlay ? 'direct play' : 'transcoding',
       if (playback.bitrate != null)
         '${(playback.bitrate! / 1000000).toStringAsFixed(1)} Mbps',

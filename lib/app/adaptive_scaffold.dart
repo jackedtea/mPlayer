@@ -8,11 +8,12 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+2302import '../features/search/search_page.dart' show searchFocusRequests;
 import '../l10n/app_localizations.dart';
 import 'system_ui.dart';
 import 'tokens.dart';
 
-/// One of the three top-level destinations.
+/// One of the five top-level destinations.
 @immutable
 class NavDestination {
   const NavDestination({
@@ -32,22 +33,30 @@ class NavDestination {
 /// Built per-frame rather than as a const list: the labels are translated, so
 /// they have to be resolved against the current locale.
 ///
-/// **Servers · Search · Settings.** Storage went with the device library it
-/// browsed, which left two; Settings takes the third slot rather than sitting
-/// as an icon in the top-right corner of two screens, where a thumb cannot
-/// reach it on a tall phone. The design asked for a 3-destination bar, and
-/// this is one again.
+/// **Home · Libraries · Search · Downloads · Settings**, in the order of
+/// [AppBranch]. Settings stays in the bar rather than as an icon in the
+/// top-right corner, where a thumb cannot reach it on a tall phone.
 List<NavDestination> navDestinationsFor(AppLocalizations l10n) {
   return <NavDestination>[
     NavDestination(
-      label: l10n.navServer,
-      icon: Icons.dns_outlined,
-      selectedIcon: Icons.dns_rounded,
+      label: l10n.navHome,
+      icon: Icons.home_outlined,
+      selectedIcon: Icons.home_rounded,
+    ),
+    NavDestination(
+      label: l10n.libraries,
+      icon: Icons.video_library_outlined,
+      selectedIcon: Icons.video_library_rounded,
     ),
     NavDestination(
       label: l10n.navSearch,
       icon: Icons.search_rounded,
       selectedIcon: Icons.search_rounded,
+    ),
+    NavDestination(
+      label: l10n.downloads,
+      icon: Icons.download_outlined,
+      selectedIcon: Icons.download_rounded,
     ),
     NavDestination(
       label: l10n.settings,
@@ -56,6 +65,9 @@ List<NavDestination> navDestinationsFor(AppLocalizations l10n) {
     ),
   ];
 }
+
+/// The shell's branches, in the order the router declares them.
+enum AppBranch { home, libraries, search, downloads, settings }
 
 /// Swaps navigation affordance by window size while keeping the same routes
 /// and the same branch state:
@@ -72,12 +84,17 @@ class AdaptiveScaffold extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
   void _go(int index) {
+    final again = index == navigationShell.currentIndex;
+
     // Tapping the current destination pops that branch back to its root,
     // which is the behaviour users expect from a bottom bar.
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
+    navigationShell.goBranch(index, initialLocation: again);
+
+    // And on Search it also puts the cursor in the field, the way Google
+    // Play's does: the first tap opens the tab, the second starts typing.
+    if (again && index == AppBranch.search.index) {
+      searchFocusRequests.value++;
+    }
   }
 
   @override

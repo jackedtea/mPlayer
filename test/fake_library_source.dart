@@ -17,7 +17,6 @@ import 'package:mplayer/servers/server_profile.dart';
 
 const fakeServerProfile = ServerProfile(
   id: 'p1',
-  kind: ServerKind.jellyfin,
   name: 'Home',
   uri: 'https://media.home.lan',
   userId: 'u1',
@@ -94,6 +93,12 @@ class FakeLibrarySource implements MediaLibrarySource {
   @override
   Future<List<ServerItem>> search(String query, {int limit = 40}) async =>
       const <ServerItem>[];
+
+  @override
+  Future<Set<String>> homeExcludes() async => const <String>{};
+
+  @override
+  Future<void> setHomeExcludes(Set<String> viewIds) async {}
 
   @override
   Future<List<ServerItem>> similar(String itemId, {int limit = 12}) async =>

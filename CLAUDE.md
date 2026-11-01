@@ -1,6 +1,6 @@
 # mPlayer
 
-Cross-platform **client** for a Jellyfin/Emby media server: browse a library,
+Cross-platform **client** for a Jellyfin media server: browse a library,
 play it in the built-in player, cast it to a television, administer the
 server.
 
@@ -16,7 +16,7 @@ that has been removed, and they say so where they do.
 
 **mPlayer is a media-server client with a built-in player.**
 
-Real, end to end: sign in to a Jellyfin/Emby server, browse its libraries,
+Real, end to end: sign in to a Jellyfin server, browse its libraries,
 open a film or an episode and **play it in the app** — chapters, the track
 pickers, skip-intro from the server's media segments, trickplay previews on
 the scrubber, external subtitles, smart subtitles, audio delay, picture in
@@ -98,6 +98,39 @@ Also open:
 3. Dropped on purpose: **NFS**, **network scanning**, **preview thumbnails**
    generated locally (the server's trickplay covers it), and now every local
    source.
+
+## Five-tab shell (2026-11-01)
+
+**Home · Libraries · Search · Downloads · Settings**, in `AppBranch` order
+(`app/adaptive_scaffold.dart`).
+
+- **Home** (`features/home/home_page.dart`) picks a face instead of
+  navigating: empty state, the server list, or the server's home.
+  `serverSessionProvider` (`servers/auto_connect.dart`) says whether this
+  launch has gone into a server; with `autoConnectProvider` on (default) it
+  turns true by itself once the registry has signed the last profile back in.
+  "Switch server" in the avatar menu sets it false. Tabs read
+  `connectedServerProvider`, which is null until then, so Libraries/Search
+  don't quietly show a server Home is still asking about. `/servers` and
+  `/servers/home` are gone.
+- The home is a `CarouselView` of the 10 most recent resumables, Next up, and
+  a "Recently added in X" row per library. Which libraries is the server's
+  `UserConfiguration.LatestItemsExcludes` — the same list the web client's
+  Home settings edit. Saving posts the **whole** configuration back (the
+  server replaces it), to `/Users/Configuration?userId=`.
+- **Libraries** opens a library at `/libraries/view` inside the branch, with
+  four tabs: Browse, Suggestions, Collections, Playlists. Favourites is a Browse
+  filter, not a tab. `/library` above the shell is still what drill-downs and
+  item tiles use.
+- **Search**: a second tap on the destination focuses the field
+  (`searchFocusRequests`).
+- **Downloads** is a placeholder; nothing feeds its list.
+- **Settings** opens on `CurrentServerCard` (name, host, user, admin badge;
+  Edit server / Switch server, or Add server with none), then App settings
+  and, for an administrator, Server settings linking straight to `/admin/*`.
+- **Jellyfin only.** Emby was removed on 2026-11-01: `ServerKind` is gone,
+  the probe refuses an Emby server with a sentence, and a stored Emby profile
+  is skipped on load.
 
 ## Localisation
 
@@ -376,7 +409,7 @@ on — intro, outro, preview, recap, commercial — each with a per-kind action 
 settings: do nothing, offer to skip, skip automatically. Intro and outro default to
 *offer*, matching jellyfin-android's own defaults.
 
-- **Emby is never asked** and a 404 is swallowed: `segments()` is the one call that
+- **A 404 is swallowed**: `segments()` is the one call that
   returns an empty list rather than a `ServerException`, because no segments is the
   correct answer for most items on most servers and must not stop a film playing.
 - **A start of zero is real.** `ticksToDuration` reads zero as "the server did not say",
@@ -492,7 +525,7 @@ Four rules from that bundle that are easy to violate by accident:
    `ListTile`, `Slider` or `SearchBar` already provide.
 3. One player screen serves every source. Only one kind is left, so the rule
    now bites one level up: the player talks to `MediaSource` and not to
-   Jellyfin, which is what would let an Emby or Plex driver land beside it
+   Jellyfin, which is what would let another server's driver land beside it
    without the player noticing. Do not fork it per server.
 4. No magic numbers in widgets — spacing and radii come from `context.spacing` /
    `context.radii`, colours from `context.colors`, and the few M3 has no slot for
@@ -672,10 +705,10 @@ Four things that are easy to get wrong and are already handled:
 2. **The auth header must be percent-encoded.** `dart:io` *throws* on a header value
    above 0x7F, so a phone named "Điện thoại của Nam" fails every request before it is
    sent. Encoding also handles the quotes and commas the header's grammar cannot escape.
-3. **Emby 4.9 omits `ProductName`.** Detecting the dialect from that field alone files
-   every modern Emby as Jellyfin, which then gets called on routes it does not have.
-   `RemoteAddresses` is the fallback signal. Note also that Emby only accepts the
-   pre-10.9 `/Users/{userId}/…` spelling of the user-scoped routes this client uses.
+3. **Emby is refused at the probe** (support removed 2026-11-01). It answers
+   `/System/Info/Public` like Jellyfin, so `isEmbyPublicInfo` checks `ProductName` and,
+   because **Emby 4.9 omits it**, falls back to `RemoteAddresses`. A stored profile with
+   `"kind": "emby"` is dropped on load.
 4. **A `TranscodingUrl` on the media source means the server chose to re-encode**,
    whatever `SupportsDirectPlay` says — those flags describe what is possible, not what
    was decided. The direct-play URL carries the token as `api_key` in the
@@ -747,10 +780,7 @@ The chip row over the grid is Unwatched · the sort · a filter button carrying 
   instead would freeze it, and the next sort chosen would inherit "ascending" and read
   oldest-first. Picking a new *field* keeps the direction: a user who chose Descending
   meant it.
-- **`/Items/Filters` is Jellyfin's alone.** Emby answers 404 and serves the four facets
-  separately — and the ratings one is `/OfficialRatings`, not the `/Items/OfficialRatings`
-  its siblings suggest. Every facet needs `recursive=true` or the server only considers the
-  view's direct children and all four come back empty. A server that will not answer costs
+- **`/Items/Filters`** supplies the filter sheet's genres, ratings, tags and years. A server that will not answer costs
   the sheet those four sections and nothing else: the watch-state and feature filters need
   no round trip.
 - **Sections that cannot mean anything are absent, not disabled.** Status is shows-only (a

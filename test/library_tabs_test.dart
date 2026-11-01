@@ -149,43 +149,33 @@ Future<void> pumpLibrary(
 
 void main() {
   group('the tab bar', () {
-    testWidgets('a movie library names its first tab after what it holds',
-        (tester) async {
+    testWidgets('a library carries Browse, Suggestions, Collections and '
+        'Playlists', (tester) async {
       await pumpLibrary(tester, server: const _FakeServer());
 
-      // "Movies" rather than "All": the label says what is under it, which
-      // over a shelf of films is the more useful of the two.
-      expect(find.widgetWithText(Tab, 'Movies'), findsOneWidget);
+      expect(find.widgetWithText(Tab, 'Browse'), findsOneWidget);
       expect(find.widgetWithText(Tab, 'Suggestions'), findsOneWidget);
-      expect(find.widgetWithText(Tab, 'Favourites'), findsOneWidget);
       expect(find.widgetWithText(Tab, 'Collections'), findsOneWidget);
       expect(find.widgetWithText(Tab, 'Playlists'), findsOneWidget);
+      // Starred items are a Browse filter, not a tab of their own.
+      expect(find.widgetWithText(Tab, 'Favourites'), findsNothing);
+      expect(find.byType(Tab), findsNWidgets(4));
     });
 
-    testWidgets('a shows library says Shows', (tester) async {
+    testWidgets('Browse is Browse whatever the library holds', (tester) async {
       await pumpLibrary(
         tester,
         server: const _FakeServer(collectionKind: 'tvshows'),
       );
 
-      expect(find.widgetWithText(Tab, 'Shows'), findsOneWidget);
-      expect(find.widgetWithText(Tab, 'Movies'), findsNothing);
-    });
-
-    testWidgets('a library whose type the app has never heard of says All',
-        (tester) async {
-      await pumpLibrary(
-        tester,
-        server: const _FakeServer(collectionKind: 'homevideos'),
-      );
-
-      expect(find.widgetWithText(Tab, 'All'), findsOneWidget);
+      expect(find.widgetWithText(Tab, 'Browse'), findsOneWidget);
+      expect(find.widgetWithText(Tab, 'Shows'), findsNothing);
     });
 
     testWidgets('a collection drill-down carries no tabs at all',
         (tester) async {
       // A box set holds a fixed set of films. It has no suggestions,
-      // favourites or collections of its own, so four of the five tabs could
+      // favourites or collections of its own, so three of the four tabs could
       // never fill.
       await pumpLibrary(
         tester,
@@ -213,15 +203,11 @@ void main() {
   });
 
   group('what each tab draws', () {
-    testWidgets('favourites, collections and playlists each show their own',
+    testWidgets('collections and playlists each show their own',
         (tester) async {
       await pumpLibrary(tester, server: const _FakeServer());
 
       expect(find.text('Arrival'), findsOneWidget);
-
-      await tester.tap(find.widgetWithText(Tab, 'Favourites'));
-      await tester.pumpAndSettle();
-      expect(find.text('Starred film'), findsOneWidget);
 
       await tester.tap(find.widgetWithText(Tab, 'Collections'));
       await tester.pumpAndSettle();
@@ -266,10 +252,6 @@ void main() {
         (tester) async {
       await pumpLibrary(tester, server: const _FakeServer(empty: true));
 
-      await tester.tap(find.widgetWithText(Tab, 'Favourites'));
-      await tester.pumpAndSettle();
-      expect(find.text('Nothing starred in this library yet.'), findsOneWidget);
-
       await tester.tap(find.widgetWithText(Tab, 'Collections'));
       await tester.pumpAndSettle();
       expect(
@@ -301,7 +283,6 @@ void main() {
 
         for (final String label in <String>[
           'Suggestions',
-          'Favourites',
           'Collections',
           'Playlists',
         ]) {

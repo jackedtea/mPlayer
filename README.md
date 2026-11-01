@@ -1,6 +1,6 @@
 # mPlayer
 
-Cross-platform client for a Jellyfin/Emby media server, with a built-in
+Cross-platform client for a Jellyfin media server, with a built-in
 player and casting to DLNA renderers and Chromecast.
 
 **It plays only what a server gives it.** mPlayer used to be a video player
