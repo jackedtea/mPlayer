@@ -754,4 +754,41 @@ void main() {
       expect(adapter.requests, hasLength(1));
     });
   });
+
+  group('search', () {
+    test('asks for the kinds it was given, and only those', () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{'Items': <dynamic>[]}),
+      );
+
+      await source.search('night', kinds: <ServerItemKind>{ServerItemKind.episode});
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['searchTerm'], 'night');
+      expect(query['includeItemTypes'], 'Episode');
+    });
+
+    test('people come from /Persons, with the headshot under ImageTags',
+        () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{
+          'Items': <dynamic>[
+            <String, dynamic>{
+              'Id': 'p1',
+              'Name': 'Jane Actor',
+              'ImageTags': <String, dynamic>{'Primary': 'tag1'},
+            },
+          ],
+        }),
+      );
+
+      final people = await source.searchPeople('jane');
+
+      expect(adapter.requests.single.uri.path, '/Persons');
+      expect(adapter.requests.single.uri.queryParameters['searchTerm'], 'jane');
+      expect(people.single.name, 'Jane Actor');
+      expect(people.single.imageTag, 'tag1');
+      expect(source.personImageUrl(people.single), isNotNull);
+    });
+  });
 }

@@ -854,6 +854,19 @@ Uri? backdropImageUrlFor(
 
 /// A person's headshot. Same route as an item's — a person *is* an item to
 /// the server — but the tag lives on the credit rather than in `ImageTags`.
+/// A person as `/Persons` lists them: a whole item rather than a credit, so
+/// there is no role, and the headshot is under `ImageTags` rather than
+/// `PrimaryImageTag`.
+ServerPerson personFromItemJson(Map<String, dynamic> json) {
+  final tags = json['ImageTags'];
+  return ServerPerson(
+    name: json['Name'] as String? ?? '',
+    role: '',
+    id: json['Id'] as String?,
+    imageTag: tags is Map ? tags['Primary'] as String? : null,
+  );
+}
+
 Uri? personImageUrlFor(
   ServerPerson person, {
   required Uri base,

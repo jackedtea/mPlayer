@@ -1034,6 +1034,42 @@ abstract class AppLocalizations {
   /// **'Recent searches'**
   String get recentSearches;
 
+  /// No description provided for @searchMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Movies'**
+  String get searchMovies;
+
+  /// No description provided for @searchShows.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows'**
+  String get searchShows;
+
+  /// No description provided for @searchEpisodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Episodes'**
+  String get searchEpisodes;
+
+  /// No description provided for @searchPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get searchPeople;
+
+  /// No description provided for @clearHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get clearHistory;
+
+  /// No description provided for @removeFromHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from history'**
+  String get removeFromHistory;
+
   /// No description provided for @whereToLook.
   ///
   /// In en, this message translates to:
@@ -3085,30 +3121,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Specials'**
   String get specials;
-
-  /// No description provided for @kindMovie.
-  ///
-  /// In en, this message translates to:
-  /// **'Movie'**
-  String get kindMovie;
-
-  /// No description provided for @kindSeries.
-  ///
-  /// In en, this message translates to:
-  /// **'Series'**
-  String get kindSeries;
-
-  /// No description provided for @kindSeason.
-  ///
-  /// In en, this message translates to:
-  /// **'Season'**
-  String get kindSeason;
-
-  /// No description provided for @kindEpisode.
-  ///
-  /// In en, this message translates to:
-  /// **'Episode'**
-  String get kindEpisode;
 
   /// No description provided for @noResults.
   ///

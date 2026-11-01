@@ -285,11 +285,26 @@ final playlistItemsProvider =
   return source.playlistItems(playlistId);
 });
 
-final serverSearchProvider =
-    FutureProvider.family<List<ServerItem>, String>((ref, query) async {
-  final source = ref.watch(activeServerProvider);
-  if (source == null || query.trim().isEmpty) return const <ServerItem>[];
-  return source.search(query.trim());
+/// One section of the search screen: what matched [query] of one kind.
+///
+/// A request per kind, as Jellyfin's own web client asks: one mixed list
+/// under a single limit lets a long-running show's episodes crowd out every
+/// film with the same word in its title.
+final searchItemsProvider = FutureProvider.family<List<ServerItem>,
+    ({String query, ServerItemKind kind})>((ref, key) async {
+  final source = ref.watch(connectedServerProvider);
+  final query = key.query.trim();
+  if (source == null || query.isEmpty) return const <ServerItem>[];
+  return source.search(query, limit: 24, kinds: <ServerItemKind>{key.kind});
+});
+
+/// The People section of the search screen.
+final searchPeopleProvider =
+    FutureProvider.family<List<ServerPerson>, String>((ref, query) async {
+  final source = ref.watch(connectedServerProvider);
+  final trimmed = query.trim();
+  if (source == null || trimmed.isEmpty) return const <ServerPerson>[];
+  return source.searchPeople(trimmed, limit: 24);
 });
 
 /// One item, fetched for a detail screen.
@@ -678,33 +693,6 @@ SeriesDetail seriesDetailFrom(
         ),
     ],
   );
-}
-
-/// One search result from a server.
-SearchHit searchHitFrom(ServerItem item, AppLocalizations l10n) {
-  return SearchHit(
-    title: item.title,
-    // The line under the title says what the thing *is*, since a title alone
-    // does not distinguish a film from the series of the same name.
-    subtitle: <String>[
-      if (item.year != null) '${item.year}',
-      if (item.kind == ServerItemKind.episode && item.seriesTitle != null)
-        '${item.seriesTitle} ${episodeCode(item)}'
-      else
-        _kindLabel(item.kind, l10n),
-    ].where((s) => s.isNotEmpty).join(' · '),
-    kind: SearchHitKind.poster,
-  );
-}
-
-String _kindLabel(ServerItemKind kind, AppLocalizations l10n) {
-  return switch (kind) {
-    ServerItemKind.movie => l10n.kindMovie,
-    ServerItemKind.series => l10n.kindSeries,
-    ServerItemKind.season => l10n.kindSeason,
-    ServerItemKind.episode => l10n.kindEpisode,
-    _ => '',
-  };
 }
 
 /// The icon a library gets in the sections list.

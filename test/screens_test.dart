@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/router.dart';
@@ -64,6 +65,9 @@ Future<GoRouter> pumpRouterAt(WidgetTester tester, Size size) async {
 }
 
 void main() {
+  // Recent searches are kept in preferences now.
+  setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
+
   group('every screen renders without layout errors', () {
     for (final MapEntry<String, Size> entry in _sizes.entries) {
       for (final String route in _routes) {

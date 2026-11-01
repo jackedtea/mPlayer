@@ -540,6 +540,24 @@ class AppLocalizationsVi extends AppLocalizations {
   String get recentSearches => 'Tìm kiếm gần đây';
 
   @override
+  String get searchMovies => 'Phim';
+
+  @override
+  String get searchShows => 'Series';
+
+  @override
+  String get searchEpisodes => 'Tập phim';
+
+  @override
+  String get searchPeople => 'Người';
+
+  @override
+  String get clearHistory => 'Xoá tất cả';
+
+  @override
+  String get removeFromHistory => 'Xoá khỏi lịch sử';
+
+  @override
   String get whereToLook => 'Tìm ở đâu';
 
   @override
@@ -1667,18 +1685,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get specials => 'Đặc biệt';
-
-  @override
-  String get kindMovie => 'Phim';
-
-  @override
-  String get kindSeries => 'Phim bộ';
-
-  @override
-  String get kindSeason => 'Mùa';
-
-  @override
-  String get kindEpisode => 'Tập';
 
   @override
   String get noResults => 'Không có kết quả nào';

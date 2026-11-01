@@ -539,6 +539,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recentSearches => 'Recent searches';
 
   @override
+  String get searchMovies => 'Movies';
+
+  @override
+  String get searchShows => 'Shows';
+
+  @override
+  String get searchEpisodes => 'Episodes';
+
+  @override
+  String get searchPeople => 'People';
+
+  @override
+  String get clearHistory => 'Clear all';
+
+  @override
+  String get removeFromHistory => 'Remove from history';
+
+  @override
   String get whereToLook => 'Where to look';
 
   @override
@@ -1666,18 +1684,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get specials => 'Specials';
-
-  @override
-  String get kindMovie => 'Movie';
-
-  @override
-  String get kindSeries => 'Series';
-
-  @override
-  String get kindSeason => 'Season';
-
-  @override
-  String get kindEpisode => 'Episode';
 
   @override
   String get noResults => 'Nothing matched that';

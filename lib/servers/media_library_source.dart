@@ -704,7 +704,22 @@ abstract class MediaLibrarySource {
   /// does a library the server offers no recommendations for.
   Future<List<ServerShelf>> suggestions(String viewId);
 
-  Future<List<ServerItem>> search(String query, {int limit = 40});
+  /// Films, series and episodes matching [query], limited to [kinds].
+  ///
+  /// One kind per call is how the search screen asks: a single mixed list
+  /// under one limit lets forty episodes of one show crowd every film out.
+  Future<List<ServerItem>> search(
+    String query, {
+    int limit = 40,
+    Set<ServerItemKind> kinds = const <ServerItemKind>{
+      ServerItemKind.movie,
+      ServerItemKind.series,
+      ServerItemKind.episode,
+    },
+  });
+
+  /// People whose name matches [query] — actors, directors, writers.
+  Future<List<ServerPerson>> searchPeople(String query, {int limit = 24});
 
   /// The libraries this user has hidden from Home's "Recently added" rows.
   ///

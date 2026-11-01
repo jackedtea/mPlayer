@@ -91,8 +91,23 @@ class FakeLibrarySource implements MediaLibrarySource {
       const <MediaSegment>[];
 
   @override
-  Future<List<ServerItem>> search(String query, {int limit = 40}) async =>
+  Future<List<ServerItem>> search(
+    String query, {
+    int limit = 40,
+    Set<ServerItemKind> kinds = const <ServerItemKind>{
+      ServerItemKind.movie,
+      ServerItemKind.series,
+      ServerItemKind.episode,
+    },
+  }) async =>
       const <ServerItem>[];
+
+  @override
+  Future<List<ServerPerson>> searchPeople(
+    String query, {
+    int limit = 24,
+  }) async =>
+      const <ServerPerson>[];
 
   @override
   Future<Set<String>> homeExcludes() async => const <String>{};

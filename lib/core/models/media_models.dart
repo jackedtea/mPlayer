@@ -102,13 +102,6 @@ class ResumeItem {
   String get subtitle => '$remaining · $quality';
 }
 
-/// A previously run query on the Search tab.
-@immutable
-class RecentSearch {
-  const RecentSearch(this.query);
-  final String query;
-}
-
 /// One toggleable target in the Search tab's "Where to look" list.
 @immutable
 class SearchScope {

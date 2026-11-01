@@ -319,17 +319,46 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
-  Future<List<ServerItem>> search(String query, {int limit = 40}) async {
+  Future<List<ServerItem>> search(
+    String query, {
+    int limit = 40,
+    Set<ServerItemKind> kinds = const <ServerItemKind>{
+      ServerItemKind.movie,
+      ServerItemKind.series,
+      ServerItemKind.episode,
+    },
+  }) async {
+    final types = <String>[
+      if (kinds.contains(ServerItemKind.movie)) 'Movie',
+      if (kinds.contains(ServerItemKind.series)) 'Series',
+      if (kinds.contains(ServerItemKind.episode)) 'Episode',
+    ];
+    if (types.isEmpty) return const <ServerItem>[];
+
     final json = await _get('/Items', <String, String>{
       'userId': _profile.userId,
       'searchTerm': query,
       'recursive': 'true',
-      'includeItemTypes': 'Movie,Series,Episode',
+      'includeItemTypes': types.join(','),
       'limit': '$limit',
       'fields': _fields,
     });
 
     return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerPerson>> searchPeople(String query, {int limit = 24}) async {
+    final json = await _get('/Persons', <String, String>{
+      'userId': _profile.userId,
+      'searchTerm': query,
+      'limit': '$limit',
+      'enableImages': 'true',
+    });
+
+    return <ServerPerson>[
+      for (final Map<String, dynamic> p in _itemsOf(json)) personFromItemJson(p),
+    ];
   }
 
   @override

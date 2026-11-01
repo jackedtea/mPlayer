@@ -5,7 +5,6 @@
 
 import 'package:flutter/material.dart';
 
-import 'media_models.dart';
 
 /// What a row in a folder listing is.
 enum BrowseEntryKind { folder, video, subtitle, other }
@@ -236,45 +235,3 @@ class DownloadItem {
   final double progress;
 }
 
-/// What kind of hit a search result is, which decides how it is drawn.
-enum SearchHitKind { poster, series, file, folder }
-
-@immutable
-class SearchHit {
-  const SearchHit({
-    required this.title,
-    required this.subtitle,
-    required this.kind,
-  });
-
-  final String title;
-
-  /// "18.4 GB · /media/films" for a file, "2024 · Movie" for a poster.
-  final String subtitle;
-
-  final SearchHitKind kind;
-}
-
-/// Results from one source, kept separate because the design groups by source
-/// rather than merging into one ranked list — a filename hit on a NAS and a
-/// metadata hit on Jellyfin are not comparable.
-@immutable
-class SearchResultGroup {
-  const SearchResultGroup({
-    required this.sourceName,
-    required this.sourceKind,
-    required this.total,
-    required this.hits,
-  });
-
-  final String sourceName;
-  final SourceKind sourceKind;
-
-  /// Total matches, which may exceed [hits] — the group ends with a
-  /// "Show N more" affordance.
-  final int total;
-
-  final List<SearchHit> hits;
-
-  int get hiddenCount => total - hits.length;
-}
