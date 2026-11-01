@@ -19,6 +19,32 @@ enum _Indicator { none, brightness, volume, seek }
 /// Zones follow the design: the left third adjusts brightness, the right third
 /// volume, a double-tap on either side seeks, and a horizontal drag scrubs.
 /// Single taps bubble up to the page, which toggles the chrome.
+/// How far a swipe across the whole width of the player seeks.
+///
+/// A fixed span, not the length of the file: tied to the file, a swipe
+/// across a two-hour film moved two hours, so a thumb's width was minutes
+/// and landing anywhere near the line just missed took several tries. Ninety
+/// seconds a width is the order of what other players use — about a tenth
+/// of a second per point on a phone on its side — and the double tap is
+/// still there for the bigger jumps.
+const Duration swipeSeekSpan = Duration(seconds: 90);
+
+/// Where a horizontal swipe of [dx] across a player [width] wide, begun at
+/// [start], lands in a file [duration] long.
+Duration swipeSeekTarget({
+  required Duration start,
+  required double dx,
+  required double width,
+  required Duration duration,
+}) {
+  final offset = Duration(
+    milliseconds: (swipeSeekSpan.inMilliseconds * dx / width).round(),
+  );
+  final target = start + offset;
+  if (target < Duration.zero) return Duration.zero;
+  return target > duration ? duration : target;
+}
+
 class GestureLayer extends StatefulWidget {
   const GestureLayer({
     super.key,
@@ -70,6 +96,13 @@ class _GestureLayerState extends State<GestureLayer> {
   double? _dragStartVolume;
   double? _dragStartBrightness;
   Duration? _dragStartPosition;
+
+  /// The swipe so far, and where it would land. The seek is made once, on
+  /// release: seeking on every frame of the drag asked a network stream for a
+  /// new position sixty times a second, each from wherever the last one had
+  /// got to.
+  double _dragDx = 0;
+  Duration? _dragTarget;
 
   @override
   void initState() {
@@ -158,11 +191,15 @@ class _GestureLayerState extends State<GestureLayer> {
           },
           onVerticalDragUpdate: (details) =>
               _handleVerticalDrag(details, width, height),
-          onHorizontalDragStart: (_) =>
-              _dragStartPosition = widget.state.position,
+          onHorizontalDragStart: (_) {
+            _dragStartPosition = widget.state.position;
+            _dragDx = 0;
+            _dragTarget = null;
+          },
           onHorizontalDragUpdate: (details) =>
               _handleHorizontalDrag(details, width),
-          onHorizontalDragEnd: (_) => _dragStartPosition = null,
+          onHorizontalDragEnd: (_) => _finishHorizontalDrag(),
+          onHorizontalDragCancel: _finishHorizontalDrag,
           child: Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -214,17 +251,33 @@ class _GestureLayerState extends State<GestureLayer> {
     final start = _dragStartPosition;
     if (duration <= Duration.zero || start == null) return;
 
-    // A full-width swipe scrubs the whole file; on a long film that is coarse,
-    // which is why the pill shows the target timestamp.
-    final fraction = details.delta.dx / width;
-    final target = widget.state.position +
-        Duration(milliseconds: (duration.inMilliseconds * fraction).round());
-    final clamped = target < Duration.zero
-        ? Duration.zero
-        : (target > duration ? duration : target);
+    _dragDx += details.delta.dx;
+    final target = swipeSeekTarget(
+      start: start,
+      dx: _dragDx,
+      width: width,
+      duration: duration,
+    );
+    _dragTarget = target;
 
-    widget.onSeekTo(clamped);
-    _show(_Indicator.seek, 0, formatDuration(clamped));
+    // How far as well as where to: the distance is what the thumb controls.
+    final moved = target - start;
+    final sign = moved.isNegative ? '−' : '+';
+    _show(
+      _Indicator.seek,
+      0,
+      '$sign${formatDuration(moved.abs())} · ${formatDuration(target)}',
+    );
+  }
+
+  void _finishHorizontalDrag() {
+    final target = _dragTarget;
+    if (target != null && target != _dragStartPosition) {
+      widget.onSeekTo(target);
+    }
+    _dragStartPosition = null;
+    _dragTarget = null;
+    _dragDx = 0;
   }
 
   Widget _buildIndicator() {
