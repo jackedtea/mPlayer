@@ -1,11 +1,31 @@
 name: Build & Release
 
-# Every push to main or dev ships a build; anything else is manual.
-# A manual run on any other branch is treated as a dev build.
+# Scheduled, not on push: dev is built once a day and main every third day,
+# so a burst of pushes is one build rather than one each. A day with nothing
+# new is skipped — see "Already built?" in `prepare`.
+#
+# Scheduled runs always start from the default branch's copy of this file,
+# whichever branch they build; `prepare` works out the branch from the cron
+# line that fired, and every job checks that branch out explicitly.
+#
+# The two cron lines below are matched by text in `prepare` — change one
+# there too. Times are UTC: 20:00 is 03:00 in Vietnam. `*/3` restarts each
+# month, so main occasionally builds a day or two early around the 1st.
 on:
-  push:
-    branches: [main, dev]
+  schedule:
+    - cron: '0 20 * * *'    # dev, daily
+    - cron: '0 21 */3 * *'  # main, every third day
   workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to build
+        type: choice
+        options: [dev, main]
+        default: dev
+      force:
+        description: Build even if this commit (dev) or version (main) is already released
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,6 +42,9 @@ jobs:
     name: Prepare
     runs-on: ubuntu-latest
     outputs:
+      skip: ${{ steps.built.outputs.skip }}
+      branch: ${{ steps.meta.outputs.branch }}
+      sha: ${{ steps.meta.outputs.sha }}
       is_dev: ${{ steps.meta.outputs.is_dev }}
       version: ${{ steps.meta.outputs.version }}
       short_sha: ${{ steps.meta.outputs.short_sha }}
@@ -31,15 +54,40 @@ jobs:
       app_id_suffix: ${{ steps.meta.outputs.app_id_suffix }}
       version_name_suffix: ${{ steps.meta.outputs.version_name_suffix }}
     steps:
+      # Which branch this run builds: the cron line for a scheduled run, the
+      # chosen input for a manual one.
+      - name: Pick the branch
+        id: target
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "schedule" ]; then
+            case "$SCHEDULE" in
+              '0 20 * * *') BRANCH=dev ;;
+              '0 21 */3 * *') BRANCH=main ;;
+              *) echo "::error::Unknown schedule '$SCHEDULE'"; exit 1 ;;
+            esac
+          else
+            BRANCH="${INPUT_BRANCH:-dev}"
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.target.outputs.branch }}
 
       - name: Derive build metadata
         id: meta
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
         run: |
           set -euo pipefail
 
           # main is the only production branch; everything else is dev.
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+          if [ "$BRANCH" = "main" ]; then
             IS_DEV=false
           else
             IS_DEV=true
@@ -48,6 +96,7 @@ jobs:
           # "1.0.0+1" -> "1.0.0"
           VERSION="$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)"
           SHORT_SHA="$(git rev-parse --short HEAD)"
+          SHA="$(git rev-parse HEAD)"
 
           if [ "$IS_DEV" = "true" ]; then
             TAG="dev-${SHORT_SHA}"
@@ -64,6 +113,8 @@ jobs:
           fi
 
           {
+            echo "branch=$BRANCH"
+            echo "sha=$SHA"
             echo "is_dev=$IS_DEV"
             echo "version=$VERSION"
             echo "short_sha=$SHORT_SHA"
@@ -76,17 +127,40 @@ jobs:
 
           echo "Building $RELEASE_NAME (tag $TAG, dev=$IS_DEV)" >> "$GITHUB_STEP_SUMMARY"
 
+      # A dev tag names the commit and a main tag names the version, so an
+      # existing release means nothing new: no commits on dev since the last
+      # build, or no version bump on main. Publishing over it would replace a
+      # build people may already have installed with an identical one.
+      - name: Already built?
+        id: built
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+          if [ "${FORCE:-false}" != "true" ] \
+             && gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG is already released; nothing to build." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # ---------------------------------------------------------------------------
   # Android
   # ---------------------------------------------------------------------------
   android:
     name: Android APK
     needs: prepare
+    if: needs.prepare.outputs.skip != 'true'
     runs-on: ubuntu-latest
     outputs:
       signed: ${{ steps.keystore.outputs.signed }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: actions/setup-java@v5
         with:
@@ -120,10 +194,13 @@ jobs:
           DEV_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD_DEV }}
           DEV_KEY_ALIAS: ${{ secrets.KEY_ALIAS_DEV }}
           DEV_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD_DEV }}
+          # The branch being built, not `GITHUB_REF_NAME`: a scheduled run's
+          # ref is the default branch whichever branch it builds.
+          BRANCH: ${{ needs.prepare.outputs.branch }}
         run: |
           set -euo pipefail
 
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+          if [ "$BRANCH" = "main" ]; then
             B64="${MAIN_KEYSTORE:-}"
             STORE_PASSWORD="${MAIN_KEYSTORE_PASSWORD:-}"
             ALIAS="${MAIN_KEY_ALIAS:-}"
@@ -139,7 +216,7 @@ jobs:
             # Configuring secrets is a separate chore from getting the
             # pipeline green, so fall back rather than hard-failing — the
             # release notes and the Telegram message both say so loudly.
-            echo "::warning::No keystore secret for '${GITHUB_REF_NAME}'; the APK will be debug-signed."
+            echo "::warning::No keystore secret for '${BRANCH}'; the APK will be debug-signed."
             echo "signed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -194,15 +271,11 @@ jobs:
     name: Windows EXE
     needs: prepare
     runs-on: windows-latest
-    # TEMPORARILY DISABLED. Flip to `true` to bring Windows builds back; the
-    # job is left whole rather than deleted so that is the only edit needed.
-    #
-    # `if: false` on the job rather than an `env` switch at the top of the
-    # file: a job-level `if` cannot see the `env` context, only `github`,
-    # `needs`, `vars` and `inputs`.
-    if: false
+    if: needs.prepare.outputs.skip != 'true'
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: subosito/flutter-action@v2
         with:
@@ -211,7 +284,16 @@ jobs:
           cache: true
 
       - run: flutter pub get
-      - run: flutter build windows --release
+
+      # Android takes its `-dev-<sha>` from VERSION_NAME_SUFFIX in Gradle;
+      # desktop has no such hook, so the whole name goes in as --build-name.
+      # Without it a dev build reports plain `1.0.0`, and the updater, which
+      # reads its channel off the version, follows the stable releases.
+      - name: Build
+        shell: bash
+        run: |
+          flutter build windows --release \
+            --build-name "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}"
 
       # The exe alone will not run: media_kit ships libmpv-2.dll and Flutter
       # ships its own runtime beside it, so the whole Release folder is the
@@ -245,11 +327,11 @@ jobs:
     name: Linux bundle
     needs: prepare
     runs-on: ubuntu-22.04
-    # TEMPORARILY DISABLED, like `windows` above. Flip to `true` to bring
-    # Linux bundles back; the job is left whole so that is the only edit.
-    if: false
+    if: needs.prepare.outputs.skip != 'true'
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - name: Install build and runtime dependencies
         run: |
@@ -267,7 +349,13 @@ jobs:
           cache: true
 
       - run: flutter pub get
-      - run: flutter build linux --release
+
+      # --build-name for the same reason as on Windows: the updater reads its
+      # channel off the version, and only Android gets the suffix otherwise.
+      - name: Build
+        run: |
+          flutter build linux --release \
+            --build-name "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}"
 
       # Tar rather than zip: it preserves the executable bit, which a zip
       # extracted on Linux does not.
@@ -292,13 +380,16 @@ jobs:
     needs: [prepare, android, windows, linux]
     runs-on: ubuntu-latest
     # A skipped job would otherwise skip everything downstream of it, so the
-    # results are checked by name instead. `windows` is deliberately absent
-    # from the list: skipped is a fine outcome for it, failed is not — and it
-    # cannot fail while it does not run.
+    # results are checked by name instead. Every platform must succeed: a
+    # release missing the desktop archives would not be rebuilt the next day
+    # ("Already built?" sees the tag), and the desktop updater, finding no
+    # asset for itself, would stay on the old build without a word.
     if: >-
       always()
       && needs.prepare.result == 'success'
       && needs.android.result == 'success'
+      && needs.windows.result == 'success'
+      && needs.linux.result == 'success'
     outputs:
       url: ${{ steps.publish.outputs.url }}
     steps:
@@ -313,7 +404,7 @@ jobs:
           set -euo pipefail
           {
             echo "notes<<RELEASE_NOTES_EOF"
-            echo "**Commit** \`${{ needs.prepare.outputs.short_sha }}\` on \`${GITHUB_REF_NAME}\`"
+            echo "**Commit** \`${{ needs.prepare.outputs.short_sha }}\` on \`${{ needs.prepare.outputs.branch }}\`"
             echo ""
             if [ "${{ needs.prepare.outputs.is_dev }}" = "true" ]; then
               echo "Dev build — application id ends in \`.canary\` and the app calls itself **mPlayer (Dev)**, so it installs and reads alongside a release build."
@@ -359,7 +450,9 @@ jobs:
           # Dev builds are prereleases and never become "latest".
           prerelease: ${{ needs.prepare.outputs.is_dev == 'true' }}
           make_latest: ${{ needs.prepare.outputs.is_dev == 'false' }}
-          target_commitish: ${{ github.sha }}
+          # The commit that was built — not `github.sha`, which on a
+          # scheduled run is the default branch's head whatever was built.
+          target_commitish: ${{ needs.prepare.outputs.sha }}
           files: artifacts/*
           fail_on_unmatched_files: true
 
@@ -372,8 +465,13 @@ jobs:
     # composing the message; the `if` below already tolerates them skipping.
     needs: [prepare, android, release, windows, linux]
     runs-on: ubuntu-latest
-    # Reports failures too — a silent pipeline is worse than a noisy one.
-    if: always() && needs.prepare.result == 'success'
+    # Reports failures too — a silent pipeline is worse than a noisy one. A
+    # run skipped for having nothing new says nothing: a daily "no change"
+    # message is noise that teaches people to ignore the channel.
+    if: >-
+      always()
+      && needs.prepare.result == 'success'
+      && needs.prepare.outputs.skip != 'true'
     steps:
       - name: Send message
         env:
@@ -420,7 +518,7 @@ jobs:
             --arg status "$STATUS" \
             --arg name "${{ needs.prepare.outputs.release_name }}" \
             --arg channel "$CHANNEL" \
-            --arg branch "$GITHUB_REF_NAME" \
+            --arg branch "${{ needs.prepare.outputs.branch }}" \
             --arg sha "${{ needs.prepare.outputs.short_sha }}" \
             --arg warn "$WARN" \
             --arg ok "$OK" \

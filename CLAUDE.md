@@ -669,16 +669,17 @@ Linux is not covered by that tool — its icons live in `linux/packaging/icons/h
 ## CI / release
 
 `.github/workflows/release.yml` builds Android APKs, a Windows zip and a Linux tarball,
-publishes a GitHub release and posts to Telegram. Runs on push to `main` or `dev`, or
-manually on any branch. **There has never been a macOS job.**
+publishes a GitHub release and posts to Telegram. Runs on a schedule (dev daily, main
+every third day) or manually for `dev`/`main`. **There has never been a macOS job.**
 
-**The Windows and Linux jobs are temporarily switched off** — `if: false` on each, and
-both jobs are left whole so turning one back on is that one line. Three things moved with
-them, and all three are worth keeping even after they come back:
+The desktop jobs pass `--build-name <version><version_name_suffix>`: Android gets
+`-dev-<sha>` through Gradle, desktop has no such hook, and without it a dev desktop build
+reports plain `1.0.0` and its updater follows the stable channel.
 
-- `release` cannot simply `needs:` a skipped job, or it skips too, so it checks results by
-  name instead. Only `prepare` and `android` are named: a desktop build that did not run
-  must not stop a release, and it cannot fail while it does not run.
+- `release` cannot simply `needs:` a skipped job, or it skips too (all builds skip when
+  "Already built?" finds the tag), so it checks results by name. **All three platforms
+  must succeed**: a release missing the desktop archives is never rebuilt — the next run
+  sees the tag — and the desktop updater, finding no asset, stays put in silence.
 - The release-notes table prints a platform's row only when that job succeeded. A row
   naming a file nobody can download is worse than no row.
 - The Telegram message builds its download links the same way. `notify` lists `windows`
