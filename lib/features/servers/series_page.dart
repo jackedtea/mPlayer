@@ -4,6 +4,7 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -37,6 +38,17 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
 
   bool _overviewExpanded = false;
 
+  /// The header's natural height, measured once it has laid out. Until then
+  /// it is drawn as a plain sliver; after, it is the collapsing header with
+  /// the pinned toolbar, which needs its full height to know how far to
+  /// collapse. Re-measured whenever it changes, as it does on rotation.
+  double? _headerHeight;
+
+  void _setHeaderHeight(Size size) {
+    if (!mounted || _headerHeight == size.height) return;
+    setState(() => _headerHeight = size.height);
+  }
+
   @override
   void dispose() {
     _tabs?.dispose();
@@ -49,16 +61,32 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
   /// episode. The part-watched one comes first, then the first unwatched,
   /// then the very first — which is also what a fresh series does.
   void _playNext(List<ServerItem> episodes, ServerItem series) {
-    if (episodes.isEmpty) return;
+    final next = nextEpisodeOf(episodes);
+    if (next != null) playServerItem(context, ref, next.id);
+  }
 
-    final started = episodes
-        .where(
-          (e) => (e.position ?? Duration.zero) > Duration.zero && !e.played,
-        )
-        .firstOrNull;
-    final unwatched = episodes.where((e) => !e.played).firstOrNull;
-
-    playServerItem(context, ref, (started ?? unwatched ?? episodes.first).id);
+  /// The header as a sliver: measured on its first layout, then collapsing
+  /// under a pinned toolbar that keeps [title] on screen.
+  Widget _headerSliver(String title, Widget header) {
+    final measured = _headerHeight;
+    if (measured == null) {
+      return SliverToBoxAdapter(
+        child: MeasureSize(onSize: _setHeaderHeight, child: header),
+      );
+    }
+    return SliverPersistentHeader(
+      pinned: true,
+      delegate: _CollapsingHeader(
+        header: header,
+        height: measured,
+        title: title,
+        topInset: context.systemTopInset,
+        background: context.colors.surface,
+        brightness: Theme.of(context).brightness,
+        backTooltip: AppLocalizations.of(context).actionBack,
+        onSize: _setHeaderHeight,
+      ),
+    );
   }
 
   /// Rebuilt whenever the number of seasons changes, which is once: the
@@ -131,8 +159,9 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
           : null,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => <Widget>[
-          SliverToBoxAdapter(
-            child: DetailHeader(
+          _headerSliver(
+            item.title,
+            DetailHeader(
               seed: series.title,
               title: item.title,
               originalTitle: item.originalTitle,
@@ -219,12 +248,6 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                 ),
                 background: scheme.surface,
                 divider: context.semantic.divider,
-                // The page is drawn edge to edge for the backdrop, so a header
-                // pinned at the top would sit under the status bar — the tabs
-                // overlapped by the clock, with the episode list showing
-                // through behind both.
-                topInset: context.systemTopInset,
-                brightness: Theme.of(context).brightness,
               ),
             ),
         ],
@@ -296,59 +319,32 @@ String _yearRange(ServerItem item) {
   return end == null || end == start ? '$start' : '$start - $end';
 }
 
-/// Keeps the season tabs pinned while the episode list scrolls under them.
-///
-/// **Taller than the tabs by the status bar.** The page runs edge to edge so
-/// the backdrop reaches the top of the screen, which put a header pinned at
-/// y = 0 under the clock and the signal bars, with the episodes scrolling
-/// past behind them. The extra strip is the page's own colour, so pinned it
-/// is a solid band under the status bar and in the flow it reads as a little
-/// space above the tabs. A delegate's extent cannot change with where it sits,
-/// which is why the strip is always there rather than only once pinned.
+/// Keeps the season tabs pinned while the episode list scrolls under them —
+/// directly below the collapsed toolbar, which is what keeps them clear of
+/// the status bar.
 class _TabBarHeader extends SliverPersistentHeaderDelegate {
-  _TabBarHeader(
-    this.tabBar, {
-    required this.background,
-    required this.divider,
-    required this.topInset,
-    required this.brightness,
-  });
+  _TabBarHeader(this.tabBar, {required this.background, required this.divider});
 
   final TabBar tabBar;
   final Color background;
   final Color divider;
-  final double topInset;
-  final Brightness brightness;
-
-  double get _extent => tabBar.preferredSize.height + topInset;
 
   @override
-  double get minExtent => _extent;
+  double get minExtent => tabBar.preferredSize.height;
 
   @override
-  double get maxExtent => _extent;
+  double get maxExtent => tabBar.preferredSize.height;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
-    // Under the status bar while pinned, the system draws its icons over the
-    // page colour rather than over the backdrop — so they follow the theme
-    // here, not the picture.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: brightness == Brightness.dark
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: background,
-          // A hairline only once the episodes are scrolling under it, the
-          // cue that the tabs are now holding still.
-          border: overlaps ? Border(bottom: BorderSide(color: divider)) : null,
-        ),
-        child: Padding(
-          padding: EdgeInsets.only(top: topInset),
-          child: tabBar,
-        ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        // A hairline only once the episodes are scrolling under it, the cue
+        // that the tabs are now holding still.
+        border: overlaps ? Border(bottom: BorderSide(color: divider)) : null,
       ),
+      child: tabBar,
     );
   }
 
@@ -356,9 +352,184 @@ class _TabBarHeader extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_TabBarHeader old) =>
       old.tabBar != tabBar ||
       old.background != background ||
-      old.divider != divider ||
-      old.topInset != topInset ||
-      old.brightness != brightness;
+      old.divider != divider;
+}
+
+/// The series header, scrolling away under a toolbar that keeps the title.
+///
+/// The backdrop, poster and facts scroll up as they always did; over the last
+/// stretch of the collapse a solid bar fades in under the status bar with the
+/// back arrow and the series' name, and stays pinned there. The page runs
+/// edge to edge for the backdrop, and this bar is also what keeps everything
+/// pinned below it — the season tabs — out from under the clock.
+class _CollapsingHeader extends SliverPersistentHeaderDelegate {
+  _CollapsingHeader({
+    required this.header,
+    required this.height,
+    required this.title,
+    required this.topInset,
+    required this.background,
+    required this.brightness,
+    required this.backTooltip,
+    required this.onSize,
+  });
+
+  final Widget header;
+
+  /// The header's measured natural height.
+  final double height;
+  final String title;
+  final double topInset;
+  final Color background;
+  final Brightness brightness;
+  final String backTooltip;
+  final ValueChanged<Size> onSize;
+
+  /// How much of the collapse the toolbar takes to fade in.
+  static const _fade = 48.0;
+
+  @override
+  double get minExtent => topInset + kToolbarHeight;
+
+  @override
+  double get maxExtent => height < minExtent ? minExtent : height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
+    final range = maxExtent - minExtent;
+    final shown = range <= 0
+        ? 1.0
+        : ((shrinkOffset - (range - _fade)) / _fade).clamp(0.0, 1.0);
+
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          // At its natural height, slid up by however far the page has
+          // scrolled — so it scrolls rather than squashing — and measured
+          // again in case that height changes.
+          Positioned(
+            top: -shrinkOffset,
+            left: 0,
+            right: 0,
+            child: MeasureSize(onSize: onSize, child: header),
+          ),
+          if (shown > 0)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: minExtent,
+              child: IgnorePointer(
+                ignoring: shown < 0.5,
+                child: Opacity(
+                  opacity: shown,
+                  child: _annotated(
+                    shown >= 0.5,
+                    Material(
+                      color: background,
+                      child: Padding(
+                        padding: EdgeInsets.only(top: topInset),
+                        child: Row(
+                          children: <Widget>[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back_rounded),
+                              tooltip: backTooltip,
+                              onPressed: () {
+                                if (context.canPop()) context.pop();
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.texts.titleLarge,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Status-bar icons for the page colour once the bar is mostly in; until
+  /// then the backdrop under them annotates its own.
+  Widget _annotated(bool solid, Widget child) {
+    if (!solid) return child;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_CollapsingHeader old) => true;
+}
+
+/// Reports its child's size after every layout that changes it.
+///
+/// Used for the series header, whose height depends on its title, facts and
+/// the window's width, and which the collapsing header needs before it can
+/// say how far to collapse.
+class MeasureSize extends SingleChildRenderObjectWidget {
+  const MeasureSize({super.key, required this.onSize, required super.child});
+
+  final ValueChanged<Size> onSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      RenderMeasureSize(onSize);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    RenderMeasureSize renderObject,
+  ) {
+    renderObject.onSize = onSize;
+  }
+}
+
+class RenderMeasureSize extends RenderProxyBox {
+  RenderMeasureSize(this.onSize);
+
+  ValueChanged<Size> onSize;
+  Size? _last;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (size == _last) return;
+    _last = size;
+    // After the frame: reporting during layout would ask for a rebuild in
+    // the middle of one.
+    final reported = size;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onSize(reported));
+  }
+}
+
+/// What a series' Play button plays: the episode part-watched, then the first
+/// unwatched, then the very first — which is also what a fresh series does.
+ServerItem? nextEpisodeOf(List<ServerItem> episodes) {
+  if (episodes.isEmpty) return null;
+
+  final started = episodes
+      .where((e) => (e.position ?? Duration.zero) > Duration.zero && !e.played)
+      .firstOrNull;
+  final unwatched = episodes.where((e) => !e.played).firstOrNull;
+  return started ?? unwatched ?? episodes.first;
 }
 
 /// The server item behind the row at [index] of season [seasonIndex].
