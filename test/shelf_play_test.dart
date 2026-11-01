@@ -93,4 +93,13 @@ void main() {
 
     expect(opened, 1);
   });
+
+  testWidgets('the card does not name the server in its corner',
+      (tester) async {
+    // One server, so its name on every card says nothing the screen does not.
+    await pumpCard(tester, onTap: () {});
+
+    expect(find.text('Home'), findsNothing);
+    expect(find.text('Tomozaki'), findsOneWidget);
+  });
 }

@@ -140,14 +140,8 @@ class ContinueWatchingCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: spacing.sm,
-                      top: spacing.sm,
-                      child: _SourceBadge(
-                        icon: item.sourceKind.icon,
-                        label: item.sourceLabel,
-                      ),
-                    ),
+                    // No source badge in the corner: there is one server, so
+                    // naming it on every card says nothing the screen does not.
                     Positioned(
                       left: 0,
                       right: 0,
@@ -217,42 +211,6 @@ class _Thumbnail extends StatelessWidget {
       // that re-resolves the file.
       gaplessPlayback: true,
       errorBuilder: (_, _, _) => const SizedBox.shrink(),
-    );
-  }
-}
-
-/// Dark pill over artwork naming the source the item streams from.
-class _SourceBadge extends StatelessWidget {
-  const _SourceBadge({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 20,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        color: context.semantic.scrimStrong,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 10,
-              height: 1.2,
-              fontWeight: FontWeight.w500,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
