@@ -43,6 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.built.outputs.skip }}
+      changelog: ${{ steps.changes.outputs.changelog }}
+      previous_tag: ${{ steps.changes.outputs.previous }}
       branch: ${{ steps.meta.outputs.branch }}
       sha: ${{ steps.meta.outputs.sha }}
       is_dev: ${{ steps.meta.outputs.is_dev }}
@@ -75,9 +77,13 @@ jobs:
           fi
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
+      # Full history and every tag: the next main version is worked out from
+      # the tags, and the changelog is the log since the previous release.
       - uses: actions/checkout@v5
         with:
           ref: ${{ steps.target.outputs.branch }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Derive build metadata
         id: meta
@@ -97,6 +103,18 @@ jobs:
           VERSION="$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)"
           SHORT_SHA="$(git rev-parse --short HEAD)"
           SHA="$(git rev-parse HEAD)"
+
+          # Every main build is a release of its own, so it needs a version
+          # of its own: pubspec's, if that is ahead of the newest tag (a bump
+          # by hand starts a new minor or major), otherwise the newest tag
+          # with its patch number raised. The app is built with exactly this
+          # as its version name — the updater compares the two.
+          if [ "$IS_DEV" = "false" ]; then
+            LAST="$(git tag --list 'v[0-9]*' --sort=-v:refname | sed -n 1p | sed 's/^v//')"
+            if [ -n "$LAST" ] && [ "$(printf '%s\n%s\n' "$VERSION" "$LAST" | sort -V | tail -n1)" = "$LAST" ]; then
+              VERSION="$(echo "$LAST" | awk -F. '{ printf "%d.%d.%d", $1, $2, $3 + 1 }')"
+            fi
+          fi
 
           if [ "$IS_DEV" = "true" ]; then
             TAG="dev-${SHORT_SHA}"
@@ -127,25 +145,71 @@ jobs:
 
           echo "Building $RELEASE_NAME (tag $TAG, dev=$IS_DEV)" >> "$GITHUB_STEP_SUMMARY"
 
-      # A dev tag names the commit and a main tag names the version, so an
-      # existing release means nothing new: no commits on dev since the last
-      # build, or no version bump on main. Publishing over it would replace a
-      # build people may already have installed with an identical one.
+      # Nothing new since the last release of this channel means nothing to
+      # build. Dev: its tag names the commit, so the tag existing says it.
+      # Main: the version moves on every build, so what is asked instead is
+      # whether the newest release tag already points at this commit.
+      # Publishing again would replace a build people may already have
+      # installed with an identical one under a new number.
       - name: Already built?
         id: built
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.meta.outputs.tag }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          IS_DEV: ${{ steps.meta.outputs.is_dev }}
           FORCE: ${{ inputs.force }}
         run: |
           set -euo pipefail
-          if [ "${FORCE:-false}" != "true" ] \
-             && gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          BUILT=false
+          if [ "$IS_DEV" = "true" ]; then
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              BUILT=true
+            fi
+          else
+            LAST="$(git tag --list 'v[0-9]*' --sort=-v:refname | sed -n 1p)"
+            if [ -n "$LAST" ] && [ "$(git rev-list -n1 "$LAST")" = "$SHA" ]; then
+              BUILT=true
+            fi
+          fi
+          if [ "${FORCE:-false}" != "true" ] && [ "$BUILT" = "true" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "$TAG is already released; nothing to build." >> "$GITHUB_STEP_SUMMARY"
+            echo "Nothing new on this branch since the last release; nothing to build." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+
+      # What changed since the previous release on the same channel, one line
+      # per commit. Main is compared with the newest v-tag, dev with the
+      # newest dev-tag; the very first release lists the last twenty commits.
+      - name: Collect the changelog
+        id: changes
+        env:
+          IS_DEV: ${{ steps.meta.outputs.is_dev }}
+        run: |
+          set -euo pipefail
+          if [ "$IS_DEV" = "true" ]; then
+            PREV="$(git tag --list 'dev-*' --sort=-creatordate | sed -n 1p)"
+          else
+            PREV="$(git tag --list 'v[0-9]*' --sort=-v:refname | sed -n 1p)"
+          fi
+          if [ -n "$PREV" ]; then
+            RANGE="$PREV..HEAD"
+          else
+            RANGE="-20"
+          fi
+          # --max-count rather than `| head`: with pipefail on, head closing
+          # the pipe early kills git log with SIGPIPE and fails the step.
+          LOG="$(git log --no-merges --max-count=60 --format='- %s (%h)' $RANGE)"
+          # A delimiter no commit subject can contain, so one cannot end the
+          # output early.
+          EOF_MARK="CHANGELOG_$(openssl rand -hex 8)"
+          {
+            echo "previous=$PREV"
+            echo "changelog<<$EOF_MARK"
+            echo "$LOG"
+            echo "$EOF_MARK"
+          } >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------------------
   # Android
@@ -238,11 +302,18 @@ jobs:
       # libmpv.so for each ABI, so a universal APK is about three times the size
       # any single device actually needs. Flutter's Gradle plugin offsets the
       # version code per ABI (armeabi-v7a 1000, arm64-v8a 2000, x86_64 3000).
+      # --build-name so the APK reports the version the release is tagged
+      # with (main moves its patch number every build, pubspec does not);
+      # Gradle still appends the dev suffix. --build-number from the run, so
+      # the versionCode keeps rising and each APK installs over the last.
       - name: Build APKs
         env:
           APP_ID_SUFFIX: ${{ needs.prepare.outputs.app_id_suffix }}
           VERSION_NAME_SUFFIX: ${{ needs.prepare.outputs.version_name_suffix }}
-        run: flutter build apk --release --split-per-abi
+        run: |
+          flutter build apk --release --split-per-abi \
+            --build-name "${{ needs.prepare.outputs.version }}" \
+            --build-number "${{ github.run_number }}"
 
       - name: Name the artifacts
         run: |
@@ -293,7 +364,8 @@ jobs:
         shell: bash
         run: |
           flutter build windows --release \
-            --build-name "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}"
+            --build-name "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}" \
+            --build-number "${{ github.run_number }}"
 
       # The exe alone will not run: media_kit ships libmpv-2.dll and Flutter
       # ships its own runtime beside it, so the whole Release folder is the
@@ -355,7 +427,8 @@ jobs:
       - name: Build
         run: |
           flutter build linux --release \
-            --build-name "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}"
+            --build-name "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}" \
+            --build-number "${{ github.run_number }}"
 
       # Tar rather than zip: it preserves the executable bit, which a zip
       # extracted on Linux does not.
@@ -398,12 +471,32 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      # The changelog comes in through the environment, never pasted into the
+      # script: a commit subject with a backtick or a `$(` in it would
+      # otherwise run as shell.
       - name: Compose release notes
         id: notes
+        env:
+          CHANGELOG: ${{ needs.prepare.outputs.changelog }}
+          PREVIOUS: ${{ needs.prepare.outputs.previous_tag }}
         run: |
           set -euo pipefail
           {
             echo "notes<<RELEASE_NOTES_EOF"
+            # First, so the update dialog in the app — which shows the notes
+            # down to the file table — shows what changed.
+            if [ -n "$PREVIOUS" ]; then
+              echo "## Changes since $PREVIOUS"
+            else
+              echo "## Changes"
+            fi
+            echo ""
+            if [ -n "$CHANGELOG" ]; then
+              printf '%s\n' "$CHANGELOG"
+            else
+              echo "- No code changes."
+            fi
+            echo ""
             echo "**Commit** \`${{ needs.prepare.outputs.short_sha }}\` on \`${{ needs.prepare.outputs.branch }}\`"
             echo ""
             if [ "${{ needs.prepare.outputs.is_dev }}" = "true" ]; then
