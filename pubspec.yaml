@@ -32,7 +32,7 @@ dependencies:
     sdk: flutter
 
   flutter_riverpod: ^3.4.2
-  go_router: ^17.4.0
+  go_router: ^18.1.2
   shared_preferences: ^2.5.5
   flutter_secure_storage: ^11.0.0
   path: ^1.9.1
@@ -59,7 +59,7 @@ dependencies:
   dynamic_color: ^1.7.0
   package_info_plus: ^10.2.1
   url_launcher: ^6.3.2
-  cached_network_image: ^3.4.1
+  cached_network_image: ^4.0.3
   # The server PIN's hash. Already in the tree through other packages.
   crypto: ^3.0.7
 dependency_overrides:
