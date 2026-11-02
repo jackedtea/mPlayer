@@ -1844,4 +1844,10 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get nothingToFilterBy => 'Thư viện này không còn gì khác để lọc.';
+
+  @override
+  String get heroResume => 'Xem tiếp';
+
+  @override
+  String get heroDetails => 'Chi tiết';
 }

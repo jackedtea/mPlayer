@@ -1842,4 +1842,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get nothingToFilterBy =>
       'This library holds nothing else to filter by.';
+
+  @override
+  String get heroResume => 'Resume';
+
+  @override
+  String get heroDetails => 'Details';
 }

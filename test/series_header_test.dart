@@ -14,6 +14,7 @@ import 'package:mplayer/app/router.dart';
 import 'package:mplayer/features/servers/server_library.dart';
 import 'package:mplayer/servers/media_library_source.dart';
 import 'package:mplayer/widgets/detail_header.dart';
+import 'package:mplayer/widgets/gradient_art.dart';
 
 /// The screens_test routes are all rendered with nothing signed in, so the
 /// series header they reach is the empty state. This one stands a real series
@@ -68,6 +69,90 @@ void main() {
       expect(find.byIcon(Icons.more_vert_rounded), findsWidgets);
     });
   }
+
+  testWidgets('the backdrop grows with a wide window', (tester) async {
+    Future<double> backdropAt(Size size) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = size;
+      final router = buildRouter();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            activeServerProvider.overrideWithValue(const _FakeSeriesServer()),
+          ],
+          child: MPlayerApp(router: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      router.push('/library/series', extra: 's1');
+      await tester.pumpAndSettle();
+      // The first picture in the header is the backdrop; the poster follows.
+      return tester
+          .getSize(
+            find
+                .descendant(
+                  of: find.byType(DetailHeader),
+                  matching: find.byType(GradientArt),
+                )
+                .first,
+          )
+          .height;
+    }
+
+    addTearDown(tester.view.reset);
+
+    expect(await backdropAt(const Size(400, 800)), lessThanOrEqualTo(280));
+    // A fixed 280 across a desktop window kept a third of the picture's
+    // height and cut the faces off it.
+    expect(await backdropAt(const Size(1400, 900)), greaterThan(400));
+  });
+
+  testWidgets('on a wide window the titles and actions sit beside the poster', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1400, 900);
+    addTearDown(tester.view.reset);
+
+    final router = buildRouter();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          activeServerProvider.overrideWithValue(const _FakeSeriesServer()),
+        ],
+        child: MPlayerApp(router: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    router.push('/library/series', extra: 's1');
+    await tester.pumpAndSettle();
+
+    final header = find.byType(DetailHeader);
+    final poster = tester.getRect(
+      find.descendant(of: header, matching: find.byType(GradientArt)).at(1),
+    );
+    final title = tester.getRect(find.text(_FakeSeriesServer.series.title));
+    final play = tester.getRect(
+      find.descendant(
+        of: header,
+        matching: find.byIcon(Icons.play_arrow_rounded),
+      ),
+    );
+
+    // Flush with the poster's edge, not centred half a screen away from it.
+    expect(title.left - poster.right, lessThan(64));
+    expect(play.left - poster.right, lessThan(64));
+    // And the actions beside the poster rather than in a row beneath it.
+    expect(play.top, lessThan(poster.bottom));
+
+    // The overview is the column to the right of the titles, level with them.
+    final overview = tester.getRect(find.textContaining('Amane lives alone'));
+    expect(overview.left, greaterThan(title.right));
+    // Both columns start at the same height.
+    expect((overview.top - title.top).abs(), lessThan(12));
+    expect(overview.top, lessThan(poster.bottom));
+    expect(find.text('Comedy'), findsOneWidget);
+  });
 
   testWidgets('a second title that only repeats the first is not drawn', (
     tester,

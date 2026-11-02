@@ -163,9 +163,14 @@ class ItemActionIcons extends ConsumerWidget {
     this.onMediaInfo,
     this.visible = 4,
     this.primary = true,
+    this.alignment = WrapAlignment.center,
   });
 
   final ServerItem item;
+
+  /// Centred under the header on a phone; flush with the titles on a wide
+  /// window, where it sits beside the poster rather than under it.
+  final WrapAlignment alignment;
 
   /// Resume where the server says the user got to.
   final VoidCallback onPlay;
@@ -205,7 +210,7 @@ class ItemActionIcons extends ConsumerWidget {
     final rest = actions.skip(visible).toList();
 
     return Wrap(
-      alignment: WrapAlignment.center,
+      alignment: alignment,
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: spacing.sm,
       runSpacing: spacing.xs,

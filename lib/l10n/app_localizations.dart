@@ -3427,6 +3427,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This library holds nothing else to filter by.'**
   String get nothingToFilterBy;
+
+  /// No description provided for @heroResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get heroResume;
+
+  /// No description provided for @heroDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get heroDetails;
 }
 
 class _AppLocalizationsDelegate

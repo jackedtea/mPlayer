@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/television.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/auto_connect.dart';
@@ -21,6 +22,7 @@ import '../servers/server_library.dart';
 import '../servers/servers_empty_page.dart';
 import '../servers/servers_list_page.dart';
 import 'favorites_page.dart';
+import 'home_hero.dart';
 import '../servers/shelves.dart';
 
 /// The Home tab, which has three faces and picks one rather than navigating.
@@ -62,6 +64,10 @@ class HomePage extends ConsumerWidget {
     final views = ref.watch(serverViewsProvider);
     final excluded =
         ref.watch(homeExcludesProvider).value ?? const <String>{};
+    // The phone's carousel shows its neighbours as the cue to swipe; wider
+    // than that, and on a television, one item gets the whole width.
+    final hero =
+        !context.windowSize.isCompact || ref.watch(isTelevisionProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -86,9 +92,12 @@ class HomePage extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () => refreshHome(ref),
         child: ListView(
-          padding: EdgeInsets.only(top: spacing.sm, bottom: spacing.xl),
+          padding: EdgeInsets.only(
+            top: hero ? 0 : spacing.sm,
+            bottom: spacing.xl,
+          ),
           children: <Widget>[
-            const _ResumeCarousel(),
+            if (hero) const HomeHero() else const _ResumeCarousel(),
             _Section(
               title: l10n.nextUp,
               items: ref.watch(serverNextUpProvider),

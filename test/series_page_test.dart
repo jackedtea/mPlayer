@@ -50,7 +50,22 @@ class _Series extends FakeLibrarySource {
   }
 }
 
-Future<void> _open(WidgetTester tester) async {
+/// The same series over a slow connection: the series lands first and the
+/// episodes a second later, as they do from a real server.
+class _SlowEpisodes extends _Series {
+  const _SlowEpisodes();
+
+  @override
+  Future<List<ServerItem>> episodes(String seriesId, {String? seasonId}) async {
+    await Future<void>.delayed(const Duration(seconds: 1));
+    return super.episodes(seriesId, seasonId: seasonId);
+  }
+}
+
+Future<void> _open(
+  WidgetTester tester, {
+  MediaLibrarySource source = const _Series(),
+}) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(400, 900);
   tester.view.padding = const FakeViewPadding(top: _statusBar);
@@ -60,7 +75,7 @@ Future<void> _open(WidgetTester tester) async {
   final router = buildRouter();
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [activeServerProvider.overrideWithValue(const _Series())],
+      overrides: [activeServerProvider.overrideWithValue(source)],
       child: MPlayerApp(router: router),
     ),
   );
@@ -116,5 +131,19 @@ void main() {
       find.descendant(of: bar, matching: find.text('Continue watching')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('episodes arriving after the series replace the tabs cleanly', (
+    tester,
+  ) async {
+    // The tab controller is made for "About" alone, then again for the
+    // seasons: a second ticker from the same state, which a single-ticker
+    // mixin refuses with a red screen.
+    await _open(tester, source: const _SlowEpisodes());
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.widgetWithText(Tab, 'Season 1'), findsOneWidget);
   });
 }

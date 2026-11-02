@@ -599,5 +599,7 @@
   "featureThemeVideo": "Video chủ đề",
   "filterApply": "Áp dụng",
   "filterReset": "Đặt lại",
-  "nothingToFilterBy": "Thư viện này không còn gì khác để lọc."
+  "nothingToFilterBy": "Thư viện này không còn gì khác để lọc.",
+  "heroResume": "Xem tiếp",
+  "heroDetails": "Chi tiết"
 }

@@ -1,5 +1,7 @@
 package dev.icedtea.mplayer
 
+import android.app.UiModeManager
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -7,7 +9,8 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Four channels: three for the player, one for installing updates.
+ * Five channels: three for the player, one for installing updates, and one
+ * that says whether this is a television.
  *
  * Gone with the device library: [MediaStoreChannel] (the system media index),
  * `SafChannel` (folders the user granted explicitly) and `IntentChannel` (the
@@ -80,6 +83,29 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             updates.handle(call.method, call.arguments as? Map<*, *>, result)
         }
+
+        // A fact, not a decision: Dart chooses what a television gets.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "dev.icedtea.mplayer/device",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isTelevision" -> result.success(isTelevision())
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    /**
+     * Leanback is what Android TV devices declare; the UI mode catches a box
+     * whose vendor left the feature out but still runs the TV launcher.
+     */
+    private fun isTelevision(): Boolean {
+        if (packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
+            return true
+        }
+        val modes = getSystemService(UI_MODE_SERVICE) as? UiModeManager
+        return modes?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
     }
 
     /**

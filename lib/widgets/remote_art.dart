@@ -17,13 +17,21 @@ import 'package:flutter/material.dart';
 /// forty posters on every scroll is the difference between a client that
 /// feels local and one that does not.
 class RemoteArt extends StatelessWidget {
-  const RemoteArt({super.key, required this.url, this.fit = BoxFit.cover});
+  const RemoteArt({
+    super.key,
+    required this.url,
+    this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
+  });
 
   /// Null when the item has no artwork, which is the common case for an
   /// unmatched file.
   final Uri? url;
 
   final BoxFit fit;
+
+  /// Which part of the picture survives a [BoxFit.cover] crop.
+  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +41,7 @@ class RemoteArt extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: source.toString(),
       fit: fit,
+      alignment: alignment,
       // Fades in over the gradient rather than replacing it abruptly, which
       // on a fast connection reads as a flicker.
       fadeInDuration: const Duration(milliseconds: 180),

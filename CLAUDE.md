@@ -113,7 +113,7 @@ Also open:
   `connectedServerProvider`, which is null until then, so Libraries/Search
   don't quietly show a server Home is still asking about. `/servers` and
   `/servers/home` are gone.
-- The home is a `CarouselView` of the 10 most recent resumables, Next up, and
+- The home is a carousel (phone) or banner (wider) of the 10 most recent resumables, Next up, and
   a "Recently added in X" row per library. Which libraries is the server's
   `UserConfiguration.LatestItemsExcludes` — the same list the web client's
   Home settings edit. Saving posts the **whole** configuration back (the
@@ -179,6 +179,53 @@ Also open:
 - **Jellyfin only.** Emby was removed on 2026-11-01: `ServerKind` is gone,
   the probe refuses an Emby server with a sentence, and a stored Emby profile
   is skipped on load.
+
+## Wide windows and television (2026-11-02)
+
+- **Home's top is a banner past 600dp** (`features/home/home_hero.dart`):
+  one resumable at a time across the full width — backdrop, overview,
+  Resume / Details, a pager. It advances every 9 s and **holds while hovered
+  or while focus is inside it**. A phone keeps the `PageView` carousel.
+- **Shelves size their tiles from the row's width** (`ShelfMetrics` in
+  `features/servers/shelves.dart`): fixed 104px posters / 200px cards on a
+  phone, growing with the window above that, bigger again on a television.
+  `ShelfRow` adds ‹ › paging arrows on hover (not on a phone, never in focus
+  traversal) and `focusRoom` padding so a focused tile can grow unclipped.
+- **`FocusRing`** (`widgets/focus_ring.dart`) rings and lifts a tile while
+  something in it has focus, only in traditional highlight mode — a tap
+  leaves no ring behind.
+- **Television** is detected once before `runApp`
+  (`app/television.dart` → `MainActivity`'s `dev.icedtea.mplayer/device`
+  channel: leanback feature or TV UI mode) and lands in
+  `isTelevisionProvider`, false everywhere else and in tests. It gets the rail
+  at any width, the banner, larger tiles, and an autofocused Resume.
+  The manifest declares leanback optional and adds `LEANBACK_LAUNCHER`;
+  `android:banner` is `@drawable/tv_banner` (xhdpi 320×180, xxhdpi 480×270:
+  the icon's gradient, glyph and the name). Those PNGs are drawn by
+  `tool/make_tv_banner.py` (Pillow) — rerun it rather than editing them.
+- **Player keys** (`_handleKey`): while the player's own node is focused, or
+  the chrome is hidden, arrows seek and Enter/Select plays-pauses (the first
+  press over a hidden chrome only shows it); up/down move into the controls,
+  after which arrows walk them. Media keys act from anywhere.
+- **Backdrops are taller on wide windows and cropped from the foot**: the
+  Home banner is `0.42 × width` (280–600) and the series `DetailHeader`
+  backdrop `0.36 × width` (280–520) past compact, both drawn with
+  `RemoteArt(alignment: Alignment(0, -0.6))`. A fixed 280 cut the faces off.
+- **The series header reads left to right past compact**: a 200px poster,
+  the titles start-aligned beside it, and the action icons
+  (`ItemActionIcons(alignment: start)`) under the titles instead of a
+  centred row of their own. The overview (6 lines before More) and genres
+  are a third column right of the titles (`DetailHeader.aside`), and the
+  slivers that draw them under the header are phone-only. A phone keeps the
+  centred layout.
+- **Mouse back/forward** (`app/mouse_navigation.dart`, wrapped in
+  `MaterialApp.router`'s builder): back goes through
+  `routerDelegate.popRoute()` so PopScope screens are asked first; forward
+  replays a remembered `(uri, extra)` and is forgotten on any other
+  navigation.
+- The Windows layout (banner, scaled shelves, hover arrows) was looked at
+  and approved on Windows, 2026-11-02. Not yet verified on a real TV box or
+  with a remote.
 
 ## Localisation
 
@@ -277,6 +324,11 @@ Two kinds, and they take completely different paths:
   own Flutter overlay paints unstyled text instead. media_kit's `SubtitleView` is
   therefore disabled in `player_page.dart`, or it would double-draw over libass.
   Android needs a font handed to fontconfig — the bundled Roboto is used.
+- **Windows decodes with copy-back** (`HardwareDecoding.mpvValueOn`:
+  `auto-copy-safe` / `auto-copy`). Plain d3d11va into media_kit's ANGLE surface
+  crops the bottom ~6% of the frame to black — ASS lines there are cut in half
+  and resizing the window changes nothing. Software decoding and copy-back
+  both draw the whole frame (verified on Windows, 2026-11-01).
 - **Image** (PGS/HDMV, VobSub, DVB, XSUB) — pictures, not text, so libass never touches
   them. Two separate upstream problems exist here; do not confuse them:
   - [media-kit#1269](https://github.com/media-kit/media-kit/issues/1269) — the bundled

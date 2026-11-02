@@ -33,7 +33,10 @@ class SeriesPage extends ConsumerStatefulWidget {
 }
 
 class _SeriesPageState extends ConsumerState<SeriesPage>
-    with SingleTickerProviderStateMixin {
+        // Not the single-ticker mixin: [_controllerFor] replaces the controller
+        // once the episodes land, and the replacement needs a ticker of its own.
+        with
+        TickerProviderStateMixin {
   TabController? _tabs;
 
   bool _overviewExpanded = false;
@@ -86,6 +89,35 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
         backTooltip: AppLocalizations.of(context).actionBack,
         onSize: _setHeaderHeight,
       ),
+    );
+  }
+
+  /// The overview and the genres, for the column beside the titles. Null
+  /// when the series has neither.
+  Widget? _aside(ServerItem item) {
+    final overview = item.overview ?? '';
+    if (overview.isEmpty && item.genres.isEmpty) return null;
+    final spacing = context.spacing;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (overview.isNotEmpty)
+          _Overview(
+            text: overview,
+            // More room up here than in a full-width line under the header,
+            // and the titles beside it are taller than three lines anyway.
+            lines: 6,
+            expanded: _overviewExpanded,
+            onToggle: () =>
+                setState(() => _overviewExpanded = !_overviewExpanded),
+          ),
+        if (item.genres.isNotEmpty) ...<Widget>[
+          SizedBox(height: spacing.md),
+          TagStrip(tags: item.genres),
+        ],
+      ],
     );
   }
 
@@ -173,7 +205,12 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
               // the tabs say how many seasons there are, but only after the
               // episodes have arrived.
               caption: series.summary,
-              backdropUrl: backdropUrlFor(ref, item, maxWidth: 1000),
+              // Full width on a desktop now; 1000 was upscaled there.
+              backdropUrl: backdropUrlFor(
+                ref,
+                item,
+                maxWidth: compact ? 1000 : 1920,
+              ),
               posterUrl: artUrlFor(ref, item, maxWidth: 400),
               facts: <Widget>[
                 if (_yearRange(item).isNotEmpty)
@@ -187,11 +224,15 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                   CertificateBox(certificate: item.certificate!),
                 if (item.rating != null) RatingLabel(rating: item.rating!),
               ],
+              // Beside the titles on a wide window; under the header, in the
+              // slivers below, on a phone.
+              aside: compact ? null : _aside(item),
               // No "More" up here either: everything it would have held is
               // in the row itself, or one tap into its overflow.
               actionBar: ItemActionIcons(
                 item: item,
                 primary: !compact,
+                alignment: compact ? WrapAlignment.center : WrapAlignment.start,
                 seriesId: item.id,
                 // Continue where the series is, which is whichever episode
                 // the server is holding a position for — not the series
@@ -205,7 +246,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
               ),
             ),
           ),
-          if ((item.overview ?? '').isNotEmpty)
+          if (compact && (item.overview ?? '').isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
                 padding: spacing
@@ -224,7 +265,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
           // "co-workers relationship" — none of which say what the thing is.
           // A row that has to be scrolled past to find "Comedy" is worse than
           // one that only ever holds the four words that matter.
-          if (item.genres.isNotEmpty)
+          if (compact && item.genres.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.only(bottom: spacing.sm),
@@ -796,9 +837,13 @@ class _Overview extends StatelessWidget {
     required this.text,
     required this.expanded,
     required this.onToggle,
+    this.lines = 3,
   });
 
   final String text;
+
+  /// How many lines show before "More".
+  final int lines;
   final bool expanded;
   final VoidCallback onToggle;
 
@@ -815,7 +860,7 @@ class _Overview extends StatelessWidget {
         children: <Widget>[
           Text(
             text,
-            maxLines: expanded ? null : 3,
+            maxLines: expanded ? null : lines,
             overflow: expanded ? null : TextOverflow.ellipsis,
             style: context.texts.bodyMedium?.copyWith(
               color: scheme.onSurfaceVariant,

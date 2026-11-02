@@ -612,5 +612,7 @@
   "featureThemeVideo": "Theme video",
   "filterApply": "Apply",
   "filterReset": "Reset",
-  "nothingToFilterBy": "This library holds nothing else to filter by."
+  "nothingToFilterBy": "This library holds nothing else to filter by.",
+  "heroResume": "Resume",
+  "heroDetails": "Details"
 }

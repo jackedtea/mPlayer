@@ -34,6 +34,7 @@ class DetailHeader extends StatelessWidget {
     this.facts = const <Widget>[],
     this.backdropUrl,
     this.posterUrl,
+    this.aside,
   });
 
   /// Decides the placeholder gradient's hue, so a title keeps its colour.
@@ -62,6 +63,12 @@ class DetailHeader extends StatelessWidget {
   /// What can be done to the item, drawn under the whole block.
   final Widget actionBar;
 
+  /// A third column to the right of the titles on a wide window — the
+  /// overview, so the width beside the titles carries words rather than
+  /// nothing. Not drawn on a phone, which has no width for it; the page puts
+  /// the same thing under the header there instead.
+  final Widget? aside;
+
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
@@ -70,7 +77,8 @@ class DetailHeader extends StatelessWidget {
     final size = context.windowSize;
     final screenH = spacing.screenHorizontal(size);
 
-    final posterWidth = size.isCompact ? 118.0 : 148.0;
+    final wide = !size.isCompact;
+    final posterWidth = wide ? 200.0 : 118.0;
     final posterHeight = posterWidth * 3 / 2;
 
     // How far the poster rises into the backdrop. Under a fifth of it: enough
@@ -81,11 +89,80 @@ class DetailHeader extends StatelessWidget {
     final second = originalTitle?.trim() ?? '';
     final showsSecond = second.isNotEmpty && second != title;
 
+    // A phone centres a short block in the narrow space beside the poster.
+    // A wide window has the width of the page beside it, and centring there
+    // stranded the titles half a screen from the poster they name, with the
+    // actions in a row of their own further off still — so it reads left to
+    // right instead, the actions under the titles.
+    final textAlign = wide ? TextAlign.start : TextAlign.center;
+    final wrapAlign = wide ? WrapAlignment.start : WrapAlignment.center;
+
+    final titles = Column(
+      mainAxisSize: MainAxisSize.min,
+      // From the top on a wide window, level with the overview beside it:
+      // centred against the taller poster, the titles sat lower than the
+      // paragraph next to them and the two columns read as misaligned.
+      mainAxisAlignment: wide
+          ? MainAxisAlignment.start
+          : MainAxisAlignment.center,
+      crossAxisAlignment: wide
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: <Widget>[
+        Text(
+          title,
+          textAlign: textAlign,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: (wide ? texts.headlineMedium : texts.titleLarge)?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (showsSecond) ...<Widget>[
+          SizedBox(height: spacing.xs),
+          Text(
+            second,
+            textAlign: textAlign,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: texts.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+        if (facts.isNotEmpty) ...<Widget>[
+          SizedBox(height: spacing.md),
+          Wrap(
+            alignment: wrapAlign,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: spacing.md,
+            runSpacing: spacing.sm,
+            children: facts,
+          ),
+        ],
+        if ((caption ?? '').isNotEmpty) ...<Widget>[
+          SizedBox(height: spacing.sm),
+          Text(
+            caption!,
+            textAlign: textAlign,
+            style: texts.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
+        if (wide) ...<Widget>[SizedBox(height: spacing.md), actionBar],
+      ],
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         // 16:9, which is the shape the server generates backdrops in, capped
-        // so a desktop window does not open on half a screen of sky.
-        final backdrop = math.min(constraints.maxWidth * 9 / 16, 280.0);
+        // so a desktop window does not open on half a screen of sky. The cap
+        // grows with a wide window: a fixed 280 across 1400px showed a third
+        // of the picture's height — a band of torsos with the faces cut off.
+        final width = constraints.maxWidth;
+        final backdrop = wide
+            ? (width * 0.36).clamp(280.0, 520.0)
+            : math.min(width * 9 / 16, 280.0);
 
         return Stack(
           children: <Widget>[
@@ -118,8 +195,9 @@ class DetailHeader extends StatelessWidget {
                           width: posterWidth,
                           height: posterHeight,
                         ),
-                        SizedBox(width: spacing.lg),
+                        SizedBox(width: wide ? spacing.xl : spacing.lg),
                         Expanded(
+                          flex: 5,
                           child: Padding(
                             // Down past the seam the poster straddles, so the
                             // titles start on the page's own surface however
@@ -131,63 +209,32 @@ class DetailHeader extends StatelessWidget {
                               constraints: BoxConstraints(
                                 minHeight: posterHeight - overlap - spacing.sm,
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  Text(
-                                    title,
-                                    textAlign: TextAlign.center,
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: texts.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  if (showsSecond) ...<Widget>[
-                                    SizedBox(height: spacing.xs),
-                                    Text(
-                                      second,
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: texts.bodyMedium?.copyWith(
-                                        color: scheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                  if (facts.isNotEmpty) ...<Widget>[
-                                    SizedBox(height: spacing.md),
-                                    Wrap(
-                                      alignment: WrapAlignment.center,
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.center,
-                                      spacing: spacing.md,
-                                      runSpacing: spacing.sm,
-                                      children: facts,
-                                    ),
-                                  ],
-                                  if ((caption ?? '').isNotEmpty) ...<Widget>[
-                                    SizedBox(height: spacing.sm),
-                                    Text(
-                                      caption!,
-                                      textAlign: TextAlign.center,
-                                      style: texts.bodySmall?.copyWith(
-                                        color: scheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
+                              child: titles,
                             ),
                           ),
                         ),
+                        if (wide && aside != null) ...<Widget>[
+                          SizedBox(width: spacing.xl),
+                          Expanded(
+                            // A little wider than the titles: a paragraph
+                            // wants a longer line than a name does.
+                            flex: 6,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                top: overlap + spacing.sm,
+                              ),
+                              child: aside,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                  SizedBox(height: spacing.lg),
-                  actionBar,
+                  if (!wide) ...<Widget>[
+                    SizedBox(height: spacing.lg),
+                    actionBar,
+                  ] else
+                    SizedBox(height: spacing.md),
                 ],
               ),
             ),
@@ -234,7 +281,10 @@ class _Backdrop extends StatelessWidget {
         fit: StackFit.expand,
         children: <Widget>[
           GradientArt(seed: seed),
-          RemoteArt(url: artUrl),
+          // Even taller, the band is still shorter than the picture. What it
+          // loses goes mostly from the foot, which fades into the page anyway,
+          // rather than from the head, where the faces and titles are.
+          RemoteArt(url: artUrl, alignment: const Alignment(0, -0.6)),
           // A shade along the top edge only, under the status bar: white icons
           // over a pale poster were unreadable, and this is the strip of the
           // picture the clock covers anyway.

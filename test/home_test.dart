@@ -11,6 +11,7 @@ import 'fake_library_source.dart';
 
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/router.dart';
+import 'package:mplayer/features/home/home_hero.dart';
 import 'package:mplayer/features/servers/server_library.dart';
 import 'package:mplayer/servers/media_library_source.dart';
 
@@ -91,13 +92,41 @@ void main() {
       await _pump(tester, size, _HomeServer());
 
       expect(tester.takeException(), isNull);
-      expect(find.byType(PageView), findsOneWidget);
+      // A phone gets the carousel; anything wider, the full-width banner.
+      final phone = size.width < 600;
+      expect(find.byType(PageView), phone ? findsOneWidget : findsNothing);
+      expect(find.byType(HomeHero), phone ? findsNothing : findsOneWidget);
       expect(find.text('Half watched'), findsOneWidget);
       expect(find.text('Recently added in Films'), findsOneWidget);
       expect(find.text('Recently added in Television'), findsOneWidget);
       expect(find.text('Recently added in Collections'), findsNothing);
     });
   }
+
+  group('the banner', () {
+    testWidgets('moves on by itself, and its arrows move it too', (
+      tester,
+    ) async {
+      await _pump(tester, const Size(1400, 900), _HomeServer());
+      expect(find.text('Half watched'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
+      expect(find.text('Half watched'), findsNothing);
+      expect(find.text('Resume 2'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.chevron_left_rounded).first);
+      await tester.pumpAndSettle();
+      expect(find.text('Half watched'), findsOneWidget);
+    });
+
+    testWidgets('offers Resume and Details', (tester) async {
+      await _pump(tester, const Size(1400, 900), _HomeServer());
+
+      expect(find.text('Resume'), findsOneWidget);
+      expect(find.text('Details'), findsOneWidget);
+    });
+  });
 
   group('the carousel', () {
     int page(WidgetTester tester) => tester

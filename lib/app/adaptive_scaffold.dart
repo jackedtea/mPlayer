@@ -15,6 +15,7 @@ import '../features/servers/server_library.dart' show connectedServerProvider;
 import '../features/settings/update_dialog.dart';
 import '../l10n/app_localizations.dart';
 import 'system_ui.dart';
+import 'television.dart';
 import 'tokens.dart';
 
 /// One of the five top-level destinations.
@@ -131,6 +132,12 @@ class AdaptiveScaffold extends ConsumerWidget {
     return _AutomaticUpdateCheck(
       child: choosingServer
           ? Scaffold(body: navigationShell)
+          // A television always gets the rail, whatever width it reports: a
+          // 4K panel at a low density would otherwise be handed the drawer,
+          // 256 points of labels across the left of a screen read from a
+          // sofa, and a bottom bar is meant for a thumb.
+          : ref.watch(isTelevisionProvider)
+          ? _RailShell(shell: navigationShell, onGo: _go)
           : switch (context.windowSize) {
               WindowSize.compact =>
                 _CompactShell(shell: navigationShell, onGo: _go),

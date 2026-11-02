@@ -14,6 +14,7 @@ import 'package:media_kit/media_kit.dart';
 import 'app/app.dart';
 import 'app/desktop_window.dart';
 import 'app/system_ui.dart';
+import 'app/television.dart';
 
 /// No arguments are read any more.
 ///
@@ -41,7 +42,14 @@ Future<void> main() async {
   await restoreWindow();
   await watchWindowBounds();
 
-  runApp(const ProviderScope(child: MPlayerApp()));
+  final television = await detectTelevision();
+
+  runApp(
+    ProviderScope(
+      overrides: [isTelevisionProvider.overrideWithValue(television)],
+      child: const MPlayerApp(),
+    ),
+  );
 }
 
 /// Roboto ships inside the app, so its OFL notice has to ship with it — this

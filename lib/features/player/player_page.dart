@@ -370,7 +370,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
               backgroundColor: Colors.black,
               body: Focus(
                 autofocus: true,
-                onKeyEvent: (_, event) => _handleKey(event, controller, ui),
+                onKeyEvent: (node, event) =>
+                    _handleKey(node, event, controller, ui),
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
@@ -806,7 +807,15 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     });
   }
 
+  /// Keyboard and remote.
+  ///
+  /// [player] is the screen's own focus node. While it holds focus — or the
+  /// chrome is hidden, whatever was focused before — the arrows seek and
+  /// Enter plays or pauses, which is what a remote's D-pad means over a film.
+  /// Once the user has moved into the controls, the arrows walk between them
+  /// and Enter presses the one focused, so this steps aside.
   KeyEventResult _handleKey(
+    FocusNode player,
     KeyEvent event,
     PlaybackController controller,
     PlayerUiState ui,
@@ -815,24 +824,68 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     // Locked means locked, including the keyboard.
     if (ui.locked) return KeyEventResult.handled;
 
+    final key = event.logicalKey;
+    final wasVisible = _chromeVisible;
+    final onPlayer = player.hasPrimaryFocus || !wasVisible;
+
     _restartHideTimer();
-    if (!_chromeVisible) {
+    if (!wasVisible) {
       setState(() => _chromeVisible = true);
       _applySystemUi();
+      // A control focused before the chrome hid would otherwise keep the
+      // remote's next press.
+      if (!player.hasPrimaryFocus) player.requestFocus();
     }
 
-    switch (event.logicalKey) {
+    // Media keys mean the same thing wherever focus is.
+    switch (key) {
+      case LogicalKeyboardKey.mediaPlayPause:
+        controller.playOrPause();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.mediaPlay:
+        if (!ref.read(playbackControllerProvider).playing) {
+          controller.playOrPause();
+        }
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.mediaPause:
+        if (ref.read(playbackControllerProvider).playing) {
+          controller.playOrPause();
+        }
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.mediaFastForward:
+        controller.skip(ref.read(playerSettingsProvider).skipForward);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.mediaRewind:
+        controller.skip(-ref.read(playerSettingsProvider).skipBack);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.escape:
+        if (context.canPop()) context.pop();
+        return KeyEventResult.handled;
+    }
+
+    if (!onPlayer) return KeyEventResult.ignored;
+
+    switch (key) {
       case LogicalKeyboardKey.space:
       case LogicalKeyboardKey.keyK:
-        controller.playOrPause();
+      case LogicalKeyboardKey.select:
+      case LogicalKeyboardKey.enter:
+        // The first press over a hidden chrome only brings it up: a remote
+        // user reaching for the controls should not pause the film to do it.
+        if (wasVisible || key == LogicalKeyboardKey.space ||
+            key == LogicalKeyboardKey.keyK) {
+          controller.playOrPause();
+        }
       case LogicalKeyboardKey.arrowLeft:
         controller.skip(-ref.read(playerSettingsProvider).skipBack);
       case LogicalKeyboardKey.arrowRight:
         controller.skip(ref.read(playerSettingsProvider).skipForward);
+      case LogicalKeyboardKey.arrowUp:
+      case LogicalKeyboardKey.arrowDown:
+        // Into the controls. Over a hidden chrome the press only shows them.
+        if (wasVisible) player.nextFocus();
       case LogicalKeyboardKey.keyF:
         _toggleFullscreen();
-      case LogicalKeyboardKey.escape:
-        if (context.canPop()) context.pop();
       default:
         return KeyEventResult.ignored;
     }
