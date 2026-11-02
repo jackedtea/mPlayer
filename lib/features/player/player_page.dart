@@ -15,6 +15,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../app/desktop_window.dart';
 import '../../app/system_ui.dart';
+import '../../app/television.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
@@ -422,6 +423,11 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       StableInsets(
                         child: ControlsOverlay(
                           chromeVisible: _chromeVisible,
+                          // A window or a television has the width for one
+                          // row, and a remote walks one row more easily
+                          // than two a screen apart.
+                          streamControlsBelow: isDesktop ||
+                              ref.watch(isTelevisionProvider),
                           // What is playing now, not what the page was opened
                           // with: after a step to the next episode the two
                           // differ, and the old title over the new file read

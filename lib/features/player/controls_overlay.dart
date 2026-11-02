@@ -53,6 +53,7 @@ class ControlsOverlay extends StatelessWidget {
     required this.onSkipSegment,
     required this.notImplemented,
     this.chromeVisible = true,
+    this.streamControlsBelow = false,
   });
 
   final PlayableMedia media;
@@ -129,6 +130,16 @@ class ControlsOverlay extends StatelessWidget {
   /// fold down to the bottom of the screen instead of hanging a control row's
   /// height above nothing.
   final bool chromeVisible;
+
+  /// Puts the stream buttons — tracks, quality, picture in picture, cast,
+  /// More — in the bottom row instead of the top bar's right corner.
+  ///
+  /// For a desktop window and a television. A phone's thumb is at the top
+  /// corner only because the bottom row is already full; a window or a ten-
+  /// foot screen has the width for one row, and on a television one row is
+  /// also one line for the remote to walk instead of two that are a screen
+  /// apart.
+  final bool streamControlsBelow;
 
   @override
   Widget build(BuildContext context) {
@@ -372,6 +383,9 @@ class _Scrim extends StatelessWidget {
 /// which stream, not how it is shown — and grouping them by the corner they
 /// sit in is what lets the bottom bar read as one row of playback controls
 /// rather than nine unrelated glyphs.
+///
+/// Where [ControlsOverlay.streamControlsBelow] is set, the corner is empty and
+/// the same buttons end the bottom row instead.
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.this_});
 
@@ -388,8 +402,6 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final l10n = AppLocalizations.of(context);
-    final state = this_.state;
-    final subtitleOn = state.activeSubtitle?.isOff == false;
 
     return SafeArea(
       child: LayoutBuilder(
@@ -449,54 +461,8 @@ class _TopBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                _SmallIcon(
-                  // The subtitle glyph, because whether subtitles are on is
-                  // the half worth seeing without opening anything; the
-                  // tooltip names both. White either way: the on and off
-                  // glyphs already differ, and the accent tint over a frame
-                  // was harder to read than the plain glyph.
-                  icon: subtitleOn
-                      ? Icons.subtitles_rounded
-                      : Icons.subtitles_off_rounded,
-                  tooltip: l10n.tracksValue(
-                    state.activeAudio?.label ?? l10n.defaultLabel,
-                    state.activeSubtitle?.label ?? l10n.off,
-                  ),
-                  extent: extent,
-                  onTap: this_.onTracks,
-                ),
-                // Quality only means something when the far end can re-encode.
-                // A local file, a share or a WebDAV stream is served as-is, so
-                // the button would open a sheet holding exactly one choice.
-                if (this_.media.capabilities.transcoding)
-                  _SmallIcon(
-                    icon: Icons.hd_rounded,
-                    tooltip: l10n.qualityValue(
-                      this_.qualityLabel ?? l10n.original,
-                    ),
-                    extent: extent,
-                    onTap: this_.onQuality,
-                  ),
-                if (this_.onPip != null)
-                  _SmallIcon(
-                    icon: Icons.picture_in_picture_alt_rounded,
-                    tooltip: l10n.pictureInPicture,
-                    extent: extent,
-                    onTap: this_.onPip!,
-                  ),
-                if (this_.onCast != null)
-                  _SmallIcon(
-                    icon: Icons.cast_rounded,
-                    tooltip: l10n.castTo,
-                    extent: extent,
-                    onTap: this_.onCast!,
-                  ),
-                _SmallIcon(
-                  icon: Icons.more_vert_rounded,
-                  tooltip: l10n.actionMore,
-                  extent: extent,
-                  onTap: this_.onMore,
-                ),
+                if (!this_.streamControlsBelow)
+                  ..._streamIcons(context, this_, extent: extent),
               ],
             ),
           );
@@ -504,6 +470,66 @@ class _TopBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What picks *what is played*: tracks, quality, picture in picture, cast and
+/// the overflow sheet. Drawn in the top bar's right corner on a phone, and at
+/// the end of the bottom row where [ControlsOverlay.streamControlsBelow] says.
+List<Widget> _streamIcons(
+  BuildContext context,
+  ControlsOverlay this_, {
+  double extent = 44,
+}) {
+  final l10n = AppLocalizations.of(context);
+  final state = this_.state;
+  final subtitleOn = state.activeSubtitle?.isOff == false;
+
+  return <Widget>[
+    _SmallIcon(
+      // The subtitle glyph, because whether subtitles are on is the half worth
+      // seeing without opening anything; the tooltip names both. White either
+      // way: the on and off glyphs already differ, and the accent tint over a
+      // frame was harder to read than the plain glyph.
+      icon: subtitleOn
+          ? Icons.subtitles_rounded
+          : Icons.subtitles_off_rounded,
+      tooltip: l10n.tracksValue(
+        state.activeAudio?.label ?? l10n.defaultLabel,
+        state.activeSubtitle?.label ?? l10n.off,
+      ),
+      extent: extent,
+      onTap: this_.onTracks,
+    ),
+    // Quality only means something when the far end can re-encode. A stream
+    // served as-is would open a sheet holding exactly one choice.
+    if (this_.media.capabilities.transcoding)
+      _SmallIcon(
+        icon: Icons.hd_rounded,
+        tooltip: l10n.qualityValue(this_.qualityLabel ?? l10n.original),
+        extent: extent,
+        onTap: this_.onQuality,
+      ),
+    if (this_.onPip != null)
+      _SmallIcon(
+        icon: Icons.picture_in_picture_alt_rounded,
+        tooltip: l10n.pictureInPicture,
+        extent: extent,
+        onTap: this_.onPip!,
+      ),
+    if (this_.onCast != null)
+      _SmallIcon(
+        icon: Icons.cast_rounded,
+        tooltip: l10n.castTo,
+        extent: extent,
+        onTap: this_.onCast!,
+      ),
+    _SmallIcon(
+      icon: Icons.more_vert_rounded,
+      tooltip: l10n.actionMore,
+      extent: extent,
+      onTap: this_.onMore,
+    ),
+  ];
 }
 
 /// The secondary transport discs: dark enough to stand off a bright frame,
@@ -1208,9 +1234,9 @@ class _ControlRow extends StatelessWidget {
 
   final ControlsOverlay this_;
 
-  /// Five buttons at their natural width, plus a little air between the two
-  /// groups.
-  static const _shareWidthBelow = 420.0;
+  /// Every button at its natural width, plus a little air between the two
+  /// groups — five on a phone, up to eleven with the stream buttons down here.
+  static double _shareWidthBelow(int buttons) => buttons * 44.0 + 200;
 
   @override
   Widget build(BuildContext context) {
@@ -1218,8 +1244,11 @@ class _ControlRow extends StatelessWidget {
       builder: (context, constraints) {
         final playback = _playbackIcons(context);
         final view = _viewIcons(context);
+        final buttons = <Widget>[...playback, ...view]
+            .where((w) => w is! SizedBox)
+            .length;
 
-        if (constraints.maxWidth >= _shareWidthBelow) {
+        if (constraints.maxWidth >= _shareWidthBelow(buttons)) {
           return Row(
             children: <Widget>[
               ...playback,
@@ -1232,7 +1261,7 @@ class _ControlRow extends StatelessWidget {
         return Row(
           children: <Widget>[
             for (final Widget button in <Widget>[...playback, ...view])
-              Expanded(child: button),
+              if (button is! SizedBox) Expanded(child: button),
           ],
         );
       },
@@ -1288,6 +1317,10 @@ class _ControlRow extends StatelessWidget {
         tooltip: l10n.fullscreen,
         onTap: this_.onFullscreen,
       ),
+      if (this_.streamControlsBelow) ...<Widget>[
+        const SizedBox(width: 8),
+        ..._streamIcons(context, this_),
+      ],
     ];
   }
 }
