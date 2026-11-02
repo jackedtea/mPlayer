@@ -164,7 +164,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ItemPrimaryActionBar), findsNothing);
-      expect(find.byType(ItemActionRow), findsOneWidget);
+      // The wide header's action row: a labelled Play and the glyphs.
+      expect(find.byType(ItemActionIcons), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Play'), findsOneWidget);
     });
 

@@ -218,6 +218,12 @@ Also open:
   are a third column right of the titles (`DetailHeader.aside`), and the
   slivers that draw them under the header are phone-only. A phone keeps the
   centred layout.
+- **The movie detail uses the same `DetailHeader` past compact**
+  (`_wideHeader` in `movie_detail_page.dart`): real backdrop, poster,
+  facts, a labelled Play / Continue (plus Start over once started) ahead of
+  the `ItemActionIcons`, overview and genres as the aside. A phone keeps the
+  `BackdropHeader` layout. `_MetaRow` now draws only the parts the server
+  filled in — an absent certificate used to leave an empty outlined box.
 - **Mouse back/forward** (`app/mouse_navigation.dart`, wrapped in
   `MaterialApp.router`'s builder): back goes through
   `routerDelegate.popRoute()` so PopScope screens are asked first; forward

@@ -12,6 +12,7 @@ import '../../core/models/library_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
+import '../../widgets/detail_header.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
 import 'media_info_sheet.dart';
@@ -80,64 +81,68 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
           bottom: spacing.xl * 2 + context.systemBottomInset,
         ),
         children: <Widget>[
-          BackdropHeader(
-            seed: movie.title,
-            artUrl: artUrlFor(ref, item, maxWidth: 900),
-            height: 268,
-            // No buttons up here any more. "More" held nothing that the
-            // action row below does not now hold outright, and casting needs
-            // a resolved stream and a position to start it from — it belongs
-            // in the player, which has both and has the remote to go with it.
-            //
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(movie.title, style: context.texts.headlineMedium),
-                SizedBox(height: spacing.sm),
-                _MetaRow(movie: movie),
-              ],
-            ),
-          ),
-          Padding(
-            padding: padding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                ItemActionRow(
-                  item: item,
-                  primary: !compact,
-                  onPlay: () => playServerItem(context, ref, item.id),
-                  onStartOver: () =>
-                      playServerItem(context, ref, item.id, fromStart: true),
-                  playlistIds: <String>[item.id],
-                  onMediaInfo: () => showMediaInfo(context, item.id),
-                  // No shuffle: a film has no siblings to shuffle with, and
-                  // the action is left out rather than shown doing nothing.
-                ),
-                if (movie.isStarted) ...<Widget>[
-                  SizedBox(height: spacing.lg),
-                  _ProgressLine(movie: movie),
+          if (!compact)
+            _wideHeader(item, movie)
+          else ...<Widget>[
+            BackdropHeader(
+              seed: movie.title,
+              artUrl: artUrlFor(ref, item, maxWidth: 900),
+              height: 268,
+              // No buttons up here any more. "More" held nothing that the
+              // action row below does not now hold outright, and casting needs
+              // a resolved stream and a position to start it from — it belongs
+              // in the player, which has both and has the remote to go with it.
+              //
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(movie.title, style: context.texts.headlineMedium),
+                  SizedBox(height: spacing.sm),
+                  _MetaRow(movie: movie),
                 ],
-                SizedBox(height: spacing.xl),
-                _Overview(
-                  text: movie.overview,
-                  expanded: _overviewExpanded,
-                  onToggle: () =>
-                      setState(() => _overviewExpanded = !_overviewExpanded),
-                ),
-              ],
+              ),
             ),
-          ),
-          SizedBox(height: spacing.lg),
-          // Outside the page padding: the strip scrolls edge to edge and
-          // supplies its own inset, so the last chip is not clipped by a
-          // margin the user cannot scroll past.
-          // Genres only, same as the series screen: the server's keywords
-          // arrive in the same response and are far more numerous and far
-          // less curated, so they bury the four words that say what the film
-          // is.
-          TagStrip(tags: item.genres, padding: padding),
+            Padding(
+              padding: padding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  ItemActionRow(
+                    item: item,
+                    primary: !compact,
+                    onPlay: () => playServerItem(context, ref, item.id),
+                    onStartOver: () =>
+                        playServerItem(context, ref, item.id, fromStart: true),
+                    playlistIds: <String>[item.id],
+                    onMediaInfo: () => showMediaInfo(context, item.id),
+                    // No shuffle: a film has no siblings to shuffle with, and
+                    // the action is left out rather than shown doing nothing.
+                  ),
+                  if (movie.isStarted) ...<Widget>[
+                    SizedBox(height: spacing.lg),
+                    _ProgressLine(movie: movie),
+                  ],
+                  SizedBox(height: spacing.xl),
+                  _Overview(
+                    text: movie.overview,
+                    expanded: _overviewExpanded,
+                    onToggle: () =>
+                        setState(() => _overviewExpanded = !_overviewExpanded),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: spacing.lg),
+            // Outside the page padding: the strip scrolls edge to edge and
+            // supplies its own inset, so the last chip is not clipped by a
+            // margin the user cannot scroll past.
+            // Genres only, same as the series screen: the server's keywords
+            // arrive in the same response and are far more numerous and far
+            // less curated, so they bury the four words that say what the film
+            // is.
+            TagStrip(tags: item.genres, padding: padding),
+          ],
           if (item.people.isNotEmpty) ...<Widget>[
             Padding(
               padding: padding.copyWith(top: spacing.xl, bottom: spacing.md),
@@ -148,6 +153,102 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
           SizedBox(height: spacing.xl),
           SimilarStrip(itemId: item.id, title: l10n.moreLikeThis),
         ],
+      ),
+    );
+  }
+
+  /// Past compact, the series screen's header: the backdrop across the top,
+  /// the poster hanging off it, the titles and actions beside the poster and
+  /// the overview beside those. The phone's header was the poster cropped to
+  /// a strip with the title over it, a full-width Play under that and the
+  /// overview under that again — on a desktop, a column of things down the
+  /// left edge with the rest of the window empty.
+  Widget _wideHeader(ServerItem item, MovieDetail movie) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+    final started = (item.position ?? Duration.zero) > Duration.zero;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: spacing.lg),
+      child: DetailHeader(
+        seed: movie.title,
+        title: item.title,
+        originalTitle: item.originalTitle,
+        backdropUrl: backdropUrlFor(ref, item, maxWidth: 1920),
+        posterUrl: artUrlFor(ref, item, maxWidth: 400),
+        facts: <Widget>[
+          if (movie.year.isNotEmpty)
+            Text(
+              movie.year,
+              style: context.texts.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          if (movie.runtime.isNotEmpty)
+            Text(
+              movie.runtime,
+              style: context.texts.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          if (movie.certificate.isNotEmpty)
+            CertificateBox(certificate: movie.certificate),
+          if (item.rating != null) RatingLabel(rating: item.rating!),
+        ],
+        // "Resume at 42m", where the series screen says how many episodes.
+        caption: movie.resumeLabel,
+        // A film is the one thing on this screen to play, so it keeps a
+        // labelled button — "Play" or "Continue watching" — ahead of the
+        // glyphs, where the series header can make do with a glyph.
+        actionBar: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: spacing.sm,
+          runSpacing: spacing.sm,
+          children: <Widget>[
+            FilledButton.icon(
+              onPressed: () => playServerItem(context, ref, item.id),
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: Text(started ? l10n.continueWatching : l10n.play),
+            ),
+            if (started)
+              IconButton(
+                tooltip: l10n.startOver,
+                icon: const Icon(Icons.replay_rounded),
+                onPressed: () =>
+                    playServerItem(context, ref, item.id, fromStart: true),
+              ),
+            ItemActionIcons(
+              item: item,
+              primary: false,
+              alignment: WrapAlignment.start,
+              onPlay: () => playServerItem(context, ref, item.id),
+              playlistIds: <String>[item.id],
+              onMediaInfo: () => showMediaInfo(context, item.id),
+            ),
+          ],
+        ),
+        aside: movie.overview.isEmpty && item.genres.isEmpty
+            ? null
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  if (movie.overview.isNotEmpty)
+                    _Overview(
+                      text: movie.overview,
+                      lines: 6,
+                      expanded: _overviewExpanded,
+                      onToggle: () => setState(
+                        () => _overviewExpanded = !_overviewExpanded,
+                      ),
+                    ),
+                  if (item.genres.isNotEmpty) ...<Widget>[
+                    SizedBox(height: spacing.md),
+                    TagStrip(tags: item.genres),
+                  ],
+                ],
+              ),
       ),
     );
   }
@@ -164,11 +265,12 @@ class _MetaRow extends StatelessWidget {
     final spacing = context.spacing;
     final style = context.texts.bodySmall?.copyWith(color: scheme.onSurface);
 
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: spacing.sm,
-      runSpacing: spacing.xs,
-      children: <Widget>[
+    // Only the parts the server filled in, with a dot between each pair. A
+    // fixed row drew an empty outlined box for a missing certificate and a
+    // trail of dots around fields that were never there — and quality is
+    // never there, since the server states none.
+    final parts = <Widget>[
+      if (movie.rating.isNotEmpty)
         Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
@@ -181,13 +283,11 @@ class _MetaRow extends StatelessWidget {
             Text(movie.rating, style: style),
           ],
         ),
-        Text('·', style: style),
-        Text(movie.year, style: style),
-        Text('·', style: style),
-        Text(movie.runtime, style: style),
-        Text('·', style: style),
-        // Certificates are boxed rather than plain text so they cannot be
-        // mistaken for part of the runtime.
+      if (movie.year.isNotEmpty) Text(movie.year, style: style),
+      if (movie.runtime.isNotEmpty) Text(movie.runtime, style: style),
+      // Certificates are boxed rather than plain text so they cannot be
+      // mistaken for part of the runtime.
+      if (movie.certificate.isNotEmpty)
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
           decoration: BoxDecoration(
@@ -196,8 +296,18 @@ class _MetaRow extends StatelessWidget {
           ),
           child: Text(movie.certificate, style: style),
         ),
-        Text('·', style: style),
-        Text(movie.quality, style: style),
+      if (movie.quality.isNotEmpty) Text(movie.quality, style: style),
+    ];
+
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: spacing.sm,
+      runSpacing: spacing.xs,
+      children: <Widget>[
+        for (var i = 0; i < parts.length; i++) ...<Widget>[
+          if (i > 0) Text('·', style: style),
+          parts[i],
+        ],
       ],
     );
   }
@@ -243,9 +353,13 @@ class _Overview extends StatelessWidget {
     required this.text,
     required this.expanded,
     required this.onToggle,
+    this.lines = 3,
   });
 
   final String text;
+
+  /// How many lines show before "More".
+  final int lines;
   final bool expanded;
   final VoidCallback onToggle;
 
@@ -261,7 +375,7 @@ class _Overview extends StatelessWidget {
         children: <Widget>[
           Text(
             text,
-            maxLines: expanded ? null : 3,
+            maxLines: expanded ? null : lines,
             overflow: expanded ? null : TextOverflow.ellipsis,
             style: context.texts.bodyMedium?.copyWith(
               color: scheme.onSurfaceVariant,
