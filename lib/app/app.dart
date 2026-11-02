@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import '../l10n/app_localizations.dart';
 import 'appearance_settings.dart';
 import 'locale_controller.dart';
+import 'mouse_navigation.dart';
 import 'router.dart';
 import '../features/player/stable_insets.dart';
 import 'system_ui.dart';
@@ -90,8 +91,9 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
       // There is nothing to drop on it any more: the window used to be a
       // drop target so a file dragged anywhere in it would play, and the app
       // opens no local files now.
-      builder: (context, child) => _InsetFromSystemBars(
-        child: child ?? const SizedBox.shrink(),
+      builder: (context, child) => MouseNavigation(
+        router: _router,
+        child: _InsetFromSystemBars(child: child ?? const SizedBox.shrink()),
       ),
     );
   }
