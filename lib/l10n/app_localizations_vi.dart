@@ -54,10 +54,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get noDownloads => 'Chưa tải xuống gì';
 
   @override
-  String get downloadsComingSoon =>
-      'Tính năng lưu phim và tập phim để xem ngoại tuyến sẽ có trong phiên bản sau.';
-
-  @override
   String get settings => 'Cài đặt';
 
   @override
@@ -1850,4 +1846,73 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get heroDetails => 'Chi tiết';
+
+  @override
+  String get downloadsEmptyHint =>
+      'Tải một phim hoặc một tập từ trang của nó để xem ở đây khi không có mạng.';
+
+  @override
+  String get addedToDownloads => 'Đã thêm vào mục tải xuống';
+
+  @override
+  String get downloadQueued => 'Đang chờ';
+
+  @override
+  String downloadingPercent(int percent) {
+    return 'Đang tải · $percent%';
+  }
+
+  @override
+  String get downloadPaused => 'Đã tạm dừng';
+
+  @override
+  String get resumeDownload => 'Tiếp tục tải';
+
+  @override
+  String get retryDownload => 'Thử lại';
+
+  @override
+  String get removeDownload => 'Xoá bản tải';
+
+  @override
+  String get removeDownloadTitle => 'Xoá bản tải này?';
+
+  @override
+  String removeDownloadBody(String title) {
+    return '$title sẽ không xem ngoại tuyến được nữa.';
+  }
+
+  @override
+  String downloadAllTitle(int count) {
+    return 'Tải $count tập?';
+  }
+
+  @override
+  String get downloadAllBody =>
+      'Các tập được lưu lần lượt, ở chất lượng gốc, và có thể chiếm nhiều dung lượng.';
+
+  @override
+  String get allDownloaded => 'Đã tải hết mọi tập';
+
+  @override
+  String get downloadsInProgress => 'Đang tải';
+
+  @override
+  String get downloadsCompleted => 'Đã tải';
+
+  @override
+  String get downloadsMovies => 'Phim';
+
+  @override
+  String downloadSizeOf(String received, String total) {
+    return '$received / $total';
+  }
+
+  @override
+  String get downloadWaitingForServer => 'Đang chờ đăng nhập server';
+
+  @override
+  String downloadsUsed(String size) {
+    return '$size trên thiết bị';
+  }
 }

@@ -32,7 +32,7 @@ class ItemActionRow extends ConsumerWidget {
     this.shuffleFrom = const <ServerItem>[],
     this.playlistIds = const <String>[],
     this.seriesId,
-    this.downloadsAll = false,
+    this.downloadAll = const <ServerItem>[],
     this.onMediaInfo,
     this.primary = true,
   });
@@ -56,8 +56,9 @@ class ItemActionRow extends ConsumerWidget {
   /// Which series' episode lists to refresh after a watch-state change.
   final String? seriesId;
 
-  /// Labels the download action "Download all" rather than "Download".
-  final bool downloadsAll;
+  /// What "Download all" fetches — a series' episodes. Empty offers this
+  /// item's own Download instead.
+  final List<ServerItem> downloadAll;
 
   /// Opens the stream list. Null on screens that have no such panel.
   final Future<void> Function()? onMediaInfo;
@@ -85,7 +86,7 @@ class ItemActionRow extends ConsumerWidget {
       seriesId: seriesId,
       shuffleFrom: shuffleFrom,
       playlistIds: playlistIds,
-      downloadsAll: downloadsAll,
+      downloadAll: downloadAll,
       onMediaInfo: onMediaInfo,
     );
 
@@ -159,7 +160,7 @@ class ItemActionIcons extends ConsumerWidget {
     this.shuffleFrom = const <ServerItem>[],
     this.playlistIds = const <String>[],
     this.seriesId,
-    this.downloadsAll = false,
+    this.downloadAll = const <ServerItem>[],
     this.onMediaInfo,
     this.visible = 4,
     this.primary = true,
@@ -178,7 +179,7 @@ class ItemActionIcons extends ConsumerWidget {
   final List<ServerItem> shuffleFrom;
   final List<String> playlistIds;
   final String? seriesId;
-  final bool downloadsAll;
+  final List<ServerItem> downloadAll;
   final Future<void> Function()? onMediaInfo;
 
   /// How many actions are drawn as glyphs before the overflow menu.
@@ -202,7 +203,7 @@ class ItemActionIcons extends ConsumerWidget {
       seriesId: seriesId,
       shuffleFrom: shuffleFrom,
       playlistIds: playlistIds,
-      downloadsAll: downloadsAll,
+      downloadAll: downloadAll,
       onMediaInfo: onMediaInfo,
     );
 

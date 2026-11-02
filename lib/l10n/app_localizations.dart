@@ -182,12 +182,6 @@ abstract class AppLocalizations {
   /// **'Nothing downloaded'**
   String get noDownloads;
 
-  /// No description provided for @downloadsComingSoon.
-  ///
-  /// In en, this message translates to:
-  /// **'Saving films and episodes for offline viewing is coming in a later version.'**
-  String get downloadsComingSoon;
-
   /// No description provided for @settings.
   ///
   /// In en, this message translates to:
@@ -3439,6 +3433,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Details'**
   String get heroDetails;
+
+  /// No description provided for @downloadsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Download a film or an episode from its page to watch it here without a connection.'**
+  String get downloadsEmptyHint;
+
+  /// No description provided for @addedToDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to downloads'**
+  String get addedToDownloads;
+
+  /// No description provided for @downloadQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get downloadQueued;
+
+  /// No description provided for @downloadingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading · {percent}%'**
+  String downloadingPercent(int percent);
+
+  /// No description provided for @downloadPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get downloadPaused;
+
+  /// No description provided for @resumeDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume download'**
+  String get resumeDownload;
+
+  /// No description provided for @retryDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get retryDownload;
+
+  /// No description provided for @removeDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove download'**
+  String get removeDownload;
+
+  /// No description provided for @removeDownloadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this download?'**
+  String get removeDownloadTitle;
+
+  /// No description provided for @removeDownloadBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} will no longer be available offline.'**
+  String removeDownloadBody(String title);
+
+  /// No description provided for @downloadAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download {count} episodes?'**
+  String downloadAllTitle(int count);
+
+  /// No description provided for @downloadAllBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They are saved one at a time, in the original quality, and can take a lot of space.'**
+  String get downloadAllBody;
+
+  /// No description provided for @allDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Every episode is already downloaded'**
+  String get allDownloaded;
+
+  /// No description provided for @downloadsInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get downloadsInProgress;
+
+  /// No description provided for @downloadsCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded'**
+  String get downloadsCompleted;
+
+  /// No description provided for @downloadsMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Films'**
+  String get downloadsMovies;
+
+  /// No description provided for @downloadSizeOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{received} of {total}'**
+  String downloadSizeOf(String received, String total);
+
+  /// No description provided for @downloadWaitingForServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the server to sign in'**
+  String get downloadWaitingForServer;
+
+  /// No description provided for @downloadsUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} on this device'**
+  String downloadsUsed(String size);
 }
 
 class _AppLocalizationsDelegate

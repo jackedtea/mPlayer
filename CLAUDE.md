@@ -91,9 +91,9 @@ that list — there is no local file to have either.
 
 Also open:
 
-1. Downloads (screen 1i) is still parked on sample data. It is now a *server*
-   feature — an offline copy of a server item — and the player can play one,
-   so it is worth building rather than dropping.
+1. Downloads (screen 1i) fetches and lists real copies (see "Downloads"), but
+   the player does not open them yet and the tab is unreachable with no
+   server signed in.
 2. English literals remain where Localisation says.
 3. Dropped on purpose: **NFS**, **network scanning**, **preview thumbnails**
    generated locally (the server's trickplay covers it), and now every local
@@ -132,7 +132,7 @@ Also open:
   `connectedServerProvider` is null.
 - **Search**: a second tap on the destination focuses the field
   (`searchFocusRequests`).
-- **Downloads** is a placeholder; nothing feeds its list.
+- **Downloads** lists the offline copies from `downloadsProvider`; see "Downloads".
 - **Settings** opens on `CurrentServerCard` (name, host, user, admin badge;
   Edit server / Switch server, or Add server with none), then App settings
   and, for an administrator, Server settings linking straight to `/admin/*`.
@@ -233,6 +233,33 @@ Also open:
 - The Windows layout (banner, scaled shelves, hover arrows) was looked at
   and approved on Windows, 2026-11-02. Not yet verified on a real TV box or
   with a remote.
+
+## Downloads (2026-11-02)
+
+`lib/downloads/` is the subsystem, `features/downloads/` the screen and the
+shared bits (`download_ui.dart`: `watchDownload`, `DownloadBadge`,
+`confirmRemoveDownload`, `formatBytes`).
+
+- **The original file only**: `/Items/{id}/Download?api_key=`, gated on the
+  account's `EnableContentDownloading`; a 403 is a sentence, not a fallback.
+- **Layout** `<app support>/downloads/<profile>/<item>/` — `media.<ext>`
+  (extension from `Content-Disposition`), `media.part` while arriving,
+  `poster.jpg` — and `index.json` beside them. **No token in the index**: the
+  URL is rebuilt from the signed-in session each time, so a copy of a server
+  that is not signed in waits in the queue.
+- **Resume is by `Range`**, written over a response stream rather than
+  `Dio.download`, because a 200 to a range request must overwrite and a 206
+  must append. The engine never throws; failures are `failed` + a sentence.
+- **One file at a time.** The index is written on status changes only; the
+  partial file is the true byte count and `load()` reads it from there.
+  Writes are serialised and the rename retried — Windows refuses a rename
+  over a file something has open for a moment, and two overlapping saves
+  share the `.tmp`.
+- The item's Download action is one `ItemAction` whatever the state
+  (download → queued/percent, tap pauses → resume → remove, drawn selected).
+  "Download all" on a series asks with the count; the listing has no sizes.
+- Not yet: offline playback (Phase 3), the tab with no server (4), Android
+  background service and Wi-Fi-only (5).
 
 ## Localisation
 

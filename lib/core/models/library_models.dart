@@ -213,25 +213,3 @@ class SeriesDetail {
   final List<Season> seasons;
 }
 
-/// Lifecycle of an offline copy (screen 1i).
-enum DownloadStatus { inProgress, completed, queued }
-
-@immutable
-class DownloadItem {
-  const DownloadItem({
-    required this.title,
-    required this.status,
-    required this.detail,
-    this.progress = 0,
-  });
-
-  final String title;
-  final DownloadStatus status;
-
-  /// "412 MB of 1.4 GB" / "Available offline · expires in 27 days" /
-  /// "Queued · waiting for Wi-Fi".
-  final String detail;
-
-  final double progress;
-}
-

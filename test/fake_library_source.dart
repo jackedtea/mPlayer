@@ -215,5 +215,9 @@ class FakeLibrarySource implements MediaLibrarySource {
       null;
 
   @override
+  Uri downloadUrl(String itemId) =>
+      Uri.parse('${fakeServerProfile.uri}/Items/$itemId/Download');
+
+  @override
   Future<void> dispose() async {}
 }

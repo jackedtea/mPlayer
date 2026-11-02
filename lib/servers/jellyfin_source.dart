@@ -580,6 +580,10 @@ class JellyfinSource implements MediaLibrarySource {
   Uri? personImageUrl(ServerPerson person, {int? maxWidth}) =>
       personImageUrlFor(person, base: _base, maxWidth: maxWidth);
 
+  @override
+  Uri downloadUrl(String itemId) =>
+      downloadUrlFor(itemId, base: _base, token: _token);
+
   // ----------------------------------------------------------- playback
 
   @override

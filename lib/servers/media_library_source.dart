@@ -797,6 +797,13 @@ abstract class MediaLibrarySource {
   /// and the chapter alone does not say whose.
   Uri? chapterImageUrl(String itemId, ServerChapter chapter, {int? maxWidth});
 
+  /// The original file of [itemId], whole, for an offline copy.
+  ///
+  /// The token rides in the query, as it does on a stream: a download is
+  /// resumed long after this was built, by an engine that holds no headers.
+  /// The server refuses it with a 403 when the account may not download.
+  Uri downloadUrl(String itemId);
+
   /// How to play [itemId], given what this device can decode.
   ///
   /// The stream indexes are the server's own, taken from a previous

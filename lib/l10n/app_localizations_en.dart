@@ -54,10 +54,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noDownloads => 'Nothing downloaded';
 
   @override
-  String get downloadsComingSoon =>
-      'Saving films and episodes for offline viewing is coming in a later version.';
-
-  @override
   String get settings => 'Settings';
 
   @override
@@ -1848,4 +1844,73 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get heroDetails => 'Details';
+
+  @override
+  String get downloadsEmptyHint =>
+      'Download a film or an episode from its page to watch it here without a connection.';
+
+  @override
+  String get addedToDownloads => 'Added to downloads';
+
+  @override
+  String get downloadQueued => 'Queued';
+
+  @override
+  String downloadingPercent(int percent) {
+    return 'Downloading · $percent%';
+  }
+
+  @override
+  String get downloadPaused => 'Paused';
+
+  @override
+  String get resumeDownload => 'Resume download';
+
+  @override
+  String get retryDownload => 'Try again';
+
+  @override
+  String get removeDownload => 'Remove download';
+
+  @override
+  String get removeDownloadTitle => 'Remove this download?';
+
+  @override
+  String removeDownloadBody(String title) {
+    return '$title will no longer be available offline.';
+  }
+
+  @override
+  String downloadAllTitle(int count) {
+    return 'Download $count episodes?';
+  }
+
+  @override
+  String get downloadAllBody =>
+      'They are saved one at a time, in the original quality, and can take a lot of space.';
+
+  @override
+  String get allDownloaded => 'Every episode is already downloaded';
+
+  @override
+  String get downloadsInProgress => 'In progress';
+
+  @override
+  String get downloadsCompleted => 'Downloaded';
+
+  @override
+  String get downloadsMovies => 'Films';
+
+  @override
+  String downloadSizeOf(String received, String total) {
+    return '$received of $total';
+  }
+
+  @override
+  String get downloadWaitingForServer => 'Waiting for the server to sign in';
+
+  @override
+  String downloadsUsed(String size) {
+    return '$size on this device';
+  }
 }

@@ -16,6 +16,7 @@ import '../../servers/media_library_source.dart';
 import '../../widgets/detail_header.dart';
 import '../../widgets/gradient_art.dart';
 import '../../widgets/remote_art.dart';
+import '../downloads/download_ui.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
 import 'media_info_sheet.dart';
@@ -242,7 +243,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                 playlistIds: <String>[
                   for (final ServerItem e in episodes) e.id,
                 ],
-                downloadsAll: true,
+                downloadAll: episodes,
               ),
             ),
           ),
@@ -685,11 +686,23 @@ class _EpisodeRow extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: spacing.xs),
-                  Text(
-                    episode.meta,
-                    style: context.texts.bodySmall?.copyWith(
-                      color: scheme.outline,
-                    ),
+                  Row(
+                    children: <Widget>[
+                      Flexible(
+                        child: Text(
+                          episode.meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.texts.bodySmall?.copyWith(
+                            color: scheme.outline,
+                          ),
+                        ),
+                      ),
+                      if (item != null) ...<Widget>[
+                        SizedBox(width: spacing.sm),
+                        DownloadBadge(itemId: item!.id),
+                      ],
+                    ],
                   ),
                 ],
               ),

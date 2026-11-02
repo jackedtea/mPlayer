@@ -11,6 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
+import '../../downloads/download_models.dart';
+import '../../downloads/downloads_controller.dart';
+import '../downloads/download_ui.dart';
 import 'server_library.dart';
 
 /// The playlists the signed-in user owns.
@@ -317,7 +320,7 @@ List<ItemAction> itemActionsFor(
   String? seriesId,
   List<ServerItem> shuffleFrom = const <ServerItem>[],
   List<String> playlistIds = const <String>[],
-  bool downloadsAll = false,
+  List<ServerItem> downloadAll = const <ServerItem>[],
   Future<void> Function()? onMediaInfo,
 }) {
   final l10n = AppLocalizations.of(context);
@@ -379,20 +382,142 @@ List<ItemAction> itemActionsFor(
         label: l10n.mediaInfo,
         onSelected: onMediaInfo,
       ),
-    ItemAction(
-      icon: Icons.download_for_offline_outlined,
-      label: downloadsAll ? l10n.downloadAll : l10n.download,
-      // Offline copies are a whole subsystem — a store, a queue, a resolver
-      // that keeps working when the server is gone — and none of it exists
-      // yet. Shown and honest rather than hidden, because the design's screen
-      // for it already exists.
-      onSelected: () async =>
-          reportFailure(context, l10n.notImplemented(l10n.download)),
-    ),
+    downloadAll.isEmpty
+        ? _downloadAction(context, ref, item)
+        : _downloadAllAction(context, ref, downloadAll),
   ];
 }
 
 /// Reports an action that could not be carried out.
 void reportFailure(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// Download, and what becomes of the button once there is a copy.
+///
+/// One action whatever the state, so the row keeps its shape: it starts a
+/// copy, shows how far one has got, picks a stopped one back up, and once
+/// the copy is whole it is the way to remove it again — drawn selected, the
+/// way a favourite is.
+ItemAction _downloadAction(
+  BuildContext context,
+  WidgetRef ref,
+  ServerItem item,
+) {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final download = watchDownload(ref, item.id);
+
+  if (download == null) {
+    return ItemAction(
+      icon: Icons.download_for_offline_outlined,
+      label: l10n.download,
+      onSelected: () async {
+        final source = ref.read(activeServerProvider);
+        if (source == null) {
+          messenger.showSnackBar(SnackBar(content: Text(l10n.actionFailed)));
+          return;
+        }
+        await ref.read(downloadsProvider.notifier).enqueue(source, item);
+        messenger.showSnackBar(SnackBar(content: Text(l10n.addedToDownloads)));
+      },
+    );
+  }
+
+  final controller = ref.read(downloadsProvider.notifier);
+  return switch (download.status) {
+    DownloadStatus.queued => ItemAction(
+        icon: Icons.downloading_rounded,
+        label: l10n.downloadQueued,
+        onSelected: () => controller.pause(download.key),
+      ),
+    DownloadStatus.downloading => ItemAction(
+        icon: Icons.downloading_rounded,
+        label: l10n.downloadingPercent(download.percent),
+        onSelected: () => controller.pause(download.key),
+      ),
+    DownloadStatus.paused || DownloadStatus.failed => ItemAction(
+        icon: Icons.download_for_offline_outlined,
+        label: l10n.resumeDownload,
+        onSelected: () => controller.resume(download.key),
+      ),
+    DownloadStatus.completed => ItemAction(
+        icon: Icons.download_done_rounded,
+        label: l10n.removeDownload,
+        selected: true,
+        onSelected: () => confirmRemoveDownload(
+          context,
+          ref,
+          key: download.key,
+          title: item.title,
+          completed: true,
+        ),
+      ),
+  };
+}
+
+/// "Download all" on a series: every episode not already on its way.
+///
+/// Asks first, with the count, because a long series is a lot of disk and
+/// one press should not commit to it unseen. The listing carries no file
+/// sizes, so the count is the honest figure there is.
+ItemAction _downloadAllAction(
+  BuildContext context,
+  WidgetRef ref,
+  List<ServerItem> episodes,
+) {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+
+  return ItemAction(
+    icon: Icons.download_for_offline_outlined,
+    label: l10n.downloadAll,
+    onSelected: () async {
+      final source = ref.read(activeServerProvider);
+      if (source == null) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.actionFailed)));
+        return;
+      }
+      final controller = ref.read(downloadsProvider.notifier);
+      await controller.ready;
+
+      final missing = <ServerItem>[
+        for (final ServerItem e in episodes)
+          if (switch (controller.entryFor(source.profile.id, e.id)?.status) {
+            null || DownloadStatus.paused || DownloadStatus.failed => true,
+            _ => false,
+          })
+            e,
+      ];
+      if (missing.isEmpty) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.allDownloaded)));
+        return;
+      }
+      if (!context.mounted) return;
+
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.downloadAllTitle(missing.length)),
+          content: Text(l10n.downloadAllBody),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.download),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+
+      for (final ServerItem e in missing) {
+        await controller.enqueue(source, e);
+      }
+      messenger.showSnackBar(SnackBar(content: Text(l10n.addedToDownloads)));
+    },
+  );
 }

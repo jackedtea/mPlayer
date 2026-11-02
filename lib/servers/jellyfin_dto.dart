@@ -810,6 +810,21 @@ List<ExternalSubtitle> externalSubtitlesFrom(
   return subtitles;
 }
 
+/// `/Items/{id}/Download`: the file as the server stores it, never re-encoded.
+///
+/// Gated on the account's `EnableContentDownloading` policy, which is the
+/// server's to enforce — a refusal comes back as a 403, not as a missing URL.
+Uri downloadUrlFor(String itemId, {required Uri base, required String token}) =>
+    base.replace(
+      pathSegments: <String>[
+        ...base.pathSegments.where((s) => s.isNotEmpty),
+        'Items',
+        itemId,
+        'Download',
+      ],
+      queryParameters: <String, String>{'api_key': token},
+    );
+
 /// Artwork for an item, or null when it has none.
 Uri? imageUrlFor(
   ServerItem item, {
