@@ -165,6 +165,21 @@ void main() {
       );
     });
 
+    test('a universal APK serves every ABI', () {
+      final release = ReleaseInfo(
+        version: '1.4.0',
+        tag: 'v1.4.0',
+        url: '',
+        assets: <ReleaseAsset>[_asset('mPlayer-1.4.0-android-universal.apk')],
+      );
+      for (final abi in <String>['arm64-v8a', 'armeabi-v7a', 'x86_64']) {
+        expect(
+          assetFor(release, UpdatePlatform.android, abis: <String>[abi])?.name,
+          'mPlayer-1.4.0-android-universal.apk',
+        );
+      }
+    });
+
     test('the archive for each desktop', () {
       expect(assetFor(_release, UpdatePlatform.windows)?.name,
           endsWith('windows-x64-setup.exe'));

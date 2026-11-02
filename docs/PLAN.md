@@ -532,7 +532,7 @@ Explicitly deprioritised. It applies **only** to raw file sources — media serv
 
 ## Phase 11 — Packaging & release
 
-- [x] Android: release signing from repository secrets, `--split-per-abi`. No extra R8
+- [x] Android: release signing from repository secrets, one universal APK (per-ABI split until 2026-11-02). No extra R8
       rules were needed for `media_kit`
 - [ ] Windows: MSIX or Inno Setup installer; confirm `libmpv-2.dll` ships
 - [ ] Linux: `.deb` + AppImage (bundle libmpv or declare the dependency), reuse `linux/packaging/`

@@ -314,31 +314,28 @@ jobs:
 
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
-      # One APK per ABI rather than one fat one: media_kit bundles an 11-15 MB
-      # libmpv.so for each ABI, so a universal APK is about three times the size
-      # any single device actually needs. Flutter's Gradle plugin offsets the
-      # version code per ABI (armeabi-v7a 1000, arm64-v8a 2000, x86_64 3000).
+      # One universal APK for every ABI: one file to pick, at the cost of
+      # carrying media_kit's 11-15 MB libmpv.so three times over.
       # --build-name so the APK reports the version the release is tagged
       # with (main moves its patch number every build, pubspec does not);
       # Gradle still appends the dev suffix. --build-number from the run, so
       # the versionCode keeps rising and each APK installs over the last.
-      - name: Build APKs
+      # The 5000 clears the per-ABI APKs released before this one, whose
+      # versionCodes Flutter offset by up to 4000 (x86_64): without it a
+      # device holding one of those would refuse this as a downgrade.
+      - name: Build APK
         env:
           APP_ID_SUFFIX: ${{ needs.prepare.outputs.app_id_suffix }}
           VERSION_NAME_SUFFIX: ${{ needs.prepare.outputs.version_name_suffix }}
         run: |
-          flutter build apk --release --split-per-abi \
+          flutter build apk --release \
             --build-name "${{ needs.prepare.outputs.version }}" \
-            --build-number "${{ github.run_number }}"
+            --build-number "$(( ${{ github.run_number }} + 5000 ))"
 
-      - name: Name the artifacts
+      - name: Name the artifact
         run: |
-          set -euo pipefail
-          BASE="${{ needs.prepare.outputs.artifact_base }}"
-          for ABI in arm64-v8a armeabi-v7a x86_64; do
-            mv "build/app/outputs/flutter-apk/app-${ABI}-release.apk" \
-               "${BASE}-android-${ABI}.apk"
-          done
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             "${{ needs.prepare.outputs.artifact_base }}-android-universal.apk"
 
       - name: Always remove the keystore
         if: always()
@@ -549,14 +546,12 @@ jobs:
             if [ "${{ needs.android.outputs.signed }}" != "true" ]; then
               echo ""
               echo "> **Warning**"
-              echo "> No keystore secret was set for this branch, so the APKs are **debug-signed**. Do not distribute them."
+              echo "> No keystore secret was set for this branch, so the APK is **debug-signed**. Do not distribute it."
             fi
             echo ""
             echo "| Artifact | Platform |"
             echo "|---|---|"
-            echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-arm64-v8a.apk\` | Android · 64-bit ARM |"
-            echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-armeabi-v7a.apk\` | Android · 32-bit ARM |"
-            echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-x86_64.apk\` | Android · x86_64 |"
+            echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-universal.apk\` | Android · every architecture |"
             # Only when the build actually ran: a row naming a file nobody
             # can download is worse than no row.
             if [ "${{ needs.windows.result }}" = "success" ]; then
@@ -565,10 +560,6 @@ jobs:
             if [ "${{ needs.linux.result }}" = "success" ]; then
               echo "| \`${{ needs.prepare.outputs.artifact_base }}-linux-x64.deb\` | Linux x64 · Debian/Ubuntu |"
             fi
-            echo ""
-            echo "Android ships one APK per architecture — take \`arm64-v8a\` unless the"
-            echo "device is an older 32-bit phone (\`armeabi-v7a\`) or an emulator"
-            echo "(\`x86_64\`)."
             if [ "${{ needs.linux.result }}" = "success" ]; then
               echo ""
               echo "Install the Linux package with \`sudo apt install ./<file>.deb\` so apt"
@@ -644,7 +635,7 @@ jobs:
 
           WARN=""
           if [ "${{ needs.android.outputs.signed }}" != "true" ]; then
-            WARN="⚠️ APKs are debug-signed (no keystore secret)"
+            WARN="⚠️ APK is debug-signed (no keystore secret)"
           fi
 
           # jq builds both the text and the JSON, so a branch name or release
@@ -659,9 +650,7 @@ jobs:
             --arg sha "${{ needs.prepare.outputs.short_sha }}" \
             --arg warn "$WARN" \
             --arg ok "$OK" \
-            --arg apk_arm64 "$DL/$BASE-android-arm64-v8a.apk" \
-            --arg apk_arm32 "$DL/$BASE-android-armeabi-v7a.apk" \
-            --arg apk_x64 "$DL/$BASE-android-x86_64.apk" \
+            --arg apk "$DL/$BASE-android-universal.apk" \
             --arg win "$DL/$BASE-windows-x64-setup.exe" \
             --arg linux "$DL/$BASE-linux-x64.deb" \
             --arg has_win "${{ needs.windows.result }}" \
@@ -684,9 +673,7 @@ jobs:
              # "Top-level program not given", which says nothing about where
              # the quote was. A comment is what did it once already.
              def downloads:
-               "📱 Android " + link($apk_arm64; "arm64-v8a")
-                 + " · " + link($apk_arm32; "armeabi-v7a")
-                 + " · " + link($apk_x64; "x86_64") + "\n"
+               "📱 " + link($apk; "Android") + "\n"
                + (if $has_win == "success"
                     then "🪟 " + link($win; "Windows x64") + "\n" else "" end)
                + (if $has_linux == "success"

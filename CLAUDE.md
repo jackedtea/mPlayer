@@ -164,7 +164,7 @@ Also open:
   `AdaptiveScaffold` (never over the player), runs in **release builds
   only** (`updateAutoCheckAllowedProvider` = `kReleaseMode`, which also keeps
   widget tests off the network), at most every 20 h, honours a skipped tag,
-  and has a switch in General. Install: Android downloads the ABI's APK into
+  and has a switch in General. Install: Android downloads the universal APK (or, from an older release, the ABI's) into
   `cache/updates/` and `UpdateChannel.kt` hands it to the system installer
   through a FileProvider (`REQUEST_INSTALL_PACKAGES`); Windows/Linux download
   the installer and start a detached PowerShell/sh script that waits for the
@@ -825,11 +825,13 @@ clean now; a duplicate-key scan is the way to check after editing it.
 - Never select secrets with `cond && secrets.A || secrets.B` — that operator falls through
   to `B` when `A` is empty, which would sign a main build with the dev key silently. The
   workflow passes both sets and chooses in shell.
-- Android builds with `--split-per-abi`, so the release carries three APKs named
-  `<base>-android-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`) instead of one fat
-  one — media_kit bundles an 11–15 MB `libmpv.so` per ABI. Flutter's Gradle plugin
-  offsets the version code per ABI automatically; the rename loop and the release-notes
-  table both spell the three ABIs out, so adding or dropping one means touching both.
+- Android ships **one universal APK**, `<base>-android-universal.apk` (since
+  2026-11-02; before that `--split-per-abi` and three `<base>-android-<abi>.apk`). It is
+  ~25–30 MB heavier — media_kit bundles an 11–15 MB `libmpv.so` per ABI — for one file
+  to pick. `--build-number` is `run_number + 5000`: the split builds had their
+  versionCode offset by Flutter up to 4000 (x86_64), and a lower one is a downgrade
+  Android refuses. Never drop that offset. `assetFor` takes the universal APK first and
+  falls back to per-ABI names for older releases.
 - Missing keystore secrets do not fail the build; the APKs are debug-signed and both the
   release notes and the Telegram message say so.
 
@@ -1032,7 +1034,7 @@ flutter analyze
 flutter test
 flutter build windows --debug
 flutter build apk --debug
-flutter build apk --release --split-per-abi    # what CI ships
+flutter build apk --release                    # what CI ships (universal)
 ```
 
 **There is no `build_runner`.** `drift`, `freezed` and `json_serializable`
