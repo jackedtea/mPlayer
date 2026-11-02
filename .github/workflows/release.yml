@@ -355,7 +355,7 @@ jobs:
   # Windows
   # ---------------------------------------------------------------------------
   windows:
-    name: Windows EXE
+    name: Windows installer
     needs: prepare
     runs-on: windows-latest
     if: needs.prepare.outputs.skip != 'true'
@@ -383,20 +383,40 @@ jobs:
             --build-name "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}" \
             --build-number "${{ github.run_number }}"
 
-      # The exe alone will not run: media_kit ships libmpv-2.dll and Flutter
-      # ships its own runtime beside it, so the whole Release folder is the
-      # deliverable.
-      - name: Package the Release folder
+      # An Inno Setup installer around the whole Release folder — the exe
+      # alone will not run, media_kit's libmpv-2.dll and Flutter's runtime
+      # sit beside it. What it installs, and why per-user, is in the script.
+      # Inno Setup is installed on the runner image; choco is the fallback
+      # for an image that has dropped it.
+      - name: Build the installer
         shell: pwsh
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          FULL_VERSION: ${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}
+          IS_DEV: ${{ needs.prepare.outputs.is_dev }}
+          OUTPUT_BASE: ${{ needs.prepare.outputs.artifact_base }}-windows-x64-setup
         run: |
-          Compress-Archive `
-            -Path build\windows\x64\runner\Release\* `
-            -DestinationPath "${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip"
+          $ErrorActionPreference = 'Stop'
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+          $defines = @(
+            "/DAppVersion=$env:FULL_VERSION",
+            "/DNumericVersion=$env:VERSION",
+            "/DSourceDir=$env:GITHUB_WORKSPACE\build\windows\x64\runner\Release",
+            "/DOutputDir=$env:GITHUB_WORKSPACE",
+            "/DOutputBase=$env:OUTPUT_BASE"
+          )
+          if ($env:IS_DEV -eq 'true') { $defines += '/DDev' }
+          & $iscc @defines windows\packaging\mplayer.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - uses: actions/upload-artifact@v7
         with:
-          name: windows-zip
-          path: ${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip
+          name: windows-setup
+          path: ${{ needs.prepare.outputs.artifact_base }}-windows-x64-setup.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -412,7 +432,7 @@ jobs:
   # problem — a distro's libmpv is a complete build.
   # ---------------------------------------------------------------------------
   linux:
-    name: Linux bundle
+    name: Linux .deb
     needs: prepare
     runs-on: ubuntu-22.04
     # TEMPORARILY DISABLED. To bring Linux back: restore
@@ -432,7 +452,8 @@ jobs:
             clang cmake ninja-build pkg-config \
             libgtk-3-dev liblzma-dev \
             libmpv-dev mpv \
-            libsecret-1-dev libjsoncpp-dev
+            libsecret-1-dev libjsoncpp-dev \
+            dpkg-dev
 
       - uses: subosito/flutter-action@v2
         with:
@@ -450,18 +471,19 @@ jobs:
             --build-name "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}" \
             --build-number "${{ github.run_number }}"
 
-      # Tar rather than zip: it preserves the executable bit, which a zip
-      # extracted on Linux does not.
-      - name: Package the bundle
+      # A .deb, so apt pulls in libmpv and the rest, and the app gets a
+      # launcher entry and icons. What goes where is in the script.
+      - name: Build the .deb
         run: |
-          set -euo pipefail
-          tar -czf "${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz" \
-            -C build/linux/x64/release/bundle .
+          bash linux/packaging/build-deb.sh \
+            "${{ needs.prepare.outputs.version }}${{ needs.prepare.outputs.version_name_suffix }}" \
+            "${{ needs.prepare.outputs.is_dev == 'true' && 'dev' || 'release' }}" \
+            "${{ needs.prepare.outputs.artifact_base }}-linux-x64.deb"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: linux-bundle
-          path: ${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz
+          name: linux-deb
+          path: ${{ needs.prepare.outputs.artifact_base }}-linux-x64.deb
           if-no-files-found: error
           retention-days: 14
 
@@ -538,10 +560,10 @@ jobs:
             # Only when the build actually ran: a row naming a file nobody
             # can download is worse than no row.
             if [ "${{ needs.windows.result }}" = "success" ]; then
-              echo "| \`${{ needs.prepare.outputs.artifact_base }}-windows-x64.zip\` | Windows x64 |"
+              echo "| \`${{ needs.prepare.outputs.artifact_base }}-windows-x64-setup.exe\` | Windows x64 · installer |"
             fi
             if [ "${{ needs.linux.result }}" = "success" ]; then
-              echo "| \`${{ needs.prepare.outputs.artifact_base }}-linux-x64.tar.gz\` | Linux x64 |"
+              echo "| \`${{ needs.prepare.outputs.artifact_base }}-linux-x64.deb\` | Linux x64 · Debian/Ubuntu |"
             fi
             echo ""
             echo "Android ships one APK per architecture — take \`arm64-v8a\` unless the"
@@ -549,8 +571,8 @@ jobs:
             echo "(\`x86_64\`)."
             if [ "${{ needs.linux.result }}" = "success" ]; then
               echo ""
-              echo "The Linux bundle links libmpv from the system: install \`libmpv2\`"
-              echo "(or \`mpv\`) before running it."
+              echo "Install the Linux package with \`sudo apt install ./<file>.deb\` so apt"
+              echo "pulls in libmpv and the rest of its dependencies."
             fi
             echo "RELEASE_NOTES_EOF"
           } >> "$GITHUB_OUTPUT"
@@ -640,8 +662,8 @@ jobs:
             --arg apk_arm64 "$DL/$BASE-android-arm64-v8a.apk" \
             --arg apk_arm32 "$DL/$BASE-android-armeabi-v7a.apk" \
             --arg apk_x64 "$DL/$BASE-android-x86_64.apk" \
-            --arg win "$DL/$BASE-windows-x64.zip" \
-            --arg linux "$DL/$BASE-linux-x64.tar.gz" \
+            --arg win "$DL/$BASE-windows-x64-setup.exe" \
+            --arg linux "$DL/$BASE-linux-x64.deb" \
             --arg has_win "${{ needs.windows.result }}" \
             --arg has_linux "${{ needs.linux.result }}" \
             --arg notes "$NOTES_URL" \

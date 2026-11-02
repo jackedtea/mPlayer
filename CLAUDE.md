@@ -167,9 +167,10 @@ Also open:
   and has a switch in General. Install: Android downloads the ABI's APK into
   `cache/updates/` and `UpdateChannel.kt` hands it to the system installer
   through a FileProvider (`REQUEST_INSTALL_PACKAGES`); Windows/Linux download
-  the archive and start a detached PowerShell/sh script that waits for the
-  PID, unpacks over the install dir, and restarts the app in `finally` — a
-  non-writable install dir is refused up front.
+  the installer and start a detached PowerShell/sh script that waits for the
+  PID, installs (Windows: the setup `.exe` with `/VERYSILENT /DIR=<install
+  dir>`; Linux: `pkexec dpkg -i` on the `.deb`), and restarts the app
+  regardless — a non-writable install dir is refused up front on Windows.
 - **Player chrome**: one audio-and-subtitle button (top bar) opening the
   two-pane `AudioSubtitleDialog`; the bottom bar is lock, rotation, zoom,
   chapters, fullscreen. Background play, speed, loop and screenshot are a
@@ -746,9 +747,24 @@ Linux is not covered by that tool — its icons live in `linux/packaging/icons/h
 
 ## CI / release
 
-`.github/workflows/release.yml` builds Android APKs, a Windows zip and a Linux tarball,
-publishes a GitHub release and posts to Telegram. Runs on a schedule (dev daily, main
-every third day) or manually for `dev`/`main`. **There has never been a macOS job.**
+`.github/workflows/release.yml` builds Android APKs, a Windows installer and a Linux
+`.deb`, publishes a GitHub release and posts to Telegram. **There has never been a macOS
+job.**
+
+Desktop ships installers, not portable archives:
+
+- **Windows** — `windows/packaging/mplayer.iss`, compiled by Inno Setup's `ISCC` into
+  `<base>-windows-x64-setup.exe`. **Per-user only** (`PrivilegesRequired=lowest`,
+  installs under `%LOCALAPPDATA%\Programs`), so the in-app updater can run it silently
+  without UAC. The release `AppId` GUID must never change — it is what makes a new
+  installer an upgrade. A dev build (`/DDev`) has its own AppId, name and folder.
+- **Linux** — `linux/packaging/build-deb.sh` into `<base>-linux-x64.deb`: bundle in
+  `/opt/<package>`, launcher on PATH, `.desktop` and hicolor icons. `Depends` comes from
+  `dpkg-shlibdeps`, not a hand-written list (libmpv's package follows its soname). A dev
+  build is package `mplayer-dev` with its own folder, command, `.desktop` and **icon
+  names** — two packages owning one path is a dpkg error.
+- The asset suffixes are matched by `assetFor` in `core/update_check.dart`; renaming one
+  side without the other leaves the desktop updater finding nothing.
 
 The desktop jobs pass `--build-name <version><version_name_suffix>`: Android gets
 `-dev-<sha>` through Gradle, desktop has no such hook, and without it a dev desktop build
@@ -756,7 +772,7 @@ reports plain `1.0.0` and its updater follows the stable channel.
 
 - `release` cannot simply `needs:` a skipped job, or it skips too (all builds skip when
   "Already built?" finds the tag), so it checks results by name. **All three platforms
-  must succeed**: a release missing the desktop archives is never rebuilt — the next run
+  must succeed**: a release missing the desktop installers is never rebuilt — the next run
   sees the tag — and the desktop updater, finding no asset, stays put in silence.
 - The release-notes table prints a platform's row only when that job succeeded. A row
   naming a file nobody can download is worse than no row.

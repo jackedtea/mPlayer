@@ -30,8 +30,8 @@ final _release = ReleaseInfo(
     _asset('mPlayer-1.3.0-android-arm64-v8a.apk'),
     _asset('mPlayer-1.3.0-android-armeabi-v7a.apk'),
     _asset('mPlayer-1.3.0-android-x86_64.apk'),
-    _asset('mPlayer-1.3.0-windows-x64.zip'),
-    _asset('mPlayer-1.3.0-linux-x64.tar.gz'),
+    _asset('mPlayer-1.3.0-windows-x64-setup.exe'),
+    _asset('mPlayer-1.3.0-linux-x64.deb'),
   ],
 );
 
@@ -130,15 +130,15 @@ void main() {
         'body': 'notes',
         'assets': <Object?>[
           <String, dynamic>{
-            'name': 'mPlayer-1.3.0-windows-x64.zip',
-            'browser_download_url': 'https://dl/win.zip',
+            'name': 'mPlayer-1.3.0-windows-x64-setup.exe',
+            'browser_download_url': 'https://dl/win-setup.exe',
             'size': 1234,
           },
           <String, dynamic>{'name': 'broken'},
         ],
       })!;
       expect(release.version, '1.3.0');
-      expect(release.assets.single.url, 'https://dl/win.zip');
+      expect(release.assets.single.url, 'https://dl/win-setup.exe');
       expect(release.assets.single.size, 1234);
     });
   });
@@ -167,9 +167,9 @@ void main() {
 
     test('the archive for each desktop', () {
       expect(assetFor(_release, UpdatePlatform.windows)?.name,
-          endsWith('windows-x64.zip'));
+          endsWith('windows-x64-setup.exe'));
       expect(assetFor(_release, UpdatePlatform.linux)?.name,
-          endsWith('linux-x64.tar.gz'));
+          endsWith('linux-x64.deb'));
     });
   });
 
@@ -327,14 +327,24 @@ void main() {
     });
   });
 
-  test('the desktop scripts restart the app even after a failed copy', () {
+  test('the desktop scripts restart the app even after a failed install', () {
     // `finally` on Windows; the restart is unconditional on Linux.
     expect(windowsUpdateScript, contains('finally'));
     expect(
-      windowsUpdateScript.indexOf('Start-Process'),
+      windowsUpdateScript.indexOf(r'Start-Process -FilePath $Exe'),
       greaterThan(windowsUpdateScript.indexOf('finally')),
     );
     expect(linuxUpdateScript, contains('nohup "\$exe"'));
     expect(linuxUpdateScript, contains('kill -0 "\$pid"'));
+  });
+
+  test('the desktop scripts install silently, in place', () {
+    // Silent, and into the folder the running exe is in — the one restarted.
+    expect(windowsUpdateScript, contains('/VERYSILENT'));
+    expect(windowsUpdateScript, contains(r'/DIR=`"$Target`"'));
+    // A failing installer is caught, not mistaken for success.
+    expect(windowsUpdateScript, contains('ExitCode'));
+    // dpkg, not apt: two dev builds of one version do not order.
+    expect(linuxUpdateScript, contains('pkexec dpkg -i "\$package"'));
   });
 }

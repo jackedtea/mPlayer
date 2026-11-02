@@ -12,11 +12,11 @@
 /// - **Android** — the APK for the device's ABI is downloaded into the cache
 ///   and handed to the system installer, which asks the user to confirm and
 ///   refuses anything not signed like the installed app.
-/// - **Windows / Linux** — the archive is downloaded, and a small script
-///   started beside the app waits for it to exit, unpacks the archive over the
-///   install folder and starts it again. A folder this user cannot write to
-///   (Program Files, a system package) is not attempted: the release page is
-///   the honest answer there.
+/// - **Windows / Linux** — the installer (a per-user Inno Setup `.exe`, or a
+///   `.deb`) is downloaded, and a small script started beside the app waits
+///   for it to exit, installs it — silently on Windows, through `pkexec dpkg`
+///   on Linux — and starts it again. On Windows a folder this user cannot
+///   write to is not attempted: the release page is the honest answer there.
 /// - **Anywhere else** — the release page.
 library;
 
@@ -322,14 +322,19 @@ class UpdateInstaller {
     }
   }
 
-  Future<InstallOutcome> _desktop(File archive, UpdatePlatform platform) async {
+  /// [package] is the Windows installer or the Linux .deb.
+  Future<InstallOutcome> _desktop(File package, UpdatePlatform platform) async {
     final exe = Platform.resolvedExecutable;
     final target = p.dirname(exe);
-    if (!_writable(target)) return InstallOutcome.notWritable;
 
-    final scripts = archive.parent;
+    final scripts = package.parent;
     final List<String> command;
     if (platform == UpdatePlatform.windows) {
+      // The installer is per-user and runs without elevation, so it can only
+      // update a folder this user can write — which an install it made always
+      // is. A copy somewhere else (Program Files, a read-only share) is told
+      // so up front rather than left to fail silently behind a hidden window.
+      if (!_writable(target)) return InstallOutcome.notWritable;
       final script = File(p.join(scripts.path, 'apply-update.ps1'))
         ..writeAsStringSync(windowsUpdateScript);
       command = <String>[
@@ -343,22 +348,23 @@ class UpdateInstaller {
         script.path,
         '-ProcessId',
         '$pid',
-        '-Archive',
-        archive.path,
+        '-Installer',
+        package.path,
         '-Target',
         target,
         '-Exe',
         exe,
       ];
     } else {
+      // /opt is root's, and is meant to be: dpkg installs it, through
+      // pkexec's password prompt. No writability test for that reason.
       final script = File(p.join(scripts.path, 'apply-update.sh'))
         ..writeAsStringSync(linuxUpdateScript);
       command = <String>[
         '/bin/sh',
         script.path,
         '$pid',
-        archive.path,
-        target,
+        package.path,
         exe,
       ];
     }
@@ -374,9 +380,10 @@ class UpdateInstaller {
       return InstallOutcome.failed;
     }
 
-    // The script is waiting for this process to go before it touches the
-    // files it is replacing — a running exe and its DLLs are locked on
-    // Windows.
+    // The script is waiting for this process to go before it installs — a
+    // running exe and its DLLs are locked on Windows — and on both, the
+    // restart afterwards would otherwise only raise this instance's window
+    // through the single-instance socket.
     exit(0);
   }
 
@@ -394,43 +401,51 @@ class UpdateInstaller {
   }
 }
 
-/// Waits for the app to exit, unpacks the archive over its folder and starts
-/// it again — the start is in `finally`, so a failed copy still leaves the
-/// user with the app they had rather than with nothing running. What went
-/// wrong is written beside the archive for anyone who goes looking.
+/// Waits for the app to exit, runs the installer silently over the folder it
+/// is in and starts it again — the start is in `finally`, so a failed install
+/// still leaves the user with the app they had rather than with nothing
+/// running. What went wrong is written beside the installer for anyone who
+/// goes looking.
+///
+/// `/DIR` names the folder outright rather than trusting the installer to
+/// find the previous install: the exe started afterwards is this one, so this
+/// is the folder that has to be the updated one.
 @visibleForTesting
 const windowsUpdateScript = r'''
 param(
   [int]$ProcessId,
-  [string]$Archive,
+  [string]$Installer,
   [string]$Target,
   [string]$Exe
 )
 $ErrorActionPreference = 'Stop'
 try { Wait-Process -Id $ProcessId -Timeout 60 -ErrorAction SilentlyContinue } catch {}
-$staging = Join-Path ([IO.Path]::GetTempPath()) ("mplayer-update-" + [guid]::NewGuid())
 try {
-  Expand-Archive -LiteralPath $Archive -DestinationPath $staging -Force
-  Copy-Item -Path (Join-Path $staging '*') -Destination $Target -Recurse -Force
+  $setup = Start-Process -FilePath $Installer -Wait -PassThru `
+    -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$Target`""
+  if ($setup.ExitCode -ne 0) { throw "The installer exited with code $($setup.ExitCode)." }
 } catch {
-  $_ | Out-File -FilePath (Join-Path (Split-Path $Archive) 'update-error.txt')
+  $_ | Out-File -FilePath (Join-Path (Split-Path $Installer) 'update-error.txt')
 } finally {
-  Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
   Start-Process -FilePath $Exe
 }
 ''';
 
-/// The Linux counterpart: tar keeps the executable bit, which is why CI
-/// ships a tarball rather than a zip.
+/// The Linux counterpart: `pkexec` puts up the desktop's own password prompt
+/// for `dpkg -i`. dpkg rather than apt because two dev builds of one version
+/// do not order by commit, and apt refuses what it reads as a downgrade.
+/// The dependencies are already there from the first install. dpkg's output
+/// lands beside the package, and the restart is unconditional — a cancelled
+/// prompt still leaves the old app running.
 @visibleForTesting
 const linuxUpdateScript = r'''
 #!/bin/sh
-pid="$1"; archive="$2"; target="$3"; exe="$4"
+pid="$1"; package="$2"; exe="$3"
 i=0
 while kill -0 "$pid" 2>/dev/null && [ "$i" -lt 120 ]; do
   sleep 0.5
   i=$((i + 1))
 done
-tar -xzf "$archive" -C "$target" 2> "$(dirname "$archive")/update-error.txt"
+pkexec dpkg -i "$package" > "$(dirname "$package")/update.log" 2>&1
 nohup "$exe" >/dev/null 2>&1 &
 ''';

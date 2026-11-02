@@ -164,9 +164,9 @@ ReleaseAsset? assetFor(
       }
       return null;
     case UpdatePlatform.windows:
-      return named('-windows-x64.zip');
+      return named('-windows-x64-setup.exe');
     case UpdatePlatform.linux:
-      return named('-linux-x64.tar.gz');
+      return named('-linux-x64.deb');
   }
 }
 
