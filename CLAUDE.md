@@ -466,6 +466,87 @@ what to load and when to give up are all Dart's.
 Nothing above `CastRenderer` knows which protocol a device speaks; `CastController` merges
 the two lists and picks the renderer from `CastDevice.kind`.
 
+## Phone remote (2026-11-02)
+
+mPlayer on a phone drives mPlayer on a desktop (Windows/Linux) or an Android
+TV on the same network. Casting hands a stream to someone else's player; this
+drives **our own** player on the other machine, so the receiver plays with its
+own sign-in, its own tracks and its own settings.
+
+`lib/remote/` is the mechanism and knows nothing of Riverpod or the player;
+`features/remote/` wires it in. Like casting it is `dart:io` alone — no
+dependency added.
+
+- `remote_protocol.dart` — **pure**: beacon, handshake proofs, `RemoteSnapshot`
+  (what a phone is told), `RemoteCommand` (what it may ask). Tested in
+  `test/remote_test.dart` without a network, plus three loopback tests that
+  run the real server and client against each other.
+- `remote_discovery.dart` — UDP on **47830**. The receiver broadcasts a beacon
+  every 3 s **and** answers a phone's broadcast query by unicast: some access
+  points drop broadcast towards wireless clients, and a unicast reply gets
+  through anyway (the `ssdp.dart` reasoning). Sending is one socket **per
+  interface**, since `255.255.255.255` from an "any" socket leaves by the
+  default route only. The phone takes the receiver's address from the datagram,
+  never from the beacon's contents. Stale after 10 s.
+- `remote_server.dart` — `HttpServer` + `WebSocketTransformer` on **47831**
+  (any port if taken; the beacon carries it), 4 sessions max, 5 s pings.
+  State goes out at once on any change but the position, and the position
+  alone at most once a second.
+- `remote_client.dart` — the phone's end. "Connect by address" exists for
+  networks where discovery cannot get through; that device has no id until the
+  receiver's hello supplies one.
+- `remote_trust.dart` — pairings in the keychain, both directions (phones a
+  receiver trusts, receivers a phone paired with). Local by nature.
+
+**Trust: same Jellyfin user, or a PIN** (the user's choice). The receiver
+sends a nonce; the phone answers with HMACs over both nonces and both ids,
+keyed by (a) a secret from an earlier pairing and (b) one key per signed-in
+profile, `sha256(serverId|userId)`. Either matching lets it in. Otherwise the
+receiver shows a 6-digit PIN **over whatever is on screen, the player
+included** (`RemoteHost`, wrapped around the navigator in `app.dart`), the
+phone proves it with an HMAC keyed by the PIN, and both sides derive the
+paired secret from the PIN and the nonces — it is never sent. Five wrong PINs
+hang up; one pairing at a time.
+
+Known and accepted: server id and user id are **not secret** — anyone with an
+account on that server can read both, which is the same trade `refs/plezy`
+makes. And someone sniffing the LAN *during* a pairing could brute-force a
+6-digit PIN offline from the proof. Traffic after the handshake is plain JSON;
+it carries titles and positions, never a stream URL or a token.
+
+**Receiver** (`remote_receiver.dart`): only where
+`remoteReceiverAvailableProvider` — desktop or television, **never under
+`flutter test`** (the widget tests pump the whole app on a desktop host). On by
+default, switch in General, with "Forget paired phones" beside it. Windows asks
+about the firewall the first time it starts. Every command lands on the same
+`PlaybackController` methods the on-screen buttons, the notification and PiP
+already call — there is no second player. Two details:
+
+- **Stop** pops `/player` through the router when it is showing, so the screen's
+  own teardown runs exactly as Back would; only without that screen is the
+  controller stopped directly.
+- **Play an item**: the phone sends `serverId + itemId`, never a URL. The
+  receiver refuses a server it is not signed in to, or one locked behind a PIN
+  nobody entered there (`connectedServerProvider` null), each as an error code
+  the phone puts into words. With a player already up it calls
+  `PlaybackController.openInstead` instead of pushing a second `/player`,
+  whose predecessor's `dispose` would stop the new file's decoder.
+
+**Phone** (`remote_session.dart`, `remote_page.dart`): Settings → Remote control
+opens `/remote` (one route, three faces: list, PIN, controls). The connection
+lives in `remoteSessionProvider`, not the screen, so it survives going back to
+the library — and **while connected, `playServerItem` sends Play to the
+receiver** with a "Play here" snackbar action, the way a phone joined to a
+speaker plays on the speaker. `RemoteBar` sits over the navigation bar while
+connected. The phone draws its own "Off" track and its ⟲/⟳ use the receiver's
+skip steps.
+
+Verified: analyze clean, protocol and loopback tests pass, and on Windows
+(2026-11-02) an advertiser and a discovery found each other over the real
+interfaces (Wi-Fi, Ethernet, Hyper-V and VMware adapters all up). **Not yet
+verified on real hardware across a network** — Windows ↔ Android phone,
+Android TV, and Linux each need a run.
+
 ## Desktop window
 
 `app/desktop_window.dart`, all of it inert off desktop — `window_manager` throws on

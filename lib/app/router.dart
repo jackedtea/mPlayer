@@ -20,6 +20,7 @@ import '../features/playback/smoke_test_page.dart';
 import '../features/player/playback_controller.dart';
 import '../features/player/playback_state.dart';
 import '../features/player/player_page.dart';
+import '../features/remote/remote_page.dart';
 import '../features/search/search_page.dart';
 import '../features/servers/episode_page.dart';
 import '../features/servers/library_grid_page.dart';
@@ -260,6 +261,13 @@ GoRouter buildRouter() {
           // route is for.
           return const _PlayerFromController();
         },
+      ),
+      // Above the shell like the player: the remote is a screen of its own
+      // in the hand, not a tab, and its connection outlives it anyway.
+      GoRoute(
+        path: '/remote',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const RemotePage(),
       ),
       // Kept from Phase 0 — proves the media_kit pipeline end to end on each
       // platform. Superseded by the real player screen in build step 2.

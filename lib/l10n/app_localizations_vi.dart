@@ -1044,6 +1044,136 @@ class AppLocalizationsVi extends AppLocalizations {
   String get castTo => 'Truyền';
 
   @override
+  String get remoteTitle => 'Điều khiển từ xa';
+
+  @override
+  String get remoteSettingsSub =>
+      'Dùng điện thoại này điều khiển mPlayer trên máy tính hoặc TV';
+
+  @override
+  String get remoteSearching => 'Đang tìm mPlayer trong mạng này…';
+
+  @override
+  String get remoteNoDevices =>
+      'Chưa thấy máy tính hay TV nào. Hãy mở mPlayer trên thiết bị đó và kiểm tra hai máy cùng một mạng.';
+
+  @override
+  String get remoteConnectByAddress => 'Kết nối bằng địa chỉ';
+
+  @override
+  String get remoteAddressLabel => 'Địa chỉ IP';
+
+  @override
+  String get remoteUnreachable => 'Không kết nối được tới thiết bị đó.';
+
+  @override
+  String remoteConnecting(String name) {
+    return 'Đang kết nối tới $name…';
+  }
+
+  @override
+  String remotePinTitle(String name) {
+    return 'Ghép nối với $name';
+  }
+
+  @override
+  String remotePinBody(String name) {
+    return 'Nhập mã đang hiện trên $name.';
+  }
+
+  @override
+  String remotePinWrong(int count) {
+    return 'Sai mã. Còn $count lần thử.';
+  }
+
+  @override
+  String get remotePinLabel => 'Mã';
+
+  @override
+  String get remoteDisconnect => 'Ngắt kết nối';
+
+  @override
+  String remoteNothingPlaying(String name) {
+    return '$name không phát gì.';
+  }
+
+  @override
+  String remoteNothingPlayingHint(String name) {
+    return 'Chọn một nội dung trong thư viện rồi bấm Phát — nó sẽ phát trên $name.';
+  }
+
+  @override
+  String remoteControlling(String name) {
+    return 'Đang điều khiển $name';
+  }
+
+  @override
+  String get remoteVolume => 'Âm lượng';
+
+  @override
+  String get remoteStop => 'Dừng';
+
+  @override
+  String get remotePrevious => 'Trước';
+
+  @override
+  String remoteSentTo(String name) {
+    return 'Đang phát trên $name';
+  }
+
+  @override
+  String get remotePlayHere => 'Phát ở đây';
+
+  @override
+  String remoteWrongServer(String name) {
+    return '$name đang đăng nhập một server khác.';
+  }
+
+  @override
+  String remoteLocked(String name) {
+    return '$name đang khoá hoặc chưa đăng nhập. Hãy mở nó trên thiết bị đó trước.';
+  }
+
+  @override
+  String remoteVersion(String name) {
+    return '$name chạy phiên bản mPlayer khác. Hãy cập nhật cả hai.';
+  }
+
+  @override
+  String remotePlayFailed(String name) {
+    return 'Không phát được nội dung đó trên $name.';
+  }
+
+  @override
+  String get remoteReceiverSetting => 'Cho phép điện thoại điều khiển';
+
+  @override
+  String get remoteReceiverSettingSub =>
+      'mPlayer trên điện thoại cùng mạng có thể điều khiển việc phát ở đây. Điện thoại mới phải nhập mã hiện trên màn hình.';
+
+  @override
+  String get remoteForgetPhones => 'Quên các điện thoại đã ghép nối';
+
+  @override
+  String get remoteForgetPhonesSub => 'Mọi điện thoại sẽ phải nhập lại mã';
+
+  @override
+  String get remotePhonesForgotten => 'Đã quên các điện thoại đã ghép nối.';
+
+  @override
+  String remotePairingTitle(String name) {
+    return '$name muốn điều khiển mPlayer';
+  }
+
+  @override
+  String get remotePairingBody => 'Nhập mã này trên điện thoại';
+
+  @override
+  String remoteControlledBy(String name) {
+    return 'Đang được $name điều khiển';
+  }
+
+  @override
   String get aspectFit => 'Vừa khung';
 
   @override

@@ -340,6 +340,20 @@ class PlaybackController extends Notifier<PlaybackState> {
     }
   }
 
+  /// Plays [media] in place of whatever is open, on the same player screen.
+  ///
+  /// What the phone remote's "play this" needs while a film is already up on
+  /// the receiver: pushing a second `/player` would have the first one's
+  /// `dispose` stop the decoder underneath the new file. The old item gets
+  /// its closing report first, as a step to the next episode does.
+  Future<void> openInstead(PlayableMedia media) async {
+    await _closeCurrent();
+    // An empty queue rather than null, which `copyWith` reads as "keep" —
+    // the last series' episodes would otherwise sit under an unrelated film.
+    await openResolved(media, queue: const PlaybackQueue());
+    await loadSiblingQueue(media.ref);
+  }
+
   Future<void> playOrPause() async => _player?.playOrPause();
 
   Future<void> play() async => _player?.play();

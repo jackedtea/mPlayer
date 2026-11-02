@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/remote/remote_host.dart';
 import '../l10n/app_localizations.dart';
 import 'appearance_settings.dart';
 import 'locale_controller.dart';
@@ -93,7 +94,10 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
       // opens no local files now.
       builder: (context, child) => MouseNavigation(
         router: _router,
-        child: _InsetFromSystemBars(child: child ?? const SizedBox.shrink()),
+        child: RemoteHost(
+          router: _router,
+          child: _InsetFromSystemBars(child: child ?? const SizedBox.shrink()),
+        ),
       ),
     );
   }

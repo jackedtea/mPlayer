@@ -1982,6 +1982,204 @@ abstract class AppLocalizations {
   /// **'Cast'**
   String get castTo;
 
+  /// No description provided for @remoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote control'**
+  String get remoteTitle;
+
+  /// No description provided for @remoteSettingsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Control mPlayer on a computer or TV from this phone'**
+  String get remoteSettingsSub;
+
+  /// No description provided for @remoteSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for mPlayer on this network…'**
+  String get remoteSearching;
+
+  /// No description provided for @remoteNoDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No computer or TV found yet. Open mPlayer on it and make sure both are on the same network.'**
+  String get remoteNoDevices;
+
+  /// No description provided for @remoteConnectByAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect by address'**
+  String get remoteConnectByAddress;
+
+  /// No description provided for @remoteAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'IP address'**
+  String get remoteAddressLabel;
+
+  /// No description provided for @remoteUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach that device.'**
+  String get remoteUnreachable;
+
+  /// No description provided for @remoteConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to {name}…'**
+  String remoteConnecting(String name);
+
+  /// No description provided for @remotePinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair with {name}'**
+  String remotePinTitle(String name);
+
+  /// No description provided for @remotePinBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code shown on {name}.'**
+  String remotePinBody(String name);
+
+  /// No description provided for @remotePinWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong code. {count} tries left.'**
+  String remotePinWrong(int count);
+
+  /// No description provided for @remotePinLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get remotePinLabel;
+
+  /// No description provided for @remoteDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get remoteDisconnect;
+
+  /// No description provided for @remoteNothingPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is playing on {name}.'**
+  String remoteNothingPlaying(String name);
+
+  /// No description provided for @remoteNothingPlayingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick something in the library and press Play — it will play on {name}.'**
+  String remoteNothingPlayingHint(String name);
+
+  /// No description provided for @remoteControlling.
+  ///
+  /// In en, this message translates to:
+  /// **'Controlling {name}'**
+  String remoteControlling(String name);
+
+  /// No description provided for @remoteVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get remoteVolume;
+
+  /// No description provided for @remoteStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get remoteStop;
+
+  /// No description provided for @remotePrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get remotePrevious;
+
+  /// No description provided for @remoteSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing on {name}'**
+  String remoteSentTo(String name);
+
+  /// No description provided for @remotePlayHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Play here'**
+  String get remotePlayHere;
+
+  /// No description provided for @remoteWrongServer.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is signed in to a different server.'**
+  String remoteWrongServer(String name);
+
+  /// No description provided for @remoteLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is locked or signed out. Open it there first.'**
+  String remoteLocked(String name);
+
+  /// No description provided for @remoteVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} runs a different version of mPlayer. Update both.'**
+  String remoteVersion(String name);
+
+  /// No description provided for @remotePlayFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not play that on {name}.'**
+  String remotePlayFailed(String name);
+
+  /// No description provided for @remoteReceiverSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow phone remote'**
+  String get remoteReceiverSetting;
+
+  /// No description provided for @remoteReceiverSettingSub.
+  ///
+  /// In en, this message translates to:
+  /// **'mPlayer on a phone on this network can control playback here. A new phone has to enter the code shown on screen.'**
+  String get remoteReceiverSettingSub;
+
+  /// No description provided for @remoteForgetPhones.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget paired phones'**
+  String get remoteForgetPhones;
+
+  /// No description provided for @remoteForgetPhonesSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Every phone will need a code again'**
+  String get remoteForgetPhonesSub;
+
+  /// No description provided for @remotePhonesForgotten.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired phones forgotten.'**
+  String get remotePhonesForgotten;
+
+  /// No description provided for @remotePairingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wants to control mPlayer'**
+  String remotePairingTitle(String name);
+
+  /// No description provided for @remotePairingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter this code on the phone'**
+  String get remotePairingBody;
+
+  /// No description provided for @remoteControlledBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Controlled by {name}'**
+  String remoteControlledBy(String name);
+
   /// No description provided for @aspectFit.
   ///
   /// In en, this message translates to:

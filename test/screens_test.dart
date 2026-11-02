@@ -51,6 +51,8 @@ const _routes = <String>[
   '/admin/users',
   '/admin/activity',
   '/admin/plugins',
+  // Nothing found, which is the face a phone shows first.
+  '/remote',
 ];
 
 Future<GoRouter> pumpRouterAt(WidgetTester tester, Size size) async {

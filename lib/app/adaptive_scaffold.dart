@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/remote/remote_page.dart' show RemoteBar;
 import '../features/search/search_page.dart' show searchFocusRequests;
 import '../core/updater.dart';
 import '../features/servers/library_grid_page.dart' show librarySwitchRequests;
@@ -197,16 +198,23 @@ class _CompactShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: shell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: shell.currentIndex,
-        onDestinationSelected: onGo,
-        destinations: <Widget>[
-          for (final NavDestination d in navDestinationsFor(AppLocalizations.of(context)))
-            NavigationDestination(
-              icon: Icon(d.icon),
-              selectedIcon: Icon(d.selectedIcon),
-              label: d.label,
-            ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          RemoteBar(onOpen: () => context.push('/remote')),
+          NavigationBar(
+            selectedIndex: shell.currentIndex,
+            onDestinationSelected: onGo,
+            destinations: <Widget>[
+              for (final NavDestination d
+                  in navDestinationsFor(AppLocalizations.of(context)))
+                NavigationDestination(
+                  icon: Icon(d.icon),
+                  selectedIcon: Icon(d.selectedIcon),
+                  label: d.label,
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -244,6 +252,7 @@ class _RailShell extends StatelessWidget {
           Expanded(child: shell),
         ],
       ),
+      bottomNavigationBar: RemoteBar(onOpen: () => context.push('/remote')),
       backgroundColor: scheme.surface,
     );
   }
@@ -282,6 +291,7 @@ class _DrawerShell extends StatelessWidget {
           Expanded(child: shell),
         ],
       ),
+      bottomNavigationBar: RemoteBar(onOpen: () => context.push('/remote')),
     );
   }
 }

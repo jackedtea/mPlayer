@@ -1042,6 +1042,136 @@ class AppLocalizationsEn extends AppLocalizations {
   String get castTo => 'Cast';
 
   @override
+  String get remoteTitle => 'Remote control';
+
+  @override
+  String get remoteSettingsSub =>
+      'Control mPlayer on a computer or TV from this phone';
+
+  @override
+  String get remoteSearching => 'Looking for mPlayer on this network…';
+
+  @override
+  String get remoteNoDevices =>
+      'No computer or TV found yet. Open mPlayer on it and make sure both are on the same network.';
+
+  @override
+  String get remoteConnectByAddress => 'Connect by address';
+
+  @override
+  String get remoteAddressLabel => 'IP address';
+
+  @override
+  String get remoteUnreachable => 'Could not reach that device.';
+
+  @override
+  String remoteConnecting(String name) {
+    return 'Connecting to $name…';
+  }
+
+  @override
+  String remotePinTitle(String name) {
+    return 'Pair with $name';
+  }
+
+  @override
+  String remotePinBody(String name) {
+    return 'Enter the code shown on $name.';
+  }
+
+  @override
+  String remotePinWrong(int count) {
+    return 'Wrong code. $count tries left.';
+  }
+
+  @override
+  String get remotePinLabel => 'Code';
+
+  @override
+  String get remoteDisconnect => 'Disconnect';
+
+  @override
+  String remoteNothingPlaying(String name) {
+    return 'Nothing is playing on $name.';
+  }
+
+  @override
+  String remoteNothingPlayingHint(String name) {
+    return 'Pick something in the library and press Play — it will play on $name.';
+  }
+
+  @override
+  String remoteControlling(String name) {
+    return 'Controlling $name';
+  }
+
+  @override
+  String get remoteVolume => 'Volume';
+
+  @override
+  String get remoteStop => 'Stop';
+
+  @override
+  String get remotePrevious => 'Previous';
+
+  @override
+  String remoteSentTo(String name) {
+    return 'Playing on $name';
+  }
+
+  @override
+  String get remotePlayHere => 'Play here';
+
+  @override
+  String remoteWrongServer(String name) {
+    return '$name is signed in to a different server.';
+  }
+
+  @override
+  String remoteLocked(String name) {
+    return '$name is locked or signed out. Open it there first.';
+  }
+
+  @override
+  String remoteVersion(String name) {
+    return '$name runs a different version of mPlayer. Update both.';
+  }
+
+  @override
+  String remotePlayFailed(String name) {
+    return 'Could not play that on $name.';
+  }
+
+  @override
+  String get remoteReceiverSetting => 'Allow phone remote';
+
+  @override
+  String get remoteReceiverSettingSub =>
+      'mPlayer on a phone on this network can control playback here. A new phone has to enter the code shown on screen.';
+
+  @override
+  String get remoteForgetPhones => 'Forget paired phones';
+
+  @override
+  String get remoteForgetPhonesSub => 'Every phone will need a code again';
+
+  @override
+  String get remotePhonesForgotten => 'Paired phones forgotten.';
+
+  @override
+  String remotePairingTitle(String name) {
+    return '$name wants to control mPlayer';
+  }
+
+  @override
+  String get remotePairingBody => 'Enter this code on the phone';
+
+  @override
+  String remoteControlledBy(String name) {
+    return 'Controlled by $name';
+  }
+
+  @override
   String get aspectFit => 'Fit';
 
   @override

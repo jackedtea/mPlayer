@@ -20,6 +20,7 @@ import '../../l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../player/playback_state.dart';
+import '../remote/remote_session.dart';
 import '../../servers/auto_connect.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
@@ -476,17 +477,39 @@ Future<void> playServerItem(
   final messenger = ScaffoldMessenger.of(context);
   final router = GoRouter.of(context);
 
-  try {
-    final resolved = await source.resolve(
-      MediaRef(sourceId: profile.id, itemId: itemId, title: ''),
-    );
-    // "Start over" is the one case where the server's resume point is not
-    // what the user asked for.
-    final media = fromStart ? resolved.startingAt(Duration.zero) : resolved;
-    router.push('/player', extra: media);
-  } on MediaSourceException catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(e.message)));
+  Future<void> playHere() async {
+    try {
+      final resolved = await source.resolve(
+        MediaRef(sourceId: profile.id, itemId: itemId, title: ''),
+      );
+      // "Start over" is the one case where the server's resume point is not
+      // what the user asked for.
+      final media = fromStart ? resolved.startingAt(Duration.zero) : resolved;
+      router.push('/player', extra: media);
+    } on MediaSourceException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
+
+  // While this phone is driving a receiver, Play goes there — the way a
+  // phone connected to a speaker plays on the speaker. The snackbar keeps
+  // this screen one tap away, for the time that was not what was meant.
+  final remote = ref.read(remoteSessionProvider);
+  final sent = ref
+      .read(remoteSessionProvider.notifier)
+      .playOnReceiver(profile.serverId, itemId, fromStart: fromStart);
+  if (sent) {
+    final l10n = AppLocalizations.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l10n.remoteSentTo(remote.device?.name ?? '')),
+        action: SnackBarAction(label: l10n.remotePlayHere, onPressed: playHere),
+      ),
+    );
+    return;
+  }
+
+  await playHere();
 }
 
 /// What the server would send for an item, without playing it.

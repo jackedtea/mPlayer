@@ -63,6 +63,14 @@ class SettingsIndexPage extends ConsumerWidget {
         icon: Icons.subtitles_rounded,
         route: 'subtitle',
       ),
+      // Not under `/settings`: the remote is a screen used from the sofa, and
+      // it outlives the settings branch it is reached from.
+      _SettingsEntry(
+        title: l10n.remoteTitle,
+        subtitle: l10n.remoteSettingsSub,
+        icon: Icons.settings_remote_rounded,
+        path: '/remote',
+      ),
       _SettingsEntry(
         title: l10n.settingsAbout,
         subtitle: l10n.settingsAboutSub,
@@ -220,8 +228,8 @@ class _SettingsEntry {
   /// [path] names it instead.
   final String? route;
 
-  /// A destination outside `/settings` — the administration section is the
-  /// only one, because it changes the server rather than this installation.
+  /// A destination outside `/settings` — the administration section, which
+  /// changes the server rather than this installation, and the remote.
   final String? path;
 
   /// Where the row goes, or null when it goes nowhere yet.

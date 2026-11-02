@@ -10,6 +10,7 @@ import '../../app/locale_controller.dart';
 import '../../l10n/app_localizations.dart';
 import '../../core/updater.dart';
 import '../../servers/auto_connect.dart';
+import '../remote/remote_receiver.dart';
 import 'settings_widgets.dart';
 
 /// Screen 1l, General. The design lists language here.
@@ -49,8 +50,31 @@ class GeneralSettingsPage extends ConsumerWidget {
           onChanged: (on) =>
               ref.read(updateSettingsProvider.notifier).setAutoCheck(on),
         ),
+        // A desktop or a television only: a phone is the remote, not the
+        // thing across the room being driven.
+        if (ref.watch(remoteReceiverAvailableProvider)) ...<Widget>[
+          SettingsSwitchRow(
+            title: l10n.remoteReceiverSetting,
+            subtitle: l10n.remoteReceiverSettingSub,
+            value: ref.watch(remoteReceiverEnabledProvider),
+            onChanged: (on) =>
+                ref.read(remoteReceiverEnabledProvider.notifier).setEnabled(on),
+          ),
+          SettingsValueRow(
+            title: l10n.remoteForgetPhones,
+            value: l10n.remoteForgetPhonesSub,
+            onTap: () => _forgetPhones(context, ref),
+          ),
+        ],
       ],
     );
+  }
+
+  Future<void> _forgetPhones(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final done = AppLocalizations.of(context).remotePhonesForgotten;
+    await ref.read(remoteTrustStoreProvider).forgetPhones();
+    messenger.showSnackBar(SnackBar(content: Text(done)));
   }
 
   Future<void> _pickLanguage(
