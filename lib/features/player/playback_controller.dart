@@ -6,7 +6,8 @@
 import 'dart:async';
 import 'dart:io' show Directory, Platform;
 
-import 'package:flutter/foundation.dart' show Uint8List, debugPrint;
+import 'package:flutter/foundation.dart'
+    show Uint8List, debugPrint, defaultTargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -960,7 +961,10 @@ class PlaybackController extends Notifier<PlaybackState> {
     if (platform is! NativePlayer) return;
 
     try {
-      await platform.setProperty('hwdec', settings.hardwareDecoding.mpvValue);
+      await platform.setProperty(
+        'hwdec',
+        settings.hardwareDecoding.mpvValueOn(defaultTargetPlatform),
+      );
       await platform.setProperty(
         'sub-font-size',
         '${settings.mpvSubtitleFontSize}',

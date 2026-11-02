@@ -39,6 +39,18 @@ void main() {
       expect(HardwareDecoding.no.mpvValue, 'no');
     });
 
+    test('Windows decodes on the GPU but copies the frame back', () {
+      // d3d11va straight into media_kit's ANGLE surface crops the bottom of
+      // the picture; the copy-back variants draw all of it.
+      const windows = TargetPlatform.windows;
+      expect(HardwareDecoding.auto.mpvValueOn(windows), 'auto-copy-safe');
+      expect(HardwareDecoding.yes.mpvValueOn(windows), 'auto-copy');
+      expect(HardwareDecoding.no.mpvValueOn(windows), 'no');
+      for (final mode in HardwareDecoding.values) {
+        expect(mode.mpvValueOn(TargetPlatform.android), mode.mpvValue);
+      }
+    });
+
     test('every decoding mode is named and explained in both languages', () {
       // The names used to be English literals on the enum, which is the one
       // thing a `label(l10n)` method exists to stop.

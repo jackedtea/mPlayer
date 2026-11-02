@@ -30,6 +30,22 @@ enum HardwareDecoding {
   /// What `hwdec` is set to. `auto-safe` is mpv's own conservative pick.
   final String mpvValue;
 
+  /// [mpvValue] as it should be sent on [platform].
+  ///
+  /// Windows takes the copy-back variants. media_kit hands mpv an ANGLE
+  /// surface, and a frame decoded by d3d11va straight into that interop comes
+  /// out cropped: the picture loses its bottom few percent to black, and an
+  /// ASS line sitting there is cut in half. Copying the frame back to system
+  /// memory first still decodes on the GPU and draws the whole picture.
+  String mpvValueOn(TargetPlatform platform) {
+    if (platform != TargetPlatform.windows) return mpvValue;
+    return switch (this) {
+      HardwareDecoding.auto => 'auto-copy-safe',
+      HardwareDecoding.yes => 'auto-copy',
+      HardwareDecoding.no => mpvValue,
+    };
+  }
+
   /// The name in the user's language. A `label` field cannot carry this: an
   /// enum constant is built once, before there is a locale to build it in.
   String label(AppLocalizations l10n) => switch (this) {
