@@ -39,6 +39,11 @@ enum LibraryBrowse {
   };
 }
 
+/// Bumped by the shell when the Libraries destination is tapped while already
+/// on it: the second tap opens the library switcher, the way Search's second
+/// tap puts the cursor in the field. A counter, so every re-tap is a change.
+final ValueNotifier<int> librarySwitchRequests = ValueNotifier<int>(0);
+
 /// Screen 1e — one library, as a poster grid with filters.
 ///
 /// Three columns on a phone; wider windows add columns rather than stretching
@@ -144,6 +149,24 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
         ref.read(lastLibraryProvider.notifier).remember(profileId, viewId);
       });
     }
+
+    // Only the Libraries tab's own page answers the shell; a library pushed
+    // over it has no destination of its own to be re-tapped.
+    if (widget.onSwitchLibrary != null) {
+      librarySwitchRequests.addListener(_onSwitchRequested);
+    }
+  }
+
+  void _onSwitchRequested() {
+    final viewId = widget.viewId;
+    if (!_hasTabs || viewId == null) return;
+    // After the frame: the same tap pops the branch back to this page, and
+    // the sheet belongs on top of that, not under a route on its way out.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final chosen = await showLibraryPicker(context, currentId: viewId);
+      if (chosen != null && mounted) _switchTo(chosen);
+    });
   }
 
   /// Opens [viewId] in place of the library on screen.
@@ -162,6 +185,7 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
 
   @override
   void dispose() {
+    librarySwitchRequests.removeListener(_onSwitchRequested);
     _tabs?.dispose();
     super.dispose();
   }
@@ -1117,15 +1141,24 @@ class _LibrarySwitcher extends ConsumerWidget {
   }
 
   Future<void> _open(BuildContext context) async {
-    final chosen = await showModalBottomSheet<String>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (_) => _LibraryPickerSheet(currentId: currentId),
-    );
+    final chosen = await showLibraryPicker(context, currentId: currentId);
     if (chosen != null) onSelected(chosen);
   }
+}
+
+/// Lists the server's libraries in a sheet; resolves to the one picked, or
+/// null when dismissed.
+Future<String?> showLibraryPicker(
+  BuildContext context, {
+  required String currentId,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    useSafeArea: true,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => _LibraryPickerSheet(currentId: currentId),
+  );
 }
 
 class _LibraryPickerSheet extends ConsumerWidget {

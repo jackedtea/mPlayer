@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/search/search_page.dart' show searchFocusRequests;
 import '../core/updater.dart';
+import '../features/servers/library_grid_page.dart' show librarySwitchRequests;
 import '../features/servers/server_library.dart' show connectedServerProvider;
 import '../features/settings/update_dialog.dart';
 import '../l10n/app_localizations.dart';
@@ -103,6 +104,11 @@ class AdaptiveScaffold extends ConsumerWidget {
     // Play's does: the first tap opens the tab, the second starts typing.
     if (again && index == AppBranch.search.index) {
       searchFocusRequests.value++;
+    }
+
+    // On Libraries the second tap opens the switcher.
+    if (again && index == AppBranch.libraries.index) {
+      librarySwitchRequests.value++;
     }
   }
 
