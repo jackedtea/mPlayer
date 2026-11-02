@@ -166,7 +166,12 @@ class DownloadEngine {
   /// Saves the artwork beside the file. Best effort: a copy without a
   /// poster still plays, so a failure here is logged and nothing more.
   Future<void> fetchPoster(DownloadEntry entry, Uri url) async {
-    final file = store.posterFile(entry);
+    await fetchFile(url, store.posterFile(entry));
+  }
+
+  /// Fetches a small file whole into [file] — a poster, a subtitle. False
+  /// when it could not, which every caller treats as "do without".
+  Future<bool> fetchFile(Uri url, File file) async {
     try {
       await file.parent.create(recursive: true);
       final response = await _dio.getUri<List<int>>(
@@ -177,9 +182,12 @@ class DownloadEngine {
         ),
       );
       final bytes = response.data;
-      if (bytes != null) await file.writeAsBytes(bytes, flush: true);
+      if (bytes == null) return false;
+      await file.writeAsBytes(bytes, flush: true);
+      return true;
     } catch (e) {
-      debugPrint('Could not fetch the poster for ${entry.itemId}: $e');
+      debugPrint('Could not fetch ${url.path}: $e');
+      return false;
     }
   }
 

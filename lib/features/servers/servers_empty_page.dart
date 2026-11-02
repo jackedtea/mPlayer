@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../downloads/download_ui.dart';
 import 'add_server_sheet.dart';
 
 /// Screen 1c — the Home tab with nothing configured.
@@ -73,6 +74,7 @@ class ServersEmptyPage extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: spacing.sm),
+                    const WatchDownloadsButton(),
                   ],
                 ),
               ),

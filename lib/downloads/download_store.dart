@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 import 'download_models.dart';
+import 'offline_meta.dart';
 
 /// The offline copies on disk, and the one file that lists them.
 ///
@@ -28,6 +29,8 @@ class DownloadStore {
   static const _indexName = 'index.json';
   static const _partName = 'media.part';
   static const posterName = 'poster.jpg';
+  static const _metaName = 'meta.json';
+  static const _pendingName = 'pending_reports.json';
 
   File get _index => File(p.join(root.path, _indexName));
 
@@ -48,6 +51,32 @@ class DownloadStore {
 
   File posterFile(DownloadEntry entry) =>
       File(p.join(itemDir(entry).path, posterName));
+
+  File metaFile(DownloadEntry entry) =>
+      File(p.join(itemDir(entry).path, _metaName));
+
+  /// An external subtitle saved for [entry]. [name] is this app's own.
+  File subtitleFile(DownloadEntry entry, String name) =>
+      File(p.join(itemDir(entry).path, name));
+
+  /// What the server said about the copy, or null where nothing was saved.
+  Future<OfflineMeta?> readMeta(DownloadEntry entry) async {
+    final file = metaFile(entry);
+    try {
+      if (!await file.exists()) return null;
+      final json = jsonDecode(await file.readAsString());
+      return json is Map<String, dynamic> ? OfflineMeta.fromJson(json) : null;
+    } on Object catch (e) {
+      debugPrint('Could not read ${file.path}: $e');
+      return null;
+    }
+  }
+
+  Future<void> writeMeta(DownloadEntry entry, OfflineMeta meta) async {
+    final file = metaFile(entry);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(jsonEncode(meta.toJson()), flush: true);
+  }
 
   /// Every copy the index lists, made consistent with the disk.
   ///
@@ -109,26 +138,30 @@ class DownloadStore {
   /// index rather than half of a new one. One write at a time: two saves a
   /// moment apart — a queue and the fetch it starts — would otherwise share
   /// the temporary file, and Windows refuses the second rename outright.
-  Future<void> save(List<DownloadEntry> entries) {
-    final next = _writing.then((_) => _write(entries));
+  Future<void> save(List<DownloadEntry> entries) => _replace(
+        _index,
+        jsonEncode(<Map<String, dynamic>>[for (final e in entries) e.toJson()]),
+      );
+
+  /// Writes [content] beside [target] and renames it over, behind whatever
+  /// write is already under way.
+  Future<void> _replace(File target, String content) {
+    final next = _writing.then((_) => _replaceNow(target, content));
     _writing = next.catchError((Object _) {});
     return next;
   }
 
-  Future<void> _write(List<DownloadEntry> entries) async {
+  Future<void> _replaceNow(File target, String content) async {
     await root.create(recursive: true);
-    final tmp = File('${_index.path}.tmp');
-    await tmp.writeAsString(
-      jsonEncode(<Map<String, dynamic>>[for (final e in entries) e.toJson()]),
-      flush: true,
-    );
+    final tmp = File('${target.path}.tmp');
+    await tmp.writeAsString(content, flush: true);
 
     // Windows refuses a rename over a file something else has open for a
-    // moment — the indexer, an antivirus scan of the file just written — so
-    // a few short retries before the write is given up on.
+    // moment — the indexer, an antivirus scan of the file just written, a
+    // reader — so a few short retries before the write is given up on.
     for (var attempt = 1; ; attempt++) {
       try {
-        await tmp.rename(_index.path);
+        await tmp.rename(target.path);
         return;
       } on FileSystemException {
         if (attempt == 5) rethrow;
@@ -136,6 +169,34 @@ class DownloadStore {
       }
     }
   }
+
+  File get _pending => File(p.join(root.path, _pendingName));
+
+  /// Where offline playback stopped, keyed by [DownloadEntry.keyOf], for
+  /// the server to hear once it can be reached again.
+  Future<Map<String, Duration>> readPendingReports() async {
+    try {
+      if (!await _pending.exists()) return <String, Duration>{};
+      final json = jsonDecode(await _pending.readAsString());
+      if (json is! Map<String, dynamic>) return <String, Duration>{};
+      return <String, Duration>{
+        for (final MapEntry<String, dynamic> e in json.entries)
+          if (e.value is int) e.key: Duration(milliseconds: e.value as int),
+      };
+    } on Object catch (e) {
+      debugPrint('Could not read the pending reports: $e');
+      return <String, Duration>{};
+    }
+  }
+
+  /// Replaced whole, like the index; an empty map is written as `{}`
+  /// rather than deleted, which Windows refuses while a reader has it open.
+  Future<void> writePendingReports(Map<String, Duration> reports) => _replace(
+        _pending,
+        jsonEncode(<String, int>{
+          for (final e in reports.entries) e.key: e.value.inMilliseconds,
+        }),
+      );
 
   /// Removes everything kept for [entry], finished or not.
   Future<void> delete(DownloadEntry entry) async {

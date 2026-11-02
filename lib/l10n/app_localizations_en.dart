@@ -2043,4 +2043,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String downloadsUsed(String size) {
     return '$size on this device';
   }
+
+  @override
+  String get watchDownloads => 'Watch downloads';
 }

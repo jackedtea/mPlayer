@@ -91,9 +91,9 @@ that list — there is no local file to have either.
 
 Also open:
 
-1. Downloads (screen 1i) fetches and lists real copies (see "Downloads"), but
-   the player does not open them yet and the tab is unreachable with no
-   server signed in.
+1. Downloads (screen 1i) is real end to end (see "Downloads") except the
+   Android background service and Wi-Fi-only, and offline playback is
+   unverified on a real device.
 2. English literals remain where Localisation says.
 3. Dropped on purpose: **NFS**, **network scanning**, **preview thumbnails**
    generated locally (the server's trickplay covers it), and now every local
@@ -258,8 +258,30 @@ shared bits (`download_ui.dart`: `watchDownload`, `DownloadBadge`,
 - The item's Download action is one `ItemAction` whatever the state
   (download → queued/percent, tap pauses → resume → remove, drawn selected).
   "Download all" on a series asks with the count; the listing has no sizes.
-- Not yet: offline playback (Phase 3), the tab with no server (4), Android
-  background service and Wi-Fi-only (5).
+- **Before the bytes, `meta.json`** (`download_snapshot.dart`): the item,
+  its segments and a `PlaybackInfo` asked with **no device profile** — the
+  same answer that hands over the original file, so the server stream
+  indexes line up with the file on disk. External subtitles are fetched
+  beside it as `sub-<index>.<ext>`. Best effort; a copy without it plays.
+- **Playing a copy**: `mediaSourcesProvider` holds an `OfflineMediaSource`
+  per profile — wrapped around the live `JellyfinMediaSource` for the
+  signed-in one, alone for any other profile with copies. A whole copy
+  resolves to a `file://` URI (direct play, saved streams, chapters without
+  stills, segments, local subtitles); anything else streams, or is a
+  sentence with no server. `onlineMediaSourceProvider` is separate so the
+  map can rebuild when copies appear without losing the Jellyfin source's
+  play sessions; `downloadedProfilesProvider` narrows `downloadsProvider` to
+  a joined string so a chunk does not rebuild it.
+- **Resume offline**: the server's position if it answers within 4 s, else
+  the last unreported stop, else the one in `meta.json`. A local play
+  reports without a session; a stop the server cannot hear goes to
+  `pending_reports.json` (latest per item) and is sent as
+  `reportStopped` when that profile's session appears. Offline, prev/next
+  walk the series' episodes on the device.
+- **With no server open**, the empty state and the server list show
+  "Watch downloads" when there are copies; the Downloads branch keeps its
+  navigation bar, since only the Home branch drops it.
+- Not yet: Android background service and Wi-Fi-only.
 
 ## Localisation
 
@@ -311,7 +333,8 @@ over adding near-duplicates.
 `MediaSource`, `QueueableSource` and `ProgressReporting` from
 `sources/media_source.dart`, and `mediaSourcesProvider` in
 `servers/server_registry.dart` is the map the player resolves against — one
-entry, or none while nothing is signed in.
+entry per profile, each an `OfflineMediaSource` that plays a downloaded copy
+from disk and otherwise defers to the Jellyfin source (see "Downloads").
 
 `QueueableSource` is how a server answers the question a folder listing used
 to answer for everyone else: what plays after this item. It returns the

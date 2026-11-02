@@ -2045,4 +2045,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String downloadsUsed(String size) {
     return '$size trên thiết bị';
   }
+
+  @override
+  String get watchDownloads => 'Xem bản đã tải';
 }

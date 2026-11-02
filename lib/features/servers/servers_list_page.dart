@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../downloads/download_ui.dart';
 import '../../servers/auto_connect.dart';
 import '../../servers/server_profile.dart';
 import '../../servers/server_registry.dart';
@@ -61,6 +62,10 @@ class ServersListPage extends ConsumerWidget {
                     ?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ),
+          Padding(
+            padding: EdgeInsets.all(spacing.lg),
+            child: const Center(child: WatchDownloadsButton()),
+          ),
         ],
       ),
     );

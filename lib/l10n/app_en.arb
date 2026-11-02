@@ -684,5 +684,6 @@
   "@downloadSizeOf": {"placeholders": {"received": {"type": "String"}, "total": {"type": "String"}}},
   "downloadWaitingForServer": "Waiting for the server to sign in",
   "downloadsUsed": "{size} on this device",
-  "@downloadsUsed": {"placeholders": {"size": {"type": "String"}}}
+  "@downloadsUsed": {"placeholders": {"size": {"type": "String"}}},
+  "watchDownloads": "Watch downloads"
 }

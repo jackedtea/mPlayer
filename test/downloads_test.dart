@@ -108,6 +108,58 @@ class _Source extends FakeLibrarySource {
   Uri downloadUrl(String itemId) => base.resolve('/Items/$itemId/Download');
 }
 
+/// A server that also describes the item: chapters, a segment, an audio
+/// track and one external subtitle.
+class _DescribedSource extends _Source {
+  const _DescribedSource(super.base);
+
+  @override
+  Future<ServerItem> item(String itemId) async => ServerItem(
+        id: itemId,
+        title: 'The Film',
+        kind: ServerItemKind.movie,
+        runtime: const Duration(minutes: 90),
+        position: const Duration(minutes: 5),
+        chapters: const <ServerChapter>[
+          ServerChapter(index: 0, title: 'Start', start: Duration.zero),
+        ],
+      );
+
+  @override
+  Future<List<MediaSegment>> segments(String itemId) async =>
+      const <MediaSegment>[
+        MediaSegment(
+          kind: MediaSegmentKind.intro,
+          start: Duration.zero,
+          end: Duration(seconds: 60),
+        ),
+      ];
+
+  @override
+  Future<ServerPlayback> playback(
+    String itemId,
+    PlaybackCapabilities caps, {
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+    String? mediaSourceId,
+  }) async =>
+      ServerPlayback(
+        uri: base.resolve('/stream'),
+        isDirectPlay: true,
+        defaultAudioIndex: 1,
+        streams: const <ServerStream>[
+          ServerStream(index: 1, type: ServerStreamType.audio, language: 'eng'),
+        ],
+        externalSubtitles: <ExternalSubtitle>[
+          ExternalSubtitle(
+            uri: base.resolve('/Videos/$itemId/Subtitles/3/Stream.srt'),
+            label: 'English - SRT',
+            index: 3,
+          ),
+        ],
+      );
+}
+
 DownloadEntry _entry({String itemId = 'i1'}) => DownloadEntry(
       profileId: 'p1',
       itemId: itemId,
@@ -375,6 +427,40 @@ void main() {
       expect(c.read(downloadsProvider), isEmpty);
       expect(store.itemDir(done).existsSync(), isFalse);
       expect(await store.load(), isEmpty);
+    });
+
+    test('what the player needs is saved beside the file', () async {
+      final container = ProviderContainer(
+        overrides: [
+          downloadStoreProvider.overrideWith((ref) async => store),
+          downloadEngineProvider.overrideWith(
+            (ref) async => DownloadEngine(store: store, client: Dio()),
+          ),
+          downloadSourceProvider.overrideWithValue(
+            (profileId) => _DescribedSource(server.base),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(downloadsProvider.notifier);
+      await controller.ready;
+
+      await controller.enqueue(
+        _DescribedSource(server.base),
+        const ServerItem(id: 'i1', title: 'The Film', kind: ServerItemKind.movie),
+      );
+      final done = await settled(container, 'p1/i1');
+      final meta = await store.readMeta(done);
+
+      expect(meta, isNotNull);
+      expect(meta!.runtime, const Duration(minutes: 90));
+      expect(meta.position, const Duration(minutes: 5));
+      expect(meta.chapters.single.title, 'Start');
+      expect(meta.segments.single.kind, MediaSegmentKind.intro);
+      expect(meta.streams.single.language, 'eng');
+      expect(meta.defaultAudioIndex, 1);
+      expect(meta.subtitles.single.fileName, 'sub-3.srt');
+      expect(store.subtitleFile(done, 'sub-3.srt').existsSync(), isTrue);
     });
   });
 }

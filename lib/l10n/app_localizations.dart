@@ -3745,6 +3745,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{size} on this device'**
   String downloadsUsed(String size);
+
+  /// No description provided for @watchDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch downloads'**
+  String get watchDownloads;
 }
 
 class _AppLocalizationsDelegate

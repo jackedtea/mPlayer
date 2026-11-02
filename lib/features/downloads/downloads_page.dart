@@ -39,13 +39,10 @@ class DownloadsPage extends ConsumerWidget {
       for (final e in entries)
         if (e.status != DownloadStatus.completed) e,
     ];
-    final groups = _groupsOf(
-      <DownloadEntry>[
-        for (final e in entries)
-          if (e.status == DownloadStatus.completed) e,
-      ],
-      films: l10n.downloadsMovies,
-    );
+    final groups = _groupsOf(<DownloadEntry>[
+      for (final e in entries)
+        if (e.status == DownloadStatus.completed) e,
+    ], films: l10n.downloadsMovies);
     final used = entries.fold<int>(0, (sum, e) => sum + e.receivedBytes);
     final horizontal = spacing.screenHorizontal(context.windowSize);
 
@@ -66,8 +63,9 @@ class DownloadsPage extends ConsumerWidget {
                   ),
                   child: Text(
                     l10n.downloadsUsed(formatBytes(used)),
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                    style: context.texts.bodySmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
                   ),
                 ),
                 if (unfinished.isNotEmpty) ...<Widget>[
@@ -104,7 +102,9 @@ class DownloadsPage extends ConsumerWidget {
       }
     }
 
-    movies.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    movies.sort(
+      (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+    );
     final names = bySeries.keys.toList()
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
@@ -113,13 +113,12 @@ class DownloadsPage extends ConsumerWidget {
       for (final name in names)
         (
           name,
-          bySeries[name]!
-            ..sort((a, b) {
-              final season = (a.seasonNumber ?? 0).compareTo(b.seasonNumber ?? 0);
-              return season != 0
-                  ? season
-                  : (a.episodeNumber ?? 0).compareTo(b.episodeNumber ?? 0);
-            }),
+          bySeries[name]!..sort((a, b) {
+            final season = (a.seasonNumber ?? 0).compareTo(b.seasonNumber ?? 0);
+            return season != 0
+                ? season
+                : (a.episodeNumber ?? 0).compareTo(b.episodeNumber ?? 0);
+          }),
         ),
     ];
   }
@@ -143,7 +142,8 @@ class _DownloadTile extends ConsumerWidget {
     final store = ref.watch(downloadStoreProvider).value;
     final signedIn = ref.watch(downloadSourceProvider)(entry.profileId) != null;
     final progress = entry.progress;
-    final showBar = entry.status == DownloadStatus.downloading ||
+    final showBar =
+        entry.status == DownloadStatus.downloading ||
         (entry.status == DownloadStatus.paused && progress != null);
 
     return Padding(
@@ -151,51 +151,59 @@ class _DownloadTile extends ConsumerWidget {
         horizontal: spacing.screenHorizontal(context.windowSize),
         vertical: spacing.xs,
       ),
-      child: Container(
-        padding: EdgeInsets.all(spacing.md),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: context.radii.cardAll,
-        ),
-        child: Row(
-          children: <Widget>[
-            _Poster(entry: entry, store: store),
-            SizedBox(width: spacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    _title(l10n),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodyLarge,
-                  ),
-                  SizedBox(height: spacing.xs),
-                  Text(
-                    _detail(l10n, signedIn: signedIn),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodySmall
-                        ?.copyWith(color: _detailColor(context)),
-                  ),
-                  if (showBar) ...<Widget>[
-                    SizedBox(height: spacing.sm),
-                    ClipRRect(
-                      borderRadius: context.radii.chipAll,
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 4,
-                        backgroundColor: scheme.surfaceContainerHighest,
+      child: Material(
+        color: scheme.surfaceContainerLow,
+        borderRadius: context.radii.cardAll,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          // Only a whole copy plays; a partial one is not a file yet.
+          onTap: entry.status == DownloadStatus.completed
+              ? () => playDownload(context, ref, entry)
+              : null,
+          child: Padding(
+            padding: EdgeInsets.all(spacing.md),
+            child: Row(
+              children: <Widget>[
+                _Poster(entry: entry, store: store),
+                SizedBox(width: spacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        _title(l10n),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.bodyLarge,
                       ),
-                    ),
-                  ],
-                ],
-              ),
+                      SizedBox(height: spacing.xs),
+                      Text(
+                        _detail(l10n, signedIn: signedIn),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.bodySmall?.copyWith(
+                          color: _detailColor(context),
+                        ),
+                      ),
+                      if (showBar) ...<Widget>[
+                        SizedBox(height: spacing.sm),
+                        ClipRRect(
+                          borderRadius: context.radii.chipAll,
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 4,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                ..._actions(context, ref, l10n),
+              ],
             ),
-            ..._actions(context, ref, l10n),
-          ],
+          ),
         ),
       ),
     );
@@ -226,23 +234,25 @@ class _DownloadTile extends ConsumerWidget {
     return switch (entry.status) {
       DownloadStatus.completed =>
         '${l10n.availableOffline} · ${formatBytes(entry.receivedBytes)}',
-      DownloadStatus.downloading => total == null
-          ? sizes
-          : '${l10n.downloadingPercent(((entry.progress ?? 0) * 100).floor())} · $sizes',
+      DownloadStatus.downloading =>
+        total == null
+            ? sizes
+            : '${l10n.downloadingPercent(((entry.progress ?? 0) * 100).floor())} · $sizes',
       DownloadStatus.queued =>
         signedIn ? l10n.downloadQueued : l10n.downloadWaitingForServer,
-      DownloadStatus.paused => entry.receivedBytes > 0
-          ? '${l10n.downloadPaused} · $sizes'
-          : l10n.downloadPaused,
+      DownloadStatus.paused =>
+        entry.receivedBytes > 0
+            ? '${l10n.downloadPaused} · $sizes'
+            : l10n.downloadPaused,
       DownloadStatus.failed => entry.error ?? l10n.actionFailed,
     };
   }
 
   Color _detailColor(BuildContext context) => switch (entry.status) {
-        DownloadStatus.completed => context.semantic.success,
-        DownloadStatus.failed => context.colors.error,
-        _ => context.colors.onSurfaceVariant,
-      };
+    DownloadStatus.completed => context.semantic.success,
+    DownloadStatus.failed => context.colors.error,
+    _ => context.colors.onSurfaceVariant,
+  };
 
   List<Widget> _actions(
     BuildContext context,
@@ -254,27 +264,29 @@ class _DownloadTile extends ConsumerWidget {
 
     final Widget? primary = switch (entry.status) {
       DownloadStatus.queued || DownloadStatus.downloading => IconButton(
-          icon: const Icon(Icons.pause_rounded),
-          tooltip: l10n.pauseDownload,
-          onPressed: () => controller.pause(entry.key),
-        ),
+        icon: const Icon(Icons.pause_rounded),
+        tooltip: l10n.pauseDownload,
+        onPressed: () => controller.pause(entry.key),
+      ),
       DownloadStatus.paused => IconButton(
-          icon: const Icon(Icons.download_rounded),
-          tooltip: l10n.resumeDownload,
-          onPressed: () => controller.resume(entry.key),
-        ),
+        icon: const Icon(Icons.download_rounded),
+        tooltip: l10n.resumeDownload,
+        onPressed: () => controller.resume(entry.key),
+      ),
       DownloadStatus.failed => IconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          tooltip: l10n.retryDownload,
-          onPressed: () => controller.resume(entry.key),
-        ),
+        icon: const Icon(Icons.refresh_rounded),
+        tooltip: l10n.retryDownload,
+        onPressed: () => controller.resume(entry.key),
+      ),
       DownloadStatus.completed => null,
     };
 
     return <Widget>[
       ?primary,
       IconButton(
-        icon: Icon(completed ? Icons.delete_outline_rounded : Icons.close_rounded),
+        icon: Icon(
+          completed ? Icons.delete_outline_rounded : Icons.close_rounded,
+        ),
         tooltip: completed ? l10n.removeDownload : l10n.cancelDownload,
         onPressed: () => confirmRemoveDownload(
           context,
@@ -348,8 +360,9 @@ class _EmptyState extends StatelessWidget {
             Text(
               l10n.downloadsEmptyHint,
               textAlign: TextAlign.center,
-              style: context.texts.bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: context.texts.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),

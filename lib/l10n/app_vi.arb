@@ -652,5 +652,6 @@
   "downloadsMovies": "Phim",
   "downloadSizeOf": "{received} / {total}",
   "downloadWaitingForServer": "Đang chờ đăng nhập server",
-  "downloadsUsed": "{size} trên thiết bị"
+  "downloadsUsed": "{size} trên thiết bị",
+  "watchDownloads": "Xem bản đã tải"
 }

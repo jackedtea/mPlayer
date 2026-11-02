@@ -16,6 +16,7 @@ import '../servers/media_library_source.dart';
 import '../servers/server_registry.dart';
 import 'download_engine.dart';
 import 'download_models.dart';
+import 'download_snapshot.dart';
 import 'download_store.dart';
 
 /// Where the copies live: application support, not documents.
@@ -41,6 +42,24 @@ final downloadSourceProvider =
     Provider<MediaLibrarySource? Function(String profileId)>((ref) {
   final source = ref.watch(serverRegistryProvider).source;
   return (profileId) => source?.profile.id == profileId ? source : null;
+});
+
+/// The profiles with at least one whole copy on the device.
+///
+/// Narrowed through a joined string because a set has no value equality:
+/// selecting one directly would rebuild every watcher on every chunk.
+final downloadedProfilesProvider = Provider<Set<String>>((ref) {
+  final joined = ref.watch(
+    downloadsProvider.select((entries) {
+      final ids = <String>{
+        for (final e in entries)
+          if (e.status == DownloadStatus.completed) e.profileId,
+      }.toList()
+        ..sort();
+      return ids.join('\n');
+    }),
+  );
+  return joined.isEmpty ? const <String>{} : joined.split('\n').toSet();
 });
 
 final downloadsProvider =
@@ -72,8 +91,12 @@ class DownloadsController extends Notifier<List<DownloadEntry>> {
   @override
   List<DownloadEntry> build() {
     ref.onDispose(() => _cancel?.cancel());
-    // A server signing in is what lets a waiting copy start.
-    ref.listen(downloadSourceProvider, (_, _) => unawaited(_pump()));
+    // A server signing in is what lets a waiting copy start, and what the
+    // positions played offline have been waiting for.
+    ref.listen(downloadSourceProvider, (_, _) {
+      unawaited(_pump());
+      unawaited(_flushReports());
+    });
     _ready = _load();
     return const <DownloadEntry>[];
   }
@@ -83,15 +106,79 @@ class DownloadsController extends Notifier<List<DownloadEntry>> {
       _store = await ref.read(downloadStoreProvider.future);
       _engine = await ref.read(downloadEngineProvider.future);
       state = await _store!.load();
+      _unreported.addAll(await _store!.readPendingReports());
     } catch (e) {
       debugPrint('Could not open the downloads: $e');
       return;
     }
     unawaited(_pump());
+    unawaited(_flushReports());
   }
 
   /// Resolves once the index is loaded; for callers that need the list.
   Future<void> get ready => _ready;
+
+  /// The list as it stands, for a caller holding the notifier rather than a
+  /// ref — the offline source, which outlives any one rebuild of the map
+  /// it sits in.
+  List<DownloadEntry> get entries => state;
+
+  /// Null until the index has loaded.
+  DownloadStore? get store => _store;
+
+  /// Where offline playback stopped, per entry key, not yet told to the
+  /// server. Held here and in `pending_reports.json`.
+  final Map<String, Duration> _unreported = <String, Duration>{};
+
+  /// The latest position played offline and not yet reported, if any.
+  Duration? unreportedPosition(String profileId, String itemId) =>
+      _unreported[DownloadEntry.keyOf(profileId, itemId)];
+
+  /// Keeps a stop the server could not be told about, to tell it later.
+  ///
+  /// Only the latest per item: the server wants where the user is, not the
+  /// history of how they got there.
+  Future<void> recordUnreported(
+    String profileId,
+    String itemId,
+    Duration position,
+  ) async {
+    await _ready;
+    _unreported[DownloadEntry.keyOf(profileId, itemId)] = position;
+    await _savePending();
+  }
+
+  /// Hands each kept stop to its server, where that server is signed in.
+  /// One that fails stays for the next sign-in.
+  Future<void> _flushReports() async {
+    if (!ref.mounted || _unreported.isEmpty) return;
+    final sources = ref.read(downloadSourceProvider);
+    var changed = false;
+
+    for (final MapEntry<String, Duration> e in _unreported.entries.toList()) {
+      final slash = e.key.indexOf('/');
+      if (slash < 0) continue;
+      final source = sources(e.key.substring(0, slash));
+      if (source == null) continue;
+      try {
+        await source.reportStopped(e.key.substring(slash + 1), position: e.value);
+        // Unless it was replaced by a newer stop while this one was in flight.
+        if (_unreported[e.key] == e.value) _unreported.remove(e.key);
+        changed = true;
+      } catch (err) {
+        debugPrint('Could not report an offline stop yet: $err');
+      }
+    }
+    if (changed) await _savePending();
+  }
+
+  Future<void> _savePending() async {
+    try {
+      await _store?.writePendingReports(Map<String, Duration>.of(_unreported));
+    } catch (e) {
+      debugPrint('Could not save the pending reports: $e');
+    }
+  }
 
   DownloadEntry? entryFor(String profileId, String itemId) {
     final key = DownloadEntry.keyOf(profileId, itemId);
@@ -199,6 +286,11 @@ class DownloadsController extends Notifier<List<DownloadEntry>> {
     _running = key;
     _cancel = cancel;
     await _update(key, (e) => e.copyWith(status: DownloadStatus.downloading));
+
+    if (!store.metaFile(next).existsSync()) {
+      await takeOfflineSnapshot(source, next, store: store, engine: engine);
+      if (!ref.mounted) return;
+    }
 
     final clock = Stopwatch()..start();
     final result = await engine.fetch(

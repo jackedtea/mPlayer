@@ -21,6 +21,8 @@ import 'server_admin.dart';
 import 'server_pin.dart';
 import 'server_profile.dart';
 import 'stream_preferences.dart';
+import '../downloads/downloads_controller.dart';
+import '../downloads/offline_media_source.dart';
 import '../sources/media_source.dart';
 
 /// Where signed-in servers are persisted.
@@ -211,12 +213,34 @@ class ServerRegistryState {
 final serverRegistryProvider =
     NotifierProvider<ServerRegistry, ServerRegistryState>(ServerRegistry.new);
 
+/// The live server as something the player can open, or null while nothing
+/// is signed in.
+///
+/// A provider of its own so that the map below can rebuild without this:
+/// [JellyfinMediaSource] keeps the play session of each item it resolved,
+/// and a fresh one would file the next progress report against none.
+final onlineMediaSourceProvider = Provider<JellyfinMediaSource?>((ref) {
+  final library = ref.watch(serverRegistryProvider).source;
+  if (library == null) return null;
+
+  return JellyfinMediaSource(
+    library,
+    // Read through a callback rather than captured: the source is built
+    // once and resolves many times, and a quality picked in the player has
+    // to reach the *next* file without rebuilding this provider.
+    preferences: () => StreamPreferences(
+      quality: ref.read(streamQualityProvider),
+      trackChoice: ref.read(trackChoiceProvider),
+    ),
+  );
+});
+
 /// Every source the player can resolve against, keyed by id.
 ///
-/// This replaces `sourceRegistry.dart`'s map, which also held the device, SAF,
-/// MediaStore, SMB and WebDAV drivers. Those are gone — mPlayer plays what a
-/// server gives it and nothing else — so the map has exactly one entry, or
-/// none while nothing is signed in.
+/// One entry per profile: the signed-in server, wrapped so that an item
+/// with a whole copy on the device plays from the file, plus one for each
+/// other profile that has copies, which plays those and nothing else. With
+/// nothing signed in and nothing downloaded, the map is empty.
 ///
 /// **Still a map, deliberately.** `PlaybackController` looks a source up by
 /// `mediaRef.sourceId`, and a resume point or a queue entry carries the
@@ -224,20 +248,20 @@ final serverRegistryProvider =
 /// make every one of those lookups silently resolve to "the current server",
 /// which is wrong the moment a second server can be signed in.
 final mediaSourcesProvider = Provider<Map<String, MediaSource>>((ref) {
-  final library = ref.watch(serverRegistryProvider).source;
-  if (library == null) return const <String, MediaSource>{};
+  final online = ref.watch(onlineMediaSourceProvider);
+  final offline = ref.watch(downloadedProfilesProvider);
+  final downloads = ref.read(downloadsProvider.notifier);
 
   return <String, MediaSource>{
-    library.profile.id: JellyfinMediaSource(
-      library,
-      // Read through a callback rather than captured: the source is built
-      // once and resolves many times, and a quality picked in the player has
-      // to reach the *next* file without rebuilding this provider.
-      preferences: () => StreamPreferences(
-        quality: ref.read(streamQualityProvider),
-        trackChoice: ref.read(trackChoiceProvider),
+    if (online != null)
+      online.id: OfflineMediaSource(
+        profileId: online.id,
+        downloads: downloads,
+        online: online,
       ),
-    ),
+    for (final String id in offline)
+      if (id != online?.id)
+        id: OfflineMediaSource(profileId: id, downloads: downloads),
   };
 });
 
