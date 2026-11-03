@@ -91,9 +91,9 @@ that list — there is no local file to have either.
 
 Also open:
 
-1. Downloads (screen 1i) is real end to end (see "Downloads") except the
-   Android background service and Wi-Fi-only, and offline playback is
-   unverified on a real device.
+1. Downloads (screen 1i) is real end to end (see "Downloads"). Offline
+   playback, the Android download service and Wi-Fi-only are unverified on
+   a real device.
 2. English literals remain where Localisation says.
 3. Dropped on purpose: **NFS**, **network scanning**, **preview thumbnails**
    generated locally (the server's trickplay covers it), and now every local
@@ -281,7 +281,31 @@ shared bits (`download_ui.dart`: `watchDownload`, `DownloadBadge`,
 - **With no server open**, the empty state and the server list show
   "Watch downloads" when there are copies; the Downloads branch keeps its
   navigation bar, since only the Home branch drops it.
-- Not yet: Android background service and Wi-Fi-only.
+- **Android keeps the engine alive** with `DownloadService.kt`, a
+  `dataSync` foreground service, through `DownloadChannel.kt`
+  (`dev.icedtea.mplayer/downloads`: `update` {title, text, percent} /
+  `stop`). It decides nothing: `DownloadsController` pushes the running
+  file's title and percent from `listenSelf`, only when they change, and
+  stops the service when nothing runs. The text is localised with
+  `lookupAppLocalizations` (chosen locale, else the system's). Android 15
+  caps `dataSync` at six hours a day; the queue then resumes on the next
+  launch. Swiping the app away stops it — the engine doing the work goes.
+- **Wi-Fi only** (`download_settings.dart`, on by default, device-local in
+  `shared_preferences`): `downloadHoldProvider` combines the setting with
+  `connectivity_plus` (`wifi`/`ethernet` unmetered, `mobile`/`satellite`
+  metered, `none` offline; a platform that cannot say holds nothing). A hold
+  stops the running file and puts it back as *queued*, not paused; release
+  resumes from the partial file. The Downloads tab says which hold applies.
+- **Settings › Downloads** (`/settings/downloads`, also the gear on the
+  tab): Wi-Fi only, remove watched downloads (off by default — a copy played
+  past 90 % of its runtime on this device is deleted after the stop is
+  reported, retrying while Windows still has the file open), space used and
+  remove all.
+- **Deliberately not built:** downloading a transcoded copy (a transcode is
+  a stream with no stable byte length, so `Range` resume and the saved
+  track indexes both stop meaning anything) and a storage cap (the space
+  line plus remove-all and remove-watched cover it until someone needs a
+  number). Notification buttons (pause) are absent; tapping opens the app.
 
 ## Localisation
 

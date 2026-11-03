@@ -9,8 +9,9 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Five channels: three for the player, one for installing updates, and one
- * that says whether this is a television.
+ * Six channels: three for the player, one for installing updates, one for
+ * the downloads' foreground service, and one that says whether this is a
+ * television.
  *
  * Gone with the device library: [MediaStoreChannel] (the system media index),
  * `SafChannel` (folders the user granted explicitly) and `IntentChannel` (the
@@ -27,6 +28,7 @@ class MainActivity : FlutterActivity() {
     private var pip: PipChannel? = null
     private var nowPlaying: NowPlayingChannel? = null
     private var cast: CastChannel? = null
+    private var downloads: DownloadChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -84,6 +86,15 @@ class MainActivity : FlutterActivity() {
             updates.handle(call.method, call.arguments as? Map<*, *>, result)
         }
 
+        val transfers = DownloadChannel(this)
+        downloads = transfers
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            DownloadChannel.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            transfers.handle(call.method, call.arguments as? Map<*, *>, result)
+        }
+
         // A fact, not a decision: Dart chooses what a television gets.
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -136,6 +147,10 @@ class MainActivity : FlutterActivity() {
         // player is gone.
         cast?.dispose()
         cast = null
+        // The downloads run in this engine; a notification left behind would
+        // claim progress nothing is making.
+        downloads?.dispose()
+        downloads = null
         super.onDestroy()
     }
 }

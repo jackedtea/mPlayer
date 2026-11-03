@@ -5,7 +5,6 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,84 +19,7 @@ import 'package:mplayer/servers/jellyfin_dto.dart';
 import 'package:mplayer/servers/media_library_source.dart';
 
 import 'fake_library_source.dart';
-
-/// 300 KB of bytes that differ from one position to the next, so a resume
-/// stitched at the wrong offset cannot compare equal by accident.
-final _file = Uint8List.fromList(
-  List<int>.generate(300 * 1024, (i) => (i * 31 + (i >> 8)) & 0xff),
-);
-
-/// A loopback server standing in for `/Items/{id}/Download`.
-class _FileServer {
-  late final HttpServer _server;
-  bool honourRange = true;
-  int? status;
-
-  /// When set, the response stops after the first 64 KB until it completes.
-  Completer<void>? hold;
-
-  final List<String?> ranges = <String?>[];
-
-  Uri get base => Uri.parse('http://127.0.0.1:${_server.port}');
-
-  Future<void> start() async {
-    _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _server.listen(_handle);
-  }
-
-  Future<void> stop() => _server.close(force: true);
-
-  Future<void> _handle(HttpRequest request) async {
-    final res = request.response;
-    final range = request.headers.value(HttpHeaders.rangeHeader);
-    ranges.add(range);
-
-    if (status != null) {
-      res.statusCode = status!;
-      await res.close();
-      return;
-    }
-
-    res.headers.set(
-      'content-disposition',
-      'attachment; filename="The Film (2024).MKV"',
-    );
-
-    var start = 0;
-    if (range != null && honourRange) {
-      start = int.parse(RegExp(r'bytes=(\d+)-').firstMatch(range)!.group(1)!);
-      if (start >= _file.length) {
-        res.statusCode = 416;
-        res.headers.set('content-range', 'bytes */${_file.length}');
-        await res.close();
-        return;
-      }
-      res.statusCode = 206;
-      res.headers.set(
-        'content-range',
-        'bytes $start-${_file.length - 1}/${_file.length}',
-      );
-    }
-    final body = _file.sublist(start);
-    res.contentLength = body.length;
-
-    final gate = hold;
-    if (gate != null) {
-      res.add(body.sublist(0, 64 * 1024));
-      await res.flush();
-      await gate.future;
-      try {
-        res.add(body.sublist(64 * 1024));
-        await res.close();
-      } catch (_) {
-        // The client hung up, which is the point of the test.
-      }
-      return;
-    }
-    res.add(body);
-    await res.close();
-  }
-}
+import 'file_server.dart';
 
 class _Source extends FakeLibrarySource {
   const _Source(this.base);
@@ -171,12 +93,12 @@ DownloadEntry _entry({String itemId = 'i1'}) => DownloadEntry(
 void main() {
   late Directory root;
   late DownloadStore store;
-  late _FileServer server;
+  late FileServer server;
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('mplayer_downloads_');
     store = DownloadStore(root);
-    server = _FileServer();
+    server = FileServer();
     await server.start();
   });
 
@@ -282,8 +204,8 @@ void main() {
 
       expect(result.status, DownloadStatus.completed);
       expect(result.fileName, 'media.mkv');
-      expect(result.totalBytes, _file.length);
-      expect(await store.mediaFile(result)!.readAsBytes(), _file);
+      expect(result.totalBytes, testFile.length);
+      expect(await store.mediaFile(result)!.readAsBytes(), testFile);
       expect(store.partFile(result).existsSync(), isFalse);
       expect(server.ranges.single, isNull);
     });
@@ -292,13 +214,13 @@ void main() {
       final entry = _entry();
       final part = store.partFile(entry);
       await part.parent.create(recursive: true);
-      await part.writeAsBytes(_file.sublist(0, 100000));
+      await part.writeAsBytes(testFile.sublist(0, 100000));
 
       final result = await fetch(entry);
 
       expect(server.ranges.single, 'bytes=100000-');
       expect(result.status, DownloadStatus.completed);
-      expect(await store.mediaFile(result)!.readAsBytes(), _file);
+      expect(await store.mediaFile(result)!.readAsBytes(), testFile);
     });
 
     test('a server that ignores the range overwrites rather than appends', () async {
@@ -306,24 +228,24 @@ void main() {
       final entry = _entry();
       final part = store.partFile(entry);
       await part.parent.create(recursive: true);
-      await part.writeAsBytes(_file.sublist(0, 100000));
+      await part.writeAsBytes(testFile.sublist(0, 100000));
 
       final result = await fetch(entry);
 
       expect(result.status, DownloadStatus.completed);
-      expect(await store.mediaFile(result)!.readAsBytes(), _file);
+      expect(await store.mediaFile(result)!.readAsBytes(), testFile);
     });
 
     test('a finished partial file whose rename was lost is completed', () async {
       final entry = _entry();
       final part = store.partFile(entry);
       await part.parent.create(recursive: true);
-      await part.writeAsBytes(_file);
+      await part.writeAsBytes(testFile);
 
       final result = await fetch(entry);
 
       expect(result.status, DownloadStatus.completed);
-      expect(await store.mediaFile(result)!.readAsBytes(), _file);
+      expect(await store.mediaFile(result)!.readAsBytes(), testFile);
     });
 
     test('a refusal is a sentence, not an exception', () async {

@@ -685,5 +685,20 @@
   "downloadWaitingForServer": "Waiting for the server to sign in",
   "downloadsUsed": "{size} on this device",
   "@downloadsUsed": {"placeholders": {"size": {"type": "String"}}},
-  "watchDownloads": "Watch downloads"
+  "watchDownloads": "Watch downloads",
+  "downloadsQueuedMore": "{count} more queued",
+  "@downloadsQueuedMore": {"placeholders": {"count": {"type": "int"}}},
+  "downloadWaitingForWifi": "Waiting for Wi-Fi",
+  "downloadWaitingForNetwork": "Waiting for a connection",
+  "downloadSettings": "Downloads",
+  "downloadSettingsSub": "Wi-Fi only, storage",
+  "downloadWifiOnly": "Download on Wi-Fi only",
+  "downloadWifiOnlySub": "Hold the queue on mobile data and carry on when Wi-Fi is back",
+  "downloadRemoveWatched": "Remove watched downloads",
+  "downloadRemoveWatchedSub": "Delete a copy once it has been watched to the end on this device",
+  "downloadStorage": "Storage",
+  "downloadRemoveAll": "Remove all downloads",
+  "downloadRemoveAllTitle": "Remove every download?",
+  "downloadRemoveAllBody": "Everything saved on this device for offline viewing will be deleted.",
+  "downloadsNone": "Nothing is downloaded on this device."
 }

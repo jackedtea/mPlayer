@@ -35,6 +35,7 @@ const _routes = <String>[
   '/settings/player',
   '/settings/audio',
   '/settings/subtitle',
+  '/settings/downloads',
   '/settings/about',
   '/settings/diagnostics',
   '/settings/privacy',

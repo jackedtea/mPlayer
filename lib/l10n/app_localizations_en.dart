@@ -2046,4 +2046,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get watchDownloads => 'Watch downloads';
+
+  @override
+  String downloadsQueuedMore(int count) {
+    return '$count more queued';
+  }
+
+  @override
+  String get downloadWaitingForWifi => 'Waiting for Wi-Fi';
+
+  @override
+  String get downloadWaitingForNetwork => 'Waiting for a connection';
+
+  @override
+  String get downloadSettings => 'Downloads';
+
+  @override
+  String get downloadSettingsSub => 'Wi-Fi only, storage';
+
+  @override
+  String get downloadWifiOnly => 'Download on Wi-Fi only';
+
+  @override
+  String get downloadWifiOnlySub =>
+      'Hold the queue on mobile data and carry on when Wi-Fi is back';
+
+  @override
+  String get downloadRemoveWatched => 'Remove watched downloads';
+
+  @override
+  String get downloadRemoveWatchedSub =>
+      'Delete a copy once it has been watched to the end on this device';
+
+  @override
+  String get downloadStorage => 'Storage';
+
+  @override
+  String get downloadRemoveAll => 'Remove all downloads';
+
+  @override
+  String get downloadRemoveAllTitle => 'Remove every download?';
+
+  @override
+  String get downloadRemoveAllBody =>
+      'Everything saved on this device for offline viewing will be deleted.';
+
+  @override
+  String get downloadsNone => 'Nothing is downloaded on this device.';
 }

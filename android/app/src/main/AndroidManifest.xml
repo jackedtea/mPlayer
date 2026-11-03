@@ -19,6 +19,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
 
     <!--
+      Downloads carrying on with the app in the background, for the same
+      reason: the transfer runs in the Flutter engine, which only survives
+      while a foreground service is up. dataSync is the type Android gives
+      user-started transfers.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+
+    <!--
       The media notification, from Android 13. A denial hides the
       notification but does not stop the service, so playback continues
       either way — it just loses its controls.
@@ -136,6 +144,12 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON"/>
             </intent-filter>
         </service>
+
+        <!-- Not exported, like the playback service; see DownloadService. -->
+        <service
+            android:name=".DownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
 
         <!--
           Lets the package installer read a downloaded update. Only the

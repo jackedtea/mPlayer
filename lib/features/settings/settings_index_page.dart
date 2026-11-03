@@ -63,6 +63,12 @@ class SettingsIndexPage extends ConsumerWidget {
         icon: Icons.subtitles_rounded,
         route: 'subtitle',
       ),
+      _SettingsEntry(
+        title: l10n.downloadSettings,
+        subtitle: l10n.downloadSettingsSub,
+        icon: Icons.download_for_offline_rounded,
+        route: 'downloads',
+      ),
       // Not under `/settings`: the remote is a screen used from the sofa, and
       // it outlives the settings branch it is reached from.
       _SettingsEntry(

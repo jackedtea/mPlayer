@@ -235,6 +235,13 @@ class OfflineMediaSource
       return;
     }
 
+    await _deliverStop(itemId, position);
+    // After the report, so the server has heard about the watch before the
+    // copy that carried it is gone.
+    await downloads.watchedTo(profileId, itemId, position);
+  }
+
+  Future<void> _deliverStop(String itemId, Duration position) async {
     final library = _library;
     if (library != null) {
       try {

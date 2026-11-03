@@ -653,5 +653,19 @@
   "downloadSizeOf": "{received} / {total}",
   "downloadWaitingForServer": "Đang chờ đăng nhập server",
   "downloadsUsed": "{size} trên thiết bị",
-  "watchDownloads": "Xem bản đã tải"
+  "watchDownloads": "Xem bản đã tải",
+  "downloadsQueuedMore": "còn {count} mục đang chờ",
+  "downloadWaitingForWifi": "Đang chờ Wi-Fi",
+  "downloadWaitingForNetwork": "Đang chờ kết nối mạng",
+  "downloadSettings": "Tải xuống",
+  "downloadSettingsSub": "Chỉ qua Wi-Fi, dung lượng",
+  "downloadWifiOnly": "Chỉ tải qua Wi-Fi",
+  "downloadWifiOnlySub": "Tạm dừng hàng đợi khi dùng dữ liệu di động và tải tiếp khi có Wi-Fi",
+  "downloadRemoveWatched": "Xoá bản tải đã xem",
+  "downloadRemoveWatchedSub": "Xoá bản tải khi đã xem hết trên thiết bị này",
+  "downloadStorage": "Dung lượng",
+  "downloadRemoveAll": "Xoá mọi bản tải",
+  "downloadRemoveAllTitle": "Xoá mọi bản tải?",
+  "downloadRemoveAllBody": "Mọi thứ đã lưu để xem ngoại tuyến trên thiết bị này sẽ bị xoá.",
+  "downloadsNone": "Chưa tải gì trên thiết bị này."
 }

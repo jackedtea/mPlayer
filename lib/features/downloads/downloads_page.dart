@@ -7,9 +7,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../downloads/download_models.dart';
+import '../../downloads/download_settings.dart';
 import '../../downloads/download_store.dart';
 import '../../downloads/downloads_controller.dart';
 import '../../l10n/app_localizations.dart';
@@ -48,7 +50,17 @@ class DownloadsPage extends ConsumerWidget {
 
     return Scaffold(
       // No back arrow: this is a navigation destination.
-      appBar: AppBar(title: Text(l10n.downloads)),
+      appBar: AppBar(
+        title: Text(l10n.downloads),
+        actions: <Widget>[
+          // Up here rather than in the thumb's arc: set once, not reached for.
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: l10n.downloadSettings,
+            onPressed: () => context.go('/settings/downloads'),
+          ),
+        ],
+      ),
       body: entries.isEmpty
           ? const _EmptyState()
           : ListView(
@@ -141,6 +153,7 @@ class _DownloadTile extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final store = ref.watch(downloadStoreProvider).value;
     final signedIn = ref.watch(downloadSourceProvider)(entry.profileId) != null;
+    final hold = ref.watch(downloadHoldProvider);
     final progress = entry.progress;
     final showBar =
         entry.status == DownloadStatus.downloading ||
@@ -179,7 +192,7 @@ class _DownloadTile extends ConsumerWidget {
                       ),
                       SizedBox(height: spacing.xs),
                       Text(
-                        _detail(l10n, signedIn: signedIn),
+                        _detail(l10n, signedIn: signedIn, hold: hold),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: context.texts.bodySmall?.copyWith(
@@ -222,7 +235,11 @@ class _DownloadTile extends ConsumerWidget {
     ].join(' · ');
   }
 
-  String _detail(AppLocalizations l10n, {required bool signedIn}) {
+  String _detail(
+    AppLocalizations l10n, {
+    required bool signedIn,
+    required DownloadHold? hold,
+  }) {
     final total = entry.totalBytes;
     final sizes = total == null
         ? formatBytes(entry.receivedBytes)
@@ -239,7 +256,11 @@ class _DownloadTile extends ConsumerWidget {
             ? sizes
             : '${l10n.downloadingPercent(((entry.progress ?? 0) * 100).floor())} · $sizes',
       DownloadStatus.queued =>
-        signedIn ? l10n.downloadQueued : l10n.downloadWaitingForServer,
+        switch (hold) {
+          DownloadHold.waitingForWifi => l10n.downloadWaitingForWifi,
+          DownloadHold.offline => l10n.downloadWaitingForNetwork,
+          null => signedIn ? l10n.downloadQueued : l10n.downloadWaitingForServer,
+        },
       DownloadStatus.paused =>
         entry.receivedBytes > 0
             ? '${l10n.downloadPaused} · $sizes'

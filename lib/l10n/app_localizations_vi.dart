@@ -2048,4 +2048,51 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get watchDownloads => 'Xem bản đã tải';
+
+  @override
+  String downloadsQueuedMore(int count) {
+    return 'còn $count mục đang chờ';
+  }
+
+  @override
+  String get downloadWaitingForWifi => 'Đang chờ Wi-Fi';
+
+  @override
+  String get downloadWaitingForNetwork => 'Đang chờ kết nối mạng';
+
+  @override
+  String get downloadSettings => 'Tải xuống';
+
+  @override
+  String get downloadSettingsSub => 'Chỉ qua Wi-Fi, dung lượng';
+
+  @override
+  String get downloadWifiOnly => 'Chỉ tải qua Wi-Fi';
+
+  @override
+  String get downloadWifiOnlySub =>
+      'Tạm dừng hàng đợi khi dùng dữ liệu di động và tải tiếp khi có Wi-Fi';
+
+  @override
+  String get downloadRemoveWatched => 'Xoá bản tải đã xem';
+
+  @override
+  String get downloadRemoveWatchedSub =>
+      'Xoá bản tải khi đã xem hết trên thiết bị này';
+
+  @override
+  String get downloadStorage => 'Dung lượng';
+
+  @override
+  String get downloadRemoveAll => 'Xoá mọi bản tải';
+
+  @override
+  String get downloadRemoveAllTitle => 'Xoá mọi bản tải?';
+
+  @override
+  String get downloadRemoveAllBody =>
+      'Mọi thứ đã lưu để xem ngoại tuyến trên thiết bị này sẽ bị xoá.';
+
+  @override
+  String get downloadsNone => 'Chưa tải gì trên thiết bị này.';
 }

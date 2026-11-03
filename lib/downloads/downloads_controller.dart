@@ -6,16 +6,22 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'dart:ui' show Locale, PlatformDispatcher;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../app/locale_controller.dart';
+import '../l10n/app_localizations.dart';
 import '../servers/media_library_source.dart';
 import '../servers/server_registry.dart';
 import 'download_engine.dart';
 import 'download_models.dart';
+import 'download_platform.dart';
+import 'download_settings.dart';
 import 'download_snapshot.dart';
 import 'download_store.dart';
 
@@ -97,6 +103,19 @@ class DownloadsController extends Notifier<List<DownloadEntry>> {
       unawaited(_pump());
       unawaited(_flushReports());
     });
+    // Wi-Fi gone, or never there: the file under way stops where it is
+    // and goes back in the queue, to carry on from that byte when the
+    // network allows again.
+    ref.listen(downloadHoldProvider, (_, hold) {
+      if (hold != null) {
+        _suspend();
+      } else {
+        unawaited(_pump());
+      }
+    });
+    listenSelf((_, entries) => unawaited(_publish(entries)));
+    final platform = ref.read(downloadPlatformProvider);
+    ref.onDispose(() => unawaited(platform.hide()));
     _ready = _load();
     return const <DownloadEntry>[];
   }
@@ -267,6 +286,7 @@ class DownloadsController extends Notifier<List<DownloadEntry>> {
     if (!ref.mounted || store == null || engine == null || _running != null) {
       return;
     }
+    if (ref.read(downloadHoldProvider) != null) return;
 
     final sources = ref.read(downloadSourceProvider);
     DownloadEntry? next;
@@ -317,8 +337,119 @@ class DownloadsController extends Notifier<List<DownloadEntry>> {
     _running = null;
     _cancel = null;
 
-    await _update(key, (_) => result);
+    // Held back by the network rather than paused by the user: still
+    // wanted, so it waits its turn again instead of waiting for a tap.
+    final settled = _suspended && result.status == DownloadStatus.paused
+        ? result.copyWith(status: DownloadStatus.queued)
+        : result;
+    _suspended = false;
+
+    await _update(key, (_) => settled);
     unawaited(_pump());
+  }
+
+  /// Set while the network, not the user, is what stopped the fetch.
+  bool _suspended = false;
+
+  void _suspend() {
+    if (_running == null) return;
+    _suspended = true;
+    _cancel?.cancel();
+  }
+
+  /// What the notification last said, so it is only told when that changes.
+  String? _published;
+
+  /// Keeps the platform's notification in step with the file under way,
+  /// and takes it down when nothing is.
+  Future<void> _publish(List<DownloadEntry> entries) async {
+    if (!ref.mounted) return;
+    final platform = ref.read(downloadPlatformProvider);
+    if (!platform.enabled) return;
+    final running =
+        entries.where((e) => e.status == DownloadStatus.downloading).firstOrNull;
+
+    if (running == null) {
+      if (_published == null) return;
+      _published = null;
+      await platform.hide();
+      return;
+    }
+
+    final waiting = entries.where((e) => e.status == DownloadStatus.queued).length;
+    final progress = running.progress;
+    final percent = progress == null ? null : (progress * 100).floor();
+    final said = '${running.key}|$percent|$waiting';
+    if (said == _published) return;
+    _published = said;
+
+    final l10n = _l10n();
+    await platform.show(
+      title: running.title,
+      text: <String>[
+        if (percent != null) l10n.downloadingPercent(percent) else l10n.downloadQueued,
+        if (waiting > 0) l10n.downloadsQueuedMore(waiting),
+      ].join(' · '),
+      percent: percent,
+    );
+  }
+
+  /// Strings for a place with no widget tree: the chosen language, else
+  /// the system's, else English.
+  AppLocalizations _l10n() {
+    final chosen = ref.read(localeProvider) ?? PlatformDispatcher.instance.locale;
+    final supported = AppLocalizations.supportedLocales
+        .any((l) => l.languageCode == chosen.languageCode);
+    return lookupAppLocalizations(
+      supported ? Locale(chosen.languageCode) : const Locale('en'),
+    );
+  }
+
+  /// Played on this device to [position]: past nine tenths of the runtime,
+  /// where Jellyfin itself counts an item played, the copy is removed, if
+  /// the user asked for that.
+  Future<void> watchedTo(String profileId, String itemId, Duration position) async {
+    await _ready;
+    if (!ref.mounted || !ref.read(downloadSettingsProvider).removeWatched) return;
+
+    final entry = entryFor(profileId, itemId);
+    final store = _store;
+    if (entry == null || store == null || entry.status != DownloadStatus.completed) {
+      return;
+    }
+    final runtime = entry.runtime ?? (await store.readMeta(entry))?.runtime;
+    if (runtime == null || runtime <= Duration.zero) return;
+    if (position.inMilliseconds < runtime.inMilliseconds * 0.9) return;
+
+    await _set(<DownloadEntry>[for (final e in state) if (e.key != entry.key) e]);
+    await _deleteWhenFree(store, entry);
+  }
+
+  /// Deletes [entry]'s folder, waiting out a player that still has the file
+  /// open: Windows refuses to delete it until the decoder lets go.
+  Future<void> _deleteWhenFree(DownloadStore store, DownloadEntry entry) async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      await store.delete(entry);
+      if (!store.itemDir(entry).existsSync()) return;
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+  }
+
+  /// Removes every copy, the one under way included.
+  Future<void> deleteAll() async {
+    await _ready;
+    final store = _store;
+    if (store == null) return;
+
+    final gone = List<DownloadEntry>.of(state);
+    if (_running != null) {
+      _cancel?.cancel();
+      _running = null;
+    }
+    await _set(const <DownloadEntry>[]);
+    for (final e in gone) {
+      await store.delete(e);
+    }
   }
 
   /// Applies [change] to one entry in memory only — for progress, which

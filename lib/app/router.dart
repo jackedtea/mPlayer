@@ -12,6 +12,7 @@ import '../features/admin/admin_dashboard_page.dart';
 import '../features/admin/admin_plugins_page.dart';
 import '../features/admin/admin_tasks_page.dart';
 import '../features/admin/admin_users_page.dart';
+import '../features/downloads/download_settings_page.dart';
 import '../features/downloads/downloads_page.dart';
 import '../features/home/favorites_page.dart';
 import '../features/home/home_page.dart';
@@ -132,6 +133,10 @@ GoRouter buildRouter() {
                   GoRoute(
                     path: 'subtitle',
                     builder: (context, state) => const SubtitleSettingsPage(),
+                  ),
+                  GoRoute(
+                    path: 'downloads',
+                    builder: (context, state) => const DownloadSettingsPage(),
                   ),
                   GoRoute(
                     path: 'about',

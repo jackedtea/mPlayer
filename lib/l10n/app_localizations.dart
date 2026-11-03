@@ -3751,6 +3751,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Watch downloads'**
   String get watchDownloads;
+
+  /// No description provided for @downloadsQueuedMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more queued'**
+  String downloadsQueuedMore(int count);
+
+  /// No description provided for @downloadWaitingForWifi.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for Wi-Fi'**
+  String get downloadWaitingForWifi;
+
+  /// No description provided for @downloadWaitingForNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for a connection'**
+  String get downloadWaitingForNetwork;
+
+  /// No description provided for @downloadSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get downloadSettings;
+
+  /// No description provided for @downloadSettingsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Wi-Fi only, storage'**
+  String get downloadSettingsSub;
+
+  /// No description provided for @downloadWifiOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Download on Wi-Fi only'**
+  String get downloadWifiOnly;
+
+  /// No description provided for @downloadWifiOnlySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the queue on mobile data and carry on when Wi-Fi is back'**
+  String get downloadWifiOnlySub;
+
+  /// No description provided for @downloadRemoveWatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove watched downloads'**
+  String get downloadRemoveWatched;
+
+  /// No description provided for @downloadRemoveWatchedSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete a copy once it has been watched to the end on this device'**
+  String get downloadRemoveWatchedSub;
+
+  /// No description provided for @downloadStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get downloadStorage;
+
+  /// No description provided for @downloadRemoveAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all downloads'**
+  String get downloadRemoveAll;
+
+  /// No description provided for @downloadRemoveAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove every download?'**
+  String get downloadRemoveAllTitle;
+
+  /// No description provided for @downloadRemoveAllBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything saved on this device for offline viewing will be deleted.'**
+  String get downloadRemoveAllBody;
+
+  /// No description provided for @downloadsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is downloaded on this device.'**
+  String get downloadsNone;
 }
 
 class _AppLocalizationsDelegate
