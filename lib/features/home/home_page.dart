@@ -200,8 +200,16 @@ class _ResumeCarousel extends ConsumerStatefulWidget {
 }
 
 class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
+  /// Where a looping carousel starts: far enough from page 0 that nobody
+  /// swipes back to the wall. The page view itself has no end in either
+  /// direction it can be reached from; page `p` shows item `p % count`.
+  static const _loopOrigin = 10000;
+
   PageController? _pages;
-  int _index = 0;
+  bool _pagesLoop = false;
+
+  /// The page view's own page — past [_loopOrigin] while looping.
+  int _page = 0;
 
   @override
   void dispose() {
@@ -211,12 +219,21 @@ class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
 
   /// The controller for [fraction], rebuilt only when the window crosses into
   /// a size that needs a different one — `viewportFraction` is fixed for a
-  /// controller's lifetime. The page the user was on is carried across.
-  PageController _controllerFor(double fraction) {
+  /// controller's lifetime — or when a refresh starts or stops the loop. The
+  /// item the user was on is carried across.
+  PageController _controllerFor(double fraction, int count) {
+    final loop = count > 1;
     final current = _pages;
-    if (current != null && current.viewportFraction == fraction) return current;
+    if (current != null &&
+        current.viewportFraction == fraction &&
+        _pagesLoop == loop) {
+      return current;
+    }
 
-    final next = PageController(viewportFraction: fraction, initialPage: _index);
+    final index = _page % count;
+    _page = loop ? _loopOrigin - _loopOrigin % count + index : 0;
+    _pagesLoop = loop;
+    final next = PageController(viewportFraction: fraction, initialPage: _page);
     // Disposed after the frame: the old one is still attached to the
     // PageView being replaced until then.
     if (current != null) {
@@ -240,8 +257,10 @@ class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
       );
     }
 
-    // A refresh can return fewer items than the page the user was on.
-    final index = _index.clamp(0, items.length - 1);
+    final count = items.length;
+    final loop = count > 1;
+    // A refresh can return fewer items; the modulo lands on one that exists.
+    final index = _page % count;
 
     return Column(
       children: <Widget>[
@@ -255,7 +274,7 @@ class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
               final fraction = compact
                   ? 0.86
                   : (460 / constraints.maxWidth).clamp(0.2, 0.86);
-              final pages = _controllerFor(fraction);
+              final pages = _controllerFor(fraction, count);
 
               return ScrollConfiguration(
                 // A mouse drags it too: on desktop there is no touch, and a
@@ -266,24 +285,28 @@ class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
                 child: PageView.builder(
                   controller: pages,
                   padEnds: compact,
-                  itemCount: items.length,
-                  onPageChanged: (i) => setState(() => _index = i),
+                  // Past the last item comes the first again, and before
+                  // the first the last: no end to swipe into.
+                  itemCount: loop ? null : count,
+                  onPageChanged: (i) => setState(() => _page = i),
                   itemBuilder: (context, i) => _CarouselPage(
                     controller: pages,
                     index: i,
-                    child: _CarouselCard(item: items[i]),
+                    child: _CarouselCard(item: items[i % count]),
                   ),
                 ),
               );
             },
           ),
         ),
-        if (items.length > 1)
+        if (loop)
           _PageDots(
-            count: items.length,
+            count: count,
             current: index,
+            // Within the lap the user is on, so a dot slides the few items
+            // between rather than spinning through thousands of pages.
             onSelected: (i) => _pages?.animateToPage(
-              i,
+              _page - index + i,
               duration: const Duration(milliseconds: 350),
               curve: Curves.easeOutCubic,
             ),

@@ -436,6 +436,12 @@ class ItemPrimaryActionBar extends StatelessWidget {
                   height: caption == null ? 52 : 56,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
+                      // Icon and lines from the start edge: centred, a
+                      // two-line label of uneven lengths drifts about.
+                      alignment: AlignmentDirectional.centerStart,
+                      padding: EdgeInsetsDirectional.symmetric(
+                        horizontal: spacing.lg,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(radii.action),
                       ),

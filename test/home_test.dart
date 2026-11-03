@@ -129,11 +129,14 @@ void main() {
   });
 
   group('the carousel', () {
-    int page(WidgetTester tester) => tester
-        .widget<PageView>(find.byType(PageView))
-        .controller!
-        .page!
-        .round();
+    // The item showing: the page view's own page runs on past the last one.
+    int page(WidgetTester tester) =>
+        tester
+            .widget<PageView>(find.byType(PageView))
+            .controller!
+            .page!
+            .round() %
+        5;
 
     testWidgets('a hard flick moves one item, not several', (tester) async {
       await _pump(tester, const Size(400, 900), _HomeServer());
@@ -147,6 +150,19 @@ void main() {
       await tester.fling(find.byType(PageView), const Offset(-300, 0), 8000);
       await tester.pumpAndSettle();
       expect(page(tester), 2);
+    });
+
+    testWidgets('it loops: back from the first is the last', (tester) async {
+      await _pump(tester, const Size(400, 900), _HomeServer());
+      expect(page(tester), 0);
+
+      await tester.fling(find.byType(PageView), const Offset(300, 0), 8000);
+      await tester.pumpAndSettle();
+      expect(page(tester), 4);
+
+      await tester.fling(find.byType(PageView), const Offset(-300, 0), 8000);
+      await tester.pumpAndSettle();
+      expect(page(tester), 0);
     });
 
     testWidgets('a dot per item, and tapping one goes there', (tester) async {
