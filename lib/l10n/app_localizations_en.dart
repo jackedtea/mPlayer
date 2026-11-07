@@ -1806,6 +1806,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewOptions => 'View options';
 
   @override
+  String get groupByCollection => 'Group by collection';
+
+  @override
+  String get groupByCollectionSub =>
+      'One poster for each collection instead of each film in it. Not while filtering';
+
+  @override
+  String get startTab => 'Tab when opening the app';
+
+  @override
+  String get rememberLastTab => 'Remember last tab';
+
+  @override
+  String get rememberLastTabSub =>
+      'Open on the tab you were on when the app closed';
+
+  @override
   String get showOnCards => 'Show on cards';
 
   @override
@@ -1845,7 +1862,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String resumeAt(String time) {
-    return 'Resume · $time';
+    return 'Continue · $time';
   }
 
   @override

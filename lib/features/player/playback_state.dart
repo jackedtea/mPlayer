@@ -6,9 +6,26 @@
 import 'dart:math' show Random;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../servers/media_library_source.dart';
 import '../../sources/media_source.dart';
+
+/// How many times each item's stop has reached its server, this launch.
+///
+/// What an item's cached details listen to: a stop is when the server's resume
+/// position changes, and nothing else on the way out of the player says so.
+final playbackStopsProvider =
+    NotifierProvider<PlaybackStops, Map<String, int>>(PlaybackStops.new);
+
+class PlaybackStops extends Notifier<Map<String, int>> {
+  @override
+  Map<String, int> build() => const <String, int>{};
+
+  void record(String itemId) {
+    state = <String, int>{...state, itemId: (state[itemId] ?? 0) + 1};
+  }
+}
 
 /// What a [PlaybackQueue] is a run of, which decides how it ends and what the
 /// player promises about what comes next.

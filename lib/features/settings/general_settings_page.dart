@@ -6,7 +6,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/adaptive_scaffold.dart' show AppBranch, navDestinationsFor;
 import '../../app/locale_controller.dart';
+import '../../app/start_tab.dart';
 import '../../l10n/app_localizations.dart';
 import '../../core/updater.dart';
 import '../../servers/auto_connect.dart';
@@ -22,6 +24,8 @@ class GeneralSettingsPage extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final locale = ref.watch(localeProvider);
     final autoConnect = ref.watch(autoConnectProvider);
+    final startTab = ref.watch(startTabProvider).value ?? const StartTab();
+    final tabs = navDestinationsFor(l10n);
 
     return SettingsScaffold(
       title: l10n.settingsGeneral,
@@ -42,6 +46,21 @@ class GeneralSettingsPage extends ConsumerWidget {
           value: autoConnect,
           onChanged: (on) =>
               ref.read(autoConnectProvider.notifier).setEnabled(on),
+        ),
+        SettingsValueRow(
+          title: l10n.startTab,
+          value: tabs[startTab.tab.index].label,
+          // Nothing to choose while the last tab decides instead.
+          onTap: startTab.rememberLast
+              ? null
+              : () => _pickStartTab(context, ref, startTab.tab),
+        ),
+        SettingsSwitchRow(
+          title: l10n.rememberLastTab,
+          subtitle: l10n.rememberLastTabSub,
+          value: startTab.rememberLast,
+          onChanged: (on) =>
+              ref.read(startTabProvider.notifier).setRememberLast(on),
         ),
         SettingsSwitchRow(
           title: l10n.autoUpdateCheck,
@@ -75,6 +94,38 @@ class GeneralSettingsPage extends ConsumerWidget {
     final done = AppLocalizations.of(context).remotePhonesForgotten;
     await ref.read(remoteTrustStoreProvider).forgetPhones();
     messenger.showSnackBar(SnackBar(content: Text(done)));
+  }
+
+  Future<void> _pickStartTab(
+    BuildContext context,
+    WidgetRef ref,
+    AppBranch current,
+  ) async {
+    final tabs = navDestinationsFor(AppLocalizations.of(context));
+
+    final chosen = await showModalBottomSheet<AppBranch>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        child: RadioGroup<AppBranch>(
+          groupValue: current,
+          onChanged: (tab) => Navigator.of(sheetContext).pop(tab),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              for (final AppBranch tab in AppBranch.values)
+                RadioListTile<AppBranch>(
+                  value: tab,
+                  title: Text(tabs[tab.index].label),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (chosen == null) return;
+    await ref.read(startTabProvider.notifier).setTab(chosen);
   }
 
   Future<void> _pickLanguage(

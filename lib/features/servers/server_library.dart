@@ -81,10 +81,14 @@ class LibraryQuery {
     this.sort, {
     this.order,
     this.filter = LibraryFilter.none,
+    this.groupCollections = false,
   });
 
   final String viewId;
   final ServerSort sort;
+
+  /// One poster per box set instead of one per film in it.
+  final bool groupCollections;
 
   /// Null for the sort's own natural direction, set once the user has picked
   /// one — the two are different states, and a stored "ascending" would turn
@@ -99,10 +103,11 @@ class LibraryQuery {
       other.viewId == viewId &&
       other.sort == sort &&
       other.order == order &&
-      other.filter == filter;
+      other.filter == filter &&
+      other.groupCollections == groupCollections;
 
   @override
-  int get hashCode => Object.hash(viewId, sort, order, filter);
+  int get hashCode => Object.hash(viewId, sort, order, filter, groupCollections);
 }
 
 /// One page of a library.
@@ -121,7 +126,63 @@ final libraryItemsProvider =
     sort: query.sort,
     order: query.order,
     filter: query.filter,
+    groupCollections: query.groupCollections,
   );
+});
+
+/// Whether one library's grid groups its films into their collections.
+///
+/// Kept on the server, in the display preferences of this client for that
+/// library, so it follows the user to another device running this app.
+final collectionGroupingProvider =
+    AsyncNotifierProvider.family<CollectionGrouping, bool, String>(
+  CollectionGrouping.new,
+);
+
+class CollectionGrouping extends AsyncNotifier<bool> {
+  CollectionGrouping(this.viewId);
+
+  final String viewId;
+
+  @override
+  Future<bool> build() async {
+    final source = ref.watch(activeServerProvider);
+    if (source == null) return false;
+    try {
+      return await source.groupsCollections(viewId);
+    } on ServerException {
+      // The grid is worth showing whether or not this one choice can be read.
+      return false;
+    }
+  }
+
+  /// Applied before the server answers, so the switch moves under the thumb,
+  /// and put back if the server refuses.
+  Future<void> set(bool group) async {
+    final source = ref.read(activeServerProvider);
+    final previous = state.value;
+    if (source == null || previous == null) return;
+
+    state = AsyncValue<bool>.data(group);
+    try {
+      await source.setGroupsCollections(viewId, group);
+    } on ServerException {
+      state = AsyncValue<bool>.data(previous);
+      rethrow;
+    }
+  }
+}
+
+/// How many posters a library's grid holds with its collections grouped.
+final libraryGroupedCountProvider =
+    FutureProvider.family<int?, String>((ref, viewId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return null;
+  try {
+    return await source.itemCount(viewId, groupCollections: true);
+  } on ServerException {
+    return null;
+  }
 });
 
 /// The genres, certificates, tags and years one library actually holds.
@@ -151,6 +212,7 @@ final serverResumeProvider = FutureProvider<List<ServerItem>>((ref) async {
 final serverNextUpProvider = FutureProvider<List<ServerItem>>((ref) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return const <ServerItem>[];
+  ref.watch(playbackStopsProvider);
   return source.nextUp();
 });
 
@@ -178,9 +240,13 @@ final serverLatestProvider = FutureProvider<List<ServerItem>>((ref) async {
 
 /// The ten things most recently played and left part-way, for the Home
 /// carousel.
+///
+/// This and the other shelves of what is in progress follow every stop: a stop
+/// moves an item up, off the list, or on to its next episode.
 final homeResumeProvider = FutureProvider<List<ServerItem>>((ref) async {
   final source = ref.watch(connectedServerProvider);
   if (source == null) return const <ServerItem>[];
+  ref.watch(playbackStopsProvider);
   return source.resumable(limit: 10);
 });
 
@@ -258,6 +324,7 @@ final resumeInViewProvider =
     FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return const <ServerItem>[];
+  ref.watch(playbackStopsProvider);
   return source.resumable(viewId: viewId);
 });
 
@@ -266,6 +333,7 @@ final nextUpInViewProvider =
     FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return const <ServerItem>[];
+  ref.watch(playbackStopsProvider);
   return source.nextUp(viewId: viewId);
 });
 
@@ -353,10 +421,16 @@ final searchPeopleProvider =
 });
 
 /// One item, fetched for a detail screen.
+/// Dropped once no screen shows it, so opening an item always asks the server:
+/// its position and watched state change on other devices too.
 final serverItemProvider =
-    FutureProvider.family<ServerItem?, String>((ref, itemId) async {
+    FutureProvider.autoDispose.family<ServerItem?, String>((ref, itemId) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return null;
+  // Playing it moved the position this answer carries. The detail screen stays
+  // mounted under the player, so without this it would come back still
+  // offering Play for a film the user just stopped halfway through.
+  ref.watch(playbackStopsProvider.select((stops) => stops[itemId]));
   return source.item(itemId);
 });
 
@@ -494,10 +568,18 @@ final similarItemsProvider =
 
 /// A series' episodes, flattened across seasons in the order the server
 /// returns them — which is broadcast order, and what a viewer expects.
+///
+/// Dropped with its screen for the same reason as [serverItemProvider]. Any
+/// stop refreshes it: a stop names an episode, not its series, and this only
+/// runs while a series is on screen.
 final seriesEpisodesProvider =
-    FutureProvider.family<List<ServerItem>, String>((ref, seriesId) async {
+    FutureProvider.autoDispose.family<List<ServerItem>, String>((
+      ref,
+      seriesId,
+    ) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return const <ServerItem>[];
+  ref.watch(playbackStopsProvider);
   return source.episodes(seriesId);
 });
 
@@ -882,11 +964,12 @@ MovieDetail movieDetailFrom(ServerItem item, AppLocalizations l10n) {
         CastMember(name: p.name, role: p.role),
     ],
     watchedFraction: item.watchedFraction ?? 0,
-    // Null is what makes the primary button read "Play" instead of "Resume",
-    // so an unstarted item must not get a label here.
+    // Null is what makes the primary button read "Play" instead of "Continue",
+    // so an unstarted item must not get a label here. A clock rather than
+    // "42m": it is the place in the film that playing will open at.
     resumeLabel: position == null || runtime == null
         ? null
-        : l10n.resumeAt(durationLabel(position)),
+        : l10n.resumeAt(trackDuration(position)),
   );
 }
 
@@ -1008,6 +1091,8 @@ void refreshLibraries(WidgetRef ref) {
   ref.invalidate(serverViewsProvider);
   ref.invalidate(libraryItemsProvider);
   ref.invalidate(libraryItemCountProvider);
+  ref.invalidate(libraryGroupedCountProvider);
+  ref.invalidate(collectionGroupingProvider);
   ref.invalidate(libraryFilterOptionsProvider);
   ref.invalidate(resumeInViewProvider);
   ref.invalidate(nextUpInViewProvider);

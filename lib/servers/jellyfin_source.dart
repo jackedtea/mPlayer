@@ -105,6 +105,7 @@ class JellyfinSource implements MediaLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   }) async {
     final json = await _get('/Items', <String, String>{
       'userId': _profile.userId,
@@ -115,6 +116,9 @@ class JellyfinSource implements MediaLibrarySource {
       // sets rather than films. Jellyfin happens to return them anyway; asking
       // keeps that from depending on a server quirk.
       'includeItemTypes': 'Movie,Series,Video,BoxSet',
+      // Said either way: left out, the answer follows an admin's server-wide
+      // setting, and the switch on the grid would not mean what it says.
+      'collapseBoxSetItems': '$groupCollections',
       'sortBy': sortByFor(sort),
       'sortOrder': sortOrderFor(sort, order),
       'startIndex': '$startIndex',
@@ -150,7 +154,7 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
-  Future<int> itemCount(String viewId) async {
+  Future<int> itemCount(String viewId, {bool groupCollections = false}) async {
     final json = await _get('/Items', <String, String>{
       'userId': _profile.userId,
       'parentId': viewId,
@@ -158,6 +162,7 @@ class JellyfinSource implements MediaLibrarySource {
       // The same filter the listing uses, or the count would describe a
       // different set of things from the grid it labels.
       'includeItemTypes': 'Movie,Series,Video,BoxSet',
+      'collapseBoxSetItems': '$groupCollections',
       // Nothing is sent back but the tally.
       'limit': '0',
       'enableTotalRecordCount': 'true',
@@ -631,6 +636,42 @@ class JellyfinSource implements MediaLibrarySource {
         ? <String, dynamic>{...config}
         : <String, dynamic>{};
   }
+
+  // ---------------------------------------------------------- display
+
+  static const _groupCollectionsPref = 'mplayerGroupCollections';
+
+  @override
+  Future<bool> groupsCollections(String viewId) async {
+    final custom = (await _displayPreferences(viewId))['CustomPrefs'];
+    return custom is Map && custom[_groupCollectionsPref] == 'true';
+  }
+
+  @override
+  Future<void> setGroupsCollections(String viewId, bool group) async {
+    // The whole object goes back, for the same reason the user configuration
+    // does: the server replaces the custom preferences with what it is sent.
+    final prefs = await _displayPreferences(viewId);
+    final custom = prefs['CustomPrefs'];
+    prefs['CustomPrefs'] = <String, dynamic>{
+      if (custom is Map<String, dynamic>) ...custom,
+      _groupCollectionsPref: '$group',
+    };
+
+    await _post('/DisplayPreferences/$viewId', prefs, _displayQuery);
+  }
+
+  /// This client's preferences for one library. A server that has none yet
+  /// answers with its defaults rather than a 404.
+  Future<Map<String, dynamic>> _displayPreferences(String viewId) async =>
+      <String, dynamic>{
+        ...await _get('/DisplayPreferences/$viewId', _displayQuery),
+      };
+
+  Map<String, String> get _displayQuery => <String, String>{
+    'userId': _profile.userId,
+    'client': identity.client,
+  };
 
   // ---------------------------------------------------------- playlists
 

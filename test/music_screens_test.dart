@@ -46,6 +46,7 @@ class _Music extends FakeLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   }) async {
     filmGridAsks++;
     return const <ServerItem>[];

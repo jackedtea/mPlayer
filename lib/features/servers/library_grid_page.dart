@@ -325,6 +325,18 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     if (viewId == null) {
       return const AsyncValue<List<ServerItem>>.data(<ServerItem>[]);
     }
+
+    // Only a library groups: a box set's own grid is what the grouping opens.
+    var group = false;
+    if (widget.browse == LibraryBrowse.library) {
+      final grouping = ref.watch(collectionGroupingProvider(viewId));
+      // Waited for, or a library that groups would draw every film first.
+      if (!grouping.hasValue) {
+        return const AsyncValue<List<ServerItem>>.loading();
+      }
+      group = grouping.requireValue;
+    }
+
     return ref.watch(
       libraryItemsProvider(
         LibraryQuery(
@@ -332,6 +344,7 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
           _ordering.sort,
           order: _ordering.order,
           filter: _filter,
+          groupCollections: group,
         ),
       ),
     );
@@ -365,7 +378,15 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     if (viewId != null &&
         _filter.isEmpty &&
         widget.browse == LibraryBrowse.library) {
-      final total = ref.watch(libraryItemCountProvider(viewId)).value;
+      final grouped =
+          ref.watch(collectionGroupingProvider(viewId)).value ?? false;
+      final total = ref
+          .watch(
+            grouped
+                ? libraryGroupedCountProvider(viewId)
+                : libraryItemCountProvider(viewId),
+          )
+          .value;
       // Nothing until the tally lands: "0 items" while it is in flight reads
       // as an empty library.
       return total == null ? null : l10n.itemCount(total);
@@ -457,11 +478,23 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
   /// Everything applies as it is changed, with the grid behind the sheet
   /// redrawing under it — a choice about how cards look is judged by looking.
   Future<void> _pickView() {
+    final kind = _collectionKind();
     return showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (_) => const _ViewSheet(),
+      // As tall as its rows: the default stops at 9/16 of the window, which
+      // on a phone hides the last switch below the fold.
+      isScrollControlled: true,
+      builder: (_) => _ViewSheet(
+        // Only where a film or a series can belong to a box set. A plain folder
+        // calls itself `unknown` and may hold either.
+        groupingViewId:
+            _hasTabs &&
+                (kind == 'movies' || kind == 'tvshows' || kind == 'unknown')
+            ? widget.viewId
+            : null,
+      ),
     );
   }
 
@@ -1070,9 +1103,27 @@ class _EmptyNote extends StatelessWidget {
   }
 }
 
-/// Posters per row, then which facts the cards carry.
+/// Posters per row, whether collections are grouped, then which facts the
+/// cards carry.
 class _ViewSheet extends ConsumerWidget {
-  const _ViewSheet();
+  const _ViewSheet({this.groupingViewId});
+
+  /// The library the grouping switch applies to. Null leaves the switch out.
+  final String? groupingViewId;
+
+  Future<void> _setGrouping(
+    BuildContext context,
+    WidgetRef ref,
+    String viewId,
+    bool group,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(collectionGroupingProvider(viewId).notifier).set(group);
+    } on ServerException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1081,6 +1132,7 @@ class _ViewSheet extends ConsumerWidget {
     final columns = ref.watch(libraryColumnsProvider);
     final info = ref.watch(libraryCardInfoProvider);
     final setInfo = ref.read(libraryCardInfoProvider.notifier).set;
+    final groupingId = groupingViewId;
 
     Widget heading(String text) => Padding(
           padding: EdgeInsets.fromLTRB(
@@ -1124,6 +1176,15 @@ class _ViewSheet extends ConsumerWidget {
                 ],
               ),
             ),
+            if (groupingId != null)
+              SwitchListTile(
+                title: Text(l10n.groupByCollection),
+                subtitle: Text(l10n.groupByCollectionSub),
+                value:
+                    ref.watch(collectionGroupingProvider(groupingId)).value ??
+                    false,
+                onChanged: (on) => _setGrouping(context, ref, groupingId, on),
+              ),
             heading(l10n.showOnCards),
             SwitchListTile(
               title: Text(l10n.cardYear),

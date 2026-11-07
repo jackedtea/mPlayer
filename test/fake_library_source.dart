@@ -55,8 +55,15 @@ class FakeLibrarySource implements MediaLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   }) async =>
       const <ServerItem>[];
+
+  @override
+  Future<bool> groupsCollections(String viewId) async => false;
+
+  @override
+  Future<void> setGroupsCollections(String viewId, bool group) async {}
 
   @override
   Future<LibraryFilterOptions> filterOptions(String viewId) async =>
@@ -238,7 +245,7 @@ class FakeLibrarySource implements MediaLibrarySource {
   Future<List<LibraryView>> views() async => const <LibraryView>[];
 
   @override
-  Future<int> itemCount(String viewId) async => 0;
+  Future<int> itemCount(String viewId, {bool groupCollections = false}) async => 0;
 
   @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) => null;

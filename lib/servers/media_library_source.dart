@@ -723,12 +723,18 @@ abstract class MediaLibrarySource {
   /// A request of its own because the only trustworthy source for it is a
   /// listing's `TotalRecordCount`, which means asking for the listing — with
   /// a limit of zero, so the server counts without sending anything.
-  Future<int> itemCount(String viewId);
+  ///
+  /// [groupCollections] counts what [items] lists with the same choice.
+  Future<int> itemCount(String viewId, {bool groupCollections = false});
 
   /// One library's contents.
   ///
   /// [order] is null for the sort's own natural direction — a name reads A-Z,
   /// a date newest first — and set only where the user has said otherwise.
+  ///
+  /// [groupCollections] lists a box set once in place of the films in it. The
+  /// server ignores it while [filter] narrows the list: a film that matches
+  /// says nothing about whether the rest of its set does.
   Future<List<ServerItem>> items(
     String viewId, {
     int startIndex = 0,
@@ -736,7 +742,14 @@ abstract class MediaLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   });
+
+  /// Whether [viewId]'s grid groups its films into collections.
+  Future<bool> groupsCollections(String viewId);
+
+  /// Saves what [groupsCollections] reads.
+  Future<void> setGroupsCollections(String viewId, bool group);
 
   /// The values a library can actually be filtered by.
   ///

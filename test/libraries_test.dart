@@ -29,7 +29,7 @@ class _TwoLibraries extends FakeLibrarySource {
 
   /// Far more than one page, which is the point.
   @override
-  Future<int> itemCount(String viewId) async => 1234;
+  Future<int> itemCount(String viewId, {bool groupCollections = false}) async => 1234;
 
   /// Always a full page, as a large library answers.
   @override
@@ -40,6 +40,7 @@ class _TwoLibraries extends FakeLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   }) async => <ServerItem>[
     for (var i = 0; i < limit; i++) ServerItem(id: '$i', title: 'Film $i'),
   ];
@@ -59,6 +60,7 @@ class _CountingLibraries extends _TwoLibraries {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   }) {
     asks++;
     return super.items(

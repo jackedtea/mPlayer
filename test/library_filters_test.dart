@@ -40,6 +40,7 @@ class _RecordingServer extends FakeLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   }) async {
     asked.add((sort: sort, order: order, filter: filter));
     return const <ServerItem>[

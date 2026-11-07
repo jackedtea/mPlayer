@@ -3314,6 +3314,36 @@ abstract class AppLocalizations {
   /// **'View options'**
   String get viewOptions;
 
+  /// No description provided for @groupByCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'Group by collection'**
+  String get groupByCollection;
+
+  /// No description provided for @groupByCollectionSub.
+  ///
+  /// In en, this message translates to:
+  /// **'One poster for each collection instead of each film in it. Not while filtering'**
+  String get groupByCollectionSub;
+
+  /// No description provided for @startTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab when opening the app'**
+  String get startTab;
+
+  /// No description provided for @rememberLastTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember last tab'**
+  String get rememberLastTab;
+
+  /// No description provided for @rememberLastTabSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on the tab you were on when the app closed'**
+  String get rememberLastTabSub;
+
   /// No description provided for @showOnCards.
   ///
   /// In en, this message translates to:
@@ -3389,7 +3419,7 @@ abstract class AppLocalizations {
   /// No description provided for @resumeAt.
   ///
   /// In en, this message translates to:
-  /// **'Resume · {time}'**
+  /// **'Continue · {time}'**
   String resumeAt(String time);
 
   /// No description provided for @watched.

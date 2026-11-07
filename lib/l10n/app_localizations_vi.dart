@@ -1809,6 +1809,22 @@ class AppLocalizationsVi extends AppLocalizations {
   String get viewOptions => 'Tuỳ chọn hiển thị';
 
   @override
+  String get groupByCollection => 'Gộp theo bộ sưu tập';
+
+  @override
+  String get groupByCollectionSub =>
+      'Mỗi bộ sưu tập một poster thay vì từng phim trong đó. Không áp dụng khi đang lọc';
+
+  @override
+  String get startTab => 'Tab khi mở app';
+
+  @override
+  String get rememberLastTab => 'Nhớ tab cuối cùng';
+
+  @override
+  String get rememberLastTabSub => 'Mở lại tab đang dùng khi đóng app';
+
+  @override
   String get showOnCards => 'Hiện trên thẻ';
 
   @override

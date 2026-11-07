@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:async';
+
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -205,16 +207,64 @@ class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
   /// direction it can be reached from; page `p` shows item `p % count`.
   static const _loopOrigin = 10000;
 
+  /// How long an item stays in front. The banner's pace, on the wider windows.
+  static const _dwell = Duration(seconds: 9);
+
   PageController? _pages;
   bool _pagesLoop = false;
 
   /// The page view's own page — past [_loopOrigin] while looping.
   int _page = 0;
 
+  Timer? _timer;
+  bool _touching = false;
+  bool _hovering = false;
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _restartTimer();
+  }
+
   @override
   void dispose() {
+    _timer?.cancel();
     _pages?.dispose();
     super.dispose();
+  }
+
+  void _restartTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_dwell, (_) => _advance());
+  }
+
+  /// One item on, forever: the pages have no end in this direction.
+  ///
+  /// Not while the user has hold of it, and not while it cannot be seen — on
+  /// another tab or under the player, where tickers are off and an animation
+  /// would only wait to play out when they come back. Asked for less motion,
+  /// it stays where the user put it.
+  void _advance() {
+    final pages = _pages;
+    if (!mounted || pages == null || !pages.hasClients || !_pagesLoop) return;
+    if (_touching || _hovering || _focused) return;
+    if (!TickerMode.valuesOf(context).enabled ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return;
+    }
+
+    pages.animateToPage(
+      _page + 1,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  void _setTouching(bool touching) {
+    _touching = touching;
+    // A full dwell from letting go, rather than moving on a second later.
+    if (!touching) _restartTimer();
   }
 
   /// The controller for [fraction], rebuilt only when the window crosses into
@@ -262,7 +312,7 @@ class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
     // A refresh can return fewer items; the modulo lands on one that exists.
     final index = _page % count;
 
-    return Column(
+    final carousel = Column(
       children: <Widget>[
         SizedBox(
           height: height,
@@ -312,6 +362,22 @@ class _ResumeCarouselState extends ConsumerState<_ResumeCarousel> {
             ),
           ),
       ],
+    );
+
+    return Listener(
+      onPointerDown: (_) => _setTouching(true),
+      onPointerUp: (_) => _setTouching(false),
+      onPointerCancel: (_) => _setTouching(false),
+      child: MouseRegion(
+        onEnter: (_) => _hovering = true,
+        onExit: (_) => _hovering = false,
+        child: Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onFocusChange: (has) => _focused = has,
+          child: carousel,
+        ),
+      ),
     );
   }
 }

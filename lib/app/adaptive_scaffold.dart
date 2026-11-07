@@ -17,6 +17,7 @@ import '../features/servers/library_grid_page.dart' show librarySwitchRequests;
 import '../features/servers/server_library.dart' show connectedServerProvider;
 import '../features/settings/update_dialog.dart';
 import '../l10n/app_localizations.dart';
+import 'start_tab.dart';
 import 'system_ui.dart';
 import 'television.dart';
 import 'tokens.dart';
@@ -137,29 +138,132 @@ class AdaptiveScaffold extends ConsumerWidget {
     // navigator a dialog needs, and not under the player — so a prompt never
     // lands on top of a film. One wrapper whatever the face, so its state
     // (and its one check) survives the shell changing shape.
-    return _AutomaticUpdateCheck(
-      child: choosingServer
-          ? Scaffold(
-              body: navigationShell,
-              // A download can play with no server open, and this face has no
-              // bar for the mini player to sit above.
-              bottomNavigationBar: miniPlayerInShell(context, ref)
-                  ? MiniPlayer(onOpen: () => context.push('/now-playing'))
-                  : null,
-            )
-          // A television always gets the rail, whatever width it reports: a
-          // 4K panel at a low density would otherwise be handed the drawer,
-          // 256 points of labels across the left of a screen read from a
-          // sofa, and a bottom bar is meant for a thumb.
-          : ref.watch(isTelevisionProvider)
-          ? _RailShell(shell: navigationShell, onGo: _go)
-          : switch (context.windowSize) {
-              WindowSize.compact =>
-                _CompactShell(shell: navigationShell, onGo: _go),
-              WindowSize.medium => _RailShell(shell: navigationShell, onGo: _go),
-              WindowSize.large =>
-                _DrawerShell(shell: navigationShell, onGo: _go),
-            },
+    return _BackToHome(
+      shell: navigationShell,
+      child: _StartOnChosenTab(
+        shell: navigationShell,
+        child: _AutomaticUpdateCheck(
+        child: choosingServer
+            ? Scaffold(
+                body: navigationShell,
+                // A download can play with no server open, and this face has
+                // no bar for the mini player to sit above.
+                bottomNavigationBar: miniPlayerInShell(context, ref)
+                    ? MiniPlayer(onOpen: () => context.push('/now-playing'))
+                    : null,
+              )
+            // A television always gets the rail, whatever width it reports: a
+            // 4K panel at a low density would otherwise be handed the drawer,
+            // 256 points of labels across the left of a screen read from a
+            // sofa, and a bottom bar is meant for a thumb.
+            : ref.watch(isTelevisionProvider)
+            ? _RailShell(shell: navigationShell, onGo: _go)
+            : switch (context.windowSize) {
+                WindowSize.compact =>
+                  _CompactShell(shell: navigationShell, onGo: _go),
+                WindowSize.medium =>
+                  _RailShell(shell: navigationShell, onGo: _go),
+                WindowSize.large =>
+                  _DrawerShell(shell: navigationShell, onGo: _go),
+              },
+        ),
+      ),
+    );
+  }
+}
+
+/// Moves to the destination chosen in Settings, once per launch, and notes
+/// every destination after that for "remember the last tab".
+///
+/// A launch always begins on Home, which is where a server gets chosen and a
+/// PIN entered, and moves only once a server is open. Starting anywhere else
+/// would leave someone with no server, or a locked one, looking at a tab that
+/// says so with the way in somewhere else.
+class _StartOnChosenTab extends ConsumerStatefulWidget {
+  const _StartOnChosenTab({required this.shell, required this.child});
+
+  final StatefulNavigationShell shell;
+  final Widget child;
+
+  @override
+  ConsumerState<_StartOnChosenTab> createState() => _StartOnChosenTabState();
+}
+
+class _StartOnChosenTabState extends ConsumerState<_StartOnChosenTab> {
+  bool _started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual(connectedServerProvider, (_, source) {
+      if (source != null) unawaited(_start());
+    }, fireImmediately: true);
+  }
+
+  Future<void> _start() async {
+    if (_started) return;
+    _started = true;
+
+    final choice = await ref.read(startTabProvider.future);
+    // Somewhere else already: the user got there first, and is not moved.
+    if (!mounted || widget.shell.currentIndex != AppBranch.home.index) return;
+    final target = choice.target;
+    if (target != AppBranch.home) widget.shell.goBranch(target.index);
+  }
+
+  @override
+  void didUpdateWidget(_StartOnChosenTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final index = widget.shell.currentIndex;
+    if (index == oldWidget.shell.currentIndex) return;
+
+    // After the frame: a provider must not change while widgets are building.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(startTabProvider.notifier).noteTab(AppBranch.values[index]);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// Back at the root of any other destination goes Home; only Home leaves the
+/// app.
+///
+/// Switching destinations pushes nothing — the branches sit side by side — so
+/// with nothing here the router has nothing to pop and hands the press to the
+/// system, which closes the app from a tab the user only just opened.
+///
+/// A screen pushed inside a branch still pops first: the router asks the
+/// branch's navigator before the one this route is on.
+class _BackToHome extends StatelessWidget {
+  const _BackToHome({required this.shell, required this.child});
+
+  final StatefulNavigationShell shell;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final onHome = shell.currentIndex == AppBranch.home.index;
+
+    return PopScope<Object?>(
+      canPop: onHome,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) shell.goBranch(AppBranch.home.index);
+      },
+      // Where Android's predictive back is on, the system only sends a press
+      // to Flutter while Flutter claims it can use one. A branch's navigator
+      // sits at its own root and says it cannot, and saying so last would
+      // close the app without [PopScope] ever being asked.
+      child: NotificationListener<NavigationNotification>(
+        onNotification: (notification) {
+          if (onHome || notification.canHandlePop) return false;
+          const NavigationNotification(canHandlePop: true).dispatch(context);
+          return true;
+        },
+        child: child,
+      ),
     );
   }
 }

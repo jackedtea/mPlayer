@@ -1325,10 +1325,16 @@ class PlaybackController extends Notifier<PlaybackState> {
 
     final source = ref.read(mediaSourcesProvider)[media.ref.sourceId];
     if (source case final ProgressReporting reporter) {
-      await reporter.reportStopped(
-        media.ref.itemId,
-        position: state.position,
-      );
+      try {
+        await reporter.reportStopped(
+          media.ref.itemId,
+          position: state.position,
+        );
+      } finally {
+        // After the report, so a detail screen asking again reads the
+        // position this stop just wrote.
+        ref.read(playbackStopsProvider.notifier).record(media.ref.itemId);
+      }
     }
   }
 

@@ -34,6 +34,7 @@ class _Server extends FakeLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   }) async =>
       const <ServerItem>[
         ServerItem(id: 'new1', title: 'Just added', kind: ServerItemKind.movie),

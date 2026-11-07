@@ -127,9 +127,31 @@ Also open:
   and item tiles use.
 - The Home carousel is a `PageView`, not `CarouselView`: the latter hard-wires
   its snapping physics and a flick runs through several items.
+  It loops both ways and moves on by itself every 9 s like the banner, holding
+  while touched, hovered or focused, while its tab or the player hides it, and
+  for someone who asked for less motion.
 - **No navigation while Home is choosing a server** (empty state or list):
   `AdaptiveScaffold` drops the bar/rail/drawer on the Home branch when
   `connectedServerProvider` is null.
+- **Back** at the root of any destination but Home goes Home (`_BackToHome`
+  in `adaptive_scaffold.dart`); only Home leaves the app. It needs both halves:
+  the `PopScope`, and swallowing the branch navigator's "cannot pop"
+  notification, which otherwise tells Android 16's predictive back not to send
+  the press to Flutter at all.
+- **Start tab** (`app/start_tab.dart`, General settings): a tab to open on, or
+  the last one used, device-local since it is needed before any sign-in. A
+  launch still begins on Home and moves once a server is open
+  (`_StartOnChosenTab`), so no server or a locked one stays where it gets solved.
+- **Group by collection** (View options sheet, movie, TV and plain-folder
+  libraries): `collapseBoxSetItems` on the grid and its count, always sent so
+  an admin's server-wide default cannot contradict the switch. Saved per library
+  in the server's `DisplayPreferences` for this client, no local copy. The server
+  ignores it while a filter is on.
+- **Item details are not cached past their screen.** `serverItemProvider` and
+  `seriesEpisodesProvider` are `autoDispose`, so opening an item asks again.
+  A detail screen stays mounted under the player, so they also watch
+  `playbackStopsProvider`, bumped once the stop has reached the server.
+  The resume and Next up shelves (Home, a library's Suggestions) watch it too.
 - **Search**: a second tap on the destination focuses the field
   (`searchFocusRequests`).
 - **Downloads** lists the offline copies from `downloadsProvider`; see "Downloads".
@@ -221,7 +243,7 @@ Also open:
   centred layout.
 - **The movie detail uses the same `DetailHeader` past compact**
   (`_wideHeader` in `movie_detail_page.dart`): real backdrop, poster,
-  facts, a labelled Play / Continue (plus Start over once started) ahead of
+  facts, a labelled Play / `Continue · 1:02:45` (plus Start over once started) ahead of
   the `ItemActionIcons`, overview and genres as the aside. A phone keeps the
   `BackdropHeader` layout. `_MetaRow` now draws only the parts the server
   filled in — an absent certificate used to leave an empty outlined box.

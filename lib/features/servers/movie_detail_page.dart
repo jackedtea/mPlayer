@@ -71,6 +71,7 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
       bottomNavigationBar: compact
           ? ItemPrimaryActionBar(
               item: item,
+              label: movie.resumeLabel,
               onPlay: () => playServerItem(context, ref, item.id),
               onStartOver: () =>
                   playServerItem(context, ref, item.id, fromStart: true),
@@ -196,10 +197,8 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
             CertificateBox(certificate: movie.certificate),
           if (item.rating != null) RatingLabel(rating: item.rating!),
         ],
-        // "Resume at 42m", where the series screen says how many episodes.
-        caption: movie.resumeLabel,
         // A film is the one thing on this screen to play, so it keeps a
-        // labelled button — "Play" or "Continue watching" — ahead of the
+        // labelled button — "Play" or "Continue · 1:02:45" — ahead of the
         // glyphs, where the series header can make do with a glyph.
         actionBar: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -209,7 +208,10 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
             FilledButton.icon(
               onPressed: () => playServerItem(context, ref, item.id),
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(started ? l10n.continueWatching : l10n.play),
+              label: Text(
+                movie.resumeLabel ??
+                    (started ? l10n.continueWatching : l10n.play),
+              ),
             ),
             if (started)
               IconButton(
@@ -320,30 +322,14 @@ class _ProgressLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final scheme = context.colors;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
-            value: movie.watchedFraction,
-            minHeight: 4,
-            backgroundColor: scheme.surfaceContainerHighest,
-          ),
-        ),
-        SizedBox(height: spacing.sm),
-        // The same sentence the primary button carries, so the two cannot
-        // disagree about where the user got to.
-        Text(
-          movie.resumeLabel ?? '',
-          style: context.texts.bodySmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
-      ],
+    // The bar alone: the primary button already says where the user got to.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: LinearProgressIndicator(
+        value: movie.watchedFraction,
+        minHeight: 4,
+        backgroundColor: context.colors.surfaceContainerHighest,
+      ),
     );
   }
 }

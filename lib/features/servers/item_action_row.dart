@@ -390,12 +390,17 @@ class ItemPrimaryActionBar extends StatelessWidget {
     required this.onPlay,
     this.onStartOver,
     this.caption,
+    this.label,
   });
 
   final ServerItem item;
 
   /// Resume where the server says the user got to.
   final VoidCallback onPlay;
+
+  /// What the button says, in place of Play or Continue watching — a film
+  /// says where it will pick up. Null for those two.
+  final String? label;
 
   /// A second line on the button saying what it will play — the episode a
   /// series resolves to, which the button alone cannot say. Null for one
@@ -413,6 +418,7 @@ class ItemPrimaryActionBar extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     final started = (item.position ?? Duration.zero) > Duration.zero;
+    final text = label ?? (started ? l10n.continueWatching : l10n.play);
 
     return Material(
       // A surface of its own, so the bar reads as chrome rather than as the
@@ -449,12 +455,12 @@ class ItemPrimaryActionBar extends StatelessWidget {
                     onPressed: onPlay,
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: caption == null
-                        ? Text(started ? l10n.continueWatching : l10n.play)
+                        ? Text(text)
                         : Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text(started ? l10n.continueWatching : l10n.play),
+                              Text(text),
                               Text(
                                 caption!,
                                 maxLines: 1,

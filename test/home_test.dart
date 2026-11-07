@@ -12,6 +12,7 @@ import 'fake_library_source.dart';
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/router.dart';
 import 'package:mplayer/features/home/home_hero.dart';
+import 'package:mplayer/features/player/playback_state.dart';
 import 'package:mplayer/features/servers/server_library.dart';
 import 'package:mplayer/servers/media_library_source.dart';
 
@@ -23,6 +24,13 @@ class _HomeServer extends FakeLibrarySource {
   final Set<String> excludes;
   final List<Set<String>> saved = <Set<String>>[];
   int resumeAsks = 0;
+  int nextUpAsks = 0;
+
+  @override
+  Future<List<ServerItem>> nextUp({int limit = 12, String? viewId}) async {
+    nextUpAsks++;
+    return const <ServerItem>[];
+  }
 
   @override
   Future<List<LibraryView>> views() async => const <LibraryView>[
@@ -55,6 +63,7 @@ class _HomeServer extends FakeLibrarySource {
     ServerSort sort = ServerSort.name,
     SortOrder? order,
     LibraryFilter filter = LibraryFilter.none,
+    bool groupCollections = false,
   }) async => <ServerItem>[
     ServerItem(id: 'new-$viewId', title: 'New in $viewId'),
   ];
@@ -165,6 +174,76 @@ void main() {
       expect(page(tester), 0);
     });
 
+    testWidgets('moves on by itself, round and round', (tester) async {
+      await _pump(tester, const Size(400, 900), _HomeServer());
+      expect(page(tester), 0);
+
+      for (final int expected in const <int>[1, 2, 3, 4, 0, 1]) {
+        await tester.pump(const Duration(seconds: 9));
+        await tester.pumpAndSettle();
+        expect(page(tester), expected);
+      }
+    });
+
+    testWidgets('holds while touched, and a full wait after letting go', (
+      tester,
+    ) async {
+      await _pump(tester, const Size(400, 900), _HomeServer());
+
+      final touch = await tester.startGesture(
+        tester.getCenter(find.byType(PageView)),
+      );
+      await tester.pump(const Duration(seconds: 20));
+      await tester.pumpAndSettle();
+      expect(page(tester), 0);
+
+      // Cancelled, not lifted: lifting here would be a tap, and open the film.
+      await touch.cancel();
+      await tester.pump(const Duration(seconds: 8));
+      await tester.pumpAndSettle();
+      expect(page(tester), 0);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(page(tester), 1);
+    });
+
+    testWidgets('stays put for someone who asked for less motion', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await _pump(tester, const Size(400, 900), _HomeServer());
+
+      await tester.pump(const Duration(seconds: 20));
+      await tester.pumpAndSettle();
+      expect(page(tester), 0);
+    });
+
+    testWidgets('does not move while another tab is showing', (tester) async {
+      await _pump(tester, const Size(400, 900), _HomeServer());
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.byIcon(Icons.settings_outlined),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 20));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.byIcon(Icons.home_outlined),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(page(tester), 0);
+    });
+
     testWidgets('a dot per item, and tapping one goes there', (tester) async {
       await _pump(tester, const Size(400, 900), _HomeServer());
 
@@ -182,6 +261,38 @@ void main() {
 
     expect(find.text('Recently added in Films'), findsOneWidget);
     expect(find.text('Recently added in Television'), findsNothing);
+  });
+
+  testWidgets('a stop refreshes what is being watched and what is next', (
+    tester,
+  ) async {
+    final server = _HomeServer();
+    late WidgetRef ref;
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(400, 900);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [activeServerProvider.overrideWithValue(server)],
+        child: Consumer(
+          builder: (context, r, _) {
+            ref = r;
+            return MPlayerApp(router: buildRouter());
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final resume = server.resumeAsks;
+    final nextUp = server.nextUpAsks;
+
+    ref.read(playbackStopsProvider.notifier).record('r1');
+    await tester.pumpAndSettle();
+
+    expect(server.resumeAsks, greaterThan(resume));
+    expect(server.nextUpAsks, greaterThan(nextUp));
+    // Refreshed under what is showing, not over a spinner.
+    expect(find.text('Half watched'), findsOneWidget);
   });
 
   testWidgets('Refresh asks the server again', (tester) async {
