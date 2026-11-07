@@ -19,6 +19,7 @@ import '../../core/models/media_models.dart';
 import '../../l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
+import '../music/audio_session.dart';
 import '../player/playback_state.dart';
 import '../remote/remote_session.dart';
 import '../../servers/auto_connect.dart';
@@ -593,7 +594,7 @@ Future<void> playServerItem(
       // "Start over" is the one case where the server's resume point is not
       // what the user asked for.
       final media = fromStart ? resolved.startingAt(Duration.zero) : resolved;
-      router.push('/player', extra: media);
+      await ref.read(audioSessionProvider.notifier).present(router, media);
     } on MediaSourceException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -720,7 +721,9 @@ Future<void> _launchQueue(
 
   try {
     final media = await source.resolve(current);
-    router.push('/player', extra: PlayerLaunch(media: media, queue: queue));
+    await ref
+        .read(audioSessionProvider.notifier)
+        .present(router, media, queue: queue);
   } on MediaSourceException catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(e.message)));
   }

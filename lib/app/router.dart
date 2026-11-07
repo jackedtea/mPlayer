@@ -25,6 +25,7 @@ import '../features/remote/remote_page.dart';
 import '../features/search/search_page.dart';
 import '../features/music/album_page.dart';
 import '../features/music/artist_page.dart';
+import '../features/music/now_playing_page.dart';
 import '../features/servers/episode_page.dart';
 import '../features/servers/library_grid_page.dart';
 import '../features/servers/person_page.dart';
@@ -282,6 +283,13 @@ GoRouter buildRouter() {
           // route is for.
           return const _PlayerFromController();
         },
+      ),
+      // The music player's full-screen face. It takes nothing: the session
+      // already holds what is playing, and leaving does not stop it.
+      GoRoute(
+        path: '/now-playing',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => const NowPlayingPage(),
       ),
       // Above the shell like the player: the remote is a screen of its own
       // in the hand, not a tab, and its connection outlives it anyway.

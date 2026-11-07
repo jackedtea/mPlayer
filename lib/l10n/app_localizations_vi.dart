@@ -2141,4 +2141,28 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get similarArtists => 'Nghệ sĩ tương tự';
+
+  @override
+  String get nowPlaying => 'Đang phát';
+
+  @override
+  String get queue => 'Hàng đợi';
+
+  @override
+  String get queueEmpty => 'Không có gì khác trong hàng đợi.';
+
+  @override
+  String get shuffle => 'Trộn bài';
+
+  @override
+  String get stopPlayback => 'Dừng';
+
+  @override
+  String get repeatOff => 'Đang tắt lặp lại';
+
+  @override
+  String get repeatOne => 'Đang lặp lại bài này';
+
+  @override
+  String get repeatAll => 'Đang lặp lại hàng đợi';
 }

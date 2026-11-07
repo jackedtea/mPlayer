@@ -683,5 +683,13 @@
   "popularTracks": "Nghe nhiều",
   "seeAllTracks": "Xem tất cả",
   "appearsOn": "Có góp mặt trong",
-  "similarArtists": "Nghệ sĩ tương tự"
+  "similarArtists": "Nghệ sĩ tương tự",
+  "nowPlaying": "Đang phát",
+  "queue": "Hàng đợi",
+  "queueEmpty": "Không có gì khác trong hàng đợi.",
+  "shuffle": "Trộn bài",
+  "stopPlayback": "Dừng",
+  "repeatOff": "Đang tắt lặp lại",
+  "repeatOne": "Đang lặp lại bài này",
+  "repeatAll": "Đang lặp lại hàng đợi"
 }

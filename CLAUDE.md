@@ -1036,7 +1036,7 @@ the ink-inset arithmetic in them is not worth having twice. `openServerItem` in
 
 ## Music libraries
 
-`docs/MUSIC_PLAN.md` is the plan; browsing is built, the audio session is not. A library
+`docs/MUSIC_PLAN.md` is the plan; M1 is built, and has not been on a device yet. A library
 whose `CollectionType` is `music` swaps its tabs for **Albums · Artists · Songs · Playlists ·
 Genres** (`_LibraryTab.forKind`), and `lib/features/music/` holds those listings and the
 album and artist screens.
@@ -1056,8 +1056,17 @@ album and artist screens.
   song always starts at zero. Shuffle keeps `unshuffled` so it can be turned off, and the
   changes (`playingNext`, `appended`, `moved`, `removedAt`) are pure, tested in
   `test/playback_queue_test.dart`.
-- **Interim:** Play still pushes `/player`, so a song plays behind the video controls until the
-  audio session (`PlayableMedia.isAudio`) lands.
+- **One player, two faces.** `AudioSession` (`features/music/audio_session.dart`) owns the
+  decoder while music plays, in place of the `/player` route: notification, its buttons, the
+  background rule. `AudioSession.present` is the one place that decides between it and
+  `/player`, by `PlayableMedia.isAudio`. Its one way out is the controller's `stop`.
+- **A video takes the decoder.** `PlayerPage` awaits `AudioSession.end()` before opening. And
+  anything opening waits on a `stop` in flight (`_stopping`), so a song tapped just after leaving
+  a film is not wiped by that film's teardown finishing behind it.
+- **The mini player has two hosts.** A phone's shell draws it above the navigation bar;
+  `MiniPlayerHost`, beside the navigator in `app.dart`, draws it everywhere else, because
+  `/library` and its album and artist pages sit above the shell. It has no tooltips: beside the
+  navigator there is no overlay for one to open in.
 
 ## Sorting and filtering the library grid
 

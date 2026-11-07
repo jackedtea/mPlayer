@@ -11,7 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../music/audio_session.dart';
 import '../../app/desktop_window.dart' show isDesktop;
+import '../../app/route_location.dart';
 import '../../app/television.dart';
 import '../../remote/remote_discovery.dart';
 import '../../remote/remote_protocol.dart';
@@ -308,8 +310,10 @@ class RemoteReceiver extends Notifier<RemoteReceiverState>
     return null;
   }
 
-  bool get _playerShowing =>
-      router?.routerDelegate.currentConfiguration.uri.path == '/player';
+  bool get _playerShowing {
+    final router = this.router;
+    return router != null && topRoutePath(router) == '/player';
+  }
 
   /// Leaves the player the way Back would, so the screen's own teardown —
   /// closing report, orientation, system bars — runs exactly as it always
@@ -355,7 +359,7 @@ class RemoteReceiver extends Notifier<RemoteReceiverState>
     if (_playerShowing && ref.read(playbackControllerProvider).hasMedia) {
       await ref.read(playbackControllerProvider.notifier).openInstead(media);
     } else {
-      unawaited(router.push('/player', extra: media));
+      unawaited(ref.read(audioSessionProvider.notifier).present(router, media));
     }
     return null;
   }

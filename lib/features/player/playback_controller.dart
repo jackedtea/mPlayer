@@ -85,6 +85,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   static const _resumeInterval = Duration(seconds: 5);
 
 
+  /// The stop in flight, if there is one.
+  Future<void>? _stopping;
+
   /// Completes once the mpv properties media_kit leaves unset have been
   /// applied. [openResolved] waits on it so the first file already benefits.
   Future<void>? _nativeReady;
@@ -128,6 +131,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Plays an already-resolved handle. Used when a caller resolved ahead of
   /// time (the picker does, so the player opens with a title already known).
   Future<void> openResolved(PlayableMedia media, {PlaybackQueue? queue}) async {
+    // A stop still in flight would tear this file's decoder down under it.
+    await _stopping;
+
     final player = _ensurePlayer();
 
     // Applied before the first open so the very first file gets the cache
@@ -279,39 +285,6 @@ class PlaybackController extends Notifier<PlaybackState> {
     }
   }
 
-  /// Replaces whatever is open with [items], starting at [start].
-  ///
-  /// Only the first is resolved: the rest stay bare references until the
-  /// player reaches them, as in `playServerQueue`. [shuffle] deals the whole
-  /// list and ignores [start], since a Shuffle button has no track to start
-  /// from.
-  Future<void> playQueue(
-    List<MediaRef> items, {
-    int start = 0,
-    bool shuffle = false,
-    PlaybackQueueKind kind = PlaybackQueueKind.music,
-  }) async {
-    if (items.isEmpty || _stepping) return;
-
-    final queue = shuffle
-        ? PlaybackQueue.shuffledFrom(items, kind: kind)
-        : PlaybackQueue(
-            items: items,
-            index: start.clamp(0, items.length - 1),
-            kind: kind,
-          );
-
-    final source = ref.read(mediaSourcesProvider)[queue.current!.sourceId];
-    if (source == null) return;
-
-    _stepping = true;
-    try {
-      await _openAt(queue, source);
-    } finally {
-      _stepping = false;
-    }
-  }
-
   /// [item] straight after what is playing.
   void queueNext(MediaRef item) {
     state = state.copyWith(queue: _queueWithCurrent().playingNext(item));
@@ -346,6 +319,26 @@ class PlaybackController extends Notifier<PlaybackState> {
       items: <MediaRef>[media.ref],
       kind: media.isAudio ? PlaybackQueueKind.music : PlaybackQueueKind.single,
     );
+  }
+
+  /// Jumps to the item at [index] in the queue.
+  Future<void> playAt(int index) async {
+    if (index != state.queue.index) await _step(index - state.queue.index);
+  }
+
+  /// Plays the current item again from the top: the decoder has let go of a
+  /// file it finished, so there is nothing left to seek in.
+  Future<void> restartCurrent() async {
+    final media = state.media;
+    if (media == null || _stepping) return;
+
+    _stepping = true;
+    try {
+      await _closeCurrent();
+      await open(media.ref);
+    } finally {
+      _stepping = false;
+    }
   }
 
   /// Steps to the previous file in the folder.
@@ -419,12 +412,16 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// the receiver: pushing a second `/player` would have the first one's
   /// `dispose` stop the decoder underneath the new file. The old item gets
   /// its closing report first, as a step to the next episode does.
-  Future<void> openInstead(PlayableMedia media) async {
+  ///
+  /// [queue] is what follows it, when the caller assembled one; otherwise the
+  /// player works it out from the item.
+  Future<void> openInstead(PlayableMedia media, {PlaybackQueue? queue}) async {
+    await _stopping;
     await _closeCurrent();
     // An empty queue rather than null, which `copyWith` reads as "keep" —
     // the last series' episodes would otherwise sit under an unrelated film.
-    await openResolved(media, queue: const PlaybackQueue());
-    await loadSiblingQueue(media.ref);
+    await openResolved(media, queue: queue ?? const PlaybackQueue());
+    if (queue == null) await loadSiblingQueue(media.ref);
   }
 
   Future<void> playOrPause() async => _player?.playOrPause();
@@ -528,7 +525,19 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   /// Releases the backend but keeps the notifier alive, so leaving the player
   /// screen does not strand a decoder.
-  Future<void> stop() async {
+  ///
+  /// Whatever opens next waits for this through [_stopping]. A song tapped a
+  /// moment after leaving a film would otherwise start, and then be wiped by
+  /// this finishing behind it.
+  Future<void> stop() {
+    final run = _stopNow();
+    _stopping = run;
+    return run.whenComplete(() {
+      if (identical(_stopping, run)) _stopping = null;
+    });
+  }
+
+  Future<void> _stopNow() async {
     // Silence first, and synchronously as far as the decoder is concerned.
     //
     // Everything below this line waits on something slow — a frame grabbed

@@ -2145,4 +2145,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get similarArtists => 'Similar artists';
+
+  @override
+  String get nowPlaying => 'Now playing';
+
+  @override
+  String get queue => 'Queue';
+
+  @override
+  String get queueEmpty => 'Nothing else is queued.';
+
+  @override
+  String get shuffle => 'Shuffle';
+
+  @override
+  String get stopPlayback => 'Stop';
+
+  @override
+  String get repeatOff => 'Repeat is off';
+
+  @override
+  String get repeatOne => 'Repeating this song';
+
+  @override
+  String get repeatAll => 'Repeating the queue';
 }

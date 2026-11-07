@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/music/mini_player.dart';
 import '../features/remote/remote_host.dart';
 import '../l10n/app_localizations.dart';
 import 'appearance_settings.dart';
@@ -96,7 +97,12 @@ class _MPlayerAppState extends ConsumerState<MPlayerApp> {
         router: _router,
         child: RemoteHost(
           router: _router,
-          child: _InsetFromSystemBars(child: child ?? const SizedBox.shrink()),
+          child: _InsetFromSystemBars(
+            child: MiniPlayerHost(
+              router: _router,
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
         ),
       ),
     );

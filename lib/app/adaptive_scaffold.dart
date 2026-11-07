@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/music/mini_player.dart';
 import '../features/remote/remote_page.dart' show RemoteBar;
 import '../features/search/search_page.dart' show searchFocusRequests;
 import '../core/updater.dart';
@@ -138,7 +139,14 @@ class AdaptiveScaffold extends ConsumerWidget {
     // (and its one check) survives the shell changing shape.
     return _AutomaticUpdateCheck(
       child: choosingServer
-          ? Scaffold(body: navigationShell)
+          ? Scaffold(
+              body: navigationShell,
+              // A download can play with no server open, and this face has no
+              // bar for the mini player to sit above.
+              bottomNavigationBar: miniPlayerInShell(context, ref)
+                  ? MiniPlayer(onOpen: () => context.push('/now-playing'))
+                  : null,
+            )
           // A television always gets the rail, whatever width it reports: a
           // 4K panel at a low density would otherwise be handed the drawer,
           // 256 points of labels across the left of a screen read from a
@@ -202,6 +210,7 @@ class _CompactShell extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           RemoteBar(onOpen: () => context.push('/remote')),
+          MiniPlayer(onOpen: () => context.push('/now-playing')),
           NavigationBar(
             selectedIndex: shell.currentIndex,
             onDestinationSelected: onGo,

@@ -46,6 +46,8 @@ const _routes = <String>[
   '/library/person',
   '/library/album',
   '/library/artist',
+  // Nothing playing, which it has to say rather than draw empty controls.
+  '/now-playing',
   // With nothing signed in these draw their guard rather than a dashboard,
   // which is exactly the state worth pumping: an administration screen opened
   // by someone who is not one must still lay out.

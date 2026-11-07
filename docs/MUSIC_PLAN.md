@@ -1,10 +1,8 @@
 # Music — Implementation Plan
 
-> Status: **steps 1–4 of the order of work below are built** (2026-11-07):
-> data layer, audio device profile, library tabs, album and artist screens,
-> queue model. The controller's `playQueue` and queue changes have no caller
-> yet: step 5 and the M2 queue sheet are what use them.
-> Songs still play in the full-screen `/player` until step 5. The section
+> Status: **M1 is built** (2026-11-07), steps 1–5 of the order of work below.
+> Not yet tried on a device. The controller's `queueNext`, `addToQueue`,
+> `moveInQueue` and `removeFromQueue` wait for the M2 queue sheet. The section
 > "Where the app stands today" describes the app before step 1. `../CLAUDE.md`
 > stays the description of the code as it is.
 

@@ -25,6 +25,7 @@ import '../../sources/media_source.dart';
 import '../cast/cast_controller.dart';
 import '../cast/cast_sheet.dart';
 import '../cast/casting_overlay.dart';
+import '../music/audio_session.dart';
 import 'controls_overlay.dart';
 import 'gesture_layer.dart';
 import 'more_menu.dart';
@@ -83,6 +84,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   late final PlaybackController _playback;
   late final PlayerUiController _playerUi;
   late final NowPlayingController _nowPlaying;
+  late final AudioSession _audio;
 
   /// Held for the life of the screen; released on the way out, which hands
   /// the window back to whatever claimed it before.
@@ -111,10 +113,16 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     _playback = ref.read(playbackControllerProvider.notifier);
     _playerUi = ref.read(playerUiProvider.notifier);
     _nowPlaying = ref.read(nowPlayingProvider.notifier);
+    _audio = ref.read(audioSessionProvider.notifier);
 
     // The notifier outlives this page, so opening happens after the first
     // frame — mutating a provider during build is not allowed.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // One decoder, and the film takes it. Waited for, so the music's closing
+      // report and teardown cannot land on top of this file.
+      await _audio.end();
+      if (!mounted) return;
+
       // Play what the caller resolved, then fill in the rest of its folder so
       // prev/next work — without making the first frame wait on a directory
       // listing that may cross the network.

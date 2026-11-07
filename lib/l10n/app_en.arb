@@ -716,5 +716,13 @@
   "popularTracks": "Popular",
   "seeAllTracks": "See all",
   "appearsOn": "Appears on",
-  "similarArtists": "Similar artists"
+  "similarArtists": "Similar artists",
+  "nowPlaying": "Now playing",
+  "queue": "Queue",
+  "queueEmpty": "Nothing else is queued.",
+  "shuffle": "Shuffle",
+  "stopPlayback": "Stop",
+  "repeatOff": "Repeat is off",
+  "repeatOne": "Repeating this song",
+  "repeatAll": "Repeating the queue"
 }

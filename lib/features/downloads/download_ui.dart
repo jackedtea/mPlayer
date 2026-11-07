@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../music/audio_session.dart';
 import '../../app/tokens.dart';
 import '../../downloads/download_models.dart';
 import '../../downloads/downloads_controller.dart';
@@ -76,7 +77,7 @@ Future<void> playDownload(
     final media = await source.resolve(
       MediaRef(sourceId: entry.profileId, itemId: entry.itemId, title: entry.title),
     );
-    router.push('/player', extra: media);
+    await ref.read(audioSessionProvider.notifier).present(router, media);
   } on MediaSourceException catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(e.message)));
   }
