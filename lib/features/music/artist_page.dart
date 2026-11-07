@@ -70,12 +70,8 @@ class _ArtistPageState extends ConsumerState<ArtistPage> {
     final compact = context.windowSize == WindowSize.compact;
     final title = artist?.title ?? widget.name;
 
-    void play(int index) => playServerQueue(
-      context,
-      ref,
-      topTracks.map((t) => t.id).toList(),
-      startIndex: index,
-    );
+    void play(int index) =>
+        playMusicQueue(context, ref, topTracks, startIndex: index);
     final onPlay = topTracks.isEmpty ? null : () => play(0);
     final onShuffle = topTracks.isEmpty
         ? null

@@ -150,12 +150,7 @@ class _MusicListingViewState extends ConsumerState<MusicListingView>
           // The songs loaded so far, not the library's: a queue is held in
           // memory, and tens of thousands of entries is not a thing to hold
           // because someone tapped one song.
-          onTap: () => playServerQueue(
-            context,
-            ref,
-            items.map((t) => t.id).toList(),
-            startIndex: i,
-          ),
+          onTap: () => playMusicQueue(context, ref, items, startIndex: i),
         );
       },
     );

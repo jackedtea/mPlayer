@@ -250,9 +250,11 @@ class PlaybackController extends Notifier<PlaybackState> {
         index: siblings.index,
         // A server answers with a series, which is what makes the
         // end-of-episode prompt say "Next episode". Kept as a check rather
-        // than hard-coded true: a source that cannot answer `siblingsOf` has
-        // no series to claim.
-        isSeries: source is QueueableSource,
+        // than hard-coded: a source that cannot answer `siblingsOf` has no
+        // series to claim.
+        kind: source is QueueableSource
+            ? PlaybackQueueKind.series
+            : PlaybackQueueKind.single,
       ),
     );
   }
@@ -275,6 +277,75 @@ class PlaybackController extends Notifier<PlaybackState> {
       debugPrint('No playlist from ${mediaRef.sourceId}: $e');
       return null;
     }
+  }
+
+  /// Replaces whatever is open with [items], starting at [start].
+  ///
+  /// Only the first is resolved: the rest stay bare references until the
+  /// player reaches them, as in `playServerQueue`. [shuffle] deals the whole
+  /// list and ignores [start], since a Shuffle button has no track to start
+  /// from.
+  Future<void> playQueue(
+    List<MediaRef> items, {
+    int start = 0,
+    bool shuffle = false,
+    PlaybackQueueKind kind = PlaybackQueueKind.music,
+  }) async {
+    if (items.isEmpty || _stepping) return;
+
+    final queue = shuffle
+        ? PlaybackQueue.shuffledFrom(items, kind: kind)
+        : PlaybackQueue(
+            items: items,
+            index: start.clamp(0, items.length - 1),
+            kind: kind,
+          );
+
+    final source = ref.read(mediaSourcesProvider)[queue.current!.sourceId];
+    if (source == null) return;
+
+    _stepping = true;
+    try {
+      await _openAt(queue, source);
+    } finally {
+      _stepping = false;
+    }
+  }
+
+  /// [item] straight after what is playing.
+  void queueNext(MediaRef item) {
+    state = state.copyWith(queue: _queueWithCurrent().playingNext(item));
+  }
+
+  /// [item] at the end of the queue.
+  void addToQueue(MediaRef item) {
+    state = state.copyWith(queue: _queueWithCurrent().appended(item));
+  }
+
+  void moveInQueue(int from, int to) {
+    state = state.copyWith(queue: state.queue.moved(from, to));
+  }
+
+  void removeFromQueue(int at) {
+    state = state.copyWith(queue: state.queue.removedAt(at));
+  }
+
+  /// Turns shuffle on or off without touching what is playing.
+  void setShuffle(bool on) {
+    state = state.copyWith(
+      queue: on ? state.queue.shuffled() : state.queue.inOriginalOrder(),
+    );
+  }
+
+  /// The queue to add to. A lone song has an empty one, and adding to that
+  /// has to put it in the queue first or it would be played past.
+  PlaybackQueue _queueWithCurrent() {
+    final media = state.media;
+    if (!state.queue.isEmpty || media == null) return state.queue;
+    return PlaybackQueue(
+      items: <MediaRef>[media.ref],
+      kind: media.isAudio ? PlaybackQueueKind.music : PlaybackQueueKind.single,
+    );
   }
 
   /// Steps to the previous file in the folder.
@@ -332,7 +403,9 @@ class PlaybackController extends Notifier<PlaybackState> {
 
     try {
       final media = await source.resolve(mediaRef);
-      await openResolved(media, queue: queue);
+      // No queue passed: it went into the state above, and a song added while
+      // this one was resolving must not be overwritten by the older list.
+      await openResolved(media);
     } on MediaSourceException catch (e) {
       state = state.copyWith(buffering: false, error: e.message);
     } catch (e) {
@@ -751,10 +824,10 @@ class PlaybackController extends Notifier<PlaybackState> {
       s.completed.listen((v) {
         state = state.copyWith(completed: v);
         // Roll on to the next file in the folder, which is what the Player
-        // settings page already calls "Auto-play next episode". Guarded on
-        // hasNext so the last file simply stops.
+        // settings page already calls "Auto-play next episode". Music rolls
+        // on regardless, and the last file simply stops.
         if (!v) return;
-        if (autoPlayNext && state.queue.hasNext) {
+        if (state.queue.rollsOn(autoPlay: autoPlayNext)) {
           unawaited(playNext());
         } else if (state.loop == LoopMode.all && !state.queue.hasNext) {
           // The end of the folder with repeat-all on: back to the top. mpv

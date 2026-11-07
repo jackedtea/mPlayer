@@ -120,6 +120,11 @@ Future<void> shufflePlay(
 ) async {
   if (items.isEmpty) return;
 
+  if (items.first.kind.isMusic) {
+    await playMusicQueue(context, ref, items, shuffle: true);
+    return;
+  }
+
   final shuffled = List<ServerItem>.of(items)..shuffle(Random());
   await playServerQueue(
     context,

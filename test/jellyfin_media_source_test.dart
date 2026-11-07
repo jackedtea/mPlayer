@@ -228,6 +228,27 @@ void main() {
       expect(restarted.artworkUri, media.artworkUri);
     });
 
+    test('a song starts at its start, whatever the server last heard', () async {
+      // A queue that skips into a track halfway reads as a fault; a film
+      // picking up where it was left is the point.
+      final library = _FakeLibrary(
+        item_: const ServerItem(
+          id: 't1',
+          title: 'Song',
+          kind: ServerItemKind.audio,
+          position: Duration(minutes: 2),
+        ),
+        playback_:
+            ServerPlayback(uri: Uri.parse('https://x'), isDirectPlay: true),
+      );
+
+      final media = await JellyfinMediaSource(library).resolve(
+        const MediaRef(sourceId: 'p1', itemId: 't1', title: ''),
+      );
+
+      expect(media.startPosition, Duration.zero);
+    });
+
     test('a film is not audio and has no cover art for the player', () async {
       // The player shows the frame; a poster in its place would be wrong.
       final library = _FakeLibrary(

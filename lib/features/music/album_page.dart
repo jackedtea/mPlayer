@@ -58,12 +58,8 @@ class AlbumPage extends ConsumerWidget {
     final tracks = tracksRequest.value ?? const <ServerItem>[];
     final compact = context.windowSize == WindowSize.compact;
 
-    void play(int index) => playServerQueue(
-      context,
-      ref,
-      tracks.map((t) => t.id).toList(),
-      startIndex: index,
-    );
+    void play(int index) =>
+        playMusicQueue(context, ref, tracks, startIndex: index);
     final onPlay = tracks.isEmpty ? null : () => play(0);
     final onShuffle = tracks.isEmpty
         ? null

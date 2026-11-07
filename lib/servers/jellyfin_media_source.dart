@@ -116,8 +116,12 @@ class JellyfinMediaSource
         capabilities: capabilities,
         headers: playback.headers,
         // The server is the authority on where the user got to: it has been
-        // collecting that from every device, not just this one.
-        startPosition: item.position ?? Duration.zero,
+        // collecting that from every device, not just this one. A song starts
+        // at its start: nobody resumes one, and a queue skipping in halfway
+        // through a track reads as a fault.
+        startPosition: item.kind == ServerItemKind.audio
+            ? Duration.zero
+            : item.position ?? Duration.zero,
         sourceLine: _sourceLine(playback),
         // What the server actually produced, so the player can label its
         // quality control with the truth rather than with what was asked for.

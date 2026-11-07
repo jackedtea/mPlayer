@@ -655,32 +655,72 @@ Future<void> playServerQueue(
   final profile = ref.read(serverRegistryProvider).active;
   if (profile == null) return;
 
-  final source = ref.read(mediaSourcesProvider)[profile.id];
+  await _launchQueue(
+    context,
+    ref,
+    PlaybackQueue(
+      items: <MediaRef>[
+        for (final String id in itemIds)
+          MediaRef(sourceId: profile.id, itemId: id, title: ''),
+      ],
+      index: startIndex.clamp(0, itemIds.length - 1),
+    ),
+  );
+}
+
+/// Plays [tracks] as a music queue: from [startIndex], or dealt at random with
+/// [shuffle], whose first song is a surprise too.
+///
+/// Each reference keeps its track's title, for a queue to list without asking
+/// the server about every row.
+Future<void> playMusicQueue(
+  BuildContext context,
+  WidgetRef ref,
+  List<ServerItem> tracks, {
+  int startIndex = 0,
+  bool shuffle = false,
+}) async {
+  if (tracks.isEmpty) return;
+
+  final profile = ref.read(serverRegistryProvider).active;
+  if (profile == null) return;
+
+  final items = <MediaRef>[
+    for (final ServerItem t in tracks)
+      MediaRef(sourceId: profile.id, itemId: t.id, title: t.title),
+  ];
+
+  await _launchQueue(
+    context,
+    ref,
+    shuffle
+        ? PlaybackQueue.shuffledFrom(items, kind: PlaybackQueueKind.music)
+        : PlaybackQueue(
+            items: items,
+            index: startIndex.clamp(0, items.length - 1),
+            kind: PlaybackQueueKind.music,
+          ),
+  );
+}
+
+/// Resolves [queue]'s current item and opens the player on it.
+Future<void> _launchQueue(
+  BuildContext context,
+  WidgetRef ref,
+  PlaybackQueue queue,
+) async {
+  final current = queue.current;
+  if (current == null) return;
+
+  final source = ref.read(mediaSourcesProvider)[current.sourceId];
   if (source == null) return;
 
   final messenger = ScaffoldMessenger.of(context);
   final router = GoRouter.of(context);
 
-  final index = startIndex.clamp(0, itemIds.length - 1);
-
   try {
-    final media = await source.resolve(
-      MediaRef(sourceId: profile.id, itemId: itemIds[index], title: ''),
-    );
-
-    router.push(
-      '/player',
-      extra: PlayerLaunch(
-        media: media,
-        queue: PlaybackQueue(
-          items: <MediaRef>[
-            for (final String id in itemIds)
-              MediaRef(sourceId: profile.id, itemId: id, title: ''),
-          ],
-          index: index,
-        ),
-      ),
-    );
+    final media = await source.resolve(current);
+    router.push('/player', extra: PlayerLaunch(media: media, queue: queue));
   } on MediaSourceException catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(e.message)));
   }

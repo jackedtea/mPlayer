@@ -110,7 +110,7 @@ PlaybackState _episode({
         const MediaRef(sourceId: 'p1', itemId: 'e2', title: 'Two'),
       ],
       index: hasNext ? 0 : 1,
-      isSeries: isSeries,
+      kind: isSeries ? PlaybackQueueKind.series : PlaybackQueueKind.single,
     ),
   );
 }

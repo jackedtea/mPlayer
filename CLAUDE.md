@@ -1051,6 +1051,11 @@ album and artist screens.
 - **Nobody "watches" a song.** No watched toggle, no tick on a tile, and Sort & filter offers
   Favourites alone with no features or certificates. `createPlaylist(audio:)` files a playlist
   made from a track as audio.
+- **`PlaybackQueue` is an explicit list with a `kind`** (`single`, `series`, `music`). A music
+  queue rolls on whatever "Auto-play next episode" says and never shows the next-up pill; a
+  song always starts at zero. Shuffle keeps `unshuffled` so it can be turned off, and the
+  changes (`playingNext`, `appended`, `moved`, `removedAt`) are pure, tested in
+  `test/playback_queue_test.dart`.
 - **Interim:** Play still pushes `/player`, so a song plays behind the video controls until the
   audio session (`PlayableMedia.isAudio`) lands.
 

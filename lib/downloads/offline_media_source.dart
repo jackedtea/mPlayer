@@ -108,7 +108,9 @@ class OfflineMediaSource
         externalSubtitles: true,
       ),
       sourceLine: 'Downloaded · original',
-      startPosition: await _startOf(entry, meta),
+      startPosition: entry.kind == ServerItemKind.audio
+          ? Duration.zero
+          : await _startOf(entry, meta),
       chapters: chaptersOf(meta, runtime: meta.runtime ?? entry.runtime),
       serverStreams: meta.streams,
       segments: meta.segments,

@@ -3,33 +3,70 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:math' show Random;
+
 import 'package:flutter/foundation.dart';
 
 import '../../servers/media_library_source.dart';
 import '../../sources/media_source.dart';
 
-/// The folder a file was opened from, as a playlist.
+/// What a [PlaybackQueue] is a run of, which decides how it ends and what the
+/// player promises about what comes next.
+enum PlaybackQueueKind {
+  /// Videos with nothing more in common: a playlist, a shuffled series.
+  single,
+
+  /// The episodes of one series. Only this may say "Next episode": it is a
+  /// promise about what comes next, and a run of unrelated films must not
+  /// make it.
+  series,
+
+  /// Songs. A record plays through whatever the auto-play setting says, which
+  /// is about binging episodes, and nothing offers a way past its credits.
+  music,
+}
+
+/// What plays after what, as an explicit list.
 ///
-/// Opening one video from a file manager should let the user step through the
-/// rest of that folder, which is what every other video player does.
+/// Immutable like the rest of [PlaybackState]: every change below returns a
+/// new queue. They answer with this same queue where there is nothing to do,
+/// so a stale index from a list on screen costs nothing.
 @immutable
 class PlaybackQueue {
   const PlaybackQueue({
     this.items = const <MediaRef>[],
     this.index = 0,
-    this.isSeries = false,
+    this.kind = PlaybackQueueKind.single,
+    this.unshuffled,
   });
+
+  /// [items] dealt in a random order, starting at the top of the deal.
+  ///
+  /// For a Shuffle button, where the first song should be a surprise too.
+  /// [shuffled] is the other one, for a queue already playing.
+  factory PlaybackQueue.shuffledFrom(
+    List<MediaRef> items, {
+    PlaybackQueueKind kind = PlaybackQueueKind.single,
+    Random? random,
+  }) {
+    return PlaybackQueue(
+      items: List<MediaRef>.of(items)..shuffle(random),
+      kind: kind,
+      unshuffled: List<MediaRef>.of(items),
+    );
+  }
 
   final List<MediaRef> items;
   final int index;
+  final PlaybackQueueKind kind;
 
-  /// Whether the run is the episodes of one series rather than whatever
-  /// videos happen to share a folder.
-  ///
-  /// Only the label of the end-of-file prompt turns on it: "Next episode" is
-  /// a promise about what comes next, and a folder of unrelated films must
-  /// not make it.
-  final bool isSeries;
+  /// The order to go back to when shuffle is turned off. Null while it is off.
+  final List<MediaRef>? unshuffled;
+
+  bool get isShuffled => unshuffled != null;
+
+  bool get isSeries => kind == PlaybackQueueKind.series;
+  bool get isMusic => kind == PlaybackQueueKind.music;
 
   bool get isEmpty => items.isEmpty;
 
@@ -42,9 +79,126 @@ class PlaybackQueue {
   MediaRef? get current =>
       (index >= 0 && index < items.length) ? items[index] : null;
 
+  /// Whether the end of the current file starts the next by itself.
+  ///
+  /// [autoPlay] is the "Auto-play next episode" setting. Music does not ask
+  /// it: turning off a binge must not stop an album after its first song.
+  bool rollsOn({required bool autoPlay}) => hasNext && (autoPlay || isMusic);
+
   PlaybackQueue? stepTo(int next) {
     if (next < 0 || next >= items.length) return null;
-    return PlaybackQueue(items: items, index: next, isSeries: isSeries);
+    return _with(index: next);
+  }
+
+  /// [ref] straight after the current item.
+  PlaybackQueue playingNext(MediaRef ref) {
+    final at = isEmpty ? 0 : index + 1;
+    final original = unshuffled;
+    return _with(
+      items: <MediaRef>[...items]..insert(at, ref),
+      unshuffled: original == null
+          ? null
+          // After the current item there too, or turning shuffle off would
+          // send a song that was promised next to wherever it fell.
+          : (<MediaRef>[...original]
+              ..insert(current == null ? 0 : original.indexOf(current!) + 1, ref)),
+    );
+  }
+
+  /// [ref] at the very end.
+  PlaybackQueue appended(MediaRef ref) {
+    final original = unshuffled;
+    return _with(
+      items: <MediaRef>[...items, ref],
+      unshuffled: original == null ? null : <MediaRef>[...original, ref],
+    );
+  }
+
+  /// The item at [from] moved so that it ends up at [to], with the current
+  /// item still current wherever it now sits.
+  PlaybackQueue moved(int from, int to) {
+    if (from == to ||
+        from < 0 ||
+        to < 0 ||
+        from >= items.length ||
+        to >= items.length) {
+      return this;
+    }
+
+    final next = <MediaRef>[...items];
+    next.insert(to, next.removeAt(from));
+
+    var nextIndex = index;
+    if (from == index) {
+      nextIndex = to;
+    } else if (from < index && to >= index) {
+      nextIndex = index - 1;
+    } else if (from > index && to <= index) {
+      nextIndex = index + 1;
+    }
+
+    return _with(items: next, index: nextIndex);
+  }
+
+  /// The queue without the item at [at]. The current item stays: what is
+  /// playing is stopped or stepped past, not deleted out from under the
+  /// decoder.
+  PlaybackQueue removedAt(int at) {
+    if (at < 0 || at >= items.length || at == index) return this;
+
+    final removed = items[at];
+    final original = unshuffled;
+    return _with(
+      items: <MediaRef>[...items]..removeAt(at),
+      index: at < index ? index - 1 : index,
+      unshuffled: original == null
+          ? null
+          : (<MediaRef>[...original]..remove(removed)),
+    );
+  }
+
+  /// The rest of the queue in a random order, with the current item first so
+  /// that turning shuffle on does not interrupt it.
+  PlaybackQueue shuffled([Random? random]) {
+    final playing = current;
+    if (playing == null) return this;
+
+    final rest = <MediaRef>[...items]..removeAt(index);
+    rest.shuffle(random);
+    return _with(
+      items: <MediaRef>[playing, ...rest],
+      index: 0,
+      unshuffled: unshuffled ?? items,
+    );
+  }
+
+  /// Back to the order before [shuffled], still on the same item.
+  PlaybackQueue inOriginalOrder() {
+    final original = unshuffled;
+    if (original == null) return this;
+
+    final found = current == null ? -1 : original.indexOf(current!);
+    return PlaybackQueue(
+      items: original,
+      index: found < 0 ? 0 : found,
+      kind: kind,
+    );
+  }
+
+  /// [unshuffled] is passed as it stands by the changes that alter it, and
+  /// kept by the one that does not name it: a step or a reorder must not lose
+  /// the way back.
+  PlaybackQueue _with({
+    List<MediaRef>? items,
+    int? index,
+    List<MediaRef>? unshuffled,
+  }) {
+    return PlaybackQueue(
+      items: items ?? this.items,
+      index: index ?? this.index,
+      kind: kind,
+      unshuffled: unshuffled ?? this.unshuffled,
+    );
   }
 
   /// Human position, e.g. "3 of 10".
@@ -342,8 +496,14 @@ class PlaybackState {
   /// episode has started reads as a bug. Shown whatever the auto-play setting
   /// says — it is how a viewer leaves the credits early, not a substitute for
   /// the roll-on.
+  ///
+  /// Not for music: the next song starts by itself in a moment, and a song
+  /// has no credits to leave early.
   bool get nextUpDue =>
-      queue.hasNext && duration > Duration.zero && remaining <= nextUpWindow;
+      !queue.isMusic &&
+      queue.hasNext &&
+      duration > Duration.zero &&
+      remaining <= nextUpWindow;
 
   PlaybackState copyWith({
     PlayableMedia? media,
