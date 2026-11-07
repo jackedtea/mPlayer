@@ -255,7 +255,7 @@ class CastController extends Notifier<CastState> {
   /// - **Not http(s)** — nothing else is left that resolves anything, so this
   ///   means the server answered with something unexpected.
   /// - **Auth headers** — they do not travel with a URL and a device cannot
-  ///   be told about them. Jellyfin puts its token in the query (`api_key`),
+  ///   be told about them. Jellyfin puts its token in the query (`ApiKey`),
   ///   so no server the app signs into hits this today; the check is here so
   ///   that one which does fails with a sentence.
   /// - **Loopback** — a server reachable only from this device cannot be

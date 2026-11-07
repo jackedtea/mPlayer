@@ -240,7 +240,7 @@ Also open:
 shared bits (`download_ui.dart`: `watchDownload`, `DownloadBadge`,
 `confirmRemoveDownload`, `formatBytes`).
 
-- **The original file only**: `/Items/{id}/Download?api_key=`, gated on the
+- **The original file only**: `/Items/{id}/Download?ApiKey=`, gated on the
   account's `EnableContentDownloading`; a 403 is a sentence, not a fallback.
 - **Layout** `<app support>/downloads/<profile>/<item>/` — `media.<ext>`
   (extension from `Content-Disposition`), `media.part` while arriving,
@@ -991,7 +991,7 @@ Four things that are easy to get wrong and are already handled:
    `"kind": "emby"` is dropped on load.
 4. **A `TranscodingUrl` on the media source means the server chose to re-encode**,
    whatever `SupportsDirectPlay` says — those flags describe what is possible, not what
-   was decided. The direct-play URL carries the token as `api_key` in the
+   was decided. The direct-play URL carries the token as `ApiKey` in the
    query, because libmpv fetches it itself and cannot be handed a header —
    and that is also what makes the URL castable, since a header could not
    travel to a television either. See Casting.

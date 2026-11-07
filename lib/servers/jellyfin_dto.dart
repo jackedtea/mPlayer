@@ -292,7 +292,7 @@ ServerTrickplay? trickplayFromJson(
           'mediaSourceId': mediaSourceId,
           // Fetched by the image loader, which sends no Authorization
           // header — the same reason the direct-play URL carries one.
-          if (token.isNotEmpty) 'api_key': token,
+          if (token.isNotEmpty) tokenQueryParameter: token,
         },
       ),
     );
@@ -621,6 +621,15 @@ List<int> _years(Object? raw) {
   ];
 }
 
+/// The query parameter a URL carries the access token in.
+///
+/// `ApiKey`, never `api_key`: since 10.11 a server reads the lowercase form
+/// only with `EnableLegacyAuthorization` on, and that is off by default. It
+/// fails quietly, too. The stream and subtitle routes ask for no sign-in, so
+/// they still work and only a route that does answers 401. `ApiKey` has been
+/// read since 10.6, so nothing this app can sign in to is left out.
+const tokenQueryParameter = 'ApiKey';
+
 /// Turns a `PlaybackInfo` response into the one decision the player needs.
 ///
 /// The rule Jellyfin actually follows: if the server put a `TranscodingUrl`
@@ -689,7 +698,7 @@ ServerPlayback? playbackFromJson(
         if (container != null && container.isNotEmpty) 'container': container,
         // The stream endpoint predates header auth and is fetched by libmpv,
         // which cannot be given one — so the token rides in the query.
-        'api_key': token,
+        tokenQueryParameter: token,
       },
     ),
     isDirectPlay: true,
@@ -862,7 +871,7 @@ List<ExternalSubtitle> externalSubtitlesFrom(
             : resolved.replace(
                 queryParameters: <String, String>{
                   ...resolved.queryParameters,
-                  'api_key': token,
+                  tokenQueryParameter: token,
                 },
               ),
         label: stream.label,
@@ -887,7 +896,7 @@ Uri downloadUrlFor(String itemId, {required Uri base, required String token}) =>
         itemId,
         'Download',
       ],
-      queryParameters: <String, String>{'api_key': token},
+      queryParameters: <String, String>{tokenQueryParameter: token},
     );
 
 /// Artwork for an item, or null when it has none.

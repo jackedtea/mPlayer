@@ -374,7 +374,7 @@ void main() {
       expect(playback.uri.queryParameters['mediaSourceId'], 'ms2');
       // libmpv fetches this itself and cannot be handed a header, so the
       // token has to be in the query.
-      expect(playback.uri.queryParameters['api_key'], 'tok');
+      expect(playback.uri.queryParameters['ApiKey'], 'tok');
       expect(playback.bitrate, 8000000);
     });
 

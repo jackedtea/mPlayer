@@ -133,7 +133,7 @@ void main() {
         base: Uri.parse('https://media.home.lan/jellyfin'),
         token: 't0k',
       );
-      expect(url.toString(), 'https://media.home.lan/jellyfin/Items/abc/Download?api_key=t0k');
+      expect(url.toString(), 'https://media.home.lan/jellyfin/Items/abc/Download?ApiKey=t0k');
     });
 
     test('an entry survives a round trip through JSON', () {

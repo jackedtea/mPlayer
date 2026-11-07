@@ -316,7 +316,7 @@ void main() {
       expect(tile.url.queryParameters['mediaSourceId'], 'source-1');
       // The image loader sends no Authorization header, so the token rides in
       // the query the same way the direct-play URL's does.
-      expect(tile.url.queryParameters['api_key'], 'tok');
+      expect(tile.url.queryParameters['ApiKey'], 'tok');
       expect(tile.left, 5 * 320);
       expect(tile.top, 0);
     });
@@ -390,7 +390,7 @@ void main() {
         '/Videos/item-1/item-1/Subtitles/2/0/Stream.srt',
       );
       // libmpv fetches it itself and cannot be handed a header.
-      expect(subtitles.single.uri.queryParameters['api_key'], 'tok');
+      expect(subtitles.single.uri.queryParameters['ApiKey'], 'tok');
     });
 
     test('a burned-in or muxed track is not fetched separately', () {
