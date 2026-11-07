@@ -12,6 +12,7 @@ import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../libraries/last_library.dart';
+import '../music/music_actions.dart';
 import '../music/music_listing.dart';
 import '../../widgets/gradient_art.dart';
 import '../../widgets/poster_tile.dart';
@@ -62,6 +63,7 @@ class LibraryGridPage extends ConsumerStatefulWidget {
     this.browse = LibraryBrowse.library,
     this.onSwitchLibrary,
     this.genre,
+    this.genreId,
   });
 
   final String title;
@@ -69,6 +71,10 @@ class LibraryGridPage extends ConsumerStatefulWidget {
   /// Opens the grid already narrowed to this genre — what a tile on the
   /// Genres tab opens. Still an ordinary filter: removable like any other.
   final String? genre;
+
+  /// The genre's own id, for the one thing that wants it over the name: a
+  /// music genre's instant mix.
+  final String? genreId;
 
   /// Set by the Libraries tab, which owns which library is showing and swaps
   /// this page for another when the title's switcher picks one. Null for a
@@ -234,6 +240,13 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
               : Text(_titleFor(ref) ?? widget.title),
         ),
         actions: <Widget>[
+          if (widget.browse == LibraryBrowse.musicAlbums &&
+              widget.genreId != null)
+            IconButton(
+              icon: const Icon(Icons.auto_awesome_rounded),
+              tooltip: l10n.instantMix,
+              onPressed: () => playInstantMix(context, ref, widget.genreId!),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: l10n.refresh,
@@ -817,6 +830,7 @@ class _GenresTab extends ConsumerWidget {
                         'title': genre.name,
                         'browse': music ? 'musicAlbums' : 'collection',
                         'genre': genre.name,
+                        if (music) 'genreId': genre.id,
                       },
                     ).toString(),
                     extra: viewId,

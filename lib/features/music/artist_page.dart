@@ -11,6 +11,7 @@ import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/backdrop_header.dart';
+import '../servers/item_action_row.dart';
 import '../servers/item_actions.dart';
 import '../servers/server_library.dart';
 import 'music_widgets.dart';
@@ -98,7 +99,18 @@ class _ArtistPageState extends ConsumerState<ArtistPage> {
                       artUrlFor(ref, artist, maxWidth: 1200),
             height: compact ? 240 : 320,
             actions: <Widget>[
-              if (artist != null) _FavouriteControl(artist: artist),
+              // Over artwork of any colour, as `CircleControl` is.
+              if (artist != null)
+                DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: Color(0x8A000000),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconTheme(
+                    data: const IconThemeData(color: Colors.white),
+                    child: ItemActionMenu(item: artist),
+                  ),
+                ),
             ],
             child: Text(
               title,
@@ -159,37 +171,6 @@ class _ArtistPageState extends ConsumerState<ArtistPage> {
           MusicShelf(title: l10n.similarArtists, items: similar),
         ],
       ),
-    );
-  }
-}
-
-/// The star on an artist's header. The artist has no row of actions: marking
-/// them watched, downloading or adding them to a playlist mean nothing.
-class _FavouriteControl extends ConsumerWidget {
-  const _FavouriteControl({required this.artist});
-
-  final ServerItem artist;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-
-    return CircleControl(
-      icon: artist.favourite
-          ? Icons.favorite_rounded
-          : Icons.favorite_border_rounded,
-      tooltip: artist.favourite ? l10n.removeFavourite : l10n.addFavourite,
-      onPressed: () async {
-        final messenger = ScaffoldMessenger.of(context);
-        final ok = await setFavourite(
-          ref,
-          artist.id,
-          favourite: !artist.favourite,
-        );
-        if (!ok) {
-          messenger.showSnackBar(SnackBar(content: Text(l10n.actionFailed)));
-        }
-      },
     );
   }
 }

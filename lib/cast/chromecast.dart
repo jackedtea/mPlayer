@@ -191,6 +191,7 @@ class ChromecastRenderer implements CastRenderer {
     required String title,
     String contentType = 'video/mp4',
     Duration position = Duration.zero,
+    CastTrackInfo? track,
   }) async {
     final connected = await _cast.connect(device.id);
     if (!connected) {
@@ -205,6 +206,12 @@ class ChromecastRenderer implements CastRenderer {
       'title': title,
       'contentType': contentType,
       'positionMs': position.inMilliseconds,
+      if (track != null) ...<String, Object?>{
+        'music': true,
+        'artist': track.artist,
+        'album': track.album,
+        'artUrl': track.artUrl?.toString(),
+      },
     });
   }
 

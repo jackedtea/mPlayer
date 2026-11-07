@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../sources/media_source.dart';
+import '../cast/cast_controller.dart';
 import '../player/now_playing.dart';
 import '../player/playback_controller.dart';
 import '../player/playback_state.dart';
@@ -86,6 +87,11 @@ class AudioSession extends Notifier<bool> {
     if (!state) return;
     state = false;
     await _notification.stop();
+    // The television too: the mini player's cross should not leave a song
+    // playing in the next room with nothing on screen to stop it.
+    if (ref.read(castControllerProvider).isCasting) {
+      await ref.read(castControllerProvider.notifier).disconnect();
+    }
     await _playback.stop();
   }
 
@@ -126,11 +132,12 @@ class AudioSession extends Notifier<bool> {
       return;
     }
 
-    final credits = <String>[?media.artist, ?media.album].join(' · ');
     unawaited(
       _notification.update(
         title: media.title,
-        subtitle: credits.isEmpty ? null : credits,
+        subtitle: media.artist,
+        album: media.album,
+        artUrl: media.artworkUri?.toString(),
         playing: next.playing,
         position: next.position,
         duration: next.duration,

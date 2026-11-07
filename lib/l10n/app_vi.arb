@@ -696,5 +696,12 @@
   "stopPlayback": "Dừng",
   "repeatOff": "Đang tắt lặp lại",
   "repeatOne": "Đang lặp lại bài này",
-  "repeatAll": "Đang lặp lại hàng đợi"
+  "repeatAll": "Đang lặp lại hàng đợi",
+  "playNextInQueue": "Phát tiếp theo",
+  "addToQueue": "Thêm vào hàng đợi",
+  "addedToQueue": "Đã thêm vào hàng đợi",
+  "removeFromQueue": "Xoá khỏi hàng đợi",
+  "instantMix": "Mix tức thì",
+  "noInstantMix": "Máy chủ không có mix cho mục này.",
+  "recentlyPlayed": "Nghe gần đây"
 }

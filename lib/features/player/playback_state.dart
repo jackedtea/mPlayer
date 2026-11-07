@@ -174,6 +174,13 @@ class PlaybackQueue {
     );
   }
 
+  /// Everything but what is playing.
+  PlaybackQueue clearedUpcoming() {
+    final playing = current;
+    if (playing == null || items.length <= 1) return this;
+    return PlaybackQueue(items: <MediaRef>[playing], kind: kind);
+  }
+
   /// The rest of the queue in a random order, with the current item first so
   /// that turning shuffle on does not interrupt it.
   PlaybackQueue shuffled([Random? random]) {

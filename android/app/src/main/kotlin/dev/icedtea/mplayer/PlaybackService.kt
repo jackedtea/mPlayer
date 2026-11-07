@@ -10,6 +10,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -17,8 +19,13 @@ import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.concurrent.thread
 
 /**
  * Keeps playback alive with the app in the background, and puts it in the
@@ -44,6 +51,8 @@ class PlaybackService : Service() {
 
         const val EXTRA_TITLE = "title"
         const val EXTRA_SUBTITLE = "subtitle"
+        const val EXTRA_ALBUM = "album"
+        const val EXTRA_ART_URL = "artUrl"
         const val EXTRA_PLAYING = "playing"
         const val EXTRA_POSITION_MS = "positionMs"
         const val EXTRA_DURATION_MS = "durationMs"
@@ -62,6 +71,12 @@ class PlaybackService : Service() {
         private const val NOTIFICATION_ID = 0x6D50 // 'mP'
 
         /**
+         * The longest side of the cover, in pixels. A bitmap crosses a binder
+         * transaction on its way to the system, and one too large throws.
+         */
+        private const val ART_MAX_SIDE = 512
+
+        /**
          * Where a button press goes. Set by [NowPlayingChannel] for as long as
          * the Flutter engine is alive and cleared with it — a press arriving
          * after that has nobody to act on it and is dropped.
@@ -78,6 +93,10 @@ class PlaybackService : Service() {
 
     private var title: String = "mPlayer"
     private var subtitle: String? = null
+    private var album: String = ""
+    private var artUrl: String = ""
+    private var art: Bitmap? = null
+    private val mainThread = Handler(Looper.getMainLooper())
     private var playing: Boolean = false
     private var positionMs: Long = 0
     private var durationMs: Long = 0
@@ -162,6 +181,16 @@ class PlaybackService : Service() {
         intent ?: return
         title = intent.getStringExtra(EXTRA_TITLE) ?: title
         subtitle = intent.getStringExtra(EXTRA_SUBTITLE) ?: subtitle
+        album = intent.getStringExtra(EXTRA_ALBUM) ?: album
+        intent.getStringExtra(EXTRA_ART_URL)?.let { url ->
+            if (url != artUrl) {
+                artUrl = url
+                // Now rather than when the next one lands: the last song's
+                // cover over this song's title would be a wrong answer.
+                art = null
+                if (url.isNotEmpty()) loadArt(url)
+            }
+        }
         playing = intent.getBooleanExtra(EXTRA_PLAYING, playing)
         positionMs = intent.getLongExtra(EXTRA_POSITION_MS, positionMs)
         durationMs = intent.getLongExtra(EXTRA_DURATION_MS, durationMs)
@@ -187,6 +216,51 @@ class PlaybackService : Service() {
         } else {
             val manager = getSystemService(NotificationManager::class.java)
             manager?.notify(NOTIFICATION_ID, notification)
+        }
+    }
+
+    /**
+     * Fetches the cover off the main thread and redraws when it lands. Failure
+     * costs the picture alone: the song and its controls are already up.
+     */
+    private fun loadArt(url: String) {
+        thread(isDaemon = true, name = "now-playing-art") {
+            val bitmap = runCatching { fetchArt(url) }
+                .onFailure { Log.w("PlaybackService", "Could not fetch the cover", it) }
+                .getOrNull() ?: return@thread
+
+            mainThread.post {
+                // The song has moved on, or the service has gone.
+                if (url == artUrl && started) {
+                    art = bitmap
+                    publish()
+                }
+            }
+        }
+    }
+
+    private fun fetchArt(url: String): Bitmap? {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 10_000
+        try {
+            val bytes = connection.inputStream.use { it.readBytes() }
+
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / sample > ART_MAX_SIDE) {
+                sample *= 2
+            }
+            return BitmapFactory.decodeByteArray(
+                bytes,
+                0,
+                bytes.size,
+                BitmapFactory.Options().apply { inSampleSize = sample },
+            )
+        } finally {
+            connection.disconnect()
         }
     }
 
@@ -275,6 +349,8 @@ class PlaybackService : Service() {
         MediaMetadata.Builder()
             .putString(MediaMetadata.METADATA_KEY_TITLE, title)
             .putString(MediaMetadata.METADATA_KEY_ARTIST, subtitle ?: "")
+            .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
+            .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art)
             // A duration of 0 tells the lock screen there is nothing to scrub,
             // which is the honest answer before the file is demuxed.
             .putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs)
@@ -317,6 +393,7 @@ class PlaybackService : Service() {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(subtitle ?: "")
+            .setLargeIcon(art)
             .setContentIntent(openApp())
             .setDeleteIntent(pendingControl(CONTROL_STOP))
             .setVisibility(Notification.VISIBILITY_PUBLIC)

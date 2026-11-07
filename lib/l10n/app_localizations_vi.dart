@@ -2181,4 +2181,25 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get repeatAll => 'Đang lặp lại hàng đợi';
+
+  @override
+  String get playNextInQueue => 'Phát tiếp theo';
+
+  @override
+  String get addToQueue => 'Thêm vào hàng đợi';
+
+  @override
+  String get addedToQueue => 'Đã thêm vào hàng đợi';
+
+  @override
+  String get removeFromQueue => 'Xoá khỏi hàng đợi';
+
+  @override
+  String get instantMix => 'Mix tức thì';
+
+  @override
+  String get noInstantMix => 'Máy chủ không có mix cho mục này.';
+
+  @override
+  String get recentlyPlayed => 'Nghe gần đây';
 }

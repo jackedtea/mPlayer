@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../sources/media_source.dart';
 import '../../remote/remote_client.dart';
 import '../../remote/remote_discovery.dart';
 import '../../remote/remote_protocol.dart';
@@ -236,6 +237,25 @@ class RemoteSession extends Notifier<RemoteSessionState> {
         serverId: serverId,
         itemId: itemId,
         fromStart: fromStart,
+      ),
+    );
+    return true;
+  }
+
+  /// The same, for a whole queue. False as [playOnReceiver] is.
+  bool playQueueOnReceiver(
+    String serverId,
+    List<MediaRef> items,
+    int index,
+  ) {
+    if (!state.connected || serverId.isEmpty) return false;
+    _client?.send(
+      RemoteCommand.playQueue(
+        serverId: serverId,
+        items: <(String, String)>[
+          for (final MediaRef item in items) (item.itemId, item.title),
+        ],
+        index: index,
       ),
     );
     return true;

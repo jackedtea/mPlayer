@@ -39,6 +39,7 @@ class MusicTile extends ConsumerWidget {
     required this.side,
     this.caption,
     this.artWidth = 300,
+    this.onTap,
   });
 
   final ServerItem item;
@@ -50,6 +51,9 @@ class MusicTile extends ConsumerWidget {
   /// How wide a picture to ask the server for.
   final int artWidth;
 
+  /// Null opens the item. A row of songs plays instead.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PosterTile(
@@ -59,7 +63,7 @@ class MusicTile extends ConsumerWidget {
       posterHeight: side,
       caption: caption,
       placeholderIcon: musicPlaceholderIcon(item),
-      onTap: () => openServerItem(context, item),
+      onTap: onTap ?? () => openServerItem(context, item),
     );
   }
 }
@@ -71,13 +75,18 @@ class MusicTile extends ConsumerWidget {
 class MusicShelf extends ConsumerWidget {
   const MusicShelf({
     super.key,
-    required this.title,
     required this.items,
+    this.title,
     this.captionOf,
+    this.onTap,
   });
 
-  final String title;
+  /// Null where the caller draws its own heading.
+  final String? title;
   final List<ServerItem> items;
+
+  /// What tapping the tile at an index does. Null opens the item.
+  final void Function(int index)? onTap;
 
   /// The line under each tile's title. Null reserves none.
   final String? Function(ServerItem item)? captionOf;
@@ -89,17 +98,21 @@ class MusicShelf extends ConsumerWidget {
     final spacing = context.spacing;
     final television = ref.watch(isTelevisionProvider);
     final caption = captionOf;
+    final heading = title;
+    final tap = onTap;
 
     return Padding(
-      padding: EdgeInsets.only(top: spacing.xl),
+      padding: EdgeInsets.only(top: heading == null ? 0 : spacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(
-            padding: spacing.screenPadding(context.windowSize),
-            child: Text(title, style: context.texts.titleMedium),
-          ),
-          SizedBox(height: spacing.sm),
+          if (heading != null) ...<Widget>[
+            Padding(
+              padding: spacing.screenPadding(context.windowSize),
+              child: Text(heading, style: context.texts.titleMedium),
+            ),
+            SizedBox(height: spacing.sm),
+          ],
           LayoutBuilder(
             builder: (context, constraints) {
               final m = ShelfMetrics.of(
@@ -128,6 +141,7 @@ class MusicShelf extends ConsumerWidget {
                     // fact stays as tall as its neighbours.
                     caption: caption == null ? null : caption(items[i]) ?? '',
                     artWidth: 400,
+                    onTap: tap == null ? null : () => tap(i),
                   ),
                 ),
               );

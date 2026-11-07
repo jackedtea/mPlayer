@@ -1032,5 +1032,62 @@ void main() {
       expect(songs['MediaType'], 'Audio');
       expect(films['MediaType'], 'Video');
     });
+
+    test('an instant mix is asked of the item, whatever it is', () async {
+      final (source, adapter) = empty();
+
+      await source.instantMix('al1', limit: 50);
+
+      final request = adapter.requests.single.uri;
+      expect(request.path, '/Items/al1/InstantMix');
+      expect(request.queryParameters['limit'], '50');
+    });
+
+    test('recently played is songs actually played, newest first', () async {
+      final (source, adapter) = empty();
+
+      await source.recentlyPlayedTracks();
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['includeItemTypes'], 'Audio');
+      expect(query['filters'], 'IsPlayed');
+      expect(query['sortBy'], 'DatePlayed');
+      expect(query['sortOrder'], 'Descending');
+    });
+
+    test('searching artists uses their own route', () async {
+      final (source, adapter) = empty();
+
+      await source.search(
+        'daft',
+        kinds: const <ServerItemKind>{ServerItemKind.musicArtist},
+      );
+
+      final request = adapter.requests.single.uri;
+      expect(request.path, '/Artists');
+      expect(request.queryParameters['searchTerm'], 'daft');
+    });
+
+    test('searching songs and albums asks for them by type', () async {
+      final (source, adapter) = empty();
+
+      await source.search(
+        'daft',
+        kinds: const <ServerItemKind>{ServerItemKind.audio},
+      );
+      await source.search(
+        'daft',
+        kinds: const <ServerItemKind>{ServerItemKind.musicAlbum},
+      );
+
+      expect(
+        adapter.requests.first.uri.queryParameters['includeItemTypes'],
+        'Audio',
+      );
+      expect(
+        adapter.requests.last.uri.queryParameters['includeItemTypes'],
+        'MusicAlbum',
+      );
+    });
   });
 }

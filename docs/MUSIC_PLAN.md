@@ -1,8 +1,8 @@
 # Music — Implementation Plan
 
-> Status: **M1 is built** (2026-11-07), steps 1–5 of the order of work below.
-> Not yet tried on a device. The controller's `queueNext`, `addToQueue`,
-> `moveInQueue` and `removeFromQueue` wait for the M2 queue sheet. The section
+> Status: **M1 and M2 are built** (2026-11-07), not yet tried on a device or
+> against a real server. Windows SMTC and Linux MPRIS were looked at and
+> deferred (see M2). A cast song does not follow the queue on to the next. The section
 > "Where the app stands today" describes the app before step 1. `../CLAUDE.md`
 > stays the description of the code as it is.
 
@@ -129,10 +129,11 @@ three breakpoints (no overflow), `l10n_test` (new keys in both ARBs).
   `PlaybackService.kt` fetches it (or Dart sends bytes) into
   `METADATA_KEY_ALBUM_ART` + `setLargeIcon`; add `METADATA_KEY_ALBUM`.
   Kotlin still decides nothing.
-- **Windows SMTC / Linux MPRIS**: media keys work today only while focused;
-  a system media overlay is the desktop equivalent of the notification.
-  Evaluate `audio_service`-free options (`smtc_windows`, `mpris_service`)
-  against the "no needless dependency" habit — or defer.
+- **Windows SMTC / Linux MPRIS**: **deferred.** Media keys work today only
+  while focused; a system media overlay is the desktop equivalent of the
+  notification. `smtc_windows` brings a Rust toolchain into every build and
+  `mpris_service` a D-Bus client, for a convenience on the platforms where the
+  window is usually in reach. Worth it when someone asks.
 - **Home**: a "Recently added in Music" row (album squares) instead of
   dropping music in `serverLatestProvider`; "Recently played" from
   `SortBy=DatePlayed&IncludeItemTypes=Audio`. Still respects

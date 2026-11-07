@@ -231,6 +231,10 @@ class RemoteReceiver extends Notifier<RemoteReceiverState>
     return RemoteSnapshot(
       title: media?.title,
       subtitle: media?.sourceLine,
+      artist: media?.artist,
+      album: media?.album,
+      queueIndex: playback.queue.index,
+      queueLength: playback.queue.items.length,
       itemId: media?.ref.itemId,
       serverId: media != null && active?.id == media.ref.sourceId
           ? active!.serverId
@@ -356,10 +360,33 @@ class RemoteReceiver extends Notifier<RemoteReceiverState>
       return (RemoteErrorCode.playFailed, e.message);
     }
 
+    final queue = command.queueIds.isEmpty
+        ? null
+        : PlaybackQueue(
+            items: <MediaRef>[
+              for (final (int i, String id) in command.queueIds.indexed)
+                MediaRef(
+                  sourceId: active.id,
+                  itemId: id,
+                  title: command.queueTitles[i],
+                ),
+            ],
+            index: command.queueIndex,
+            kind: media.isAudio
+                ? PlaybackQueueKind.music
+                : PlaybackQueueKind.single,
+          );
+
     if (_playerShowing && ref.read(playbackControllerProvider).hasMedia) {
-      await ref.read(playbackControllerProvider.notifier).openInstead(media);
+      await ref
+          .read(playbackControllerProvider.notifier)
+          .openInstead(media, queue: queue);
     } else {
-      unawaited(ref.read(audioSessionProvider.notifier).present(router, media));
+      unawaited(
+        ref
+            .read(audioSessionProvider.notifier)
+            .present(router, media, queue: queue),
+      );
     }
     return null;
   }

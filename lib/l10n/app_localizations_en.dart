@@ -2186,4 +2186,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get repeatAll => 'Repeating the queue';
+
+  @override
+  String get playNextInQueue => 'Play next';
+
+  @override
+  String get addToQueue => 'Add to queue';
+
+  @override
+  String get addedToQueue => 'Added to queue';
+
+  @override
+  String get removeFromQueue => 'Remove from queue';
+
+  @override
+  String get instantMix => 'Instant mix';
+
+  @override
+  String get noInstantMix => 'The server has no mix for this.';
+
+  @override
+  String get recentlyPlayed => 'Recently played';
 }

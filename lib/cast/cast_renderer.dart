@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'package:flutter/foundation.dart';
 import 'cast_device.dart';
 
 /// Thrown when a device refuses or cannot be reached.
@@ -37,6 +38,7 @@ abstract class CastRenderer {
     required String title,
     String contentType = 'video/mp4',
     Duration position = Duration.zero,
+    CastTrackInfo? track,
   });
 
   Future<void> play();
@@ -51,4 +53,16 @@ abstract class CastRenderer {
   Future<CastStatus> status();
 
   Future<void> dispose();
+}
+
+/// What a device shows for a song. Null [CastTrackInfo] is a video.
+@immutable
+class CastTrackInfo {
+  const CastTrackInfo({this.artist, this.album, this.artUrl});
+
+  final String? artist;
+  final String? album;
+
+  /// Fetched by the device itself, so it has to be reachable from there.
+  final Uri? artUrl;
 }

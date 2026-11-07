@@ -1,5 +1,7 @@
 package dev.icedtea.mplayer
 
+import android.net.Uri
+import com.google.android.gms.common.images.WebImage
 import android.app.Activity
 import android.util.Log
 import androidx.mediarouter.media.MediaRouteSelector
@@ -264,11 +266,17 @@ class CastChannel(
             return
         }
 
-        val metadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE).apply {
+        val music = arguments["music"] == true
+        val metadata = MediaMetadata(
+            if (music) MediaMetadata.MEDIA_TYPE_MUSIC_TRACK else MediaMetadata.MEDIA_TYPE_MOVIE,
+        ).apply {
             putString(
                 MediaMetadata.KEY_TITLE,
                 arguments["title"] as? String ?: "Video",
             )
+            (arguments["artist"] as? String)?.let { putString(MediaMetadata.KEY_ARTIST, it) }
+            (arguments["album"] as? String)?.let { putString(MediaMetadata.KEY_ALBUM_TITLE, it) }
+            (arguments["artUrl"] as? String)?.let { addImage(WebImage(Uri.parse(it))) }
         }
 
         val info = MediaInfo.Builder(url)

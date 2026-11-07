@@ -14,6 +14,7 @@ import '../../servers/media_library_source.dart';
 import '../../downloads/download_models.dart';
 import '../../downloads/downloads_controller.dart';
 import '../downloads/download_ui.dart';
+import '../music/music_actions.dart';
 import 'server_library.dart';
 
 /// The playlists the signed-in user owns.
@@ -378,6 +379,23 @@ List<ItemAction> itemActionsFor(
         ),
       ),
     ),
+    if (item.kind.isMusic) ...<ItemAction>[
+      ItemAction(
+        icon: Icons.queue_play_next_rounded,
+        label: l10n.playNextInQueue,
+        onSelected: () => queueMusicItem(context, ref, item, next: true),
+      ),
+      ItemAction(
+        icon: Icons.add_to_queue_rounded,
+        label: l10n.addToQueue,
+        onSelected: () => queueMusicItem(context, ref, item, next: false),
+      ),
+      ItemAction(
+        icon: Icons.auto_awesome_rounded,
+        label: l10n.instantMix,
+        onSelected: () => playInstantMix(context, ref, item.id),
+      ),
+    ],
     if (shuffleFrom.isNotEmpty)
       ItemAction(
         icon: Icons.shuffle_rounded,
@@ -401,9 +419,12 @@ List<ItemAction> itemActionsFor(
         label: l10n.mediaInfo,
         onSelected: onMediaInfo,
       ),
-    downloadAll.isEmpty
-        ? _downloadAction(context, ref, item)
-        : _downloadAllAction(context, ref, downloadAll),
+    // An artist is not a file, and "everything by them" is not a thing to
+    // start with one press.
+    if (item.kind != ServerItemKind.musicArtist)
+      downloadAll.isEmpty
+          ? _downloadAction(context, ref, item)
+          : _downloadAllAction(context, ref, downloadAll),
   ];
 }
 

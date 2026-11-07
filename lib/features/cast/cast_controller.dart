@@ -155,8 +155,17 @@ class CastController extends Notifier<CastState> {
       await renderer.load(
         url,
         title: media.title,
-        contentType: contentTypeFor(media.title),
+        contentType: media.isAudio
+            ? audioContentTypeFor(url)
+            : contentTypeFor(media.title),
         position: from,
+        track: media.isAudio
+            ? CastTrackInfo(
+                artist: media.artist,
+                album: media.album,
+                artUrl: media.artworkUri,
+              )
+            : null,
       );
 
       _renderer = renderer;
@@ -305,6 +314,24 @@ class CastController extends Notifier<CastState> {
 /// A television decides whether it can play a stream from this, so guessing
 /// `video/mp4` for an unknown container is the useful default: it makes the
 /// device try, where `application/octet-stream` makes many refuse outright.
+String audioContentTypeFor(Uri url) {
+  // A song's title says nothing about its file. The stream's address does:
+  // a direct play names its container, and a re-encode is a playlist.
+  if (url.path.endsWith('.m3u8')) return 'application/x-mpegURL';
+
+  final container = url.queryParameters['container']?.split(',').first;
+  return switch (container?.toLowerCase()) {
+    'flac' => 'audio/flac',
+    'm4a' || 'm4b' || 'mp4' || 'alac' => 'audio/mp4',
+    'aac' => 'audio/aac',
+    'ogg' || 'oga' || 'opus' => 'audio/ogg',
+    'webma' || 'webm' => 'audio/webm',
+    'wav' => 'audio/wav',
+    'wma' || 'asf' => 'audio/x-ms-wma',
+    _ => 'audio/mpeg',
+  };
+}
+
 String contentTypeFor(String name) {
   return switch (p.extension(name).toLowerCase()) {
     '.mkv' => 'video/x-matroska',

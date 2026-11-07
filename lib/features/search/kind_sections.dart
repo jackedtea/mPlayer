@@ -10,7 +10,9 @@ import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../widgets/section_header.dart';
+import '../music/music_widgets.dart';
 import '../servers/detail_sections.dart';
+import '../servers/server_library.dart';
 import '../servers/shelves.dart';
 
 /// Movies, Shows, Episodes and People, each a row that scrolls sideways —
@@ -20,7 +22,10 @@ import '../servers/shelves.dart';
 /// A kind with nothing in it is not drawn. With nothing at all, [emptyText]
 /// is said once every kind has answered, and a spinner until then: "nothing"
 /// while three requests are still out is wrong more often than it is right.
-class KindSections extends StatelessWidget {
+///
+/// Music only where the caller asks for it, which Search does and the
+/// Favorites page does not yet.
+class KindSections extends ConsumerWidget {
   const KindSections({
     super.key,
     required this.movies,
@@ -28,27 +33,44 @@ class KindSections extends StatelessWidget {
     required this.episodes,
     required this.people,
     required this.emptyText,
+    this.albums = _nothing,
+    this.artists = _nothing,
+    this.songs = _nothing,
   });
+
+  static const _nothing = AsyncValue<List<ServerItem>>.data(<ServerItem>[]);
 
   final AsyncValue<List<ServerItem>> movies;
   final AsyncValue<List<ServerItem>> shows;
   final AsyncValue<List<ServerItem>> episodes;
   final AsyncValue<List<ServerPerson>> people;
+  final AsyncValue<List<ServerItem>> albums;
+  final AsyncValue<List<ServerItem>> artists;
+  final AsyncValue<List<ServerItem>> songs;
   final String emptyText;
 
   static bool _has<T>(AsyncValue<List<T>> v) => v.value?.isNotEmpty ?? false;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final spacing = context.spacing;
 
     final loading = movies.isLoading ||
         shows.isLoading ||
         episodes.isLoading ||
-        people.isLoading;
+        people.isLoading ||
+        albums.isLoading ||
+        artists.isLoading ||
+        songs.isLoading;
     final anything =
-        _has(movies) || _has(shows) || _has(episodes) || _has(people);
+        _has(movies) ||
+        _has(shows) ||
+        _has(episodes) ||
+        _has(people) ||
+        _has(albums) ||
+        _has(artists) ||
+        _has(songs);
 
     if (!anything) {
       return loading
@@ -90,6 +112,28 @@ class KindSections extends StatelessWidget {
           section(l10n.searchEpisodes, ServerCardShelf(items: episodes)),
         if (_has(people))
           section(l10n.searchPeople, PeopleStrip(people: people.value!)),
+        if (_has(albums))
+          section(
+            l10n.tabAlbums,
+            MusicShelf(
+              items: albums.value!,
+              captionOf: (album) => album.artistLine,
+            ),
+          ),
+        if (_has(artists))
+          section(l10n.tabArtists, MusicShelf(items: artists.value!)),
+        if (_has(songs))
+          section(
+            l10n.tabSongs,
+            MusicShelf(
+              items: songs.value!,
+              captionOf: (song) => song.artistLine,
+              // Played, unlike the tiles above: a song found by name is
+              // wanted now, and its album is one more tap away from that.
+              onTap: (i) =>
+                  playMusicQueue(context, ref, songs.value!, startIndex: i),
+            ),
+          ),
         // A section still on its way, under the ones that have arrived.
         if (loading)
           const Padding(

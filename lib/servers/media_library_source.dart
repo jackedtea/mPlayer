@@ -891,6 +891,12 @@ abstract class MediaLibrarySource {
   /// Albums [artistId] is credited on without being their album artist.
   Future<List<ServerItem>> artistAppearsOn(String artistId);
 
+  /// The server's mix built around a track, album, artist or genre.
+  Future<List<ServerItem>> instantMix(String itemId, {int limit = 100});
+
+  /// The tracks this user played last, newest first.
+  Future<List<ServerItem>> recentlyPlayedTracks({int limit = 20});
+
   /// Artwork, or null when the item has none.
   Uri? imageUrl(ServerItem item, {int? maxWidth});
 

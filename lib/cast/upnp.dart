@@ -11,6 +11,7 @@
 /// television and nothing on the next.
 library;
 
+import 'cast_renderer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:xml/xml.dart';
 
@@ -178,14 +179,25 @@ String didlMetadata({
   required String title,
   required Uri url,
   String contentType = 'video/mp4',
+  CastTrackInfo? track,
 }) {
+  final artist = track?.artist;
+  final album = track?.album;
+  final art = track?.artUrl;
+
   return '<DIDL-Lite '
       'xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" '
       'xmlns:dc="http://purl.org/dc/elements/1.1/" '
       'xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">'
       '<item id="0" parentID="-1" restricted="1">'
       '<dc:title>${escapeXml(title)}</dc:title>'
-      '<upnp:class>object.item.videoItem</upnp:class>'
+      '<upnp:class>'
+      '${track == null ? 'object.item.videoItem' : 'object.item.audioItem.musicTrack'}'
+      '</upnp:class>'
+      '${artist == null ? '' : '<dc:creator>${escapeXml(artist)}</dc:creator>'}'
+      '${artist == null ? '' : '<upnp:artist>${escapeXml(artist)}</upnp:artist>'}'
+      '${album == null ? '' : '<upnp:album>${escapeXml(album)}</upnp:album>'}'
+      '${art == null ? '' : '<upnp:albumArtURI>${escapeXml(art.toString())}</upnp:albumArtURI>'}'
       // DLNA.ORG_OP=01 says the file may be seeked by byte range, which is
       // what turns the television's scrubber on.
       '<res protocolInfo="http-get:*:$contentType:DLNA.ORG_OP=01">'

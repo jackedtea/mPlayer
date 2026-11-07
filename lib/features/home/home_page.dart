@@ -20,6 +20,7 @@ import '../../widgets/gradient_art.dart';
 import '../../widgets/remote_art.dart';
 import '../../widgets/section_header.dart';
 import '../servers/pin_lock.dart';
+import '../music/music_widgets.dart';
 import '../servers/server_library.dart';
 import '../servers/servers_empty_page.dart';
 import '../servers/servers_list_page.dart';
@@ -114,12 +115,15 @@ class HomePage extends ConsumerWidget {
                 items: ref.watch(homeFavouritesProvider),
                 onSeeAll: () => context.go('/home/favorites'),
               ),
+            const _RecentMusic(),
             for (final LibraryView view
                 in homeLibraries(views.value ?? const <LibraryView>[]))
               if (!excluded.contains(view.id))
                 _Section(
                   title: l10n.recentlyAddedIn(view.name),
                   items: ref.watch(latestInViewProvider(view.id)),
+                  // Albums are square, and in a film's box lose their sides.
+                  square: view.kind == 'music',
                 ),
           ],
         ),
@@ -148,6 +152,7 @@ class _Section extends StatelessWidget {
     required this.title,
     required this.items,
     this.cards = false,
+    this.square = false,
     this.onSeeAll,
   });
 
@@ -156,6 +161,9 @@ class _Section extends StatelessWidget {
 
   /// Resume-style cards rather than posters.
   final bool cards;
+
+  /// Square album tiles rather than posters.
+  final bool square;
 
   /// Where the header's "See all" goes; null draws no action.
   final VoidCallback? onSeeAll;
@@ -178,8 +186,41 @@ class _Section extends StatelessWidget {
           ),
           if (cards)
             ServerCardShelf(items: items)
+          else if (square)
+            MusicShelf(
+              items: items.value ?? const <ServerItem>[],
+              captionOf: (album) => album.artistLine,
+            )
           else
             ServerPosterShelf(items: items),
+        ],
+      ),
+    );
+  }
+}
+
+/// The songs played last. Tapping one plays on from it through the row,
+/// which is what someone back for more of the same wants.
+class _RecentMusic extends ConsumerWidget {
+  const _RecentMusic();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items =
+        ref.watch(homeRecentMusicProvider).value ?? const <ServerItem>[];
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: EdgeInsets.only(top: context.spacing.sectionGap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SectionHeader(title: AppLocalizations.of(context).recentlyPlayed),
+          MusicShelf(
+            items: items,
+            captionOf: (song) => song.artistLine,
+            onTap: (i) => playMusicQueue(context, ref, items, startIndex: i),
+          ),
         ],
       ),
     );

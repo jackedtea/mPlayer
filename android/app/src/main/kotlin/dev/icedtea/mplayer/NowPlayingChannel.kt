@@ -98,6 +98,14 @@ class NowPlayingChannel(
                 arguments?.get("subtitle") as? String ?: "",
             )
             .putExtra(
+                PlaybackService.EXTRA_ALBUM,
+                arguments?.get("album") as? String ?: "",
+            )
+            .putExtra(
+                PlaybackService.EXTRA_ART_URL,
+                arguments?.get("artUrl") as? String ?: "",
+            )
+            .putExtra(
                 PlaybackService.EXTRA_PLAYING,
                 arguments?.get("playing") as? Boolean ?: false,
             )

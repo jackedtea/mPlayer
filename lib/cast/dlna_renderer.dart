@@ -44,6 +44,7 @@ class DlnaRenderer implements CastRenderer {
     required String title,
     String contentType = 'video/mp4',
     Duration position = Duration.zero,
+    CastTrackInfo? track,
   }) async {
     // Stop first: a renderer already showing something rejects a new URI
     // often enough that setting it blind loses the cast on the second file.
@@ -54,7 +55,12 @@ class DlnaRenderer implements CastRenderer {
       ('CurrentURI', url.toString()),
       (
         'CurrentURIMetaData',
-        didlMetadata(title: title, url: url, contentType: contentType),
+        didlMetadata(
+          title: title,
+          url: url,
+          contentType: contentType,
+          track: track,
+        ),
       ),
     ]);
 

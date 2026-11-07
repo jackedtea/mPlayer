@@ -3997,6 +3997,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Repeating the queue'**
   String get repeatAll;
+
+  /// No description provided for @playNextInQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Play next'**
+  String get playNextInQueue;
+
+  /// No description provided for @addToQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to queue'**
+  String get addToQueue;
+
+  /// No description provided for @addedToQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to queue'**
+  String get addedToQueue;
+
+  /// No description provided for @removeFromQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from queue'**
+  String get removeFromQueue;
+
+  /// No description provided for @instantMix.
+  ///
+  /// In en, this message translates to:
+  /// **'Instant mix'**
+  String get instantMix;
+
+  /// No description provided for @noInstantMix.
+  ///
+  /// In en, this message translates to:
+  /// **'The server has no mix for this.'**
+  String get noInstantMix;
+
+  /// No description provided for @recentlyPlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently played'**
+  String get recentlyPlayed;
 }
 
 class _AppLocalizationsDelegate

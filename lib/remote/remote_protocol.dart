@@ -337,6 +337,10 @@ class RemoteSnapshot {
     this.skipBack = const Duration(seconds: 10),
     this.skipForward = const Duration(seconds: 10),
     this.error,
+    this.artist,
+    this.album,
+    this.queueIndex = 0,
+    this.queueLength = 0,
   });
 
   /// Null while nothing is open on the receiver.
@@ -370,6 +374,14 @@ class RemoteSnapshot {
   /// The player's own error line, if playback failed.
   final String? error;
 
+  /// For a song; null for a video, whose [subtitle] says how it is playing.
+  final String? artist;
+  final String? album;
+
+  /// Where in its queue this is. A length of 0 or 1 is no queue worth saying.
+  final int queueIndex;
+  final int queueLength;
+
   bool get hasMedia => title != null;
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -385,6 +397,10 @@ class RemoteSnapshot {
         'volume': volume,
         'hasPrevious': hasPrevious,
         'hasNext': hasNext,
+        'artist': artist,
+        'album': album,
+        'queueIndex': queueIndex,
+        'queueLength': queueLength,
         'audio': <Object?>[for (final t in audioTracks) t.toJson()],
         'subtitles': <Object?>[for (final t in subtitleTracks) t.toJson()],
         'activeAudio': activeAudio,
@@ -425,6 +441,16 @@ class RemoteSnapshot {
       },
       hasPrevious: json['hasPrevious'] == true,
       hasNext: json['hasNext'] == true,
+      artist: text('artist'),
+      album: text('album'),
+      queueIndex: switch (json['queueIndex']) {
+        final int n => n,
+        _ => 0,
+      },
+      queueLength: switch (json['queueLength']) {
+        final int n => n,
+        _ => 0,
+      },
       audioTracks: tracks('audio'),
       subtitleTracks: tracks('subtitles'),
       activeAudio: text('activeAudio'),
@@ -448,6 +474,10 @@ class RemoteSnapshot {
         volume == other.volume &&
         hasPrevious == other.hasPrevious &&
         hasNext == other.hasNext &&
+        artist == other.artist &&
+        album == other.album &&
+        queueIndex == other.queueIndex &&
+        queueLength == other.queueLength &&
         listEquals(audioTracks, other.audioTracks) &&
         listEquals(subtitleTracks, other.subtitleTracks) &&
         activeAudio == other.activeAudio &&
@@ -492,9 +522,49 @@ class RemoteCommand {
     this.serverId,
     this.itemId,
     this.fromStart = false,
+    this.queueIds = const <String>[],
+    this.queueTitles = const <String>[],
+    this.queueIndex = 0,
   });
 
+  /// "Play this list", from the item at [index].
+  ///
+  /// [items] are (id, title). Long queues are cut to a window around [index]:
+  /// a message has a size limit, and what is near the current song is what
+  /// anyone gets to before queuing something else. Titles go too, or the
+  /// receiver's queue would be a list of blanks until each song was reached.
+  factory RemoteCommand.playQueue({
+    required String serverId,
+    required List<(String, String)> items,
+    required int index,
+  }) {
+    final first = (index - 50).clamp(0, items.length);
+    final window = items.skip(first).take(maxQueueItems).toList();
+    return RemoteCommand(
+      RemoteCommandKind.playItem,
+      serverId: serverId,
+      itemId: items[index].$1,
+      queueIds: <String>[for (final (String id, String _) in window) id],
+      queueTitles: <String>[
+        for (final (String _, String title) in window)
+          title.length > 80 ? title.substring(0, 80) : title,
+      ],
+      queueIndex: index - first,
+    );
+  }
+
+  /// Fits [RemoteProtocol.maxMessageBytes] with room to spare, at 32 characters
+  /// an id and 80 a title.
+  static const maxQueueItems = 300;
+
   final RemoteCommandKind kind;
+
+  /// [RemoteCommandKind.playItem]: what follows, with [itemId] at [queueIndex].
+  /// Empty plays the item alone. A receiver that predates these reads [itemId]
+  /// and plays that, which is still the song that was asked for.
+  final List<String> queueIds;
+  final List<String> queueTitles;
+  final int queueIndex;
 
   /// [RemoteCommandKind.seek]'s target, or [RemoteCommandKind.skip]'s delta.
   final Duration? at;
@@ -518,6 +588,11 @@ class RemoteCommand {
         if (serverId != null) 'serverId': serverId,
         if (itemId != null) 'itemId': itemId,
         if (fromStart) 'fromStart': true,
+        if (queueIds.isNotEmpty) ...<String, Object?>{
+          'queueIds': queueIds,
+          'queueTitles': queueTitles,
+          'queueIndex': queueIndex,
+        },
       };
 
   /// Null for an unknown command, or one missing what its kind needs.
@@ -530,6 +605,16 @@ class RemoteCommand {
     final track = json['track'];
     final serverId = json['serverId'];
     final itemId = json['itemId'];
+    final queueIds = _strings(json['queueIds']);
+    final queueTitles = _strings(json['queueTitles']);
+    final queueIndex = json['queueIndex'];
+    // A queue that does not line up is dropped, and the one item plays.
+    final queueFits =
+        queueTitles.length == queueIds.length &&
+        queueIndex is int &&
+        queueIndex >= 0 &&
+        queueIndex < queueIds.length &&
+        queueIds[queueIndex] == itemId;
 
     final command = RemoteCommand(
       kind,
@@ -539,6 +624,9 @@ class RemoteCommand {
       serverId: serverId is String ? serverId : null,
       itemId: itemId is String ? itemId : null,
       fromStart: json['fromStart'] == true,
+      queueIds: queueFits ? queueIds : const <String>[],
+      queueTitles: queueFits ? queueTitles : const <String>[],
+      queueIndex: queueFits ? queueIndex : 0,
     );
 
     final complete = switch (kind) {
@@ -551,6 +639,9 @@ class RemoteCommand {
     };
     return complete ? command : null;
   }
+
+  static List<String> _strings(Object? raw) =>
+      raw is List ? raw.whereType<String>().toList() : const <String>[];
 }
 
 /// Why a receiver could not do what it was asked. The phone turns each into

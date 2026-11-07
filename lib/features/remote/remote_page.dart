@@ -368,11 +368,20 @@ class _ControlsState extends ConsumerState<_Controls> {
           .add(EdgeInsets.symmetric(vertical: spacing.lg)),
       children: <Widget>[
         Text(s.title ?? '', style: text.headlineSmall),
-        if (s.subtitle != null) ...<Widget>[
+        // A song's artist and album say what it is; how it is being streamed
+        // is the question for a film.
+        if (_creditsOf(s) ?? s.subtitle case final String line) ...<Widget>[
           SizedBox(height: spacing.xs),
           Text(
-            s.subtitle!,
+            line,
             style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
+        if (s.queueLength > 1) ...<Widget>[
+          SizedBox(height: spacing.xs),
+          Text(
+            '${s.queueIndex + 1} / ${s.queueLength}',
+            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
         if (s.error != null) ...<Widget>[
@@ -605,4 +614,10 @@ class RemoteBar extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// "Daft Punk · Discovery" for a song; null for a video.
+String? _creditsOf(RemoteSnapshot s) {
+  final parts = <String>[?s.artist, ?s.album];
+  return parts.isEmpty ? null : parts.join(' · ');
 }

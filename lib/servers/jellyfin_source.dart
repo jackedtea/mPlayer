@@ -333,6 +333,17 @@ class JellyfinSource implements MediaLibrarySource {
       ServerItemKind.episode,
     },
   }) async {
+    // Artists have a route of their own, as they do in a library listing.
+    if (kinds.length == 1 && kinds.single == ServerItemKind.musicArtist) {
+      final json = await _get('/Artists', <String, String>{
+        'userId': _profile.userId,
+        'searchTerm': query,
+        'limit': '$limit',
+        'fields': _musicFields,
+      });
+      return _itemsOf(json).map(serverItemFromJson).toList();
+    }
+
     final types = _itemTypes(kinds);
     if (types.isEmpty) return const <ServerItem>[];
 
@@ -342,7 +353,7 @@ class JellyfinSource implements MediaLibrarySource {
       'recursive': 'true',
       'includeItemTypes': types,
       'limit': '$limit',
-      'fields': _fields,
+      'fields': kinds.any((k) => k.isMusic) ? _musicFields : _fields,
     });
 
     return _itemsOf(json).map(serverItemFromJson).toList();
@@ -394,6 +405,8 @@ class JellyfinSource implements MediaLibrarySource {
         if (kinds.contains(ServerItemKind.movie)) 'Movie',
         if (kinds.contains(ServerItemKind.series)) 'Series',
         if (kinds.contains(ServerItemKind.episode)) 'Episode',
+        if (kinds.contains(ServerItemKind.audio)) 'Audio',
+        if (kinds.contains(ServerItemKind.musicAlbum)) 'MusicAlbum',
       ].join(',');
 
   @override
@@ -575,6 +588,34 @@ class JellyfinSource implements MediaLibrarySource {
       'recursive': 'true',
       'sortBy': 'PremiereDate,ProductionYear,SortName',
       'sortOrder': 'Descending',
+      'fields': _musicFields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerItem>> instantMix(String itemId, {int limit = 100}) async {
+    final json = await _get('/Items/$itemId/InstantMix', <String, String>{
+      'userId': _profile.userId,
+      'limit': '$limit',
+      'fields': _musicFields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerItem>> recentlyPlayedTracks({int limit = 20}) async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      'includeItemTypes': 'Audio',
+      'recursive': 'true',
+      // Or a track never played sorts in among them with no date at all.
+      'filters': 'IsPlayed',
+      'sortBy': 'DatePlayed',
+      'sortOrder': 'Descending',
+      'limit': '$limit',
       'fields': _musicFields,
     });
 

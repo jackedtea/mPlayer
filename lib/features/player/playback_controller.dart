@@ -303,6 +303,10 @@ class PlaybackController extends Notifier<PlaybackState> {
     state = state.copyWith(queue: state.queue.removedAt(at));
   }
 
+  void clearQueue() {
+    state = state.copyWith(queue: state.queue.clearedUpcoming());
+  }
+
   /// Turns shuffle on or off without touching what is playing.
   void setShuffle(bool on) {
     state = state.copyWith(

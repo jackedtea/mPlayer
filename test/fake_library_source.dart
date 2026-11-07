@@ -219,6 +219,14 @@ class FakeLibrarySource implements MediaLibrarySource {
       const <ServerItem>[];
 
   @override
+  Future<List<ServerItem>> instantMix(String itemId, {int limit = 100}) async =>
+      const <ServerItem>[];
+
+  @override
+  Future<List<ServerItem>> recentlyPlayedTracks({int limit = 20}) async =>
+      const <ServerItem>[];
+
+  @override
   Future<void> reportProgress(
     String itemId, {
     required Duration position,

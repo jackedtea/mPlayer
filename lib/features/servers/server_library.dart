@@ -296,7 +296,34 @@ final latestInViewProvider =
     FutureProvider.family<List<ServerItem>, String>((ref, viewId) async {
   final source = ref.watch(activeServerProvider);
   if (source == null) return const <ServerItem>[];
+
+  // A music library's newest are albums: `items` asks for films and series.
+  final views = await ref.watch(serverViewsProvider.future);
+  if (views.any((v) => v.id == viewId && v.kind == 'music')) {
+    return source.musicItems(
+      viewId,
+      MusicListing.albums,
+      limit: 20,
+      sort: ServerSort.dateAdded,
+    );
+  }
   return source.items(viewId, limit: 20, sort: ServerSort.dateAdded);
+});
+
+/// Home's "Recently played" row: songs, for someone with a music library.
+/// A shelf that cannot fill costs a server with none no request at all.
+final homeRecentMusicProvider = FutureProvider<List<ServerItem>>((ref) async {
+  final source = ref.watch(connectedServerProvider);
+  if (source == null) return const <ServerItem>[];
+
+  final views = await ref.watch(serverViewsProvider.future);
+  if (!views.any((v) => v.kind == 'music')) return const <ServerItem>[];
+
+  try {
+    return await source.recentlyPlayedTracks();
+  } on ServerException {
+    return const <ServerItem>[];
+  }
 });
 
 /// The box sets one library feeds.
@@ -366,6 +393,13 @@ final searchItemsProvider = FutureProvider.family<List<ServerItem>,
   final source = ref.watch(connectedServerProvider);
   final query = key.query.trim();
   if (source == null || query.isEmpty) return const <ServerItem>[];
+
+  // Three more requests on every search are not worth it for a server that
+  // holds no music.
+  if (key.kind.isMusic) {
+    final views = await ref.watch(serverViewsProvider.future);
+    if (!views.any((v) => v.kind == 'music')) return const <ServerItem>[];
+  }
   return source.search(query, limit: 24, kinds: <ServerItemKind>{key.kind});
 });
 
@@ -800,15 +834,38 @@ Future<void> _launchQueue(
 
   final messenger = ScaffoldMessenger.of(context);
   final router = GoRouter.of(context);
+  final session = ref.read(audioSessionProvider.notifier);
 
-  try {
-    final media = await source.resolve(current);
-    await ref
-        .read(audioSessionProvider.notifier)
-        .present(router, media, queue: queue);
-  } on MediaSourceException catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(e.message)));
+  Future<void> playHere() async {
+    try {
+      final media = await source.resolve(current);
+      await session.present(router, media, queue: queue);
+    } on MediaSourceException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
+
+  // While this phone is driving a receiver, the whole queue goes there, as a
+  // single item does in `playServerItem`.
+  final profile = ref.read(serverRegistryProvider).active;
+  final remote = ref.read(remoteSessionProvider);
+  final sent =
+      profile != null &&
+      ref
+          .read(remoteSessionProvider.notifier)
+          .playQueueOnReceiver(profile.serverId, queue.items, queue.index);
+  if (sent) {
+    final l10n = AppLocalizations.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l10n.remoteSentTo(remote.device?.name ?? '')),
+        action: SnackBarAction(label: l10n.remotePlayHere, onPressed: playHere),
+      ),
+    );
+    return;
+  }
+
+  await playHere();
 }
 
 // --------------------------------------------------------------- mapping
@@ -1078,6 +1135,7 @@ Future<void> refreshHome(WidgetRef ref) async {
   ref.invalidate(latestInViewProvider);
   ref.invalidate(homeExcludesProvider);
   ref.invalidate(homeFavouritesProvider);
+  ref.invalidate(homeRecentMusicProvider);
   await ref.read(serverViewsProvider.future);
 }
 

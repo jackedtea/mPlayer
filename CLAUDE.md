@@ -1058,7 +1058,7 @@ the ink-inset arithmetic in them is not worth having twice. `openServerItem` in
 
 ## Music libraries
 
-`docs/MUSIC_PLAN.md` is the plan; M1 is built, and has not been on a device yet. A library
+`docs/MUSIC_PLAN.md` is the plan; M1 and M2 are built, and have not been on a device yet. A library
 whose `CollectionType` is `music` swaps its tabs for **Albums · Artists · Songs · Playlists ·
 Genres** (`_LibraryTab.forKind`), and `lib/features/music/` holds those listings and the
 album and artist screens.
@@ -1085,6 +1085,13 @@ album and artist screens.
 - **A video takes the decoder.** `PlayerPage` awaits `AudioSession.end()` before opening. And
   anything opening waits on a `stop` in flight (`_stopping`), so a song tapped just after leaving
   a film is not wiped by that film's teardown finishing behind it.
+- **A queue sent to a receiver is cut to a window** (`RemoteCommand.playQueue`, 300 around the
+  current song, titles clipped): a remote message has a 64 KB limit. `itemId` still names the song,
+  so a receiver that predates the queue plays that one. Casting has no queue: a song plays on
+  the device and stops there.
+- **The notification fetches its own cover** (`PlaybackService.loadArt`), off the main thread, sampled
+  to 512 px because a bitmap crosses a binder transaction. It redraws when the cover lands, and
+  only if the song has not moved on.
 - **The mini player has two hosts.** A phone's shell draws it above the navigation bar;
   `MiniPlayerHost`, beside the navigator in `app.dart`, draws it everywhere else, because
   `/library` and its album and artist pages sit above the shell. It has no tooltips: beside the

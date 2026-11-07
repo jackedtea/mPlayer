@@ -229,6 +229,9 @@ class _Results extends ConsumerWidget {
       shows: of(ServerItemKind.series),
       episodes: of(ServerItemKind.episode),
       people: ref.watch(searchPeopleProvider(query)),
+      albums: of(ServerItemKind.musicAlbum),
+      artists: of(ServerItemKind.musicArtist),
+      songs: of(ServerItemKind.audio),
       emptyText: AppLocalizations.of(context).noResults,
     );
   }

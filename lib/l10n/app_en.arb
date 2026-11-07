@@ -729,5 +729,12 @@
   "stopPlayback": "Stop",
   "repeatOff": "Repeat is off",
   "repeatOne": "Repeating this song",
-  "repeatAll": "Repeating the queue"
+  "repeatAll": "Repeating the queue",
+  "playNextInQueue": "Play next",
+  "addToQueue": "Add to queue",
+  "addedToQueue": "Added to queue",
+  "removeFromQueue": "Remove from queue",
+  "instantMix": "Instant mix",
+  "noInstantMix": "The server has no mix for this.",
+  "recentlyPlayed": "Recently played"
 }

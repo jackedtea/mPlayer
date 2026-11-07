@@ -11,10 +11,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../cast/cast_device.dart';
 import '../../l10n/app_localizations.dart';
 import '../../sources/media_source.dart';
 import '../../widgets/gradient_art.dart';
 import '../../widgets/remote_art.dart';
+import '../cast/cast_controller.dart';
+import '../cast/cast_sheet.dart';
+import '../cast/casting_overlay.dart';
 import '../player/playback_controller.dart';
 import '../player/playback_state.dart';
 import '../servers/item_actions.dart';
@@ -73,6 +77,21 @@ class NowPlayingPage extends ConsumerWidget {
       );
     }
 
+    // The television is playing it now, and this screen becomes its remote,
+    // as the video player does.
+    final cast = ref.watch(castControllerProvider);
+    if (cast.isCasting) {
+      return CastingOverlay(
+        device: cast.device!,
+        title: media.title,
+        status: cast.status,
+        onPlayPause: ref.read(castControllerProvider.notifier).playOrPause,
+        onSeek: ref.read(castControllerProvider.notifier).seek,
+        onStop: () => ref.read(castControllerProvider.notifier).disconnect(),
+        onBack: () => context.pop(),
+      );
+    }
+
     return Focus(
       onKeyEvent: (_, event) => _onKey(context, ref, event),
       child: Scaffold(
@@ -81,6 +100,11 @@ class NowPlayingPage extends ConsumerWidget {
           title: Text(l10n.nowPlaying),
           actions: <Widget>[
             _FavouriteButton(itemId: media.ref.itemId),
+            IconButton(
+              icon: const Icon(Icons.cast_rounded),
+              tooltip: l10n.playOn,
+              onPressed: () => _pickCastDevice(context, ref, media),
+            ),
             if (compact)
               IconButton(
                 icon: const Icon(Icons.queue_music_rounded),
@@ -99,6 +123,34 @@ class NowPlayingPage extends ConsumerWidget {
                 ],
               ),
       ),
+    );
+  }
+
+  /// Hands the song to a device on the network. Paused here rather than
+  /// stopped, so coming back carries on where the room left off.
+  Future<void> _pickCastDevice(
+    BuildContext context,
+    WidgetRef ref,
+    PlayableMedia media,
+  ) {
+    return CastSheet.show(
+      context,
+      onSelected: (CastDevice device) async {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        final l10n = AppLocalizations.of(context);
+        final from = ref.read(playbackControllerProvider).position;
+
+        await ref.read(playbackControllerProvider.notifier).pause();
+        final started = await ref
+            .read(castControllerProvider.notifier)
+            .castTo(device, media, from: from);
+        if (started) return;
+
+        final error = ref.read(castControllerProvider).error;
+        messenger?.showSnackBar(
+          SnackBar(content: Text(error ?? l10n.couldNotCast)),
+        );
+      },
     );
   }
 
@@ -372,8 +424,9 @@ class _FavouriteButton extends ConsumerWidget {
   }
 }
 
-/// What plays after what. Tapping a row jumps to it; rearranging is for the
-/// queue sheet of the plan's next phase.
+/// What plays after what. Tapping a row jumps to it; the handle rearranges,
+/// and the cross takes a row out. What is playing has no cross: it is stopped
+/// or stepped past, not deleted from under the decoder.
 class _QueueList extends ConsumerStatefulWidget {
   const _QueueList();
 
@@ -404,22 +457,49 @@ class _QueueListState extends ConsumerState<_QueueList> {
     final spacing = context.spacing;
     final padding = EdgeInsets.symmetric(horizontal: spacing.lg);
 
+    // A song can be queued twice, and a reorderable row needs a key of its
+    // own: its id and which time round this is.
+    final seen = <String, int>{};
+    final keys = <Key>[
+      for (final MediaRef item in queue.items)
+        ValueKey<String>(
+          '${item.itemId}#${seen[item.itemId] = (seen[item.itemId] ?? 0) + 1}',
+        ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: padding.copyWith(top: spacing.md, bottom: spacing.sm),
-          child: Text(l10n.queue, style: context.texts.titleMedium),
+          padding: padding.copyWith(top: spacing.sm, bottom: spacing.xs),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(l10n.queue, style: context.texts.titleMedium),
+              ),
+              if (queue.hasSiblings)
+                TextButton(
+                  onPressed: playback.clearQueue,
+                  child: Text(l10n.clearAll),
+                ),
+            ],
+          ),
         ),
         Expanded(
           child: queue.isEmpty
               ? MusicNote(text: l10n.queueEmpty)
-              : ListView.builder(
-                  controller: _scroll,
+              : ReorderableListView.builder(
+                  scrollController: _scroll,
                   itemExtent: _rowHeight,
+                  buildDefaultDragHandles: false,
                   itemCount: queue.items.length,
+                  onReorderItem: playback.moveInQueue,
                   itemBuilder: (context, i) => ListTile(
-                    contentPadding: padding,
+                    key: keys[i],
+                    contentPadding: EdgeInsetsDirectional.only(
+                      start: spacing.lg,
+                      end: spacing.sm,
+                    ),
                     selected: i == queue.index,
                     leading: i == queue.index
                         ? const Icon(Icons.equalizer_rounded)
@@ -431,6 +511,24 @@ class _QueueListState extends ConsumerState<_QueueList> {
                       queue.items[i].title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        if (i != queue.index)
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            tooltip: l10n.removeFromQueue,
+                            onPressed: () => playback.removeFromQueue(i),
+                          ),
+                        ReorderableDragStartListener(
+                          index: i,
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(Icons.drag_handle_rounded),
+                          ),
+                        ),
+                      ],
                     ),
                     onTap: () => playback.playAt(i),
                   ),

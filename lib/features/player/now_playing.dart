@@ -101,6 +101,8 @@ class NowPlayingController extends Notifier<bool> {
   Future<void> update({
     required String title,
     String? subtitle,
+    String? album,
+    String? artUrl,
     required bool playing,
     required Duration position,
     required Duration duration,
@@ -110,7 +112,8 @@ class NowPlayingController extends Notifier<bool> {
   }) async {
     if (!Platform.isAndroid) return;
 
-    final signature = '$title|$subtitle|$playing|${duration.inSeconds}'
+    final signature = '$title|$subtitle|$album|$artUrl|$playing'
+        '|${duration.inSeconds}'
         '|$speed|$hasNext|$hasPrevious';
     final now = DateTime.now();
 
@@ -125,6 +128,11 @@ class NowPlayingController extends Notifier<bool> {
       await _channel.invokeMethod<void>('update', <String, Object?>{
         'title': title,
         'subtitle': subtitle ?? '',
+        'album': album ?? '',
+        // The service fetches this itself and redraws when it lands, so a
+        // slow server costs the notification its picture for a moment and
+        // never holds up the song.
+        'artUrl': artUrl ?? '',
         'playing': playing,
         'positionMs': position.inMilliseconds,
         'durationMs': duration.inMilliseconds,
