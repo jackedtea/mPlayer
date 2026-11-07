@@ -3835,6 +3835,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing is downloaded on this device.'**
   String get downloadsNone;
+
+  /// No description provided for @tabAlbums.
+  ///
+  /// In en, this message translates to:
+  /// **'Albums'**
+  String get tabAlbums;
+
+  /// No description provided for @tabArtists.
+  ///
+  /// In en, this message translates to:
+  /// **'Artists'**
+  String get tabArtists;
+
+  /// No description provided for @tabSongs.
+  ///
+  /// In en, this message translates to:
+  /// **'Songs'**
+  String get tabSongs;
+
+  /// No description provided for @noAlbums.
+  ///
+  /// In en, this message translates to:
+  /// **'No albums here.'**
+  String get noAlbums;
+
+  /// No description provided for @noArtists.
+  ///
+  /// In en, this message translates to:
+  /// **'No artists here.'**
+  String get noArtists;
+
+  /// No description provided for @noSongs.
+  ///
+  /// In en, this message translates to:
+  /// **'No songs here.'**
+  String get noSongs;
+
+  /// No description provided for @musicLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load this from the server.'**
+  String get musicLoadFailed;
+
+  /// No description provided for @sortArtist.
+  ///
+  /// In en, this message translates to:
+  /// **'Artist'**
+  String get sortArtist;
+
+  /// No description provided for @discNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Disc {number}'**
+  String discNumber(int number);
+
+  /// No description provided for @trackCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 song} other{{count} songs}}'**
+  String trackCount(int count);
+
+  /// No description provided for @popularTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular'**
+  String get popularTracks;
+
+  /// No description provided for @seeAllTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get seeAllTracks;
+
+  /// No description provided for @appearsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Appears on'**
+  String get appearsOn;
+
+  /// No description provided for @similarArtists.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar artists'**
+  String get similarArtists;
 }
 
 class _AppLocalizationsDelegate

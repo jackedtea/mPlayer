@@ -129,6 +129,9 @@ class OfflineMediaSource
       isDirectPlay: true,
       defaultAudioIndex: meta.defaultAudioIndex,
       defaultSubtitleIndex: meta.defaultSubtitleIndex,
+      // Artist and cover wait for music downloads (MUSIC_PLAN M3); what the
+      // player needs now is to know a downloaded song is not a film.
+      isAudio: entry.kind == ServerItemKind.audio,
     );
   }
 

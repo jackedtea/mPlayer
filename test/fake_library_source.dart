@@ -154,6 +154,36 @@ class FakeLibrarySource implements MediaLibrarySource {
       const <ServerItem>[];
 
   @override
+  Future<List<ServerItem>> musicItems(
+    String viewId,
+    MusicListing listing, {
+    int startIndex = 0,
+    int limit = 100,
+    ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
+  }) async =>
+      const <ServerItem>[];
+
+  @override
+  Future<int> musicItemCount(String viewId, MusicListing listing) async => 0;
+
+  @override
+  Future<List<ServerItem>> albumTracks(String albumId) async =>
+      const <ServerItem>[];
+
+  @override
+  Future<List<ServerItem>> artistAlbums(String artistId) async =>
+      const <ServerItem>[];
+
+  @override
+  Future<List<ServerItem>> artistTopTracks(
+    String artistId, {
+    int limit = 10,
+  }) async =>
+      const <ServerItem>[];
+
+  @override
   Future<List<ServerItem>> playlists() async => const <ServerItem>[];
 
   @override
@@ -170,7 +200,16 @@ class FakeLibrarySource implements MediaLibrarySource {
   ) async {}
 
   @override
-  Future<String?> createPlaylist(String name, List<String> itemIds) async => null;
+  Future<String?> createPlaylist(
+    String name,
+    List<String> itemIds, {
+    bool audio = false,
+  }) async =>
+      null;
+
+  @override
+  Future<List<ServerItem>> artistAppearsOn(String artistId) async =>
+      const <ServerItem>[];
 
   @override
   Future<void> reportProgress(

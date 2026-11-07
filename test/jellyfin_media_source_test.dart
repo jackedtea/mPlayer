@@ -92,6 +92,14 @@ class _FakeLibrary extends FakeLibrarySource {
   Future<List<MediaSegment>> segments(String itemId) async => segments_;
 
   @override
+  Uri? imageUrl(ServerItem item, {int? maxWidth}) => item.imageTag == null
+      ? null
+      : Uri.parse(
+          'https://media.home.lan/Items/${item.imageOwnerId ?? item.id}'
+          '/Images/Primary?tag=${item.imageTag}&maxWidth=$maxWidth',
+        );
+
+  @override
   Uri? chapterImageUrl(String itemId, ServerChapter chapter, {int? maxWidth}) =>
       chapter.imageTag == null
           ? null
@@ -179,6 +187,62 @@ void main() {
 
       expect(source.capabilities.transcoding, isTrue);
       expect(source.capabilities.reportsWatchState, isTrue);
+    });
+
+    test('a track brings its artist, album and the album cover', () async {
+      // What the mini player, Now playing and the notification show — and
+      // the flag that will keep a song from pushing the video player.
+      final library = _FakeLibrary(
+        item_: const ServerItem(
+          id: 't1',
+          title: 'Lose Yourself to Dance',
+          kind: ServerItemKind.audio,
+          album: 'Random Access Memories',
+          albumId: 'al1',
+          artists: <ServerArtistRef>[
+            ServerArtistRef(name: 'Daft Punk', id: 'ar1'),
+            ServerArtistRef(name: 'Pharrell Williams', id: 'ar2'),
+          ],
+          imageTag: 'cover',
+          imageOwnerId: 'al1',
+        ),
+        playback_: ServerPlayback(
+          uri: Uri.parse('https://media.home.lan/Audio/t1/stream'),
+          isDirectPlay: true,
+        ),
+      );
+
+      final media = await JellyfinMediaSource(library).resolve(
+        const MediaRef(sourceId: 'p1', itemId: 't1', title: ''),
+      );
+
+      expect(media.isAudio, isTrue);
+      expect(media.artist, 'Daft Punk, Pharrell Williams');
+      expect(media.album, 'Random Access Memories');
+      expect(media.artworkUri?.path, '/Items/al1/Images/Primary');
+
+      // Start over must not turn the song back into a video.
+      final restarted = media.startingAt(Duration.zero);
+      expect(restarted.isAudio, isTrue);
+      expect(restarted.artist, media.artist);
+      expect(restarted.artworkUri, media.artworkUri);
+    });
+
+    test('a film is not audio and has no cover art for the player', () async {
+      // The player shows the frame; a poster in its place would be wrong.
+      final library = _FakeLibrary(
+        item_: const ServerItem(id: 'a1', title: 'Dune', imageTag: 'poster'),
+        playback_:
+            ServerPlayback(uri: Uri.parse('https://x'), isDirectPlay: true),
+      );
+
+      final media = await JellyfinMediaSource(library).resolve(
+        const MediaRef(sourceId: 'p1', itemId: 'a1', title: ''),
+      );
+
+      expect(media.isAudio, isFalse);
+      expect(media.artist, isNull);
+      expect(media.artworkUri, isNull);
     });
   });
 

@@ -73,6 +73,10 @@ class ServerItem {
     this.premiereDate,
     this.chapters = const <ServerChapter>[],
     this.trickplay,
+    this.album,
+    this.albumId,
+    this.artists = const <ServerArtistRef>[],
+    this.albumArtists = const <ServerArtistRef>[],
   });
 
   final String id;
@@ -179,6 +183,34 @@ class ServerItem {
   /// The scrubber preview sheets, where the server has generated them.
   final ServerTrickplay? trickplay;
 
+  /// The album a track is on. Null for everything that is not a track.
+  final String? album;
+  final String? albumId;
+
+  /// Who performs a track or an album, in the server's order.
+  ///
+  /// Not [people]: Jellyfin keeps musicians apart from cast and crew, as
+  /// items of their own with an id to open, and a track credited to two
+  /// artists has to offer both.
+  final List<ServerArtistRef> artists;
+
+  /// Whose album it is — what a compilation's tracks share and their
+  /// [artists] do not.
+  final List<ServerArtistRef> albumArtists;
+
+  /// The number on the sleeve. Jellyfin carries it in `IndexNumber`, the
+  /// field an episode numbers itself with, so it lives in [episodeNumber].
+  int? get trackNumber => episodeNumber;
+
+  /// Which disc of a set, from `ParentIndexNumber` — [seasonNumber]'s field.
+  int? get discNumber => seasonNumber;
+
+  /// "Artist A, Artist B", or null with nobody credited.
+  String? get artistLine {
+    final named = artists.isNotEmpty ? artists : albumArtists;
+    return named.isEmpty ? null : named.map((a) => a.name).join(', ');
+  }
+
   bool get isStarted => position != null && position! > Duration.zero;
 
   /// 0..1, or null when there is nothing to draw a bar from.
@@ -200,10 +232,50 @@ enum ServerItemKind {
   video,
   folder,
   collection,
+  musicAlbum,
+  musicArtist,
+
+  /// One track. Named for what the server calls it, `Audio`.
+  audio,
   unknown;
 
   /// Whether tapping this opens a grid of its children rather than a detail.
   bool get isBrowsable => this == folder || this == collection;
+
+  /// Whether this belongs to a music library rather than a video one.
+  bool get isMusic => this == musicAlbum || this == musicArtist || this == audio;
+}
+
+/// An artist as a track or an album credits them: a name, and the item that
+/// opens their page where the server holds one.
+@immutable
+class ServerArtistRef {
+  const ServerArtistRef({required this.name, this.id});
+
+  final String name;
+
+  /// Null where the credit is a bare name — a tag the server never turned
+  /// into an artist item, which has no page to open.
+  final String? id;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ServerArtistRef && other.name == name && other.id == id;
+
+  @override
+  int get hashCode => Object.hash(name, id);
+}
+
+/// What a music library's tabs list.
+enum MusicListing {
+  albums,
+
+  /// Album artists, not everyone credited on a track: a library of
+  /// compilations would otherwise list hundreds of one-song guests.
+  artists,
+
+  /// Every track.
+  tracks,
 }
 
 /// Somebody in the cast strip.
@@ -779,6 +851,33 @@ abstract class MediaLibrarySource {
   /// cannot be filled is simply not drawn.
   Future<List<ServerItem>> similar(String itemId, {int limit = 12});
 
+  /// A page of a music library's albums, artists or tracks, sorted and
+  /// narrowed by the server for the same reasons [items] is.
+  Future<List<ServerItem>> musicItems(
+    String viewId,
+    MusicListing listing, {
+    int startIndex = 0,
+    int limit = 100,
+    ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
+  });
+
+  /// How many [listing] holds in [viewId], counted by the server.
+  Future<int> musicItemCount(String viewId, MusicListing listing);
+
+  /// An album's tracks in play order: disc, then track number.
+  Future<List<ServerItem>> albumTracks(String albumId);
+
+  /// The albums [artistId] made, newest first.
+  Future<List<ServerItem>> artistAlbums(String artistId);
+
+  /// [artistId]'s most played tracks — the "Popular" list on their page.
+  Future<List<ServerItem>> artistTopTracks(String artistId, {int limit = 10});
+
+  /// Albums [artistId] is credited on without being their album artist.
+  Future<List<ServerItem>> artistAppearsOn(String artistId);
+
   /// Artwork, or null when the item has none.
   Uri? imageUrl(ServerItem item, {int? maxWidth});
 
@@ -837,7 +936,14 @@ abstract class MediaLibrarySource {
   Future<void> removeFromPlaylist(String playlistId, List<String> entryIds);
 
   /// Creates a playlist holding [itemIds] and returns its id.
-  Future<String?> createPlaylist(String name, List<String> itemIds);
+  ///
+  /// [audio] files it as a music playlist; a server sorts playlists by media
+  /// type and is told rather than left to work it out from the first item.
+  Future<String?> createPlaylist(
+    String name,
+    List<String> itemIds, {
+    bool audio = false,
+  });
 
   /// Tells the server where playback got to. Called on start, periodically,
   /// and once on stop — the server is the authority on watch state when two
@@ -908,7 +1014,10 @@ enum ServerSort {
   /// The certificate — G before PG before R.
   parentalRating,
 
-  releaseDate;
+  releaseDate,
+
+  /// By album artist. Offered only in a music library.
+  artist;
 
   /// Which way this sort reads when nobody has said otherwise.
   ///
@@ -918,6 +1027,7 @@ enum ServerSort {
   SortOrder get naturalOrder => switch (this) {
         ServerSort.name ||
         ServerSort.releaseDate ||
+        ServerSort.artist ||
         ServerSort.parentalRating =>
           SortOrder.ascending,
         _ => SortOrder.descending,

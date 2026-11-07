@@ -52,10 +52,24 @@ class LibraryOrdering {
 /// All of them except the episode one, which is about a series' newest
 /// episode and says nothing about a film. An entry that cannot mean anything
 /// where it is shown is an entry nobody wanted.
+///
+/// Music has its own short list: a song has no certificate, and nobody rates
+/// an album on the community score a film scraper fills in.
 List<ServerSort> sortsFor(String collectionKind) {
+  if (collectionKind == 'music') {
+    return const <ServerSort>[
+      ServerSort.name,
+      ServerSort.artist,
+      ServerSort.releaseDate,
+      ServerSort.dateAdded,
+      ServerSort.datePlayed,
+      ServerSort.random,
+    ];
+  }
   return <ServerSort>[
     for (final ServerSort sort in ServerSort.values)
-      if (sort != ServerSort.dateEpisodeAdded || collectionKind == 'tvshows')
+      if (sort != ServerSort.artist &&
+          (sort != ServerSort.dateEpisodeAdded || collectionKind == 'tvshows'))
         sort,
   ];
 }
@@ -70,6 +84,7 @@ String sortLabel(ServerSort sort, AppLocalizations l10n) {
     ServerSort.datePlayed => l10n.sortDatePlayed,
     ServerSort.parentalRating => l10n.sortParentalRating,
     ServerSort.releaseDate => l10n.sortReleaseDate,
+    ServerSort.artist => l10n.sortArtist,
   };
 }
 
@@ -159,6 +174,10 @@ class _OptionsDialogState extends ConsumerState<_OptionsDialog> {
         : ref.watch(libraryFilterOptionsProvider(viewId));
     final options = request.value ?? LibraryFilterOptions.empty;
 
+    // Absent rather than disabled, like Status below: nobody "watches" a song,
+    // and subtitles, trailers and certificates are about films.
+    final music = widget.collectionKind == 'music';
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -236,7 +255,10 @@ class _OptionsDialogState extends ConsumerState<_OptionsDialog> {
               _Heading(text: l10n.filters),
               _ChipWrap(
                 children: <Widget>[
-                  for (final ItemFilter flag in ItemFilter.values)
+                  for (final ItemFilter flag
+                      in music
+                          ? const <ItemFilter>[ItemFilter.favourite]
+                          : ItemFilter.values)
                     FilterChip(
                       label: Text(flagLabel(flag, l10n)),
                       selected: _draft.flags.contains(flag),
@@ -268,22 +290,27 @@ class _OptionsDialogState extends ConsumerState<_OptionsDialog> {
                   ],
                 ),
               ],
-              _Heading(text: l10n.filterFeatures),
-              _ChipWrap(
-                children: <Widget>[
-                  for (final ItemFeature feature in ItemFeature.values)
-                    FilterChip(
-                      label: Text(featureLabel(feature, l10n)),
-                      selected: _draft.features.contains(feature),
-                      onSelected: (on) => _edit(
-                        _draft.copyWith(
-                          features:
-                              LibraryFilter.toggled(_draft.features, feature, on),
+              if (!music) ...<Widget>[
+                _Heading(text: l10n.filterFeatures),
+                _ChipWrap(
+                  children: <Widget>[
+                    for (final ItemFeature feature in ItemFeature.values)
+                      FilterChip(
+                        label: Text(featureLabel(feature, l10n)),
+                        selected: _draft.features.contains(feature),
+                        onSelected: (on) => _edit(
+                          _draft.copyWith(
+                            features: LibraryFilter.toggled(
+                              _draft.features,
+                              feature,
+                              on,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
+                  ],
+                ),
+              ],
               SizedBox(height: spacing.sm),
               _ValueSection<String>(
                 title: l10n.filterGenres,
@@ -296,21 +323,22 @@ class _OptionsDialogState extends ConsumerState<_OptionsDialog> {
                   ),
                 ),
               ),
-              _ValueSection<String>(
-                title: l10n.filterParentalRatings,
-                values: options.parentalRatings,
-                chosen: _draft.parentalRatings,
-                label: (v) => v,
-                onToggle: (value, on) => _edit(
-                  _draft.copyWith(
-                    parentalRatings: LibraryFilter.toggled(
-                      _draft.parentalRatings,
-                      value,
-                      on,
+              if (!music)
+                _ValueSection<String>(
+                  title: l10n.filterParentalRatings,
+                  values: options.parentalRatings,
+                  chosen: _draft.parentalRatings,
+                  label: (v) => v,
+                  onToggle: (value, on) => _edit(
+                    _draft.copyWith(
+                      parentalRatings: LibraryFilter.toggled(
+                        _draft.parentalRatings,
+                        value,
+                        on,
+                      ),
                     ),
                   ),
                 ),
-              ),
               _ValueSection<String>(
                 title: l10n.filterTags,
                 values: options.tags,

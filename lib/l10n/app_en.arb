@@ -700,5 +700,21 @@
   "downloadRemoveAll": "Remove all downloads",
   "downloadRemoveAllTitle": "Remove every download?",
   "downloadRemoveAllBody": "Everything saved on this device for offline viewing will be deleted.",
-  "downloadsNone": "Nothing is downloaded on this device."
+  "downloadsNone": "Nothing is downloaded on this device.",
+  "tabAlbums": "Albums",
+  "tabArtists": "Artists",
+  "tabSongs": "Songs",
+  "noAlbums": "No albums here.",
+  "noArtists": "No artists here.",
+  "noSongs": "No songs here.",
+  "musicLoadFailed": "Could not load this from the server.",
+  "sortArtist": "Artist",
+  "discNumber": "Disc {number}",
+  "@discNumber": {"placeholders": {"number": {"type": "int"}}},
+  "trackCount": "{count, plural, =1{1 song} other{{count} songs}}",
+  "@trackCount": {"placeholders": {"count": {"type": "int"}}},
+  "popularTracks": "Popular",
+  "seeAllTracks": "See all",
+  "appearsOn": "Appears on",
+  "similarArtists": "Similar artists"
 }

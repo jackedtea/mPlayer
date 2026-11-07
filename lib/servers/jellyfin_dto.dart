@@ -178,6 +178,13 @@ ServerItem serverItemFromJson(
     // The server dates the end rather than numbering the year, so it is the
     // one field here that has to be parsed out of a timestamp.
     endYear: DateTime.tryParse(json['EndDate'] as String? ?? '')?.year,
+    album: json['Album'] as String?,
+    albumId: json['AlbumId'] as String?,
+    artists: _artistRefs(json['ArtistItems'], json['Artists']),
+    albumArtists: _artistRefs(
+      json['AlbumArtists'],
+      json['AlbumArtist'] is String ? <Object?>[json['AlbumArtist']] : null,
+    ),
     playlistEntryId: json['PlaylistItemId'] as String?,
     premiereDate: DateTime.tryParse(json['PremiereDate'] as String? ?? '')
         ?.toLocal(),
@@ -385,8 +392,10 @@ String? _primaryImageTag(Map<String, dynamic> json) {
   if (tags is Map && tags['Primary'] is String) return tags['Primary'] as String;
 
   // An episode usually has no artwork of its own; the series' image is what
-  // every client shows in its place.
-  final parent = json['SeriesPrimaryImageTag'] ?? json['ParentPrimaryImageTag'];
+  // every client shows in its place. A track is the same with its album.
+  final parent = json['SeriesPrimaryImageTag'] ??
+      json['AlbumPrimaryImageTag'] ??
+      json['ParentPrimaryImageTag'];
   return parent is String ? parent : null;
 }
 
@@ -437,10 +446,38 @@ String? _imageOwnerId(Map<String, dynamic> json) {
   if (json['SeriesPrimaryImageTag'] is String) {
     return json['SeriesId'] as String? ?? json['Id'] as String?;
   }
+  if (json['AlbumPrimaryImageTag'] is String) {
+    return json['AlbumId'] as String? ?? json['Id'] as String?;
+  }
   if (json['ParentPrimaryImageTag'] is String) {
     return json['ParentId'] as String? ?? json['Id'] as String?;
   }
   return json['Id'] as String?;
+}
+
+/// Artist credits from `ArtistItems` / `AlbumArtists` (name and id), else
+/// from the bare names in [names].
+///
+/// The id-bearing list is preferred because it is what opens an artist page;
+/// the names alone are kept for a server that sent nothing else, rather than
+/// showing a track by nobody.
+List<ServerArtistRef> _artistRefs(Object? items, Object? names) {
+  final refs = <ServerArtistRef>[
+    if (items is List)
+      for (final Object? a in items)
+        if (a is Map && (a['Name'] as String? ?? '').trim().isNotEmpty)
+          ServerArtistRef(
+            name: (a['Name'] as String).trim(),
+            id: a['Id'] as String?,
+          ),
+  ];
+  if (refs.isNotEmpty) return refs;
+
+  return <ServerArtistRef>[
+    if (names is List)
+      for (final Object? n in names)
+        if (n is String && n.trim().isNotEmpty) ServerArtistRef(name: n.trim()),
+  ];
 }
 
 ServerItemKind _kindFrom(String? type) {
@@ -452,6 +489,9 @@ ServerItemKind _kindFrom(String? type) {
     'Video' => ServerItemKind.video,
     'BoxSet' => ServerItemKind.collection,
     'Folder' || 'CollectionFolder' => ServerItemKind.folder,
+    'MusicAlbum' => ServerItemKind.musicAlbum,
+    'MusicArtist' => ServerItemKind.musicArtist,
+    'Audio' => ServerItemKind.audio,
     _ => ServerItemKind.unknown,
   };
 }
@@ -480,6 +520,8 @@ String sortByFor(ServerSort sort) {
     ServerSort.datePlayed => 'DatePlayed',
     ServerSort.parentalRating => 'OfficialRating',
     ServerSort.releaseDate => 'PremiereDate',
+    // Then by name, or one artist's albums come back in no order at all.
+    ServerSort.artist => 'AlbumArtist,SortName',
   };
 }
 
@@ -697,6 +739,15 @@ Map<String, dynamic> deviceProfileFor(PlaybackCapabilities caps) {
           'VideoCodec': 'h264,hevc,vp8,vp9,av1,mpeg4,mpeg2video',
           'AudioCodec': 'aac,ac3,eac3,mp3,opus,flac,vorbis,dts,truehd,pcm',
         },
+        // Music. A profile with no audio entry tells the server this client
+        // plays no audio files at all, and a track would be re-encoded even
+        // under a cap it already fits. libmpv decodes every one of these, so
+        // the only thing that can still send a track to the transcoder is
+        // its bitrate — a lossless file over a low cap.
+        <String, dynamic>{
+          'Container': 'mp3,aac,m4a,m4b,flac,alac,opus,ogg,oga,webma,wav,wma,ape,wv,mka',
+          'Type': 'Audio',
+        },
       ],
       // HLS, because a re-encode that can be seeked has to be segmented.
       'TranscodingProfiles': <Map<String, dynamic>>[
@@ -711,6 +762,20 @@ Map<String, dynamic> deviceProfileFor(PlaybackCapabilities caps) {
           'MinSegments': 1,
           // Without this the server only cuts at key frames, and a seek lands
           // wherever the previous one was rather than where it was asked for.
+          'BreakOnNonKeyFrames': true,
+        },
+        // A track over the cap. Segmented for the same reason as video: a
+        // progressive re-encode has no length, and seeking in it restarts
+        // from the top. Stereo AAC is what every phone, headset and car
+        // takes.
+        <String, dynamic>{
+          'Container': 'ts',
+          'Type': 'Audio',
+          'AudioCodec': 'aac',
+          'Protocol': 'hls',
+          'Context': 'Streaming',
+          'MaxAudioChannels': '2',
+          'MinSegments': 1,
           'BreakOnNonKeyFrames': true,
         },
       ],

@@ -23,6 +23,8 @@ import '../features/player/playback_state.dart';
 import '../features/player/player_page.dart';
 import '../features/remote/remote_page.dart';
 import '../features/search/search_page.dart';
+import '../features/music/album_page.dart';
+import '../features/music/artist_page.dart';
 import '../features/servers/episode_page.dart';
 import '../features/servers/library_grid_page.dart';
 import '../features/servers/person_page.dart';
@@ -229,6 +231,20 @@ GoRouter buildRouter() {
             path: 'episode',
             builder: (context, state) =>
                 EpisodePage(episodeId: state.extra as String?),
+          ),
+          GoRoute(
+            path: 'album',
+            builder: (context, state) =>
+                AlbumPage(albumId: state.extra as String?),
+          ),
+          GoRoute(
+            path: 'artist',
+            // Like a person: the id in `extra`, the name in the query for the
+            // header to show before any request lands.
+            builder: (context, state) => ArtistPage(
+              artistId: state.extra as String?,
+              name: state.uri.queryParameters['name'] ?? '',
+            ),
           ),
           GoRoute(
             path: 'series',

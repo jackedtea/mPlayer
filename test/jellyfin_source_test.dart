@@ -899,4 +899,138 @@ void main() {
       expect(people.single.name, 'Jane Actor');
     });
   });
+
+  group('music', () {
+    (JellyfinSource, _FakeAdapter) empty() => sourceWith(
+          (_) => _json(<String, dynamic>{
+            'Items': <dynamic>[],
+            'TotalRecordCount': 12,
+          }),
+        );
+
+    test('albums are items of their type, under the library', () async {
+      final (source, adapter) = empty();
+
+      await source.musicItems('v1', MusicListing.albums);
+
+      final request = adapter.requests.single.uri;
+      expect(request.path, '/Items');
+      expect(request.queryParameters['parentId'], 'v1');
+      expect(request.queryParameters['recursive'], 'true');
+      expect(request.queryParameters['includeItemTypes'], 'MusicAlbum');
+      expect(request.queryParameters['sortBy'], 'SortName');
+      // No cast list on every row of a track listing.
+      expect(request.queryParameters['fields'], isNot(contains('People')));
+    });
+
+    test('tracks are Audio items', () async {
+      final (source, adapter) = empty();
+
+      await source.musicItems(
+        'v1',
+        MusicListing.tracks,
+        sort: ServerSort.dateAdded,
+        startIndex: 100,
+      );
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['includeItemTypes'], 'Audio');
+      expect(query['sortBy'], 'DateCreated');
+      expect(query['sortOrder'], 'Descending');
+      expect(query['startIndex'], '100');
+    });
+
+    test('artists come from the album-artist route, not /Items', () async {
+      final (source, adapter) = empty();
+
+      await source.musicItems('v1', MusicListing.artists);
+
+      final request = adapter.requests.single.uri;
+      expect(request.path, '/Artists/AlbumArtists');
+      expect(request.queryParameters['parentId'], 'v1');
+      expect(request.queryParameters.containsKey('includeItemTypes'), isFalse);
+    });
+
+    test('a count asks the same question as its listing', () async {
+      final (source, adapter) = empty();
+
+      expect(await source.musicItemCount('v1', MusicListing.tracks), 12);
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['includeItemTypes'], 'Audio');
+      expect(query['parentId'], 'v1');
+      expect(query['limit'], '0');
+      expect(query['enableTotalRecordCount'], 'true');
+    });
+
+    test("an album's tracks are found by album, in disc order", () async {
+      final (source, adapter) = empty();
+
+      await source.albumTracks('al1');
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['albumIds'], 'al1');
+      expect(query.containsKey('parentId'), isFalse);
+      expect(query['sortBy'], 'ParentIndexNumber,IndexNumber,SortName');
+      expect(query['sortOrder'], 'Ascending');
+    });
+
+    test("an artist's albums are the ones they are album artist of", () async {
+      final (source, adapter) = empty();
+
+      await source.artistAlbums('ar1');
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['albumArtistIds'], 'ar1');
+      expect(query['includeItemTypes'], 'MusicAlbum');
+      expect(query['sortOrder'], 'Descending');
+    });
+
+    test("an artist's popular tracks are the most played", () async {
+      final (source, adapter) = empty();
+
+      await source.artistTopTracks('ar1', limit: 5);
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['artistIds'], 'ar1');
+      expect(query['includeItemTypes'], 'Audio');
+      expect(query['sortBy'], startsWith('PlayCount'));
+      expect(query['limit'], '5');
+    });
+
+    test('what an artist guests on is a credit, not album artist', () async {
+      final (source, adapter) = empty();
+
+      await source.artistAppearsOn('ar1');
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['contributingArtistIds'], 'ar1');
+      expect(query.containsKey('albumArtistIds'), isFalse);
+      expect(query['includeItemTypes'], 'MusicAlbum');
+    });
+
+    test('sorting by artist keeps each artist in name order', () async {
+      final (source, adapter) = empty();
+
+      await source.musicItems('v1', MusicListing.albums, sort: ServerSort.artist);
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['sortBy'], 'AlbumArtist,SortName');
+      expect(query['sortOrder'], 'Ascending');
+    });
+
+    test('a playlist of songs is filed as audio, of films as video', () async {
+      final (source, adapter) = sourceWith(
+        (_) => _json(<String, dynamic>{'Id': 'p1'}),
+      );
+
+      await source.createPlaylist('Mix', const <String>['t1'], audio: true);
+      await source.createPlaylist('Films', const <String>['m1']);
+
+      final songs = adapter.requests.first.data as Map<String, dynamic>;
+      final films = adapter.requests.last.data as Map<String, dynamic>;
+      expect(songs['MediaType'], 'Audio');
+      expect(films['MediaType'], 'Video');
+    });
+  });
 }

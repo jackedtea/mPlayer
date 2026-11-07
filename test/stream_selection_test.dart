@@ -261,6 +261,45 @@ void main() {
       expect(transcode['Protocol'], 'hls');
       expect(transcode['BreakOnNonKeyFrames'], isTrue);
     });
+
+    test('a capped profile still plays music, whole where it fits', () {
+      // Snapshot of the audio half. With no audio entry the server reads the
+      // profile as "plays no audio files" and re-encodes every track, even a
+      // 320 kbps mp3 far under the cap.
+      final body = deviceProfileFor(
+        const PlaybackCapabilities(maxBitrate: 4000000, maxHeight: 720),
+      );
+      final profile = body['DeviceProfile']! as Map<String, dynamic>;
+
+      Map<String, dynamic> audio(String key) =>
+          (profile[key]! as List).cast<Map<String, dynamic>>().singleWhere(
+                (p) => p['Type'] == 'Audio',
+              );
+
+      final direct = audio('DirectPlayProfiles');
+      final containers = (direct['Container']! as String).split(',');
+      expect(containers, containsAll(<String>['mp3', 'flac', 'm4a', 'opus', 'ogg']));
+      // No codec list: libmpv decodes whatever is in those containers, and a
+      // list would only invent reasons to transcode.
+      expect(direct.containsKey('AudioCodec'), isFalse);
+
+      expect(audio('TranscodingProfiles'), <String, dynamic>{
+        'Container': 'ts',
+        'Type': 'Audio',
+        'AudioCodec': 'aac',
+        'Protocol': 'hls',
+        'Context': 'Streaming',
+        'MaxAudioChannels': '2',
+        'MinSegments': 1,
+        'BreakOnNonKeyFrames': true,
+      });
+
+      // The video limits are video conditions; none of them reaches a song.
+      final codecTypes = (profile['CodecProfiles']! as List)
+          .cast<Map<String, dynamic>>()
+          .map((p) => p['Type']);
+      expect(codecTypes, isNot(contains('Audio')));
+    });
   });
 
   group('start over', () {

@@ -12,6 +12,7 @@ import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../libraries/last_library.dart';
+import '../music/music_listing.dart';
 import '../../widgets/gradient_art.dart';
 import '../../widgets/poster_tile.dart';
 import '../../widgets/remote_art.dart';
@@ -27,14 +28,19 @@ import 'shelves.dart';
 /// reached from inside one — they hold a fixed set of items and have no
 /// suggestions, favourites or collections of their own, so a tab bar over
 /// them would be four rows that can never fill.
+///
+/// [musicAlbums] is a music genre's tile: a library's albums, narrowed. Not a
+/// [collection], whose grid asks for films and would come back empty.
 enum LibraryBrowse {
   library,
   collection,
-  playlist;
+  playlist,
+  musicAlbums;
 
   static LibraryBrowse fromQuery(String? value) => switch (value) {
     'collection' => LibraryBrowse.collection,
     'playlist' => LibraryBrowse.playlist,
+    'musicAlbums' => LibraryBrowse.musicAlbums,
     _ => LibraryBrowse.library,
   };
 }
@@ -267,18 +273,37 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
           : switch (widget.browse) {
               LibraryBrowse.playlist => _PlaylistItems(playlistId: viewId),
               LibraryBrowse.collection => _mainTab(viewId),
+              LibraryBrowse.musicAlbums => _musicTab(
+                viewId,
+                MusicListing.albums,
+              ),
               LibraryBrowse.library => TabBarView(
                 controller: _tabs,
                 children: <Widget>[
                   for (final _LibraryTab tab in _shown)
                     switch (tab) {
                       _LibraryTab.browse => _mainTab(viewId),
+                      _LibraryTab.albums => _musicTab(
+                        viewId,
+                        MusicListing.albums,
+                      ),
+                      _LibraryTab.artists => _musicTab(
+                        viewId,
+                        MusicListing.artists,
+                      ),
+                      _LibraryTab.songs => _musicTab(
+                        viewId,
+                        MusicListing.tracks,
+                      ),
                       _LibraryTab.suggestions => _SuggestionsTab(
                         viewId: viewId,
                         kind: _collectionKind(),
                       ),
                       _LibraryTab.upcoming => _UpcomingTab(viewId: viewId),
-                      _LibraryTab.genres => _GenresTab(viewId: viewId),
+                      _LibraryTab.genres => _GenresTab(
+                        viewId: viewId,
+                        music: _collectionKind() == 'music',
+                      ),
                       _LibraryTab.collections => _CollectionsTab(
                         viewId: viewId,
                       ),
@@ -319,9 +344,23 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
   /// wrong. Filtered, the server's narrowed answer is only known a page at a
   /// time, so a full page reads "100+" rather than claiming to be all of it.
   String? _countLabel(String? viewId) {
-    if (widget.browse == LibraryBrowse.playlist) return null;
+    if (widget.browse == LibraryBrowse.playlist ||
+        widget.browse == LibraryBrowse.musicAlbums) {
+      return null;
+    }
 
     final l10n = AppLocalizations.of(context);
+
+    // Music counts what the tab on screen lists. Filtered it says nothing: its
+    // pages load as they are scrolled to, so no number here would be the total.
+    if (viewId != null && _collectionKind() == 'music') {
+      final listing = _tabs == null ? null : _shown[_tabs!.index].listing;
+      if (listing == null || !_filter.isEmpty) return null;
+      final total = ref
+          .watch(musicItemCountProvider((viewId: viewId, listing: listing)))
+          .value;
+      return total == null ? null : l10n.itemCount(total);
+    }
 
     if (viewId != null &&
         _filter.isEmpty &&
@@ -375,6 +414,31 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     );
   }
 
+  /// Albums, artists or songs, with the same chips over them as the main grid.
+  Widget _musicTab(String viewId, MusicListing listing) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _ActiveFilters(
+          filter: _filter,
+          onChanged: (next) => setState(() => _filter = next),
+        ),
+        if (_filter.isEmpty) SizedBox(height: context.spacing.sm),
+        Expanded(
+          child: MusicListingView(
+            listing: listing,
+            query: LibraryQuery(
+              viewId,
+              _ordering.sort,
+              order: _ordering.order,
+              filter: _filter,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   /// The `CollectionType` of the library being shown, which is what names the
   /// first tab. Empty until `/UserViews` lands, and for a drill-down.
   String _collectionKind() {
@@ -421,7 +485,9 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
   bool get _onGrid {
     if (widget.browse == LibraryBrowse.playlist) return false;
     final tabs = _tabs;
-    return tabs == null || _shown[tabs.index] == _LibraryTab.browse;
+    if (tabs == null) return true;
+    final tab = _shown[tabs.index];
+    return tab == _LibraryTab.browse || tab.listing != null;
   }
 
   /// The filter button, and Search above it for a library pushed over the
@@ -493,6 +559,11 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
 enum _LibraryTab {
   /// Everything in the library, with the sort and filter button.
   browse,
+
+  /// A music library's three listings, in place of [browse].
+  albums,
+  artists,
+  songs,
   suggestions,
 
   /// What is announced and not yet out. TV only — films have no schedule.
@@ -506,7 +577,13 @@ enum _LibraryTab {
   /// The tabs a library of [kind] has. Upcoming only for TV; Genres for the
   /// two kinds whose items the server files by genre. An unknown kind — the
   /// views not loaded yet — gets the tabs every library has.
-  static List<_LibraryTab> forKind(String kind) => <_LibraryTab>[
+  ///
+  /// Music is its own set. The server has no suggestions or box sets for it,
+  /// and its first tab cannot be one grid: an album, an artist and a song are
+  /// three different things to go looking for.
+  static List<_LibraryTab> forKind(String kind) => kind == 'music'
+      ? const <_LibraryTab>[albums, artists, songs, playlists, genres]
+      : <_LibraryTab>[
     browse,
     suggestions,
     if (kind == 'tvshows') upcoming,
@@ -518,6 +595,9 @@ enum _LibraryTab {
   String label(AppLocalizations l10n) {
     return switch (this) {
       _LibraryTab.browse => l10n.tabBrowse,
+      _LibraryTab.albums => l10n.tabAlbums,
+      _LibraryTab.artists => l10n.tabArtists,
+      _LibraryTab.songs => l10n.tabSongs,
       _LibraryTab.suggestions => l10n.tabSuggestions,
       _LibraryTab.upcoming => l10n.tabUpcoming,
       _LibraryTab.genres => l10n.tabGenres,
@@ -525,6 +605,14 @@ enum _LibraryTab {
       _LibraryTab.playlists => l10n.tabPlaylists,
     };
   }
+
+  /// What this tab lists, for the tabs that are a music listing.
+  MusicListing? get listing => switch (this) {
+    _LibraryTab.albums => MusicListing.albums,
+    _LibraryTab.artists => MusicListing.artists,
+    _LibraryTab.songs => MusicListing.tracks,
+    _ => null,
+  };
 }
 
 /// Episodes announced and not yet out, under a heading per air date.
@@ -613,9 +701,12 @@ class _UpcomingTab extends ConsumerWidget {
 
 /// A tile per genre, each opening the library's grid narrowed to it.
 class _GenresTab extends ConsumerWidget {
-  const _GenresTab({required this.viewId});
+  const _GenresTab({required this.viewId, this.music = false});
 
   final String viewId;
+
+  /// A genre in a music library opens albums rather than the film grid.
+  final bool music;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -691,7 +782,7 @@ class _GenresTab extends ConsumerWidget {
                       path: '/library',
                       queryParameters: <String, String>{
                         'title': genre.name,
-                        'browse': 'collection',
+                        'browse': music ? 'musicAlbums' : 'collection',
                         'genre': genre.name,
                       },
                     ).toString(),

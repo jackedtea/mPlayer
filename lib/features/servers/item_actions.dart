@@ -62,6 +62,10 @@ void invalidateItemViews(WidgetRef ref, {String? itemId, String? seriesId}) {
   // the next time they are drawn, not after a pull to refresh.
   ref.invalidate(homeFavouritesProvider);
   ref.invalidate(favouriteItemsProvider);
+  // Track menus read their own favourite flag from these lists.
+  ref.invalidate(albumTracksProvider);
+  ref.invalidate(artistTopTracksProvider);
+  ref.invalidate(musicPageProvider);
 }
 
 /// Marks [itemId] watched or unwatched on the server.
@@ -133,6 +137,7 @@ Future<void> showPlaylistSheet(
   BuildContext context,
   WidgetRef ref, {
   required List<String> itemIds,
+  bool audio = false,
 }) async {
   if (itemIds.isEmpty) return;
 
@@ -140,14 +145,17 @@ Future<void> showPlaylistSheet(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
-    builder: (sheetContext) => _PlaylistSheet(itemIds: itemIds),
+    builder: (sheetContext) => _PlaylistSheet(itemIds: itemIds, audio: audio),
   );
 }
 
 class _PlaylistSheet extends ConsumerWidget {
-  const _PlaylistSheet({required this.itemIds});
+  const _PlaylistSheet({required this.itemIds, required this.audio});
 
   final List<String> itemIds;
+
+  /// What a playlist made from this sheet is filed as.
+  final bool audio;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -231,7 +239,7 @@ class _PlaylistSheet extends ConsumerWidget {
     if (source == null) return;
 
     try {
-      await source.createPlaylist(name, itemIds);
+      await source.createPlaylist(name, itemIds, audio: audio);
       ref.invalidate(playlistsProvider);
     } on ServerException {
       // Nothing was created, and the sheet closing on its own would suggest
@@ -333,21 +341,23 @@ List<ItemAction> itemActionsFor(
   }
 
   return <ItemAction>[
-    ItemAction(
-      icon: item.played
-          ? Icons.check_circle_rounded
-          : Icons.check_circle_outline_rounded,
-      label: item.played ? l10n.markUnwatched : l10n.markWatched,
-      selected: item.played,
-      onSelected: () async => report(
-        await setWatched(
-          ref,
-          item.id,
-          watched: !item.played,
-          seriesId: seriesId,
+    // Nobody marks a song as watched: its play count is the server's to keep.
+    if (!item.kind.isMusic)
+      ItemAction(
+        icon: item.played
+            ? Icons.check_circle_rounded
+            : Icons.check_circle_outline_rounded,
+        label: item.played ? l10n.markUnwatched : l10n.markWatched,
+        selected: item.played,
+        onSelected: () async => report(
+          await setWatched(
+            ref,
+            item.id,
+            watched: !item.played,
+            seriesId: seriesId,
+          ),
         ),
       ),
-    ),
     ItemAction(
       icon: item.favourite
           ? Icons.favorite_rounded
@@ -373,8 +383,12 @@ List<ItemAction> itemActionsFor(
       ItemAction(
         icon: Icons.playlist_add_rounded,
         label: l10n.addToPlaylist,
-        onSelected: () =>
-            showPlaylistSheet(context, ref, itemIds: playlistIds),
+        onSelected: () => showPlaylistSheet(
+          context,
+          ref,
+          itemIds: playlistIds,
+          audio: item.kind.isMusic,
+        ),
       ),
     if (onMediaInfo != null)
       ItemAction(

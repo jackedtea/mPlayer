@@ -466,6 +466,137 @@ class JellyfinSource implements MediaLibrarySource {
     return _itemsOf(json).map(serverItemFromJson).toList();
   }
 
+  // ---------------------------------------------------------- music
+
+  @override
+  Future<List<ServerItem>> musicItems(
+    String viewId,
+    MusicListing listing, {
+    int startIndex = 0,
+    int limit = 100,
+    ServerSort sort = ServerSort.name,
+    SortOrder? order,
+    LibraryFilter filter = LibraryFilter.none,
+  }) async {
+    final json = await _get(_musicPath(listing), <String, String>{
+      ..._musicQuery(viewId, listing),
+      'sortBy': sortByFor(sort),
+      'sortOrder': sortOrderFor(sort, order),
+      'startIndex': '$startIndex',
+      'limit': '$limit',
+      ...filterParams(filter),
+      'fields': _musicFields,
+      'imageTypeLimit': '1',
+      'enableImageTypes': 'Primary',
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<int> musicItemCount(String viewId, MusicListing listing) async {
+    final json = await _get(_musicPath(listing), <String, String>{
+      ..._musicQuery(viewId, listing),
+      'limit': '0',
+      'enableTotalRecordCount': 'true',
+    });
+
+    return json['TotalRecordCount'] as int? ?? 0;
+  }
+
+  @override
+  Future<List<ServerItem>> albumTracks(String albumId) async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      // `albumIds`, not `parentId`: an album built from tags can share one
+      // folder with another, and its tracks are not that folder's children.
+      'albumIds': albumId,
+      'includeItemTypes': 'Audio',
+      'recursive': 'true',
+      // Disc first, or a two-disc set plays both track ones before either
+      // track two.
+      'sortBy': 'ParentIndexNumber,IndexNumber,SortName',
+      'sortOrder': 'Ascending',
+      'fields': _musicFields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerItem>> artistAlbums(String artistId) async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      // Album artist, not any credit: a guest verse on someone else's record
+      // does not make it this artist's album.
+      'albumArtistIds': artistId,
+      'includeItemTypes': 'MusicAlbum',
+      'recursive': 'true',
+      'sortBy': 'PremiereDate,ProductionYear,SortName',
+      'sortOrder': 'Descending',
+      'fields': _musicFields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerItem>> artistTopTracks(
+    String artistId, {
+    int limit = 10,
+  }) async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      // Any credit here: the song people play may well be the feature.
+      'artistIds': artistId,
+      'includeItemTypes': 'Audio',
+      'recursive': 'true',
+      'sortBy': 'PlayCount,SortName',
+      'sortOrder': 'Descending',
+      'limit': '$limit',
+      'fields': _musicFields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<List<ServerItem>> artistAppearsOn(String artistId) async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      // A credit on a track of the album, which `albumArtistIds` leaves out.
+      'contributingArtistIds': artistId,
+      'includeItemTypes': 'MusicAlbum',
+      'recursive': 'true',
+      'sortBy': 'PremiereDate,ProductionYear,SortName',
+      'sortOrder': 'Descending',
+      'fields': _musicFields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  /// Artists come from their own route; albums and tracks are items.
+  static String _musicPath(MusicListing listing) => switch (listing) {
+        MusicListing.artists => '/Artists/AlbumArtists',
+        MusicListing.albums || MusicListing.tracks => '/Items',
+      };
+
+  /// What a listing and its count share, so the number always describes the
+  /// grid it labels.
+  Map<String, String> _musicQuery(String viewId, MusicListing listing) {
+    return <String, String>{
+      'userId': _profile.userId,
+      'parentId': viewId,
+      if (listing != MusicListing.artists) ...<String, String>{
+        'recursive': 'true',
+        'includeItemTypes': listing == MusicListing.albums
+            ? 'MusicAlbum'
+            : 'Audio',
+      },
+    };
+  }
+
   // ---------------------------------------------------------- home
 
   @override
@@ -551,7 +682,11 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
-  Future<String?> createPlaylist(String name, List<String> itemIds) async {
+  Future<String?> createPlaylist(
+    String name,
+    List<String> itemIds, {
+    bool audio = false,
+  }) async {
     // In the body, not the query. Jellyfin 10.9 binds this route from JSON
     // and answers a query-only request with "missing required properties
     // including: 'Name'" — the one playlist route that does not take its
@@ -559,9 +694,9 @@ class JellyfinSource implements MediaLibrarySource {
     final json = await _post('/Playlists', <String, dynamic>{
       'Name': name,
       'UserId': _profile.userId,
-      // Without this the server files it under music and the playlist never
-      // appears beside the video ones.
-      'MediaType': 'Video',
+      // Without this the server files it under music and a video playlist
+      // never appears beside the other video ones.
+      'MediaType': audio ? 'Audio' : 'Video',
       'Ids': itemIds,
     });
 
@@ -747,6 +882,13 @@ class JellyfinSource implements MediaLibrarySource {
   /// again — a hundred-poster grid would carry both a hundred times over for
   /// something only the player ever reads.
   static const _detailFields = '$_fields,Chapters,Trickplay,OriginalTitle';
+
+  /// [_fields] for music listings, without what only a film or a series
+  /// carries. `People` above all: on a track it is every composer and
+  /// lyricist, repeated on every row. The album and artist credits a track
+  /// row draws come back without being asked for.
+  static const _musicFields =
+      'ProductionYear,Genres,ChildCount,PrimaryImageAspectRatio';
 
   Uri _url(String path, [Map<String, String>? query]) {
     return _base.replace(

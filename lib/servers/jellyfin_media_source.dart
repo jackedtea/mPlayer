@@ -131,6 +131,15 @@ class JellyfinMediaSource
         defaultAudioIndex: playback.defaultAudioIndex,
         defaultSubtitleIndex: playback.defaultSubtitleIndex,
         tracksChosen: choice != null,
+        isAudio: item.kind == ServerItemKind.audio,
+        artist: item.artistLine,
+        album: item.album,
+        // A track is handed the album's cover when it has none of its own
+        // (see `_primaryImageTag`), so this is the album art in practice.
+        // Sized for Now playing on a 3x phone; the notification scales down.
+        artworkUri: item.kind == ServerItemKind.audio
+            ? library.imageUrl(item, maxWidth: 1024)
+            : null,
       );
     } on ServerException catch (e) {
       // The player renders this inline; it must read as a sentence.

@@ -369,10 +369,98 @@ final libraryItemCountProvider =
   final source = ref.watch(activeServerProvider);
   if (source == null) return null;
   try {
+    // A music library counts its albums. `itemCount` asks for films and
+    // series, and would call a shelf of records empty.
+    final views = await ref.watch(serverViewsProvider.future);
+    if (views.any((v) => v.id == viewId && v.kind == 'music')) {
+      return await source.musicItemCount(viewId, MusicListing.albums);
+    }
     return await source.itemCount(viewId);
   } on ServerException {
     // No count is better than a wrong one; the tile shows the name alone.
     return null;
+  }
+});
+
+/// Which page of which music listing, in which order.
+typedef MusicPageKey = ({LibraryQuery query, MusicListing listing, int page});
+
+/// One page of albums, artists or songs.
+///
+/// A provider per page rather than one growing list, so a page already fetched
+/// survives a tab change and a refresh reaches every page on screen.
+final musicPageProvider =
+    FutureProvider.family<List<ServerItem>, MusicPageKey>((ref, key) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.musicItems(
+    key.query.viewId,
+    key.listing,
+    startIndex: key.page * libraryPageSize,
+    limit: libraryPageSize,
+    sort: key.query.sort,
+    order: key.query.order,
+    filter: key.query.filter,
+  );
+});
+
+/// How many albums, artists or songs one music library holds.
+final musicItemCountProvider =
+    FutureProvider.family<int?, ({String viewId, MusicListing listing})>(
+        (ref, key) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return null;
+  try {
+    return await source.musicItemCount(key.viewId, key.listing);
+  } on ServerException {
+    return null;
+  }
+});
+
+/// An album's tracks, in disc order. Not caught here: a track list that failed
+/// must not read as an album with nothing on it.
+final albumTracksProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, albumId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  return source.albumTracks(albumId);
+});
+
+/// How many tracks an artist's Popular list holds once expanded.
+const artistTopTrackLimit = 20;
+
+/// The sections of an artist's page. A failure costs its own section, the way
+/// a person's and a film's similar shelf do.
+final artistTopTracksProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, artistId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  try {
+    return await source.artistTopTracks(artistId, limit: artistTopTrackLimit);
+  } on ServerException {
+    return const <ServerItem>[];
+  }
+});
+
+final artistAlbumsProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, artistId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  try {
+    return await source.artistAlbums(artistId);
+  } on ServerException {
+    return const <ServerItem>[];
+  }
+});
+
+final artistAppearsOnProvider =
+    FutureProvider.family<List<ServerItem>, String>((ref, artistId) async {
+  final source = ref.watch(activeServerProvider);
+  if (source == null) return const <ServerItem>[];
+  try {
+    return await source.artistAppearsOn(artistId);
+  } on ServerException {
+    return const <ServerItem>[];
   }
 });
 
@@ -417,10 +505,18 @@ final seriesEpisodesProvider =
 /// A collection is browsed, not played: it has no runtime, no stream and no
 /// resume point, and sending it to the movie screen is what drew a Play
 /// button over a box set with nothing behind it. A series goes to its episode
-/// list; everything else to the detail screen, which is where the resume
-/// decision is made.
+/// list, an album and an artist to their own pages, a track to its album;
+/// everything else to the detail screen, which is where the resume decision
+/// is made.
 void openServerItem(BuildContext context, ServerItem item) {
-  if (item.kind.isBrowsable) {
+  final albumId = item.albumId;
+  if (item.kind == ServerItemKind.musicAlbum) {
+    context.push('/library/album', extra: item.id);
+  } else if (item.kind == ServerItemKind.musicArtist) {
+    openMusicArtist(context, ServerArtistRef(name: item.title, id: item.id));
+  } else if (item.kind == ServerItemKind.audio && albumId != null) {
+    context.push('/library/album', extra: albumId);
+  } else if (item.kind.isBrowsable) {
     context.push(
       Uri(
         path: '/library',
@@ -438,6 +534,18 @@ void openServerItem(BuildContext context, ServerItem item) {
   } else {
     context.push('/library/movie', extra: item.id);
   }
+}
+
+/// Opens an artist's page. The name rides in the query so the page has
+/// something to say before its first request lands.
+void openMusicArtist(BuildContext context, ServerArtistRef artist) {
+  context.push(
+    Uri(
+      path: '/library/artist',
+      queryParameters: <String, String>{'name': artist.name},
+    ).toString(),
+    extra: artist.id,
+  );
 }
 
 /// Opens a playlist as a grid of what is in it.
@@ -604,7 +712,9 @@ LibraryItem libraryItemFrom(ServerItem item) {
     // The design draws a bare year under the title; an item without one gets
     // an empty line rather than a placeholder.
     year: item.year?.toString() ?? '',
-    watched: item.played,
+    // A tick means "seen it, skip it" on a film. A record played once is not
+    // done with, and a wall of ticks over albums says nothing.
+    watched: item.played && !item.kind.isMusic,
   );
 }
 
@@ -692,6 +802,15 @@ String durationLabel(Duration duration) {
 
   if (hours > 0) return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
   return '${duration.inMinutes.clamp(1, 59)}m';
+}
+
+/// A track's length as a player shows it: "3:07", "1:02:45".
+String trackDuration(Duration duration) {
+  final minutes = duration.inMinutes.remainder(60);
+  final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return duration.inHours > 0
+      ? '${duration.inHours}:${minutes.toString().padLeft(2, '0')}:$seconds'
+      : '$minutes:$seconds';
 }
 
 /// Everything screen 1f draws for one item.
@@ -856,4 +975,6 @@ void refreshLibraries(WidgetRef ref) {
   ref.invalidate(libraryGenresProvider);
   ref.invalidate(serverPlaylistsProvider);
   ref.invalidate(playlistItemsProvider);
+  ref.invalidate(musicPageProvider);
+  ref.invalidate(musicItemCountProvider);
 }

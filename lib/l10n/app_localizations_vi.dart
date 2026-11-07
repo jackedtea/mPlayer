@@ -2095,4 +2095,50 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get downloadsNone => 'Chưa tải gì trên thiết bị này.';
+
+  @override
+  String get tabAlbums => 'Album';
+
+  @override
+  String get tabArtists => 'Nghệ sĩ';
+
+  @override
+  String get tabSongs => 'Bài hát';
+
+  @override
+  String get noAlbums => 'Không có album nào.';
+
+  @override
+  String get noArtists => 'Không có nghệ sĩ nào.';
+
+  @override
+  String get noSongs => 'Không có bài hát nào.';
+
+  @override
+  String get musicLoadFailed => 'Không tải được từ máy chủ.';
+
+  @override
+  String get sortArtist => 'Nghệ sĩ';
+
+  @override
+  String discNumber(int number) {
+    return 'Đĩa $number';
+  }
+
+  @override
+  String trackCount(int count) {
+    return '$count bài hát';
+  }
+
+  @override
+  String get popularTracks => 'Nghe nhiều';
+
+  @override
+  String get seeAllTracks => 'Xem tất cả';
+
+  @override
+  String get appearsOn => 'Có góp mặt trong';
+
+  @override
+  String get similarArtists => 'Nghệ sĩ tương tự';
 }

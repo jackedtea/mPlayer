@@ -130,6 +130,10 @@ class PlayableMedia {
     this.defaultAudioIndex,
     this.defaultSubtitleIndex,
     this.tracksChosen = false,
+    this.isAudio = false,
+    this.artist,
+    this.album,
+    this.artworkUri,
   });
 
   final MediaRef ref;
@@ -207,6 +211,23 @@ class PlayableMedia {
   /// nothing remembered may override.
   final bool tracksChosen;
 
+  /// A music track rather than a video.
+  ///
+  /// What will decide that opening it keeps the user where they are instead
+  /// of pushing the full-screen player: a song plays on while they browse.
+  final bool isAudio;
+
+  /// "Daft Punk, Pharrell Williams" and the album, for a track; null for
+  /// a video. The mini player, Now playing and the notification show them
+  /// under the title.
+  final String? artist;
+  final String? album;
+
+  /// The square cover a track is shown with — its own, or its album's.
+  ///
+  /// A video has none: its player shows the frame itself.
+  final Uri? artworkUri;
+
   String get title => ref.title;
 
   /// The same media, opened somewhere else.
@@ -231,6 +252,10 @@ class PlayableMedia {
         defaultAudioIndex: defaultAudioIndex,
         defaultSubtitleIndex: defaultSubtitleIndex,
         tracksChosen: tracksChosen,
+        isAudio: isAudio,
+        artist: artist,
+        album: album,
+        artworkUri: artworkUri,
       );
 
   /// The labelled stretch [position] falls in, or null outside any.

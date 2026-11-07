@@ -417,4 +417,102 @@ void main() {
       expect(sortOrderFor(ServerSort.dateAdded), 'Descending');
     });
   });
+
+  group('music', () {
+    test('a track carries its album, disc, number and every artist', () {
+      final item = serverItemFromJson(<String, dynamic>{
+        'Id': 't1',
+        'Name': 'Lose Yourself to Dance',
+        'Type': 'Audio',
+        'IndexNumber': 6,
+        'ParentIndexNumber': 1,
+        'Album': 'Random Access Memories',
+        'AlbumId': 'al1',
+        'AlbumPrimaryImageTag': 'cover',
+        'Artists': <dynamic>['Daft Punk', 'Pharrell Williams'],
+        'ArtistItems': <dynamic>[
+          <String, dynamic>{'Name': 'Daft Punk', 'Id': 'ar1'},
+          <String, dynamic>{'Name': 'Pharrell Williams', 'Id': 'ar2'},
+        ],
+        'AlbumArtist': 'Daft Punk',
+        'AlbumArtists': <dynamic>[
+          <String, dynamic>{'Name': 'Daft Punk', 'Id': 'ar1'},
+        ],
+      });
+
+      expect(item.kind, ServerItemKind.audio);
+      expect(item.kind.isMusic, isTrue);
+      expect(item.album, 'Random Access Memories');
+      expect(item.albumId, 'al1');
+      expect(item.trackNumber, 6);
+      expect(item.discNumber, 1);
+      expect(item.artists, const <ServerArtistRef>[
+        ServerArtistRef(name: 'Daft Punk', id: 'ar1'),
+        ServerArtistRef(name: 'Pharrell Williams', id: 'ar2'),
+      ]);
+      expect(item.albumArtists.single.id, 'ar1');
+      expect(item.artistLine, 'Daft Punk, Pharrell Williams');
+    });
+
+    test("a track with no cover of its own borrows the album's", () {
+      // The same borrowing an episode does from its series: asking the track
+      // for the album's tag returns nothing.
+      final item = serverItemFromJson(<String, dynamic>{
+        'Id': 't1',
+        'Name': 'Track',
+        'Type': 'Audio',
+        'AlbumId': 'al1',
+        'AlbumPrimaryImageTag': 'cover',
+        'ParentPrimaryImageTag': 'folder',
+        'ParentId': 'f1',
+      });
+
+      expect(item.imageTag, 'cover');
+      expect(item.imageOwnerId, 'al1');
+    });
+
+    test('bare artist names survive a server that sent no ids', () {
+      final item = serverItemFromJson(<String, dynamic>{
+        'Id': 't1',
+        'Name': 'Track',
+        'Type': 'Audio',
+        'Artists': <dynamic>['Someone', ' '],
+        'AlbumArtist': 'Various Artists',
+      });
+
+      expect(item.artists, const <ServerArtistRef>[
+        ServerArtistRef(name: 'Someone'),
+      ]);
+      expect(item.albumArtists.single.name, 'Various Artists');
+      expect(item.albumArtists.single.id, isNull);
+    });
+
+    test('albums and artists are their own kinds, and neither is a folder', () {
+      // A folder opens as a grid; an album opens a track list with Play on it.
+      for (final (type, kind) in <(String, ServerItemKind)>[
+        ('MusicAlbum', ServerItemKind.musicAlbum),
+        ('MusicArtist', ServerItemKind.musicArtist),
+      ]) {
+        final item = serverItemFromJson(<String, dynamic>{
+          'Id': 'x',
+          'Name': 'x',
+          'Type': type,
+        });
+        expect(item.kind, kind);
+        expect(item.kind.isBrowsable, isFalse);
+      }
+      expect(ServerItemKind.movie.isMusic, isFalse);
+    });
+
+    test('a film credits no artists', () {
+      final item = serverItemFromJson(<String, dynamic>{
+        'Id': 'm1',
+        'Name': 'Dune',
+        'Type': 'Movie',
+      });
+
+      expect(item.artists, isEmpty);
+      expect(item.artistLine, isNull);
+    });
+  });
 }

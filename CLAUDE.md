@@ -1034,6 +1034,26 @@ with the server home (1d) — the two screens draw the same rows from different 
 the ink-inset arithmetic in them is not worth having twice. `openServerItem` in
 `server_library.dart` is likewise the one place that decides where tapping an item goes.
 
+## Music libraries
+
+`docs/MUSIC_PLAN.md` is the plan; browsing is built, the audio session is not. A library
+whose `CollectionType` is `music` swaps its tabs for **Albums · Artists · Songs · Playlists ·
+Genres** (`_LibraryTab.forKind`), and `lib/features/music/` holds those listings and the
+album and artist screens.
+
+- **These listings page, the film grid does not.** `MusicListingView` asks for one
+  `musicPageProvider` page after another as it scrolls. **Random is one page only**, because
+  the server deals a new order per request and a second page would repeat and skip.
+- **A genre tile opens `?browse=musicAlbums`**, not `collection`: the collection grid asks for
+  films and would come back empty.
+- **Album art is square.** `MusicTile` gives `PosterTile` a square; the grid still sizes with
+  `mainAxisExtent`.
+- **Nobody "watches" a song.** No watched toggle, no tick on a tile, and Sort & filter offers
+  Favourites alone with no features or certificates. `createPlaylist(audio:)` files a playlist
+  made from a track as audio.
+- **Interim:** Play still pushes `/player`, so a song plays behind the video controls until the
+  audio session (`PlayableMedia.isAudio`) lands.
+
 ## Sorting and filtering the library grid
 
 The chip row over the grid is Unwatched · the sort · a filter button carrying a count, and

@@ -667,5 +667,21 @@
   "downloadRemoveAll": "Xoá mọi bản tải",
   "downloadRemoveAllTitle": "Xoá mọi bản tải?",
   "downloadRemoveAllBody": "Mọi thứ đã lưu để xem ngoại tuyến trên thiết bị này sẽ bị xoá.",
-  "downloadsNone": "Chưa tải gì trên thiết bị này."
+  "downloadsNone": "Chưa tải gì trên thiết bị này.",
+  "tabAlbums": "Album",
+  "tabArtists": "Nghệ sĩ",
+  "tabSongs": "Bài hát",
+  "noAlbums": "Không có album nào.",
+  "noArtists": "Không có nghệ sĩ nào.",
+  "noSongs": "Không có bài hát nào.",
+  "musicLoadFailed": "Không tải được từ máy chủ.",
+  "sortArtist": "Nghệ sĩ",
+  "discNumber": "Đĩa {number}",
+  "@discNumber": {"placeholders": {"number": {"type": "int"}}},
+  "trackCount": "{count} bài hát",
+  "@trackCount": {"placeholders": {"count": {"type": "int"}}},
+  "popularTracks": "Nghe nhiều",
+  "seeAllTracks": "Xem tất cả",
+  "appearsOn": "Có góp mặt trong",
+  "similarArtists": "Nghệ sĩ tương tự"
 }

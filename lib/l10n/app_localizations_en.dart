@@ -2093,4 +2093,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadsNone => 'Nothing is downloaded on this device.';
+
+  @override
+  String get tabAlbums => 'Albums';
+
+  @override
+  String get tabArtists => 'Artists';
+
+  @override
+  String get tabSongs => 'Songs';
+
+  @override
+  String get noAlbums => 'No albums here.';
+
+  @override
+  String get noArtists => 'No artists here.';
+
+  @override
+  String get noSongs => 'No songs here.';
+
+  @override
+  String get musicLoadFailed => 'Could not load this from the server.';
+
+  @override
+  String get sortArtist => 'Artist';
+
+  @override
+  String discNumber(int number) {
+    return 'Disc $number';
+  }
+
+  @override
+  String trackCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count songs',
+      one: '1 song',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get popularTracks => 'Popular';
+
+  @override
+  String get seeAllTracks => 'See all';
+
+  @override
+  String get appearsOn => 'Appears on';
+
+  @override
+  String get similarArtists => 'Similar artists';
 }

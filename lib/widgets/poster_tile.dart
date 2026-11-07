@@ -27,6 +27,7 @@ class PosterTile extends StatelessWidget {
     this.titleLines = defaultTitleLines,
     this.caption,
     this.badge,
+    this.placeholderIcon = Icons.movie_rounded,
   });
 
   /// Two, because one truncates most of what a media server holds: a title
@@ -55,6 +56,9 @@ class PosterTile extends StatelessWidget {
 
   /// A count over the top-left of the artwork — "24 ep". Null for none.
   final String? badge;
+
+  /// What the gradient shows when the server has no artwork.
+  final IconData placeholderIcon;
 
   static double outerWidth(BuildContext context, double width) =>
       width + context.spacing.hitInset * 2;
@@ -126,7 +130,7 @@ class PosterTile extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: <Widget>[
-                      GradientArt(seed: item.title, icon: Icons.movie_rounded),
+                      GradientArt(seed: item.title, icon: placeholderIcon),
                       // Over the gradient, which stays the artwork for
                       // anything the server has no image for.
                       RemoteArt(url: artUrl),
