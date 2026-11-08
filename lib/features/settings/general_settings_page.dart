@@ -10,6 +10,7 @@ import '../../app/adaptive_scaffold.dart' show AppBranch, navDestinationsFor;
 import '../../app/locale_controller.dart';
 import '../../app/start_tab.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/install_source.dart';
 import '../../core/updater.dart';
 import '../../servers/auto_connect.dart';
 import '../remote/remote_receiver.dart';
@@ -22,6 +23,7 @@ class GeneralSettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final updates = ref.watch(updateSettingsProvider).value;
     final locale = ref.watch(localeProvider);
     final autoConnect = ref.watch(autoConnectProvider);
     final startTab = ref.watch(startTabProvider).value ?? const StartTab();
@@ -62,13 +64,28 @@ class GeneralSettingsPage extends ConsumerWidget {
           onChanged: (on) =>
               ref.read(startTabProvider.notifier).setRememberLast(on),
         ),
-        SettingsSwitchRow(
-          title: l10n.autoUpdateCheck,
-          subtitle: l10n.autoUpdateCheckSub,
-          value: ref.watch(updateSettingsProvider).value?.autoCheck ?? true,
-          onChanged: (on) =>
-              ref.read(updateSettingsProvider.notifier).setAutoCheck(on),
-        ),
+        // A store copy is the store's to update; a switch here would do
+        // nothing.
+        if (!(ref.watch(installSourceProvider).value?.fromStore ?? false))
+          ...<Widget>[
+            SettingsSwitchRow(
+              title: l10n.autoUpdateCheck,
+              subtitle: l10n.autoUpdateCheckSub,
+              value: updates?.autoCheck ?? true,
+              onChanged: (on) =>
+                  ref.read(updateSettingsProvider.notifier).setAutoCheck(on),
+            ),
+            SettingsSwitchRow(
+              title: l10n.updateCheckEveryLaunch,
+              subtitle: l10n.updateCheckEveryLaunchSub,
+              value: updates?.everyLaunch ?? false,
+              onChanged: (updates?.autoCheck ?? true)
+                  ? (on) => ref
+                      .read(updateSettingsProvider.notifier)
+                      .setEveryLaunch(on)
+                  : null,
+            ),
+          ],
         // A desktop or a television only: a phone is the remote, not the
         // thing across the room being driven.
         if (ref.watch(remoteReceiverAvailableProvider)) ...<Widget>[

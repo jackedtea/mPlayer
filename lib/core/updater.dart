@@ -18,6 +18,9 @@
 ///   on Linux — and starts it again. On Windows a folder this user cannot
 ///   write to is not attempted: the release page is the honest answer there.
 /// - **Anywhere else** — the release page.
+///
+/// None of it runs for a copy a store installed ([installSourceProvider]):
+/// the store updates that one, and Settings says so.
 library;
 
 import 'dart:async';
@@ -32,6 +35,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'install_source.dart';
 import 'update_check.dart';
 
 // ------------------------------------------------------------------ settings
@@ -40,12 +44,16 @@ import 'update_check.dart';
 class UpdateSettings {
   const UpdateSettings({
     this.autoCheck = true,
+    this.everyLaunch = false,
     this.lastCheck,
     this.skippedTag,
   });
 
   /// Whether a launch checks on its own, at most once a day.
   final bool autoCheck;
+
+  /// Whether that check runs on every launch rather than once a day.
+  final bool everyLaunch;
 
   final DateTime? lastCheck;
 
@@ -55,11 +63,13 @@ class UpdateSettings {
 
   UpdateSettings copyWith({
     bool? autoCheck,
+    bool? everyLaunch,
     DateTime? lastCheck,
     String? skippedTag,
   }) {
     return UpdateSettings(
       autoCheck: autoCheck ?? this.autoCheck,
+      everyLaunch: everyLaunch ?? this.everyLaunch,
       lastCheck: lastCheck ?? this.lastCheck,
       skippedTag: skippedTag ?? this.skippedTag,
     );
@@ -73,6 +83,7 @@ final updateSettingsProvider =
 
 class UpdateSettingsController extends AsyncNotifier<UpdateSettings> {
   static const _autoKey = 'update_auto_check';
+  static const _launchKey = 'update_every_launch';
   static const _lastKey = 'update_last_check';
   static const _skipKey = 'update_skipped_tag';
 
@@ -82,6 +93,7 @@ class UpdateSettingsController extends AsyncNotifier<UpdateSettings> {
     final last = prefs.getInt(_lastKey);
     return UpdateSettings(
       autoCheck: prefs.getBool(_autoKey) ?? true,
+      everyLaunch: prefs.getBool(_launchKey) ?? false,
       lastCheck: last == null ? null : DateTime.fromMillisecondsSinceEpoch(last),
       skippedTag: prefs.getString(_skipKey),
     );
@@ -92,6 +104,13 @@ class UpdateSettingsController extends AsyncNotifier<UpdateSettings> {
     state = AsyncValue<UpdateSettings>.data(current.copyWith(autoCheck: on));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_autoKey, on);
+  }
+
+  Future<void> setEveryLaunch(bool on) async {
+    final current = await future;
+    state = AsyncValue<UpdateSettings>.data(current.copyWith(everyLaunch: on));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_launchKey, on);
   }
 
   Future<void> markChecked(DateTime when) async {
@@ -176,6 +195,10 @@ class Updater {
   final Ref _ref;
 
   /// How long an automatic check waits after the last one.
+  ///
+  /// "Once a day", with slack: someone who opens the app at about the same
+  /// time each evening would, against a full 24 h, find it 23 h 50 m since
+  /// the last check and be skipped — and checked a day late, every other day.
   static const interval = Duration(hours: 20);
 
   /// Asks GitHub now, as the button does.
@@ -194,18 +217,24 @@ class Updater {
     return UpdateAvailable(release: release, asset: await _assetFor(release));
   }
 
-  /// The launch's own check: only in a release build, only while switched
-  /// on, at most once per [interval], and silent unless there is something
-  /// the user has not already said to skip. Null means say nothing.
+  /// The launch's own check: only in a release build, only for a copy that
+  /// did not come from a store, only while switched on, at most once per
+  /// [interval] unless the user asked for every launch, and silent unless there is something the user has not
+  /// already said to skip. Null means say nothing.
   Future<UpdateAvailable?> checkAutomatically({DateTime? now}) async {
     if (!_ref.read(updateAutoCheckAllowedProvider)) return null;
+    if ((await _ref.read(installSourceProvider.future)).fromStore) return null;
 
     final settings = await _ref.read(updateSettingsProvider.future);
     if (!settings.autoCheck) return null;
 
     final last = settings.lastCheck;
     final at = now ?? DateTime.now();
-    if (last != null && at.difference(last) < interval) return null;
+    if (!settings.everyLaunch &&
+        last != null &&
+        at.difference(last) < interval) {
+      return null;
+    }
 
     final found = await check();
     if (found is! UpdateAvailable) return null;

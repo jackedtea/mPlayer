@@ -152,7 +152,8 @@ class SettingsSwitchRow extends StatelessWidget {
 
   final String title;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  /// Null greys the row out, for a switch that depends on another.
+  final ValueChanged<bool>? onChanged;
   final String? subtitle;
 
   @override

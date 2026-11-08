@@ -185,8 +185,19 @@ Also open:
   "latest" never points at a prerelease. The launch check lives in
   `AdaptiveScaffold` (never over the player), runs in **release builds
   only** (`updateAutoCheckAllowedProvider` = `kReleaseMode`, which also keeps
-  widget tests off the network), at most every 20 h, honours a skipped tag,
-  and has a switch in General. Install: Android downloads the APK for the device's ABI (or, from a 2026-11-02..08 release, the universal one) into
+  widget tests off the network), at most every 20 h (a day with slack, so
+  a same-time-each-evening launch is not skipped for being 23 h 50 m on) or
+  on every launch if "Check every time the app opens" is on, honours a
+  skipped tag, and has both switches in General.
+  **A store copy never self-updates** (`core/install_source.dart`): Android
+  asks `UpdateChannel.kt`'s `installSource` for the installing package and
+  Dart matches it against `androidStores` (Play, Galaxy, Amazon, AppGallery,
+  F-Droid and clients, …); Windows is an MSIX when `GetCurrentPackageFullName`
+  (FFI) finds a package identity; Linux is Flatpak/Snap by environment.
+  Anything unknown — the package installer, adb, Obtainium — is a GitHub
+  copy. For a store copy the launch check returns null, General hides both
+  switches, and About shows "Updates through <store>" (opening `market://`
+  or the Microsoft Store's updates page) instead of Check for updates. Install: Android downloads the APK for the device's ABI (or, from a 2026-11-02..08 release, the universal one) into
   `cache/updates/` and `UpdateChannel.kt` hands it to the system installer
   through a FileProvider (`REQUEST_INSTALL_PACKAGES`); Windows/Linux download
   the installer and start a detached PowerShell/sh script that waits for the

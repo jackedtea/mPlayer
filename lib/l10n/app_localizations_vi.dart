@@ -1058,6 +1058,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get upToDate => 'Đã là mới nhất';
 
   @override
+  String updatesFromStore(String store) {
+    return 'Cập nhật qua $store';
+  }
+
+  @override
+  String updatesFromStoreSub(String store) {
+    return 'Bản này được cài từ $store, nên $store sẽ cập nhật nó';
+  }
+
+  @override
   String get checkForUpdates => 'Kiểm tra cập nhật';
 
   @override
@@ -1066,6 +1076,12 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get autoUpdateCheckSub =>
       'Mỗi ngày một lần, từ GitHub. Không gửi thông tin nào về bạn';
+
+  @override
+  String get updateCheckEveryLaunch => 'Kiểm tra mỗi lần mở ứng dụng';
+
+  @override
+  String get updateCheckEveryLaunchSub => 'Thay vì mỗi ngày một lần';
 
   @override
   String get updateOfferBody => 'Đã có phiên bản mPlayer mới để cài đặt.';

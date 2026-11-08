@@ -64,6 +64,9 @@ dependencies:
   crypto: ^3.0.7
   # Wi-Fi-only downloads: whether the network the device is on is metered.
   connectivity_plus: ^7.3.2
+  # Asking Windows whether this is an MSIX (core/install_source.dart).
+  # Already in the tree through path_provider.
+  ffi: ^2.2.0
 dependency_overrides:
   media_kit_libs_android_video:
     path: packages/media_kit_libs_android_video

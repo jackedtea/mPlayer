@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/app/theme.dart';
+import 'package:mplayer/core/install_source.dart';
 import 'package:mplayer/core/update_check.dart';
 import 'package:mplayer/core/updater.dart';
 import 'package:mplayer/features/settings/update_dialog.dart';
@@ -70,6 +71,7 @@ ProviderContainer _container({
   UpdatePlatform? platform = UpdatePlatform.android,
   _Installer? installer,
   List<UpdateChannel>? asked,
+  InstallSource source = const InstallSource.direct(),
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -81,6 +83,7 @@ ProviderContainer _container({
       updateAutoCheckAllowedProvider.overrideWithValue(allowed),
       updatePlatformProvider.overrideWithValue(platform),
       updateInstallerProvider.overrideWithValue(installer ?? _Installer()),
+      installSourceProvider.overrideWith((ref) async => source),
     ],
   );
   addTearDown(container.dispose);
@@ -222,6 +225,18 @@ void main() {
       expect(asked, isEmpty);
     });
 
+    test('never runs for a copy a store installed', () async {
+      final asked = <UpdateChannel>[];
+      final container = _container(
+        release: _release,
+        asked: asked,
+        source: const InstallSource.store('Google Play'),
+      );
+
+      expect(await container.read(updaterProvider).checkAutomatically(), isNull);
+      expect(asked, isEmpty);
+    });
+
     test('honours the switch', () async {
       SharedPreferences.setMockInitialValues(<String, Object>{
         'update_auto_check': false,
@@ -251,6 +266,25 @@ void main() {
         await updater.checkAutomatically(now: now.add(const Duration(days: 1))),
         isNotNull,
       );
+    });
+
+    test('checks on every launch when asked to', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'update_every_launch': true,
+      });
+      final asked = <UpdateChannel>[];
+      final container = _container(release: _release, asked: asked);
+      final updater = container.read(updaterProvider);
+      final now = DateTime.now();
+
+      expect(await updater.checkAutomatically(now: now), isNotNull);
+      expect(
+        await updater.checkAutomatically(
+          now: now.add(const Duration(minutes: 1)),
+        ),
+        isNotNull,
+      );
+      expect(asked, hasLength(2));
     });
 
     test('stays quiet about a skipped version', () async {

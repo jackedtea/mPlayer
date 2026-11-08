@@ -10,6 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/tokens.dart';
+import '../../core/install_source.dart';
 import '../../core/update_check.dart';
 import '../../core/updater.dart';
 import '../../l10n/app_localizations.dart';
@@ -53,6 +54,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
+    final source = ref.watch(installSourceProvider).value;
 
     return SettingsScaffold(
       title: AppLocalizations.of(context).settingsAbout,
@@ -88,12 +90,25 @@ class _AboutPageState extends ConsumerState<AboutPage> {
           ),
         ),
         SizedBox(height: spacing.xl),
-        _Row(
-          icon: Icons.system_update_rounded,
-          title: AppLocalizations.of(context).checkForUpdates,
-          subtitle: AppLocalizations.of(context).checkForUpdatesSub,
-          onTap: (_) => _checkForUpdates(),
-        ),
+        if (source != null && source.fromStore)
+          // The store updates this copy; GitHub's build would not even
+          // install over it. Say who does, and open its page where it has one.
+          _Row(
+            icon: Icons.storefront_rounded,
+            title: AppLocalizations.of(context).updatesFromStore(source.store!),
+            subtitle:
+                AppLocalizations.of(context).updatesFromStoreSub(source.store!),
+            onTap: source.storeUri == null
+                ? null
+                : (c) => _open(c, source.storeUri.toString()),
+          )
+        else
+          _Row(
+            icon: Icons.system_update_rounded,
+            title: AppLocalizations.of(context).checkForUpdates,
+            subtitle: AppLocalizations.of(context).checkForUpdatesSub,
+            onTap: (_) => _checkForUpdates(),
+          ),
         _Row(
           icon: Icons.description_rounded,
           title: AppLocalizations.of(context).releaseNotes,
@@ -244,7 +259,8 @@ class _Row extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
-  final void Function(BuildContext) onTap;
+  /// Null for a row that only says something.
+  final void Function(BuildContext)? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -253,11 +269,13 @@ class _Row extends StatelessWidget {
       leading: Icon(icon, color: context.colors.onSurfaceVariant),
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing: Icon(
-        Icons.chevron_right_rounded,
-        color: context.colors.outline,
-      ),
-      onTap: () => onTap(context),
+      trailing: onTap == null
+          ? null
+          : Icon(
+              Icons.chevron_right_rounded,
+              color: context.colors.outline,
+            ),
+      onTap: onTap == null ? null : () => onTap!(context),
     );
   }
 }

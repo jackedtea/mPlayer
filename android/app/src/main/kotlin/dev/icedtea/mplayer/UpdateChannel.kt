@@ -38,6 +38,15 @@ class UpdateChannel(
             // Most preferred first, which is the order to pick an APK in.
             "supportedAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
 
+            // Which app installed this one. Dart decides whether that is a
+            // store (and so whether the updater stands aside).
+            "installSource" -> result.success(
+                mapOf(
+                    "installer" to installerPackage(),
+                    "package" to activity.packageName,
+                ),
+            )
+
             "canInstall" -> result.success(canInstall())
 
             "openInstallSettings" -> {
@@ -56,6 +65,24 @@ class UpdateChannel(
 
             else -> result.notImplemented()
         }
+    }
+
+    /**
+     * The package that installed this app — `com.android.vending` for Play,
+     * the system package installer for an APK opened by hand — or null when
+     * the system does not say (`adb install`).
+     */
+    private fun installerPackage(): String? = try {
+        val pm = activity.packageManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            pm.getInstallSourceInfo(activity.packageName).installingPackageName
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getInstallerPackageName(activity.packageName)
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "No install source", e)
+        null
     }
 
     /** Below API 26 the permission was the global "Unknown sources" switch. */

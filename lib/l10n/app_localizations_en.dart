@@ -1054,6 +1054,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get upToDate => 'Up to date';
 
   @override
+  String updatesFromStore(String store) {
+    return 'Updates through $store';
+  }
+
+  @override
+  String updatesFromStoreSub(String store) {
+    return '$store installed this copy and keeps it up to date';
+  }
+
+  @override
   String get checkForUpdates => 'Check for updates';
 
   @override
@@ -1062,6 +1072,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get autoUpdateCheckSub =>
       'Once a day, from GitHub. Nothing about you is sent';
+
+  @override
+  String get updateCheckEveryLaunch => 'Check every time the app opens';
+
+  @override
+  String get updateCheckEveryLaunchSub => 'Instead of once a day';
 
   @override
   String get updateOfferBody =>

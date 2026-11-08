@@ -1988,6 +1988,18 @@ abstract class AppLocalizations {
   /// **'Up to date'**
   String get upToDate;
 
+  /// No description provided for @updatesFromStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates through {store}'**
+  String updatesFromStore(String store);
+
+  /// No description provided for @updatesFromStoreSub.
+  ///
+  /// In en, this message translates to:
+  /// **'{store} installed this copy and keeps it up to date'**
+  String updatesFromStoreSub(String store);
+
   /// No description provided for @checkForUpdates.
   ///
   /// In en, this message translates to:
@@ -2005,6 +2017,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Once a day, from GitHub. Nothing about you is sent'**
   String get autoUpdateCheckSub;
+
+  /// No description provided for @updateCheckEveryLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Check every time the app opens'**
+  String get updateCheckEveryLaunch;
+
+  /// No description provided for @updateCheckEveryLaunchSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Instead of once a day'**
+  String get updateCheckEveryLaunchSub;
 
   /// No description provided for @updateOfferBody.
   ///
