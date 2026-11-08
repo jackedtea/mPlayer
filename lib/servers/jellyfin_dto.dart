@@ -176,6 +176,7 @@ ServerItem serverItemFromJson(
         if (s is Map && s['Name'] is String) s['Name'] as String,
     ],
     status: json['Status'] as String?,
+    links: _linksOf(json),
     // The server dates the end rather than numbering the year, so it is the
     // one field here that has to be parsed out of a timestamp.
     endYear: DateTime.tryParse(json['EndDate'] as String? ?? '')?.year,
@@ -836,6 +837,7 @@ ServerStream serverStreamFromJson(Map<String, dynamic> json) {
     width: json['Width'] as int?,
     height: json['Height'] as int?,
     channels: json['Channels'] as int?,
+    videoRange: _videoRange(json),
     // Present on subtitles the server keeps beside the video rather than
     // inside it. `DeliveryMethod` is checked too: the field survives on a
     // stream the server has since decided to burn in or to mux into an HLS
@@ -845,6 +847,31 @@ ServerStream serverStreamFromJson(Map<String, dynamic> json) {
         ? json['DeliveryUrl'] as String?
         : null,
   );
+}
+
+/// `ExternalUrls`, keeping only web links: a provider is free to hand back
+/// anything, and the button opens whatever it says in a browser.
+List<ServerLink> _linksOf(Map<String, dynamic> json) {
+  final links = <ServerLink>[];
+  for (final Object? entry in (json['ExternalUrls'] as List?) ?? const []) {
+    if (entry is! Map) continue;
+    final name = entry['Name'];
+    final url = Uri.tryParse(entry['Url'] as String? ?? '');
+    if (name is! String || name.trim().isEmpty || url == null) continue;
+    if (url.scheme != 'https' && url.scheme != 'http') continue;
+    links.add(ServerLink(name: name.trim(), url: url));
+  }
+  return links;
+}
+
+/// `VideoRangeType` says which HDR ("HDR10", "DOVI"); `VideoRange` only
+/// SDR or HDR. "Unknown" from either is no answer.
+String? _videoRange(Map<String, dynamic> json) {
+  for (final key in const <String>['VideoRangeType', 'VideoRange']) {
+    final value = json[key] as String?;
+    if (value != null && value.isNotEmpty && value != 'Unknown') return value;
+  }
+  return null;
 }
 
 /// The subtitle files a [ServerPlayback] has to load by hand.

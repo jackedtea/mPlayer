@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/tokens.dart';
 import '../../core/models/library_models.dart';
@@ -18,6 +19,7 @@ import '../../widgets/remote_art.dart';
 import '../downloads/download_ui.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
+import 'item_actions.dart' show downloadAllAction, showPlaylistSheet;
 import 'library_item_menu.dart';
 import 'media_info_sheet.dart';
 import 'server_library.dart';
@@ -41,6 +43,50 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
   TabController? _tabs;
 
   bool _overviewExpanded = false;
+
+  /// Episode ids picked in multi-select. Empty is not selecting: clearing
+  /// the last one leaves the mode.
+  final _selected = <String>{};
+
+  bool get _selecting => _selected.isNotEmpty;
+
+  void _toggle(String id) => setState(() {
+    if (!_selected.remove(id)) _selected.add(id);
+  });
+
+  void _selectAll(Iterable<ServerItem> items) =>
+      setState(() => _selected.addAll(items.map((e) => e.id)));
+
+  void _clearSelection() => setState(_selected.clear);
+
+  /// The picked episodes, in the series' own order.
+  List<ServerItem> _picked(List<ServerItem> episodes) => <ServerItem>[
+    for (final ServerItem e in episodes)
+      if (_selected.contains(e.id)) e,
+  ];
+
+  /// What the selection bar acts on.
+  Widget _selectionBar(
+    List<ServerItem> episodes,
+    List<List<ServerItem>> bySeason,
+  ) {
+    final picked = _picked(episodes);
+    final ids = <String>[for (final ServerItem e in picked) e.id];
+    final tab = _tabs?.index ?? 0;
+
+    return SelectionBar(
+      count: picked.length,
+      onClear: _clearSelection,
+      // The season on screen; the season menu's Select covers another one.
+      onSelectAll: () =>
+          _selectAll(tab < bySeason.length ? bySeason[tab] : episodes),
+      onPlay: () => playLibraryItems(context, ref, picked),
+      onShuffle: () => playLibraryItems(context, ref, picked, shuffle: true),
+      onAddToCollection: () => showCollectionSheet(context, ref, itemIds: ids),
+      onAddToPlaylist: () => showPlaylistSheet(context, ref, itemIds: ids),
+      onDownload: () => downloadAllAction(context, ref, picked).onSelected(),
+    );
+  }
 
   @override
   void dispose() {
@@ -145,12 +191,15 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
     final tabs = _controllerFor(series.seasons.length + 1);
     final compact = context.windowSize == WindowSize.compact;
 
-    return Scaffold(
+    final scaffold = Scaffold(
       // Play sits at the foot of the screen on a phone. The series header is
       // a poster beside a block of facts, so the glyph row under it is most
       // of a screen down on a tall display — and it scrolls away the moment
       // the user reaches the episode list, which is the reason they came.
-      bottomNavigationBar: compact
+      // While episodes are picked, the bar is what acts on them, at any width.
+      bottomNavigationBar: _selecting
+          ? _selectionBar(episodes, bySeason)
+          : compact
           ? ItemPrimaryActionBar(
               // The episode, not the series: it is what has a position, so
               // the label reads "Continue watching" when there is one.
@@ -187,9 +236,24 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
+                // A series' runtime is the length of a typical episode.
+                if (item.runtime != null)
+                  Text(
+                    durationLabel(item.runtime!),
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                 if ((item.certificate ?? '').isNotEmpty)
                   CertificateBox(certificate: item.certificate!),
                 if (item.rating != null) RatingLabel(rating: item.rating!),
+                if (_statusLabel(item, l10n) case final String status)
+                  Text(
+                    status,
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
               ],
               // Beside the titles on a wide window; under the header, in the
               // slivers below, on a phone.
@@ -265,6 +329,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                           position: position,
                           seasons: bySeason,
                           index: i,
+                          onSelect: () => _selectAll(bySeason[i]),
                         ),
                       ),
                     _SeasonTab(label: l10n.about),
@@ -301,6 +366,12 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                           return _EpisodeRow(
                             episode: season.episodes[i],
                             item: source,
+                            selecting: _selecting,
+                            selected:
+                                source != null && _selected.contains(source.id),
+                            onToggle: source == null
+                                ? null
+                                : () => _toggle(source.id),
                             seriesId: item.id,
                             siblings: episodes,
                             // The server holds a still per episode, not just the
@@ -330,7 +401,30 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
               ),
       ),
     );
+
+    // Back clears a selection before it leaves the series.
+    return PopScope(
+      canPop: !_selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _clearSelection();
+      },
+      child: scaffold,
+    );
   }
+}
+
+/// "Continuing" or "Ended", or the server's own word for anything else.
+/// Null where the server did not say.
+String? _statusLabel(ServerItem item, AppLocalizations l10n) {
+  final status = item.status;
+  if (status == null || status.isEmpty) return null;
+  return switch (status) {
+    'Continuing' => l10n.statusContinuing,
+    'Ended' => l10n.statusEnded,
+    // Anything the server invents is shown as it wrote it rather than
+    // dropped.
+    _ => status,
+  };
 }
 
 /// "2023 - 2026", or "2023" for a series that has not ended.
@@ -462,9 +556,19 @@ class _EpisodeRow extends StatefulWidget {
     this.seriesId,
     this.siblings = const <ServerItem>[],
     this.artUrl,
+    this.selecting = false,
+    this.selected = false,
+    this.onToggle,
   });
 
   final Episode episode;
+
+  /// Whether the list is in multi-select, where every tap picks.
+  final bool selecting;
+  final bool selected;
+
+  /// Picks or unpicks this row; also what Select in its menu starts with.
+  final VoidCallback? onToggle;
 
   /// The server item behind this row. Null when the grouped list and the flat
   /// one could not be matched up, which leaves the row readable but inert.
@@ -499,86 +603,101 @@ class _EpisodeRowState extends State<_EpisodeRow> {
     final episode = widget.episode;
     final item = widget.item;
 
-    return InkWell(
-      onTap: widget.onTap,
-      // The same menu as the ⋮ at the end of the row, for a thumb that is
-      // already on the episode rather than at the far edge of the screen.
-      onLongPress: item == null
-          ? null
-          : () => _menu.currentState?.showButtonMenu(),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: spacing.screenHorizontal(context.windowSize),
-          vertical: spacing.md,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // The still carries a play glyph, so it plays. It used to open
-            // the episode's screen like the rest of the row — a button that
-            // says one thing and does another.
-            InkWell(
-              onTap: widget.onPlay,
-              borderRadius: context.radii.chipAll,
-              child: _EpisodeThumb(episode: episode, artUrl: widget.artUrl),
-            ),
-            SizedBox(width: spacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    '${episode.number}. ${episode.title}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.titleSmall?.copyWith(
-                      color: scheme.onSurface,
+    final selecting = widget.selecting;
+    final toggle = widget.onToggle;
+
+    return Ink(
+      color: widget.selected ? scheme.secondaryContainer : null,
+      child: InkWell(
+        onTap: selecting ? toggle : widget.onTap,
+        // The same menu as the ⋮ at the end of the row, for a thumb that is
+        // already on the episode rather than at the far edge of the screen.
+        // While picking, a long press picks too.
+        onLongPress: item == null
+            ? null
+            : selecting
+            ? toggle
+            : () => _menu.currentState?.showButtonMenu(),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.screenHorizontal(context.windowSize),
+            vertical: spacing.md,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              // The still carries a play glyph, so it plays. It used to open
+              // the episode's screen like the rest of the row — a button that
+              // says one thing and does another.
+              InkWell(
+                onTap: selecting ? toggle : widget.onPlay,
+                borderRadius: context.radii.chipAll,
+                child: _EpisodeThumb(episode: episode, artUrl: widget.artUrl),
+              ),
+              SizedBox(width: spacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      '${episode.number}. ${episode.title}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.titleSmall?.copyWith(
+                        color: scheme.onSurface,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: spacing.xs / 2),
-                  Text(
-                    episode.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                    SizedBox(height: spacing.xs / 2),
+                    Text(
+                      episode.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: spacing.xs),
-                  Row(
-                    children: <Widget>[
-                      Flexible(
-                        child: Text(
-                          episode.meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.texts.bodySmall?.copyWith(
-                            color: scheme.outline,
+                    SizedBox(height: spacing.xs),
+                    Row(
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            episode.meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.texts.bodySmall?.copyWith(
+                              color: scheme.outline,
+                            ),
                           ),
                         ),
-                      ),
-                      if (item != null) ...<Widget>[
-                        SizedBox(width: spacing.sm),
-                        DownloadBadge(itemId: item.id),
+                        if (item != null) ...<Widget>[
+                          SizedBox(width: spacing.sm),
+                          DownloadBadge(itemId: item.id),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // No play button here: the still is the play affordance now, and
-            // two of them on one row is one too many. This is where the rest
-            // of what can be done to an episode lives.
-            if (item != null)
-              ItemActionMenu(
-                menuKey: _menu,
-                item: item,
-                seriesId: widget.seriesId,
-                shuffleFrom: widget.siblings,
-                onMediaInfo: () => showMediaInfo(context, item.id),
-              ),
-          ],
+              // No play button here: the still is the play affordance now, and
+              // two of them on one row is one too many. This is where the rest
+              // of what can be done to an episode lives.
+              if (item != null && selecting)
+                Checkbox(
+                  value: widget.selected,
+                  onChanged: toggle == null ? null : (_) => toggle(),
+                )
+              else if (item != null)
+                ItemActionMenu(
+                  menuKey: _menu,
+                  onSelect: toggle,
+                  item: item,
+                  seriesId: widget.seriesId,
+                  shuffleFrom: widget.siblings,
+                  onMediaInfo: () => showMediaInfo(context, item.id),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -651,18 +770,17 @@ class _AboutTab extends StatelessWidget {
     final padding = spacing.screenPadding(context.windowSize);
 
     final facts = <(String, String)>[
-      if (item.status != null && item.status!.isNotEmpty)
+      if (_statusLabel(item, l10n) case final String status)
+        (l10n.seriesStatus, status),
+      if (item.premiereDate case final DateTime aired)
         (
-          l10n.seriesStatus,
-          switch (item.status) {
-            'Continuing' => l10n.statusContinuing,
-            'Ended' => l10n.statusEnded,
-            // Anything the server invents is shown as it wrote it rather
-            // than dropped.
-            final String other => other,
-            null => '',
-          },
+          l10n.firstAired,
+          DateFormat.yMMMd(
+            Localizations.localeOf(context).toString(),
+          ).format(aired.toLocal()),
         ),
+      if (item.runtime case final Duration runtime)
+        (l10n.episodeLength, durationLabel(runtime)),
       if (item.studios.isNotEmpty) (l10n.studios, item.studios.join(', ')),
     ];
 
@@ -700,6 +818,10 @@ class _AboutTab extends StatelessWidget {
         ],
         SizedBox(height: spacing.xl),
         SimilarStrip(itemId: item.id, title: l10n.moreLikeThis),
+        ExternalLinks(
+          links: item.links,
+          padding: padding.copyWith(top: spacing.xl, bottom: 0),
+        ),
       ],
     );
   }

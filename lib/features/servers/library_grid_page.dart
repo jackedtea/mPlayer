@@ -1178,7 +1178,7 @@ class _PosterGridState extends ConsumerState<PosterGrid> {
       child: Column(
         children: <Widget>[
           Expanded(child: grid),
-          _SelectionBar(
+          SelectionBar(
             count: _selectedItems.length,
             onClear: _clear,
             onSelectAll: () =>
@@ -1250,85 +1250,6 @@ class _SelectableTile extends StatelessWidget {
   }
 }
 
-/// What can be done to the whole selection, at the foot of the grid where a
-/// thumb already is.
-class _SelectionBar extends StatelessWidget {
-  const _SelectionBar({
-    required this.count,
-    required this.onClear,
-    required this.onSelectAll,
-    required this.onPlay,
-    required this.onShuffle,
-    required this.onAddToCollection,
-    required this.onAddToPlaylist,
-  });
-
-  final int count;
-  final VoidCallback onClear;
-  final VoidCallback onSelectAll;
-  final VoidCallback onPlay;
-  final VoidCallback onShuffle;
-  final VoidCallback onAddToCollection;
-  final VoidCallback onAddToPlaylist;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final spacing = context.spacing;
-
-    return Material(
-      color: context.colors.surfaceContainer,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: spacing.xs),
-          child: Row(
-            children: <Widget>[
-              IconButton(
-                tooltip: l10n.clearSelection,
-                icon: const Icon(Icons.close_rounded),
-                onPressed: onClear,
-              ),
-              Expanded(
-                child: Text(
-                  l10n.selectedCount(count),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.texts.titleSmall,
-                ),
-              ),
-              IconButton(
-                tooltip: l10n.selectAll,
-                icon: const Icon(Icons.select_all_rounded),
-                onPressed: onSelectAll,
-              ),
-              IconButton(
-                tooltip: l10n.play,
-                icon: const Icon(Icons.play_arrow_rounded),
-                onPressed: onPlay,
-              ),
-              IconButton(
-                tooltip: l10n.shuffleItems,
-                icon: const Icon(Icons.shuffle_rounded),
-                onPressed: onShuffle,
-              ),
-              IconButton(
-                tooltip: l10n.addToCollection,
-                icon: const Icon(Icons.library_add_outlined),
-                onPressed: onAddToCollection,
-              ),
-              IconButton(
-                tooltip: l10n.addToPlaylist,
-                icon: const Icon(Icons.playlist_add_rounded),
-                onPressed: onAddToPlaylist,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// A centred sentence where a grid would be — an empty tab explains itself
 /// rather than showing blank space the user reads as a failure.

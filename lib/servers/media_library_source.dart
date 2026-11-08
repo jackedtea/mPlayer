@@ -74,6 +74,7 @@ class ServerItem {
     this.premiereDate,
     this.chapters = const <ServerChapter>[],
     this.trickplay,
+    this.links = const <ServerLink>[],
     this.album,
     this.albumId,
     this.artists = const <ServerArtistRef>[],
@@ -187,6 +188,11 @@ class ServerItem {
 
   /// The scrubber preview sheets, where the server has generated them.
   final ServerTrickplay? trickplay;
+
+  /// Pages about this item elsewhere — IMDb, TheMovieDb, TheTVDB, Trakt —
+  /// as the server's metadata providers build them. Only the detail fetch
+  /// asks for them.
+  final List<ServerLink> links;
 
   /// The album a track is on. Null for everything that is not a track.
   final String? album;
@@ -389,7 +395,12 @@ class ServerStream {
     this.height,
     this.channels,
     this.deliveryUrl,
+    this.videoRange,
   });
+
+  /// "SDR", "HDR10", "DOVI" — the server's `VideoRangeType`, or its plainer
+  /// `VideoRange` where the type is unknown. Video streams only.
+  final String? videoRange;
 
   /// The server's own index, which is what a playback request quotes back.
   /// Not a position in any list this app builds.
@@ -523,6 +534,15 @@ class MediaSegment {
 
 /// A chapter as the *server* holds it, with the artwork it generated for it.
 ///
+/// One of an item's [ServerItem.links]: "IMDb" and where it goes.
+@immutable
+class ServerLink {
+  const ServerLink({required this.name, required this.url});
+
+  final String name;
+  final Uri url;
+}
+
 /// Distinct from the player's `MediaChapter`, which is also fed by the
 /// container: only a server chapter has a picture to show.
 @immutable

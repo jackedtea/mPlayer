@@ -130,4 +130,93 @@ void main() {
     final bar = tester.widget<TabBar>(find.byType(TabBar));
     expect(bar.controller!.index, 1);
   });
+
+  group('selecting episodes', () {
+    testWidgets('Select on a season picks all of it', (tester) async {
+      await _pump(tester, _Server());
+
+      await tester.longPress(find.text('Season 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('3 selected'), findsOneWidget);
+      expect(find.byType(Checkbox), findsNWidgets(3));
+    });
+
+    testWidgets('Select on an episode starts with it; taps pick; back clears', (
+      tester,
+    ) async {
+      await _pump(tester, _Server());
+
+      await tester.longPress(find.text('1. Episode 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 selected'), findsOneWidget);
+
+      // A tap picks rather than opening the episode.
+      await tester.tap(find.text('2. Episode 2'));
+      await tester.pumpAndSettle();
+      expect(find.text('2 selected'), findsOneWidget);
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pumpAndSettle();
+      expect(find.text('1 selected'), findsOneWidget);
+
+      final handled = await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(handled, isTrue);
+      expect(find.textContaining('selected'), findsNothing);
+      expect(find.byType(Checkbox), findsNothing);
+      // Still on the series.
+      expect(find.text('Season 1'), findsOneWidget);
+    });
+
+    testWidgets('the picked episodes go into a collection together', (
+      tester,
+    ) async {
+      final server = _Server();
+      await _pump(tester, server);
+
+      await tester.longPress(find.text('1. Episode 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('3. Episode 3'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Add to collection'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Box'));
+      await tester.pumpAndSettle();
+
+      expect(server.added['c1'], <String>['s1e1', 's1e3']);
+    });
+
+    testWidgets('the bar fits a narrow phone', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(320, 700);
+      addTearDown(tester.view.reset);
+
+      final router = buildRouter();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [activeServerProvider.overrideWithValue(_Server())],
+          child: MPlayerApp(router: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      router.push('/library/series', extra: 's1');
+      await tester.pumpAndSettle();
+
+      await tester.longPress(find.text('Season 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('3 selected'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

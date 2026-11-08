@@ -3194,6 +3194,36 @@ abstract class AppLocalizations {
   /// **'Play all from here'**
   String get playAllFromHere;
 
+  /// No description provided for @endsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends at {time}'**
+  String endsAt(String time);
+
+  /// No description provided for @videoTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get videoTrack;
+
+  /// No description provided for @firstAired.
+  ///
+  /// In en, this message translates to:
+  /// **'First aired'**
+  String get firstAired;
+
+  /// No description provided for @externalLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Links'**
+  String get externalLinks;
+
+  /// No description provided for @episodeLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Episode length'**
+  String get episodeLength;
+
   /// No description provided for @newPlaylist.
   ///
   /// In en, this message translates to:

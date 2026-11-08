@@ -332,12 +332,16 @@ class ItemActionMenu extends ConsumerWidget {
     this.shuffleFrom = const <ServerItem>[],
     this.onMediaInfo,
     this.menuKey,
+    this.onSelect,
   });
 
   final ServerItem item;
   final String? seriesId;
   final List<ServerItem> shuffleFrom;
   final Future<void> Function()? onMediaInfo;
+
+  /// Starts a multi-select with this item in it; null leaves Select out.
+  final VoidCallback? onSelect;
 
   /// Lets the row around the button open the same menu — a long press on an
   /// episode row calls `menuKey.currentState?.showButtonMenu()`, so the menu
@@ -355,6 +359,17 @@ class ItemActionMenu extends ConsumerWidget {
       playlistIds: <String>[item.id],
       onMediaInfo: onMediaInfo,
     );
+    final select = onSelect;
+    if (select != null) {
+      actions.insert(
+        0,
+        ItemAction(
+          icon: Icons.library_add_check_outlined,
+          label: AppLocalizations.of(context).selectItems,
+          onSelected: () async => select(),
+        ),
+      );
+    }
 
     return PopupMenuButton<int>(
       key: menuKey,

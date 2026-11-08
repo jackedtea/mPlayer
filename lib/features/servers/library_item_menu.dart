@@ -199,6 +199,7 @@ Future<void> showSeasonMenu(
   required Offset position,
   required List<List<ServerItem>> seasons,
   required int index,
+  VoidCallback? onSelect,
 }) async {
   if (index >= seasons.length || seasons[index].isEmpty) return;
   final l10n = AppLocalizations.of(context);
@@ -231,6 +232,8 @@ Future<void> showSeasonMenu(
       () => shufflePlay(context, ref, season),
     ),
     null,
+    if (onSelect != null)
+      (Icons.library_add_check_outlined, l10n.selectItems, onSelect),
     (
       Icons.library_add_outlined,
       l10n.addToCollection,
@@ -414,5 +417,106 @@ class _CollectionSheet extends ConsumerWidget {
   void _invalidate(WidgetRef ref) {
     ref.invalidate(allCollectionsProvider);
     ref.invalidate(libraryCollectionsProvider);
+  }
+}
+
+/// What can be done to the whole selection, at the foot of the screen where
+/// a thumb already is. Shared by the library grid and the episode list.
+class SelectionBar extends StatelessWidget {
+  const SelectionBar({
+    super.key,
+    required this.count,
+    required this.onClear,
+    required this.onSelectAll,
+    required this.onPlay,
+    required this.onShuffle,
+    required this.onAddToCollection,
+    required this.onAddToPlaylist,
+    this.onDownload,
+  });
+
+  final int count;
+  final VoidCallback onClear;
+  final VoidCallback onSelectAll;
+  final VoidCallback onPlay;
+  final VoidCallback onShuffle;
+  final VoidCallback onAddToCollection;
+  final VoidCallback onAddToPlaylist;
+
+  /// Download all of them; null leaves the button out.
+  final VoidCallback? onDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final spacing = context.spacing;
+
+    return Material(
+      color: context.colors.surfaceContainer,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: spacing.xs),
+          child: Row(
+            children: <Widget>[
+              IconButton(
+                tooltip: l10n.clearSelection,
+                icon: const Icon(Icons.close_rounded),
+                onPressed: onClear,
+              ),
+              Text(
+                l10n.selectedCount(count),
+                maxLines: 1,
+                style: context.texts.titleSmall,
+              ),
+              SizedBox(width: spacing.sm),
+              // Up to seven glyphs do not fit a narrow phone beside the
+              // count, so they scroll — right-aligned while they fit.
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  reverse: true,
+                  child: Row(
+                    children: <Widget>[
+                      IconButton(
+                        tooltip: l10n.selectAll,
+                        icon: const Icon(Icons.select_all_rounded),
+                        onPressed: onSelectAll,
+                      ),
+                      IconButton(
+                        tooltip: l10n.play,
+                        icon: const Icon(Icons.play_arrow_rounded),
+                        onPressed: onPlay,
+                      ),
+                      IconButton(
+                        tooltip: l10n.shuffleItems,
+                        icon: const Icon(Icons.shuffle_rounded),
+                        onPressed: onShuffle,
+                      ),
+                      IconButton(
+                        tooltip: l10n.addToCollection,
+                        icon: const Icon(Icons.library_add_outlined),
+                        onPressed: onAddToCollection,
+                      ),
+                      IconButton(
+                        tooltip: l10n.addToPlaylist,
+                        icon: const Icon(Icons.playlist_add_rounded),
+                        onPressed: onAddToPlaylist,
+                      ),
+                      if (onDownload != null)
+                        IconButton(
+                          tooltip: l10n.downloadAll,
+                          icon: const Icon(Icons.download_for_offline_outlined),
+                          onPressed: onDownload,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

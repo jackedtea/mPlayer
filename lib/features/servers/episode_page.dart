@@ -6,12 +6,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../servers/stream_preferences.dart';
 import '../../widgets/backdrop_header.dart';
+import '../../widgets/detail_header.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
 import 'media_info_sheet.dart';
@@ -102,54 +104,37 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
             seed: item.title,
             artUrl: artUrlFor(ref, item, maxWidth: 900),
             height: 220,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                if (item.seriesTitle != null)
-                  Text(
-                    item.seriesTitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodyMedium?.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                Text(
-                  item.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.texts.headlineSmall,
-                ),
-                SizedBox(height: spacing.xs),
-                Text(
-                  _metaLine(item, l10n),
-                  style: context.texts.bodySmall?.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+            child: _EpisodeTitles(item: item),
           ),
           Padding(
             padding: padding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                ItemActionRow(
-                  item: item,
-                  primary: !compact,
-                  seriesId: item.seriesId,
-                  shuffleFrom: siblings,
-                  playlistIds: <String>[item.id],
-                  onPlay: () => _play(item, playback),
-                  onStartOver: () => _play(item, playback, fromStart: true),
-                  // Always offered: the sheet fetches the track list itself
-                  // and says so while it does, which is better than an action
-                  // that is missing until a request the user cannot see
-                  // finishes.
-                  onMediaInfo: () => showMediaInfo(context, item.id),
-                ),
+                // Glyphs with the rest behind ⋮, as on the series and movie
+                // screens. The labelled chips ran off the side of a phone and
+                // had to be scrolled to find the fourth.
+                if (compact)
+                  ItemActionIcons(
+                    item: item,
+                    // Play is in the bar at the foot of the screen.
+                    primary: false,
+                    alignment: WrapAlignment.start,
+                    seriesId: item.seriesId,
+                    shuffleFrom: siblings,
+                    playlistIds: <String>[item.id],
+                    onPlay: () => _play(item, playback),
+                    // Always offered: the sheet fetches the track list itself
+                    // and says so while it does.
+                    onMediaInfo: () => showMediaInfo(context, item.id),
+                  )
+                else
+                  _WideActions(
+                    item: item,
+                    siblings: siblings,
+                    onPlay: () => _play(item, playback),
+                    onStartOver: () => _play(item, playback, fromStart: true),
+                  ),
                 if ((item.overview ?? '').isNotEmpty) ...<Widget>[
                   SizedBox(height: spacing.lg),
                   _Overview(
@@ -183,6 +168,10 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
             ),
             PeopleStrip(people: item.people),
           ],
+          ExternalLinks(
+            links: item.links,
+            padding: padding.copyWith(top: spacing.xl, bottom: 0),
+          ),
         ],
       ),
     );
@@ -218,18 +207,177 @@ class _EpisodePageState extends ConsumerState<EpisodePage> {
 
     await playServerItem(context, ref, item.id, fromStart: fromStart);
   }
+}
 
-  static String _metaLine(ServerItem item, AppLocalizations l10n) {
+/// Past compact: a labelled Play — "Continue watching" once started — and
+/// Start over ahead of the glyphs, as the movie screen has.
+class _WideActions extends StatelessWidget {
+  const _WideActions({
+    required this.item,
+    required this.siblings,
+    required this.onPlay,
+    required this.onStartOver,
+  });
+
+  final ServerItem item;
+  final List<ServerItem> siblings;
+  final VoidCallback onPlay;
+  final VoidCallback onStartOver;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+    final l10n = AppLocalizations.of(context);
+    final started = (item.position ?? Duration.zero) > Duration.zero;
+
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: spacing.sm,
+      runSpacing: spacing.sm,
+      children: <Widget>[
+        FilledButton.icon(
+          onPressed: onPlay,
+          icon: const Icon(Icons.play_arrow_rounded),
+          label: Text(started ? l10n.continueWatching : l10n.play),
+        ),
+        if (started)
+          IconButton(
+            tooltip: l10n.startOver,
+            icon: const Icon(Icons.replay_rounded),
+            onPressed: onStartOver,
+          ),
+        ItemActionIcons(
+          item: item,
+          primary: false,
+          alignment: WrapAlignment.start,
+          seriesId: item.seriesId,
+          shuffleFrom: siblings,
+          playlistIds: <String>[item.id],
+          onPlay: onPlay,
+          onMediaInfo: () => showMediaInfo(context, item.id),
+        ),
+      ],
+    );
+  }
+}
+
+/// The block under the still: the series, the episode's own title, the title
+/// it was made under, then one line of facts — "S2E1 · 7/6/2013 · 27m ·
+/// ★ 7.7 · Ends at 9:17 PM" — showing only what the server filled in.
+class _EpisodeTitles extends StatelessWidget {
+  const _EpisodeTitles({required this.item});
+
+  final ServerItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.spacing;
+    final scheme = context.colors;
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toString();
+    final muted = context.texts.bodyMedium?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
+
     final season = item.seasonNumber;
     final episode = item.episodeNumber;
+    final original = item.originalTitle?.trim() ?? '';
+    final premiere = item.premiereDate;
     final runtime = item.runtime;
+    final position = item.position ?? Duration.zero;
+    final left = runtime == null || item.played ? null : runtime - position;
 
-    return <String>[
-      if (season != null && episode != null) l10n.episodeOf(episode, season),
-      if (runtime != null) durationLabel(runtime),
-      if (item.played) l10n.watched,
-    ].where((s) => s.isNotEmpty).join(' · ');
+    final facts = <Widget>[
+      if (season != null && episode != null)
+        Text(l10n.episodeOf(season, episode), style: muted),
+      if (premiere != null)
+        Text(DateFormat.yMd(locale).format(premiere.toLocal()), style: muted),
+      if (runtime != null) Text(durationLabel(runtime), style: muted),
+      if (item.rating != null) RatingLabel(rating: item.rating!),
+      if ((item.certificate ?? '').isNotEmpty)
+        CertificateBox(certificate: item.certificate!),
+      // When it would end if started now: the question someone deciding
+      // whether there is time for one more is actually asking.
+      if (left != null && left > Duration.zero)
+        Text(
+          l10n.endsAt(DateFormat.jm(locale).format(DateTime.now().add(left))),
+          style: muted,
+        ),
+      if (item.played) Text(l10n.watched, style: muted),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (item.seriesTitle != null)
+          Text(
+            item.seriesTitle!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.texts.titleMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        Text(
+          item.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: context.texts.headlineSmall,
+        ),
+        if (original.isNotEmpty && original != item.title)
+          Padding(
+            padding: EdgeInsets.only(top: spacing.xs / 2),
+            child: Text(
+              original,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: muted,
+            ),
+          ),
+        if (facts.isNotEmpty) ...<Widget>[
+          SizedBox(height: spacing.sm),
+          Wrap(
+            spacing: spacing.md,
+            runSpacing: spacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: facts,
+          ),
+        ],
+      ],
+    );
   }
+}
+
+/// "1080p HEVC SDR": the resolution class, the codec and the dynamic range.
+///
+/// The class comes from the width as well as the height, so a 1920×800 scope
+/// film reads as the 1080p it is rather than as "800p".
+String videoSummary(ServerStream video) {
+  final w = video.width ?? 0;
+  final h = video.height ?? 0;
+  final resolution = w >= 3800 || h >= 2100
+      ? '4K'
+      : w >= 2500 || h >= 1400
+      ? '1440p'
+      : w >= 1900 || h >= 1000
+      ? '1080p'
+      : w >= 1260 || h >= 700
+      ? '720p'
+      : h > 0
+      ? '${h}p'
+      : '';
+  final codec = switch (video.codec?.toLowerCase()) {
+    null || '' => '',
+    'h264' || 'avc' => 'H.264',
+    'hevc' || 'h265' => 'HEVC',
+    final String other => other.toUpperCase(),
+  };
+  return <String>[
+    resolution,
+    codec,
+    video.videoRange ?? '',
+  ].where((p) => p.isNotEmpty).join(' ');
 }
 
 /// The audio and subtitle choice, made before anything plays.
@@ -265,9 +413,21 @@ class _TrackPickers extends StatelessWidget {
     final audio = info.streamsOfType(ServerStreamType.audio);
     final subtitles = info.streamsOfType(ServerStreamType.subtitle);
 
+    final video = info.streamsOfType(ServerStreamType.video).firstOrNull;
+    final videoLine = video == null ? '' : videoSummary(video);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        // Read-only: there is one video track to speak of, and what it is —
+        // "1080p HEVC SDR" — is what decides whether this device will play
+        // it directly.
+        if (videoLine.isNotEmpty)
+          _PickerRow(
+            icon: Icons.videocam_outlined,
+            label: l10n.videoTrack,
+            value: videoLine,
+          ),
         if (audio.isNotEmpty)
           _PickerRow(
             icon: Icons.multitrack_audio_rounded,
@@ -373,13 +533,15 @@ class _PickerRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    required this.onTap,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final VoidCallback onTap;
+
+  /// Null draws a row that only informs, with no chevron.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -388,7 +550,7 @@ class _PickerRow extends StatelessWidget {
       leading: Icon(icon),
       title: Text(label),
       subtitle: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: const Icon(Icons.expand_more_rounded),
+      trailing: onTap == null ? null : const Icon(Icons.expand_more_rounded),
       onTap: onTap,
     );
   }

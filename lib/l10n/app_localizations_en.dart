@@ -1749,6 +1749,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get playAllFromHere => 'Play all from here';
 
   @override
+  String endsAt(String time) {
+    return 'Ends at $time';
+  }
+
+  @override
+  String get videoTrack => 'Video';
+
+  @override
+  String get firstAired => 'First aired';
+
+  @override
+  String get externalLinks => 'Links';
+
+  @override
+  String get episodeLength => 'Episode length';
+
+  @override
   String get newPlaylist => 'New playlist';
 
   @override

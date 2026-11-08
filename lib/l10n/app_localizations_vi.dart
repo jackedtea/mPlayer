@@ -1752,6 +1752,23 @@ class AppLocalizationsVi extends AppLocalizations {
   String get playAllFromHere => 'Phát tất cả từ đây';
 
   @override
+  String endsAt(String time) {
+    return 'Kết thúc lúc $time';
+  }
+
+  @override
+  String get videoTrack => 'Video';
+
+  @override
+  String get firstAired => 'Khởi chiếu';
+
+  @override
+  String get externalLinks => 'Liên kết';
+
+  @override
+  String get episodeLength => 'Thời lượng tập';
+
+  @override
   String get newPlaylist => 'Danh sách phát mới';
 
   @override

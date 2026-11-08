@@ -264,11 +264,34 @@ Also open:
   opens `showSeasonMenu`: Play (from the season's next episode), Play all
   from here (this season and every later one), Shuffle, Add to collection
   (the season by `ServerItem.seasonId`, else its episodes), Add to playlist
-  (the episodes), Download all. No Select: the episode list has no
-  multi-select.
+  (the episodes), Download all, Select. **Episode multi-select**: Select in
+  the season menu picks that season, Select in an episode's ⋮ menu picks
+  that episode; taps and long presses then pick, rows get a checkbox in place
+  of ⋮, Back clears. `SelectionBar` (`library_item_menu.dart`, shared with
+  the library grid, glyphs scroll on a narrow phone) replaces the Play bar
+  while picking: select all (the season on screen), play, shuffle, add to
+  collection, add to playlist, download.
 - **Series rows map to items by position in the same season grouping**
   `seriesDetailFrom` uses (`_episodesBySeason`). Matching on number + title
   sent every season's "Episode 1" to season 1's item.
+- **`BackdropHeader` puts the title under the artwork** (episode and artist
+  pages): the art is `height` tall, the title starts `overlap` (40) above its
+  foot where the scrim is ~92% surface, and the header grows with the title.
+  Overlaid at a fixed height, dark text sat on bright stills and a two-line
+  title climbed into the back button.
+- **Episode detail** shows series, title, original title, then
+  `S1E2 · date · runtime · ★ · certificate · Ends at <time>`, a read-only
+  Video row (`videoSummary`: "1080p HEVC SDR", class from width or height,
+  range from `ServerStream.videoRange` = `VideoRangeType` ?? `VideoRange`),
+  and the glyph row (`ItemActionIcons`) instead of the scrolling chips.
+  `episodeOf` takes (season, episode) — the page used to swap them.
+- **Series detail** adds the typical episode length and Continuing/Ended to
+  the header facts, and First aired / Episode length to About.
+- **External links** (IMDb, TheMovieDb, TheTVDB, Trakt…): `ExternalUrls` on
+  the detail fetch only (`_detailFields`), parsed to `ServerItem.links`
+  keeping http(s) alone, drawn by `ExternalLinks` (`detail_sections.dart`)
+  as chips opened with `url_launcher` — at the foot of the movie and episode
+  screens and of the series' About tab.
 - **Mouse back/forward** (`app/mouse_navigation.dart`, wrapped in
   `MaterialApp.router`'s builder): back goes through
   `routerDelegate.popRoute()` so PopScope screens are asked first; forward

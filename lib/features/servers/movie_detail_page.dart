@@ -164,6 +164,10 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
               ],
               SizedBox(height: spacing.xl),
               SimilarStrip(itemId: item.id, title: l10n.moreLikeThis),
+              ExternalLinks(
+                links: item.links,
+                padding: padding.copyWith(top: spacing.xl, bottom: 0),
+              ),
               SizedBox(height: spacing.xl * 2 + context.systemBottomInset),
             ],
           ),
