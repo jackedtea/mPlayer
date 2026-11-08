@@ -332,6 +332,8 @@
   "quality": "Quality",
   "playbackSpeed": "Playback speed",
   "chapters": "Chapters",
+  "previousChapter": "Previous chapter",
+  "nextChapter": "Next chapter",
   "noChapters": "This file has no chapters",
   "off": "Off",
   "auto": "Auto",

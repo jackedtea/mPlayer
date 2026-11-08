@@ -994,6 +994,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chapters => 'Chapters';
 
   @override
+  String get previousChapter => 'Previous chapter';
+
+  @override
+  String get nextChapter => 'Next chapter';
+
+  @override
   String get noChapters => 'This file has no chapters';
 
   @override

@@ -495,6 +495,22 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           },
                           onChapters: () =>
                               _showChapters(state, controller),
+                          // Read at the press, not from the build: the
+                          // position has moved on since this frame was drawn.
+                          onPreviousChapter: () {
+                            _restartHideTimer();
+                            final to = ref
+                                .read(playbackControllerProvider)
+                                .previousChapterStart();
+                            if (to != null) controller.seek(to);
+                          },
+                          onNextChapter: () {
+                            _restartHideTimer();
+                            final to = ref
+                                .read(playbackControllerProvider)
+                                .nextChapterStart();
+                            if (to != null) controller.seek(to);
+                          },
                           onFullscreen: _toggleFullscreen,
                           onMore: () => MoreMenu.show(
                             context,

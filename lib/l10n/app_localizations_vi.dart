@@ -996,6 +996,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get chapters => 'Chương';
 
   @override
+  String get previousChapter => 'Chương trước';
+
+  @override
+  String get nextChapter => 'Chương sau';
+
+  @override
   String get noChapters => 'Tệp này không có chương';
 
   @override

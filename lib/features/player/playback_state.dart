@@ -470,6 +470,42 @@ class PlaybackState {
     return null;
   }
 
+  /// How far into a chapter "previous" still means its own start, as every
+  /// player and CD deck has it: a press right after a chapter began goes back
+  /// one; a press further in starts this one again.
+  static const chapterRestartWindow = Duration(seconds: 3);
+
+  List<MediaChapter> get _chaptersInOrder =>
+      List<MediaChapter>.of(chapters)
+        ..sort((a, b) => a.start.compareTo(b.start));
+
+  /// Where "previous chapter" goes from [position], or null with fewer than
+  /// two chapters to move between.
+  Duration? previousChapterStart([Duration? from]) {
+    final ordered = _chaptersInOrder;
+    if (ordered.length < 2) return null;
+    final at = from ?? position;
+
+    final current = ordered.lastIndexWhere((c) => c.start <= at);
+    if (current < 0) return Duration.zero;
+    if (at - ordered[current].start > chapterRestartWindow || current == 0) {
+      return ordered[current].start;
+    }
+    return ordered[current - 1].start;
+  }
+
+  /// Where "next chapter" goes from [position], or null in the last one.
+  Duration? nextChapterStart([Duration? from]) {
+    final ordered = _chaptersInOrder;
+    if (ordered.length < 2) return null;
+    final at = from ?? position;
+
+    for (final MediaChapter c in ordered) {
+      if (c.start > at) return c.start;
+    }
+    return null;
+  }
+
   /// What the source says about this file, stretch by stretch.
   ///
   /// Empty for a local file, an SMB share and any server that has never had a

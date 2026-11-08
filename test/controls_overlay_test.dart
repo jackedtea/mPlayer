@@ -42,6 +42,8 @@ Future<void> pumpControls(
   MediaSegment? skipSegment,
   bool chromeVisible = true,
   VoidCallback? onNext,
+  VoidCallback? onPreviousChapter,
+  VoidCallback? onNextChapter,
   VoidCallback? onZoom,
   VoidCallback? onTracks,
 }) async {
@@ -81,6 +83,8 @@ Future<void> pumpControls(
           onLock: () {},
           onRotate: () {},
           onChapters: () {},
+          onPreviousChapter: onPreviousChapter,
+          onNextChapter: onNextChapter,
           onFullscreen: () {},
           onMore: () {},
           onZoom: onZoom ?? () {},
@@ -135,7 +139,106 @@ Color? iconColour(WidgetTester tester, IconData icon) {
       .color;
 }
 
+/// Three chapters of a 24-minute episode, playing at [position].
+PlaybackState _chaptered(Duration position) {
+  return PlaybackState(
+    media: media(),
+    duration: const Duration(minutes: 24),
+    position: position,
+    containerChapters: const <MediaChapter>[
+      MediaChapter(
+        title: 'Opening',
+        start: Duration.zero,
+        end: Duration(minutes: 2),
+      ),
+      MediaChapter(
+        title: 'Part A',
+        start: Duration(minutes: 2),
+        end: Duration(minutes: 12),
+      ),
+      MediaChapter(
+        title: 'Part B',
+        start: Duration(minutes: 12),
+        end: Duration(minutes: 24),
+      ),
+    ],
+  );
+}
+
 void main() {
+  group('chapter buttons', () {
+    testWidgets('step either side of the chapter list', (tester) async {
+      var previous = 0;
+      var next = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _chaptered(const Duration(minutes: 5)),
+        onPreviousChapter: () => previous++,
+        onNextChapter: () => next++,
+      );
+
+      final list = tester.getCenter(find.byTooltip('Chapters'));
+      final back = tester.getCenter(find.byTooltip('Previous chapter'));
+      final on = tester.getCenter(find.byTooltip('Next chapter'));
+      expect(back.dx, lessThan(list.dx));
+      expect(on.dx, greaterThan(list.dx));
+
+      await tester.tap(find.byTooltip('Previous chapter'));
+      await tester.tap(find.byTooltip('Next chapter'));
+      expect(previous, 1);
+      expect(next, 1);
+    });
+
+    testWidgets('next is greyed out in the last chapter', (tester) async {
+      var next = 0;
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: _chaptered(const Duration(minutes: 20)),
+        onPreviousChapter: () {},
+        onNextChapter: () => next++,
+      );
+
+      final button = tester.widget<IconButton>(
+        find.ancestor(
+          of: find.byIcon(Icons.chevron_right_rounded),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('are left out with fewer than two chapters', (tester) async {
+      await pumpControls(
+        tester,
+        const Size(900, 500),
+        state: PlaybackState(
+          media: media(),
+          duration: const Duration(minutes: 24),
+        ),
+        onPreviousChapter: () {},
+        onNextChapter: () {},
+      );
+
+      expect(find.byTooltip('Previous chapter'), findsNothing);
+      expect(find.byTooltip('Chapters'), findsOneWidget);
+    });
+
+    testWidgets('fit a phone held upright', (tester) async {
+      await pumpControls(
+        tester,
+        const Size(360, 740),
+        state: _chaptered(const Duration(minutes: 5)),
+        onPreviousChapter: () {},
+        onNextChapter: () {},
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byTooltip('Next chapter'), findsOneWidget);
+    });
+  });
+
   group('the next episode pill', () {
     // A phone on its side: the navigation bar runs down the right edge.
     for (final bool chrome in <bool>[true, false]) {

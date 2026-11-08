@@ -41,6 +41,8 @@ class ControlsOverlay extends StatelessWidget {
     required this.onLock,
     required this.onRotate,
     required this.onChapters,
+    this.onPreviousChapter,
+    this.onNextChapter,
     required this.onFullscreen,
     required this.onMore,
     required this.onZoom,
@@ -85,6 +87,11 @@ class ControlsOverlay extends StatelessWidget {
   final VoidCallback onLock;
   final VoidCallback onRotate;
   final VoidCallback onChapters;
+
+  /// Seek to where the previous or next chapter begins. Both buttons are left
+  /// out while either is null, and for a file with fewer than two chapters.
+  final VoidCallback? onPreviousChapter;
+  final VoidCallback? onNextChapter;
   final VoidCallback onFullscreen;
   /// The overflow sheet — which now also holds background play, speed, loop
   /// and screenshot. Each is set once a film rather than reached for during
@@ -1303,6 +1310,14 @@ class _ControlRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final ui = this_.ui;
     final accent = context.colors.primaryContainer;
+    final state = this_.state;
+    final previousChapter = this_.onPreviousChapter;
+    final nextChapter = this_.onNextChapter;
+    // Around the list they step through, so the three read as one control.
+    final stepChapters =
+        previousChapter != null &&
+        nextChapter != null &&
+        state.chapters.length > 1;
 
     return <Widget>[
       _SmallIcon(
@@ -1314,11 +1329,23 @@ class _ControlRow extends StatelessWidget {
         colour: ui.aspect == AspectMode.fit ? null : accent,
         onTap: this_.onZoom,
       ),
+      if (stepChapters)
+        _SmallIcon(
+          icon: Icons.chevron_left_rounded,
+          tooltip: l10n.previousChapter,
+          onTap: state.previousChapterStart() == null ? null : previousChapter,
+        ),
       _SmallIcon(
         icon: Icons.segment_rounded,
         tooltip: l10n.chapters,
         onTap: this_.onChapters,
       ),
+      if (stepChapters)
+        _SmallIcon(
+          icon: Icons.chevron_right_rounded,
+          tooltip: l10n.nextChapter,
+          onTap: state.nextChapterStart() == null ? null : nextChapter,
+        ),
       _SmallIcon(
         icon: Icons.fullscreen_rounded,
         tooltip: l10n.fullscreen,
@@ -1354,7 +1381,8 @@ class _SmallIcon extends StatelessWidget {
 
   final IconData icon;
   final String tooltip;
-  final VoidCallback onTap;
+  /// Null draws the button disabled — "next chapter" in the last one.
+  final VoidCallback? onTap;
 
   /// Tints the glyph to carry state the label used to. Null means plain white.
   final Color? colour;
@@ -1369,6 +1397,7 @@ class _SmallIcon extends StatelessWidget {
       icon: Icon(icon),
       iconSize: 22,
       color: colour ?? Colors.white,
+      disabledColor: Colors.white.withValues(alpha: 0.35),
       tooltip: tooltip,
       onPressed: onTap,
       constraints: BoxConstraints.tightFor(width: extent, height: extent),
