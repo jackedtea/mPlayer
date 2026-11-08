@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/tokens.dart';
+import '../../l10n/app_localizations.dart';
 import 'playback_state.dart';
 
 /// "Stats for nerds" — a monospace key/value card over the video.
@@ -14,13 +15,17 @@ import 'playback_state.dart';
 /// reported it yet. Showing a confident `0 fps` while a stream is still
 /// probing would be worse than showing nothing.
 class StatsOverlay extends StatelessWidget {
-  const StatsOverlay({super.key, required this.state});
+  const StatsOverlay({super.key, required this.state, required this.onClose});
 
   final PlaybackState state;
+
+  /// Hides the card — the same switch as the one in the More sheet.
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
+    final l10n = AppLocalizations.of(context);
     final stats = state.stats;
     final media = state.media;
 
@@ -91,46 +96,83 @@ class StatsOverlay extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.72),
               borderRadius: context.radii.cardAll,
             ),
-            // The card can be taller than a landscape phone: the log alone
-            // runs to several wrapped lines. Scroll rather than clip, so the
-            // rows below it stay reachable.
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  if (state.logLines.isNotEmpty) ...<Widget>[
-                    _LogSection(lines: state.logLines),
-                    SizedBox(height: spacing.sm),
-                  ],
-                  for (final (String key, String value) in rows)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 1),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          SizedBox(
-                            width: 74,
-                            child: Text(
-                              key,
-                              style: _style.copyWith(
-                                color: Colors.white.withValues(alpha: 0.55),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              value,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: _style,
-                            ),
-                          ),
-                        ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                // A title and a close button that stay put while the rest
+                // scrolls: closing used to mean a trip through the More
+                // sheet to find the switch that opened it.
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        l10n.statsForNerds,
+                        style: _style.copyWith(
+                          color: Colors.white.withValues(alpha: 0.55),
+                        ),
                       ),
                     ),
-                ],
-              ),
+                    IconButton(
+                      onPressed: onClose,
+                      tooltip: l10n.close,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      color: Colors.white,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 32,
+                      ),
+                    ),
+                  ],
+                ),
+                Flexible(
+                  // The card can be taller than a landscape phone: the log alone
+                  // runs to several wrapped lines. Scroll rather than clip, so the
+                  // rows below it stay reachable.
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        if (state.logLines.isNotEmpty) ...<Widget>[
+                          _LogSection(lines: state.logLines),
+                          SizedBox(height: spacing.sm),
+                        ],
+                        for (final (String key, String value) in rows)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 1),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                SizedBox(
+                                  width: 74,
+                                  child: Text(
+                                    key,
+                                    style: _style.copyWith(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.55,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    value,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: _style,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

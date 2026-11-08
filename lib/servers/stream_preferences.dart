@@ -104,13 +104,7 @@ List<StreamQuality> qualitiesFor({
   int? sourceHeight,
   String? selected,
 }) {
-  final fromWidth = sourceWidth == null ? null : (sourceWidth * 9 / 16).round();
-  final height = switch ((sourceHeight, fromWidth)) {
-    (final int h, final int w) => h > w ? h : w,
-    (final int h, null) => h,
-    (null, final int w) => w,
-    _ => null,
-  };
+  final height = _effectiveHeight(sourceWidth, sourceHeight);
 
   bool useful(StreamQuality q) {
     if (q.isOriginal || q.id == selected) return true;
@@ -128,6 +122,42 @@ List<StreamQuality> qualitiesFor({
     for (final StreamQuality q in streamQualities)
       if (useful(q)) q,
   ];
+}
+
+/// The larger of the real height and what the width implies at 16:9.
+int? _effectiveHeight(int? width, int? height) {
+  final fromWidth = width == null ? null : (width * 9 / 16).round();
+  return switch ((height, fromWidth)) {
+    (final int h, final int w) => h > w ? h : w,
+    (final int h, null) => h,
+    (null, final int w) => w,
+    _ => null,
+  };
+}
+
+/// What the original file is — "1080p · 2.1 Mbps" — for the Original rung,
+/// which otherwise says nothing about what "original" means for this file.
+///
+/// The height is snapped to the usual name when it is within 10% of it, so
+/// a 1916-wide encode reads as 1080p rather than 1078p. Null when the
+/// server reported neither size nor bitrate.
+String? sourceQualityLabel({int? width, int? height, int? bitrate}) {
+  final h = _effectiveHeight(width, height);
+  String? resolution;
+  if (h != null && h > 0) {
+    const tiers = <int>[4320, 2160, 1440, 1080, 720, 576, 480, 360, 240];
+    final tier = tiers.where((t) => h >= t * 0.9).firstOrNull;
+    resolution = switch (tier ?? h) {
+      4320 => '8K',
+      2160 => '4K',
+      final int t => '${t}p',
+    };
+  }
+  final rate = bitrate == null || bitrate <= 0
+      ? null
+      : '${(bitrate / 1000000).toStringAsFixed(1)} Mbps';
+  final parts = <String>[?resolution, ?rate];
+  return parts.isEmpty ? null : parts.join(' · ');
 }
 
 StreamQuality qualityById(String? id) {

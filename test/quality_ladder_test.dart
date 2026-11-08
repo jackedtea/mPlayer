@@ -61,6 +61,17 @@ void main() {
     );
   });
 
+  test('the original is described by its resolution and bitrate', () {
+    expect(
+      sourceQualityLabel(width: 1920, height: 1080, bitrate: 2100000),
+      '1080p · 2.1 Mbps',
+    );
+    expect(sourceQualityLabel(width: 1916, height: 800), '1080p');
+    expect(sourceQualityLabel(width: 3840, height: 2160), '4K');
+    expect(sourceQualityLabel(bitrate: 8000000), '8.0 Mbps');
+    expect(sourceQualityLabel(), isNull);
+  });
+
   test('nothing reported hides nothing', () {
     expect(qualitiesFor(), streamQualities);
   });

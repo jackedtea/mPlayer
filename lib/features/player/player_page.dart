@@ -418,7 +418,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         child: CircularProgressIndicator(color: Colors.white),
                       ),
 
-                    if (ui.statsVisible) StatsOverlay(state: state),
+                    if (ui.statsVisible)
+                      StatsOverlay(
+                        state: state,
+                        onClose: () =>
+                            ref.read(playerUiProvider.notifier).toggleStats(),
+                      ),
 
                     if (!ui.locked)
                       // The fade is the overlay's own business now: the skip
@@ -471,7 +476,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           qualityLabel: () {
                             final q = ref.watch(streamQualityProvider);
                             return q.isOriginal
-                                ? AppLocalizations.of(context).qualityOriginal
+                                ? _originalLabel(
+                                    state.media ?? widget.media,
+                                    AppLocalizations.of(context).qualityOriginal,
+                                  )
                                 : q.label;
                           }(),
                           onLock: () {
@@ -612,6 +620,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     );
   }
 
+  /// "Original · 1080p · 2.1 Mbps", or just "Original" when the server
+  /// described nothing about the file.
+  static String _originalLabel(PlayableMedia media, String original) {
+    final video = media.serverStreams
+        .where((s) => s.type == ServerStreamType.video)
+        .firstOrNull;
+    final what = sourceQualityLabel(
+      width: video?.width,
+      height: video?.height,
+      bitrate: media.sourceBitrate,
+    );
+    return what == null ? original : '$original · $what';
+  }
+
   Future<void> _pickQuality(
     PlaybackState state,
     PlaybackController controller,
@@ -641,7 +663,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         for (final StreamQuality q in offered)
           TrackOption(
             id: q.id,
-            label: q.isOriginal ? l10n.qualityOriginal : q.label,
+            label: q.isOriginal
+                ? _originalLabel(media, l10n.qualityOriginal)
+                : q.label,
             detail: q.isOriginal ? l10n.qualityOriginalDetail : null,
           ),
       ],
