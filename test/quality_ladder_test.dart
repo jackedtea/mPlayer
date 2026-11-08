@@ -9,14 +9,28 @@ import 'package:mplayer/servers/stream_preferences.dart';
 List<String> _ids(List<StreamQuality> qs) => qs.map((q) => q.id).toList();
 
 void main() {
-  test('a 1080p 2.1 Mbps file is offered only rungs below it', () {
+  test('a 1080p 2.1 Mbps file keeps the smaller resolutions only', () {
     expect(
       _ids(qualitiesFor(
         sourceBitrate: 2100000,
         sourceWidth: 1920,
         sourceHeight: 1080,
       )),
-      <String>['original', 'sd2', 'low'],
+      <String>['original', 'hd4', 'sd2', 'low'],
+    );
+  });
+
+  test('a 1080p 15 Mbps file can also drop to 1080p at 10 Mbps', () {
+    expect(
+      _ids(qualitiesFor(sourceBitrate: 15000000, sourceHeight: 1080)),
+      <String>['original', 'fhd10', 'hd4', 'sd2', 'low'],
+    );
+  });
+
+  test('a 720p file is never offered 1080p', () {
+    expect(
+      _ids(qualitiesFor(sourceBitrate: 15000000, sourceHeight: 720)),
+      <String>['original', 'hd4', 'sd2', 'low'],
     );
   });
 

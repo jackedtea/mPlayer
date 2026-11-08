@@ -86,13 +86,15 @@ const streamQualities = <StreamQuality>[
 
 /// The rungs of [streamQualities] worth offering for one file.
 ///
-/// A cap only does anything when it is *below* the original — asking a
-/// 1080p, 2 Mbps file for "4K · 80 Mbps" or "720p · 4 Mbps" either changes
-/// nothing or re-encodes it into something no better. So a rung is kept only
-/// when its bitrate is under the file's and its height is no more than the
-/// file's. Original always stays, and so does [selected], so the sheet still
-/// shows what is in force. Whatever the server did not report is not
-/// compared: an unknown bitrate hides nothing on bitrate grounds.
+/// A cap only does anything when it lowers something. A rung taller than the
+/// file is hidden outright — "4K" over a 1080p file promises a picture that
+/// is not there. Of the rest, a rung stays when it lowers the resolution
+/// *or* the bitrate: a 1080p, 2 Mbps file keeps "720p · 4 Mbps", since the
+/// server scales it down to 720p (useful on a weak decoder or a small
+/// screen) and will not spend more bits than the file has; it loses
+/// "1080p · 10 Mbps", which would change nothing. Original always stays, and
+/// so does [selected], so the sheet still shows what is in force. Whatever
+/// the server did not report is not compared.
 ///
 /// The height is taken as the larger of the real height and what the width
 /// implies at 16:9, so a 1920×800 scope rip counts as the 1080p it is.
@@ -112,13 +114,14 @@ List<StreamQuality> qualitiesFor({
 
   bool useful(StreamQuality q) {
     if (q.isOriginal || q.id == selected) return true;
-    final bitrate = q.maxBitrate;
-    if (sourceBitrate != null && bitrate != null && bitrate >= sourceBitrate) {
-      return false;
-    }
     final cap = q.maxHeight;
+    final bitrate = q.maxBitrate;
     if (height != null && cap != null && cap > height) return false;
-    return true;
+
+    final lowersHeight = height == null || cap == null || cap < height;
+    final lowersBitrate =
+        sourceBitrate == null || bitrate == null || bitrate < sourceBitrate;
+    return lowersHeight || lowersBitrate;
   }
 
   return <StreamQuality>[
