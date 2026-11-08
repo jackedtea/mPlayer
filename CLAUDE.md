@@ -943,6 +943,11 @@ Desktop ships installers, not portable archives:
   installs under `%LOCALAPPDATA%\Programs`), so the in-app updater can run it silently
   without UAC. The release `AppId` GUID must never change — it is what makes a new
   installer an upgrade. A dev build (`/DDev`) has its own AppId, name and folder.
+  Before `flutter build windows`, `windows/packaging/prefetch-native.ps1` fetches
+  media_kit's libmpv/ANGLE and our full libmpv into `build/windows/x64` with
+  retries and checksums (read from the CMake files), behind an `actions/cache`.
+  media_kit's own download is one try and fails the build on a truncated file
+  ("Integrity check failed"); a matching file there makes CMake skip it.
 - **Linux** — `linux/packaging/build-deb.sh` into `<base>-linux-x64.deb`: bundle in
   `/opt/<package>`, launcher on PATH, `.desktop` and hicolor icons. `Depends` comes from
   `dpkg-shlibdeps`, not a hand-written list (libmpv's package follows its soname). A dev

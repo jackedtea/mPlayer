@@ -395,6 +395,24 @@ jobs:
 
       - run: flutter pub get
 
+      # The native archives CMake would otherwise download itself (media_kit's
+      # libmpv and ANGLE, our full libmpv). media_kit fetches with one try and
+      # fails the build on a truncated file — "Integrity check failed" — so
+      # they are fetched here with retries and checksums, and cached. CMake
+      # finds a file whose hash matches and skips its own download. The key
+      # follows the files the URLs and hashes are read from.
+      - name: Cache native archives
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/windows/x64/*.7z
+            build/windows/x64/libmpv-full/*.7z
+          key: windows-native-${{ hashFiles('pubspec.lock', 'windows/CMakeLists.txt') }}
+
+      - name: Prefetch native archives
+        shell: pwsh
+        run: pwsh windows/packaging/prefetch-native.ps1
+
       # Android takes its `-dev-<sha>` from VERSION_NAME_SUFFIX in Gradle;
       # desktop has no such hook, so the whole name goes in as --build-name.
       # Without it a dev build reports plain `1.0.0`, and the updater, which
