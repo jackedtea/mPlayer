@@ -186,7 +186,7 @@ Also open:
   `AdaptiveScaffold` (never over the player), runs in **release builds
   only** (`updateAutoCheckAllowedProvider` = `kReleaseMode`, which also keeps
   widget tests off the network), at most every 20 h, honours a skipped tag,
-  and has a switch in General. Install: Android downloads the universal APK (or, from an older release, the ABI's) into
+  and has a switch in General. Install: Android downloads the APK for the device's ABI (or, from a 2026-11-02..08 release, the universal one) into
   `cache/updates/` and `UpdateChannel.kt` hands it to the system installer
   through a FileProvider (`REQUEST_INSTALL_PACKAGES`); Windows/Linux download
   the installer and start a detached PowerShell/sh script that waits for the
@@ -975,13 +975,23 @@ clean now; a duplicate-key scan is the way to check after editing it.
 - Never select secrets with `cond && secrets.A || secrets.B` — that operator falls through
   to `B` when `A` is empty, which would sign a main build with the dev key silently. The
   workflow passes both sets and chooses in shell.
-- Android ships **one universal APK**, `<base>-android-universal.apk` (since
-  2026-11-02; before that `--split-per-abi` and three `<base>-android-<abi>.apk`). It is
-  ~25–30 MB heavier — media_kit bundles an 11–15 MB `libmpv.so` per ABI — for one file
-  to pick. `--build-number` is `run_number + 5000`: the split builds had their
-  versionCode offset by Flutter up to 4000 (x86_64), and a lower one is a downgrade
-  Android refuses. Never drop that offset. `assetFor` takes the universal APK first and
-  falls back to per-ABI names for older releases.
+- Android ships **one APK per ABI** from a single job, `flutter build apk
+  --split-per-abi --target-platform android-arm,android-arm64,android-x64`, renamed to
+  `<base>-android-<abi>.apk` (arm64-v8a, armeabi-v7a, x86_64). Split again since
+  2026-11-08; releases from 2026-11-02 to 11-08 carried one
+  `<base>-android-universal.apk` instead (~25–30 MB heavier: media_kit bundles an
+  11–15 MB `libmpv.so` per ABI). No universal APK is built now.
+- **versionCode**: `--build-number` is `run_number + 5000`, and `--split-per-abi` adds
+  Flutter's 1000 × ABI number on top (armeabi-v7a 1, arm64-v8a 2, x86_64 4). The 5000
+  keeps every split APK above the universal ones (run + 5000, no ABI offset) — a lower
+  versionCode is a downgrade Android refuses. Never lower it. Going back to universal
+  would need run + 9000 or more to clear the split builds.
+- The android job's `abis` output lists the APKs the rename step actually found; the
+  release-notes rows and the Telegram links are built from it, so neither names an APK
+  that was not produced.
+- `assetFor` takes the first of the device's ABIs (most preferred first) that the
+  release has an APK for, and falls back to `-android-universal.apk` for the
+  2026-11-02..08 releases.
 - Missing keystore secrets do not fail the build; the APKs are debug-signed and both the
   release notes and the Telegram message say so.
 
@@ -1225,7 +1235,7 @@ flutter analyze
 flutter test
 flutter build windows --debug
 flutter build apk --debug
-flutter build apk --release                    # what CI ships (universal)
+flutter build apk --release --split-per-abi    # what CI ships (one APK per ABI)
 ```
 
 **There is no `build_runner`.** `drift`, `freezed` and `json_serializable`

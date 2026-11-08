@@ -237,6 +237,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       signed: ${{ steps.keystore.outputs.signed }}
+      # Space-separated ABIs an APK was built for, read off the files
+      # themselves, so the release notes and Telegram list only what exists.
+      abis: ${{ steps.name.outputs.abis }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -314,28 +317,51 @@ jobs:
 
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
-      # One universal APK for every ABI: one file to pick, at the cost of
-      # carrying media_kit's 11-15 MB libmpv.so three times over.
+      # One APK per ABI: each carries only its own media_kit libmpv.so
+      # (11-15 MB), not all three as a universal APK does.
       # --build-name so the APK reports the version the release is tagged
       # with (main moves its patch number every build, pubspec does not);
       # Gradle still appends the dev suffix. --build-number from the run, so
       # the versionCode keeps rising and each APK installs over the last.
-      # The 5000 clears the per-ABI APKs released before this one, whose
-      # versionCodes Flutter offset by up to 4000 (x86_64): without it a
-      # device holding one of those would refuse this as a downgrade.
-      - name: Build APK
+      # --split-per-abi then adds 1000 x the ABI's number (armeabi-v7a 1,
+      # arm64-v8a 2, x86_64 4). The 5000 is kept so every split APK stays
+      # above the universal APKs shipped 2026-11-02..08 (run + 5000, no ABI
+      # offset): a device holding one of those would otherwise refuse this
+      # as a downgrade. Never lower it.
+      - name: Build APKs
         env:
           APP_ID_SUFFIX: ${{ needs.prepare.outputs.app_id_suffix }}
           VERSION_NAME_SUFFIX: ${{ needs.prepare.outputs.version_name_suffix }}
         run: |
-          flutter build apk --release \
+          flutter build apk --release --split-per-abi \
+            --target-platform android-arm,android-arm64,android-x64 \
             --build-name "${{ needs.prepare.outputs.version }}" \
             --build-number "$(( ${{ github.run_number }} + 5000 ))"
 
-      - name: Name the artifact
+      # app-<abi>-release.apk -> <base>-android-<abi>.apk, the names the
+      # in-app updater matches against the device's ABI list. The ABIs
+      # found are the job's `abis` output.
+      - name: Name the artifacts
+        id: name
+        env:
+          BASE: ${{ needs.prepare.outputs.artifact_base }}
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk \
-             "${{ needs.prepare.outputs.artifact_base }}-android-universal.apk"
+          set -euo pipefail
+          ABIS=""
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            SRC="build/app/outputs/flutter-apk/app-${abi}-release.apk"
+            if [ -f "$SRC" ]; then
+              mv "$SRC" "${BASE}-android-${abi}.apk"
+              ABIS="${ABIS:+$ABIS }$abi"
+            else
+              echo "::warning::No APK was built for $abi."
+            fi
+          done
+          if [ -z "$ABIS" ]; then
+            echo "::error::No per-ABI APK was produced."
+            exit 1
+          fi
+          echo "abis=$ABIS" >> "$GITHUB_OUTPUT"
 
       - name: Always remove the keystore
         if: always()
@@ -551,7 +577,16 @@ jobs:
             echo ""
             echo "| Artifact | Platform |"
             echo "|---|---|"
-            echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-universal.apk\` | Android · every architecture |"
+            # One row per APK the android job actually produced.
+            for abi in ${{ needs.android.outputs.abis }}; do
+              case "$abi" in
+                arm64-v8a)   LABEL="Android · arm64-v8a (most phones)" ;;
+                armeabi-v7a) LABEL="Android · armeabi-v7a (older 32-bit)" ;;
+                x86_64)      LABEL="Android · x86_64 (emulators, Chromebooks)" ;;
+                *)           LABEL="Android · $abi" ;;
+              esac
+              echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-${abi}.apk\` | $LABEL |"
+            done
             # Only when the build actually ran: a row naming a file nobody
             # can download is worse than no row.
             if [ "${{ needs.windows.result }}" = "success" ]; then
@@ -650,7 +685,8 @@ jobs:
             --arg sha "${{ needs.prepare.outputs.short_sha }}" \
             --arg warn "$WARN" \
             --arg ok "$OK" \
-            --arg apk "$DL/$BASE-android-universal.apk" \
+            --arg apk "$DL/$BASE-android-" \
+            --arg abis "${{ needs.android.outputs.abis }}" \
             --arg win "$DL/$BASE-windows-x64-setup.exe" \
             --arg linux "$DL/$BASE-linux-x64.deb" \
             --arg has_win "${{ needs.windows.result }}" \
@@ -673,7 +709,10 @@ jobs:
              # "Top-level program not given", which says nothing about where
              # the quote was. A comment is what did it once already.
              def downloads:
-               "📱 " + link($apk; "Android") + "\n"
+               # One line per ABI APK the android job produced.
+               ([$abis | splits(" ") | select(. != "")]
+                  | map("📱 " + link($apk + . + ".apk"; "Android " + .) + "\n")
+                  | join(""))
                + (if $has_win == "success"
                     then "🪟 " + link($win; "Windows x64") + "\n" else "" end)
                + (if $has_linux == "success"

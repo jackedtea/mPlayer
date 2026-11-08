@@ -141,11 +141,12 @@ enum UpdatePlatform { android, windows, linux }
 /// The file in [release] this device would install, or null when it has none
 /// — an ABI CI does not build, or a platform it does not publish for.
 ///
-/// CI publishes one universal APK. Releases from before that carry one APK
-/// per ABI instead, and [abis] — the device's own list, most preferred first,
-/// as Android reports it — picks among those: the first one the release has
-/// an APK for wins, so a 64-bit phone that can also run 32-bit code still
-/// gets the 64-bit build.
+/// CI publishes one APK per ABI (`<base>-android-<abi>.apk`), and [abis] —
+/// the device's own list, most preferred first, as Android reports it —
+/// picks among those: the first one the release has an APK for wins, so a
+/// 64-bit phone that can also run 32-bit code still gets the 64-bit build.
+/// Releases from 2026-11-02 to 2026-11-08 carry a single universal APK
+/// instead; it is the fallback when no ABI matches.
 ReleaseAsset? assetFor(
   ReleaseInfo release,
   UpdatePlatform platform, {
@@ -160,13 +161,11 @@ ReleaseAsset? assetFor(
 
   switch (platform) {
     case UpdatePlatform.android:
-      final universal = named('-android-universal.apk');
-      if (universal != null) return universal;
       for (final String abi in abis) {
         final asset = named('-android-${abi.toLowerCase()}.apk');
         if (asset != null) return asset;
       }
-      return null;
+      return named('-android-universal.apk');
     case UpdatePlatform.windows:
       return named('-windows-x64-setup.exe');
     case UpdatePlatform.linux:
