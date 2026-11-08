@@ -328,18 +328,25 @@ class _PillSlot extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
 
-    return Align(
-      alignment: Alignment.centerRight,
-      child: AnimatedPadding(
-        duration: _chromeFade,
-        curve: Curves.easeOut,
-        padding: EdgeInsets.only(
-          right: spacing.lg,
-          bottom: chromeVisible
-              ? spacing.xs
-              : spacing.sm + context.systemBottomInset,
+    // Clear of the navigation bar, which on a phone turned on its side runs
+    // down the right edge: the bars above and below are in a `SafeArea`, and
+    // without one here the pill slid under it. The bottom is the padding's.
+    return SafeArea(
+      top: false,
+      bottom: false,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: AnimatedPadding(
+          duration: _chromeFade,
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(
+            right: spacing.lg,
+            bottom: chromeVisible
+                ? spacing.xs
+                : spacing.sm + context.systemBottomInset,
+          ),
+          child: child,
         ),
-        child: child,
       ),
     );
   }

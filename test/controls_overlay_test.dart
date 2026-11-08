@@ -38,6 +38,7 @@ Future<void> pumpControls(
   PlayerUiState ui = const PlayerUiState(),
   bool transcoding = false,
   double bottomInset = 0,
+  double rightInset = 0,
   MediaSegment? skipSegment,
   bool chromeVisible = true,
   VoidCallback? onNext,
@@ -46,8 +47,10 @@ Future<void> pumpControls(
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
-  tester.view.padding = FakeViewPadding(bottom: bottomInset);
-  tester.view.viewPadding = FakeViewPadding(bottom: bottomInset);
+  tester.view.padding =
+      FakeViewPadding(bottom: bottomInset, right: rightInset);
+  tester.view.viewPadding =
+      FakeViewPadding(bottom: bottomInset, right: rightInset);
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
@@ -134,6 +137,31 @@ Color? iconColour(WidgetTester tester, IconData icon) {
 
 void main() {
   group('the next episode pill', () {
+    // A phone on its side: the navigation bar runs down the right edge.
+    for (final bool chrome in <bool>[true, false]) {
+      testWidgets('stays clear of a navigation bar on the right, chrome '
+          '${chrome ? 'up' : 'hidden'}', (tester) async {
+        await pumpControls(
+          tester,
+          const Size(1280, 582),
+          rightInset: 48,
+          chromeVisible: chrome,
+          state: _episode(position: const Duration(minutes: 23, seconds: 57)),
+        );
+
+        final pill = tester.getRect(
+          find
+              .ancestor(
+                of: find.text('Next episode'),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        expect(pill.right, lessThanOrEqualTo(1280 - 48 - 16));
+        expect(pill.left, greaterThan(640));
+      });
+    }
+
     testWidgets('appears in the last fifteen seconds', (tester) async {
       await pumpControls(
         tester,
