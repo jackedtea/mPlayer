@@ -42,7 +42,6 @@ class SourceCapabilities {
 
   /// Sidecar subtitle files can be discovered next to the media.
   final bool externalSubtitles;
-
 }
 
 /// A pointer to an item inside a source, before it has been resolved.
@@ -67,9 +66,7 @@ class MediaRef {
 
   @override
   bool operator ==(Object other) =>
-      other is MediaRef &&
-      other.sourceId == sourceId &&
-      other.itemId == itemId;
+      other is MediaRef && other.sourceId == sourceId && other.itemId == itemId;
 
   @override
   int get hashCode => Object.hash(sourceId, itemId);
@@ -134,9 +131,27 @@ class PlayableMedia {
     this.artist,
     this.album,
     this.artworkUri,
+    this.seriesTitle,
+    this.seasonNumber,
+    this.episodeNumber,
+    this.year,
+    this.sourceBitrate,
   });
 
   final MediaRef ref;
+
+  /// Where an episode sits — "Classroom of the Elite · S1E3" — drawn under
+  /// the title in place of the server's name, which the user already knows.
+  /// All null for a film, which shows [year] instead.
+  final String? seriesTitle;
+  final int? seasonNumber;
+  final int? episodeNumber;
+  final int? year;
+
+  /// The original file's bitrate, in bits per second, whatever is being
+  /// streamed. What the quality picker compares its caps against: a cap
+  /// above it would only ever re-encode to something no better.
+  final int? sourceBitrate;
 
   /// What the playback backend opens. Always `http(s)://` now — the only
   /// thing that resolves anything is a media server.
@@ -235,28 +250,33 @@ class PlayableMedia {
   /// What "Start over" needs: the resume point comes back from the server
   /// with the item, and the only thing that differs is where playback begins.
   PlayableMedia startingAt(Duration position) => PlayableMedia(
-        ref: ref,
-        uri: uri,
-        kind: kind,
-        capabilities: capabilities,
-        sourceLine: sourceLine,
-        headers: headers,
-        startPosition: position,
-        chapters: chapters,
-        serverStreams: serverStreams,
-        segments: segments,
-        trickplay: trickplay,
-        externalSubtitles: externalSubtitles,
-        seriesId: seriesId,
-        isDirectPlay: isDirectPlay,
-        defaultAudioIndex: defaultAudioIndex,
-        defaultSubtitleIndex: defaultSubtitleIndex,
-        tracksChosen: tracksChosen,
-        isAudio: isAudio,
-        artist: artist,
-        album: album,
-        artworkUri: artworkUri,
-      );
+    ref: ref,
+    uri: uri,
+    kind: kind,
+    capabilities: capabilities,
+    sourceLine: sourceLine,
+    headers: headers,
+    startPosition: position,
+    chapters: chapters,
+    serverStreams: serverStreams,
+    segments: segments,
+    trickplay: trickplay,
+    externalSubtitles: externalSubtitles,
+    seriesId: seriesId,
+    isDirectPlay: isDirectPlay,
+    defaultAudioIndex: defaultAudioIndex,
+    defaultSubtitleIndex: defaultSubtitleIndex,
+    tracksChosen: tracksChosen,
+    isAudio: isAudio,
+    artist: artist,
+    album: album,
+    artworkUri: artworkUri,
+    seriesTitle: seriesTitle,
+    seasonNumber: seasonNumber,
+    episodeNumber: episodeNumber,
+    year: year,
+    sourceBitrate: sourceBitrate,
+  );
 
   /// The labelled stretch [position] falls in, or null outside any.
   MediaSegment? segmentAt(Duration position) {

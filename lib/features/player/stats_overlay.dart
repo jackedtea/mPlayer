@@ -41,7 +41,7 @@ class StatsOverlay extends StatelessWidget {
         stats.videoDecoder == null
             ? '—'
             : '${stats.videoDecoder} '
-                '(${stats.isHardwareDecoded ? 'hw' : 'sw'})',
+                  '(${stats.isHardwareDecoded ? 'hw' : 'sw'})',
       ),
       (
         'audio',
@@ -59,20 +59,24 @@ class StatsOverlay extends StatelessWidget {
           stats.videoBitrate == null
               ? null
               : 'v ${_mbps(stats.videoBitrate!.toDouble())}',
-          stats.audioBitrate == null
-              ? null
-              : 'a ${_mbps(stats.audioBitrate!)}',
+          stats.audioBitrate == null ? null : 'a ${_mbps(stats.audioBitrate!)}',
         ]),
       ),
       (
         'buffer',
         '${(state.buffered - state.position).inSeconds.clamp(0, 999)} s ahead',
       ),
-      ('position', '${formatDuration(state.position)} / '
-          '${formatDuration(state.duration)}'),
+      (
+        'position',
+        '${formatDuration(state.position)} / '
+            '${formatDuration(state.duration)}',
+      ),
       ('speed', '${state.speed.toStringAsFixed(2)}×'),
       ('subtitle', state.activeSubtitle?.label ?? 'Off'),
-      ('state', state.buffering ? 'buffering' : (state.playing ? 'playing' : 'paused')),
+      (
+        'state',
+        state.buffering ? 'buffering' : (state.playing ? 'playing' : 'paused'),
+      ),
     ];
 
     return Align(
@@ -87,41 +91,46 @@ class StatsOverlay extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.72),
               borderRadius: context.radii.cardAll,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                if (state.logLines.isNotEmpty) ...<Widget>[
-                  _LogSection(lines: state.logLines),
-                  SizedBox(height: spacing.sm),
-                ],
-                for (final (String key, String value) in rows)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 1),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        SizedBox(
-                          width: 74,
-                          child: Text(
-                            key,
-                            style: _style.copyWith(
-                              color: Colors.white.withValues(alpha: 0.55),
+            // The card can be taller than a landscape phone: the log alone
+            // runs to several wrapped lines. Scroll rather than clip, so the
+            // rows below it stay reachable.
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  if (state.logLines.isNotEmpty) ...<Widget>[
+                    _LogSection(lines: state.logLines),
+                    SizedBox(height: spacing.sm),
+                  ],
+                  for (final (String key, String value) in rows)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 1),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          SizedBox(
+                            width: 74,
+                            child: Text(
+                              key,
+                              style: _style.copyWith(
+                                color: Colors.white.withValues(alpha: 0.55),
+                              ),
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            value,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: _style,
+                          Expanded(
+                            child: Text(
+                              value,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: _style,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -159,9 +168,7 @@ class _LogSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final recent = lines.length > 6
-        ? lines.sublist(lines.length - 6)
-        : lines;
+    final recent = lines.length > 6 ? lines.sublist(lines.length - 6) : lines;
 
     return Container(
       width: double.infinity,
@@ -180,17 +187,32 @@ class _LogSection extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.55),
             ),
           ),
-          for (final String line in recent)
-            Text(
-              line,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: StatsOverlay._style.copyWith(
-                color: line.contains('[error]')
-                    ? const Color(0xFFFFB4AB)
-                    : Colors.white,
+          // Capped at about five lines and scrolled on its own, pinned to the
+          // newest entry, so a burst of warnings cannot push the key/value
+          // rows off the card.
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 17 * 5),
+            child: SingleChildScrollView(
+              reverse: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  for (final String line in recent)
+                    Text(
+                      line,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: StatsOverlay._style.copyWith(
+                        color: line.contains('[error]')
+                            ? const Color(0xFFFFB4AB)
+                            : Colors.white,
+                      ),
+                    ),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );

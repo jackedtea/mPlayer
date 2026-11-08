@@ -20,7 +20,7 @@ import 'stream_preferences.dart';
 class JellyfinMediaSource
     implements MediaSource, QueueableSource, ProgressReporting {
   JellyfinMediaSource(this.library, {StreamPreferences Function()? preferences})
-      : _preferences = preferences ?? _none;
+    : _preferences = preferences ?? _none;
 
   final MediaLibrarySource library;
 
@@ -53,18 +53,18 @@ class JellyfinMediaSource
 
   @override
   SourceCapabilities get capabilities => const SourceCapabilities(
-        // The server decides between handing the file over and re-encoding,
-        // which is what makes the quality control mean anything.
-        transcoding: true,
-        reportsWatchState: true,
-        // A server extracts its own chapter list, stills and all. Whether a
-        // given item has one is a different question, answered by the list
-        // coming back empty.
-        chapters: true,
-        // Subtitles the server keeps beside the video, handed to the player
-        // as URLs rather than found on a disk it cannot see.
-        externalSubtitles: true,
-      );
+    // The server decides between handing the file over and re-encoding,
+    // which is what makes the quality control mean anything.
+    transcoding: true,
+    reportsWatchState: true,
+    // A server extracts its own chapter list, stills and all. Whether a
+    // given item has one is a different question, answered by the list
+    // coming back empty.
+    chapters: true,
+    // Subtitles the server keeps beside the video, handed to the player
+    // as URLs rather than found on a disk it cannot see.
+    externalSubtitles: true,
+  );
 
   @override
   Future<PlayableMedia> resolve(MediaRef ref) async {
@@ -144,6 +144,17 @@ class JellyfinMediaSource
         artworkUri: item.kind == ServerItemKind.audio
             ? library.imageUrl(item, maxWidth: 1024)
             : null,
+        seriesTitle: item.kind == ServerItemKind.episode
+            ? item.seriesTitle
+            : null,
+        seasonNumber: item.kind == ServerItemKind.episode
+            ? item.seasonNumber
+            : null,
+        episodeNumber: item.kind == ServerItemKind.episode
+            ? item.episodeNumber
+            : null,
+        year: item.year,
+        sourceBitrate: playback.bitrate,
       );
     } on ServerException catch (e) {
       // The player renders this inline; it must read as a sentence.
@@ -169,7 +180,8 @@ class JellyfinMediaSource
     );
 
     try {
-      final seriesId = _series[mediaRef.itemId] ??
+      final seriesId =
+          _series[mediaRef.itemId] ??
           (await library.item(mediaRef.itemId)).seriesId;
       if (seriesId == null) return none;
 
@@ -217,7 +229,10 @@ class JellyfinMediaSource
   }
 
   @override
-  Future<void> reportStopped(String itemId, {required Duration position}) async {
+  Future<void> reportStopped(
+    String itemId, {
+    required Duration position,
+  }) async {
     try {
       await library.reportStopped(
         itemId,
@@ -262,10 +277,10 @@ class JellyfinMediaSource
     ];
   }
 
-  /// "Jellyfin · direct play" / "Jellyfin · transcoding · 8.0 Mbps".
+  /// "direct play · 2.1 Mbps" / "transcoding · 8.0 Mbps". The server's name
+  /// is left out: the icon beside the line already says where it came from.
   String _sourceLine(ServerPlayback playback) {
     final parts = <String>[
-      'Jellyfin',
       playback.isDirectPlay ? 'direct play' : 'transcoding',
       if (playback.bitrate != null)
         '${(playback.bitrate! / 1000000).toStringAsFixed(1)} Mbps',

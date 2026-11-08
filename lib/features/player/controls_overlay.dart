@@ -76,6 +76,7 @@ class ControlsOverlay extends StatelessWidget {
   final ValueChanged<double> onScrubStart;
   final ValueChanged<double> onScrubUpdate;
   final ValueChanged<double> onScrubEnd;
+
   /// Opens the audio-and-subtitle dialog. One button for both: they are one
   /// dialog, and two buttons opening the same thing cost the top row a slot.
   final VoidCallback onTracks;
@@ -93,6 +94,7 @@ class ControlsOverlay extends StatelessWidget {
   final VoidCallback? onPreviousChapter;
   final VoidCallback? onNextChapter;
   final VoidCallback onFullscreen;
+
   /// The overflow sheet — which now also holds background play, speed, loop
   /// and screenshot. Each is set once a film rather than reached for during
   /// one, so they gave their places on the bar to the controls that are.
@@ -360,7 +362,11 @@ class _PillSlot extends StatelessWidget {
 }
 
 class _Scrim extends StatelessWidget {
-  const _Scrim({required this.top, required this.opacity, required this.height});
+  const _Scrim({
+    required this.top,
+    required this.opacity,
+    required this.height,
+  });
 
   final bool top;
   final double opacity;
@@ -461,7 +467,7 @@ class _TopBar extends StatelessWidget {
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
-                              this_.media.sourceLine,
+                              playerSubtitleLine(this_.media, l10n),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -504,9 +510,7 @@ List<Widget> _streamIcons(
       // seeing without opening anything; the tooltip names both. White either
       // way: the on and off glyphs already differ, and the accent tint over a
       // frame was harder to read than the plain glyph.
-      icon: subtitleOn
-          ? Icons.subtitles_rounded
-          : Icons.subtitles_off_rounded,
+      icon: subtitleOn ? Icons.subtitles_rounded : Icons.subtitles_off_rounded,
       tooltip: l10n.tracksValue(
         state.activeAudio?.label ?? l10n.defaultLabel,
         state.activeSubtitle?.label ?? l10n.off,
@@ -590,8 +594,9 @@ class _Transport extends StatelessWidget {
           background: _discFill,
           outlined: true,
           foreground: Colors.white,
-          tooltip: AppLocalizations.of(context)
-              .back10(this_.skipBack.inSeconds),
+          tooltip: AppLocalizations.of(
+            context,
+          ).back10(this_.skipBack.inSeconds),
           onPressed: () {
             this_.onInteraction();
             this_.onSkip(-this_.skipBack);
@@ -627,8 +632,9 @@ class _Transport extends StatelessWidget {
           background: _discFill,
           outlined: true,
           foreground: Colors.white,
-          tooltip: AppLocalizations.of(context)
-              .forward30(this_.skipForward.inSeconds),
+          tooltip: AppLocalizations.of(
+            context,
+          ).forward30(this_.skipForward.inSeconds),
           onPressed: () {
             this_.onInteraction();
             this_.onSkip(this_.skipForward);
@@ -741,7 +747,6 @@ class _SkipPill extends StatelessWidget {
     );
   }
 }
-
 
 /// The frame under the scrubber while it is being dragged.
 ///
@@ -861,8 +866,9 @@ class _TrickplayTileImageState extends State<_TrickplayTileImage> {
 
     _detach();
 
-    final stream = NetworkImage(widget.tile.url.toString())
-        .resolve(createLocalImageConfiguration(context));
+    final stream = NetworkImage(
+      widget.tile.url.toString(),
+    ).resolve(createLocalImageConfiguration(context));
     final listener = ImageStreamListener(
       (image, _) {
         if (!mounted) {
@@ -960,7 +966,7 @@ class _BottomBar extends StatelessWidget {
               // where there is nothing to wait for and nothing to show.
               buffered: state.duration > Duration.zero
                   ? state.buffered.inMilliseconds /
-                      state.duration.inMilliseconds
+                        state.duration.inMilliseconds
                   : 0,
               duration: state.duration,
               chapters: state.chapters,
@@ -1032,8 +1038,7 @@ class _Scrubber extends StatelessWidget {
     if (total <= 0) return const <double>[];
     return <double>[
       for (final MediaChapter chapter in chapters)
-        if (chapter.start > Duration.zero)
-          chapter.start.inMilliseconds / total,
+        if (chapter.start > Duration.zero) chapter.start.inMilliseconds / total,
     ]..sort();
   }
 
@@ -1061,16 +1066,18 @@ class _Scrubber extends StatelessWidget {
           thumbColor: Colors.white,
           disabledActiveTrackColor: Colors.white.withValues(alpha: 0.28),
           disabledInactiveTrackColor: Colors.white.withValues(alpha: 0.28),
-          disabledSecondaryActiveTrackColor:
-              Colors.white.withValues(alpha: 0.28),
+          disabledSecondaryActiveTrackColor: Colors.white.withValues(
+            alpha: 0.28,
+          ),
           disabledThumbColor: Colors.transparent,
         ),
         child: Slider(
           value: value.clamp(0.0, 1.0),
           // Zero is the honest answer for a file with nothing read ahead,
           // and draws nothing rather than an empty band.
-          secondaryTrackValue:
-              playable && buffered > 0.001 ? buffered.clamp(0.0, 1.0) : null,
+          secondaryTrackValue: playable && buffered > 0.001
+              ? buffered.clamp(0.0, 1.0)
+              : null,
           onChanged: playable ? onUpdate : null,
           onChangeStart: onStart,
           onChangeEnd: onEnd,
@@ -1258,18 +1265,13 @@ class _ControlRow extends StatelessWidget {
       builder: (context, constraints) {
         final playback = _playbackIcons(context);
         final view = _viewIcons(context);
-        final buttons = <Widget>[...playback, ...view]
-            .where((w) => w is! SizedBox)
-            .length;
+        final buttons = <Widget>[
+          ...playback,
+          ...view,
+        ].where((w) => w is! SizedBox).length;
 
         if (constraints.maxWidth >= _shareWidthBelow(buttons)) {
-          return Row(
-            children: <Widget>[
-              ...playback,
-              const Spacer(),
-              ...view,
-            ],
-          );
+          return Row(children: <Widget>[...playback, const Spacer(), ...view]);
         }
 
         return Row(
@@ -1364,11 +1366,32 @@ class _ControlRow extends StatelessWidget {
 /// Next to the widget rather than on [LoopMode] itself, for the reason
 /// `RotationMode` and `AspectMode` gave up their own `label` fields: an enum
 /// constant is built once, before there is a locale to build it in.
+/// The line under the player's title.
+///
+/// Where the item sits comes first — the series and "S1E3" for an episode,
+/// the year for a film — then how it is being delivered. The server's name
+/// used to lead it, which told the user nothing they did not already know.
+String playerSubtitleLine(PlayableMedia media, AppLocalizations l10n) {
+  final season = media.seasonNumber;
+  final episode = media.episodeNumber;
+  return <String>[
+    if (media.seriesTitle case final String series when series.isNotEmpty)
+      series,
+    if (season != null && episode != null)
+      l10n.episodeOf(season, episode)
+    else if (episode != null)
+      'E$episode',
+    if (media.seriesTitle == null && episode == null && media.year != null)
+      '${media.year}',
+    if (media.sourceLine.isNotEmpty) media.sourceLine,
+  ].join(' · ');
+}
+
 String loopLabel(AppLocalizations l10n, LoopMode mode) => switch (mode) {
-      LoopMode.off => l10n.off,
-      LoopMode.one => l10n.loopOne,
-      LoopMode.all => l10n.loopAll,
-    };
+  LoopMode.off => l10n.off,
+  LoopMode.one => l10n.loopOne,
+  LoopMode.all => l10n.loopAll,
+};
 
 class _SmallIcon extends StatelessWidget {
   const _SmallIcon({
@@ -1381,6 +1404,7 @@ class _SmallIcon extends StatelessWidget {
 
   final IconData icon;
   final String tooltip;
+
   /// Null draws the button disabled — "next chapter" in the last one.
   final VoidCallback? onTap;
 
@@ -1493,15 +1517,15 @@ class CircleButton extends StatelessWidget {
 /// other amount falls back to the plain arrow rather than drawing a number the
 /// button does not honour.
 IconData _replayIcon(Duration amount) => switch (amount.inSeconds) {
-      5 => Icons.replay_5_rounded,
-      10 => Icons.replay_10_rounded,
-      30 => Icons.replay_30_rounded,
-      _ => Icons.fast_rewind_rounded,
-    };
+  5 => Icons.replay_5_rounded,
+  10 => Icons.replay_10_rounded,
+  30 => Icons.replay_30_rounded,
+  _ => Icons.fast_rewind_rounded,
+};
 
 IconData _forwardIcon(Duration amount) => switch (amount.inSeconds) {
-      5 => Icons.forward_5_rounded,
-      10 => Icons.forward_10_rounded,
-      30 => Icons.forward_30_rounded,
-      _ => Icons.fast_forward_rounded,
-    };
+  5 => Icons.forward_5_rounded,
+  10 => Icons.forward_10_rounded,
+  30 => Icons.forward_30_rounded,
+  _ => Icons.fast_forward_rounded,
+};

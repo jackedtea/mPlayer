@@ -46,13 +46,86 @@ class StreamQuality {
 /// cannot answer.
 const streamQualities = <StreamQuality>[
   StreamQuality(id: 'original', label: 'Original'),
-  StreamQuality(id: 'uhd', label: '4K · 80 Mbps', maxBitrate: 80000000, maxHeight: 2160),
-  StreamQuality(id: 'fhd20', label: '1080p · 20 Mbps', maxBitrate: 20000000, maxHeight: 1080),
-  StreamQuality(id: 'fhd10', label: '1080p · 10 Mbps', maxBitrate: 10000000, maxHeight: 1080),
-  StreamQuality(id: 'hd4', label: '720p · 4 Mbps', maxBitrate: 4000000, maxHeight: 720),
-  StreamQuality(id: 'sd2', label: '480p · 2 Mbps', maxBitrate: 2000000, maxHeight: 480),
-  StreamQuality(id: 'low', label: '360p · 1 Mbps', maxBitrate: 1000000, maxHeight: 360),
+  StreamQuality(
+    id: 'uhd',
+    label: '4K · 80 Mbps',
+    maxBitrate: 80000000,
+    maxHeight: 2160,
+  ),
+  StreamQuality(
+    id: 'fhd20',
+    label: '1080p · 20 Mbps',
+    maxBitrate: 20000000,
+    maxHeight: 1080,
+  ),
+  StreamQuality(
+    id: 'fhd10',
+    label: '1080p · 10 Mbps',
+    maxBitrate: 10000000,
+    maxHeight: 1080,
+  ),
+  StreamQuality(
+    id: 'hd4',
+    label: '720p · 4 Mbps',
+    maxBitrate: 4000000,
+    maxHeight: 720,
+  ),
+  StreamQuality(
+    id: 'sd2',
+    label: '480p · 2 Mbps',
+    maxBitrate: 2000000,
+    maxHeight: 480,
+  ),
+  StreamQuality(
+    id: 'low',
+    label: '360p · 1 Mbps',
+    maxBitrate: 1000000,
+    maxHeight: 360,
+  ),
 ];
+
+/// The rungs of [streamQualities] worth offering for one file.
+///
+/// A cap only does anything when it is *below* the original — asking a
+/// 1080p, 2 Mbps file for "4K · 80 Mbps" or "720p · 4 Mbps" either changes
+/// nothing or re-encodes it into something no better. So a rung is kept only
+/// when its bitrate is under the file's and its height is no more than the
+/// file's. Original always stays, and so does [selected], so the sheet still
+/// shows what is in force. Whatever the server did not report is not
+/// compared: an unknown bitrate hides nothing on bitrate grounds.
+///
+/// The height is taken as the larger of the real height and what the width
+/// implies at 16:9, so a 1920×800 scope rip counts as the 1080p it is.
+List<StreamQuality> qualitiesFor({
+  int? sourceBitrate,
+  int? sourceWidth,
+  int? sourceHeight,
+  String? selected,
+}) {
+  final fromWidth = sourceWidth == null ? null : (sourceWidth * 9 / 16).round();
+  final height = switch ((sourceHeight, fromWidth)) {
+    (final int h, final int w) => h > w ? h : w,
+    (final int h, null) => h,
+    (null, final int w) => w,
+    _ => null,
+  };
+
+  bool useful(StreamQuality q) {
+    if (q.isOriginal || q.id == selected) return true;
+    final bitrate = q.maxBitrate;
+    if (sourceBitrate != null && bitrate != null && bitrate >= sourceBitrate) {
+      return false;
+    }
+    final cap = q.maxHeight;
+    if (height != null && cap != null && cap > height) return false;
+    return true;
+  }
+
+  return <StreamQuality>[
+    for (final StreamQuality q in streamQualities)
+      if (useful(q)) q,
+  ];
+}
 
 StreamQuality qualityById(String? id) {
   for (final StreamQuality q in streamQualities) {
@@ -92,8 +165,8 @@ class StreamQualityController extends Notifier<StreamQuality> {
 
 final streamQualityProvider =
     NotifierProvider<StreamQualityController, StreamQuality>(
-  StreamQualityController.new,
-);
+      StreamQualityController.new,
+    );
 
 /// An audio and subtitle choice made *before* playback starts.
 ///
@@ -138,8 +211,8 @@ class TrackChoiceController extends Notifier<TrackChoice?> {
 
 final trackChoiceProvider =
     NotifierProvider<TrackChoiceController, TrackChoice?>(
-  TrackChoiceController.new,
-);
+      TrackChoiceController.new,
+    );
 
 /// Everything a resolve needs to know about how the user wants this played.
 ///

@@ -434,8 +434,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           // A window or a television has the width for one
                           // row, and a remote walks one row more easily
                           // than two a screen apart.
-                          streamControlsBelow: isDesktop ||
-                              ref.watch(isTelevisionProvider),
+                          streamControlsBelow:
+                              isDesktop || ref.watch(isTelevisionProvider),
                           // What is playing now, not what the page was opened
                           // with: after a step to the next episode the two
                           // differ, and the old title over the new file read
@@ -471,30 +471,23 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           qualityLabel: () {
                             final q = ref.watch(streamQualityProvider);
                             return q.isOriginal
-                                ? AppLocalizations.of(
-                                    context,
-                                  ).qualityOriginal
+                                ? AppLocalizations.of(context).qualityOriginal
                                 : q.label;
                           }(),
                           onLock: () {
-                            ref
-                                .read(playerUiProvider.notifier)
-                                .toggleLock();
+                            ref.read(playerUiProvider.notifier).toggleLock();
                             setState(() => _chromeVisible = false);
                             _applySystemUi();
                           },
                           onRotate: () {
                             _restartHideTimer();
-                            ref
-                                .read(playerUiProvider.notifier)
-                                .cycleRotation();
+                            ref.read(playerUiProvider.notifier).cycleRotation();
                           },
                           onZoom: () {
                             _restartHideTimer();
                             ref.read(playerUiProvider.notifier).cycleAspect();
                           },
-                          onChapters: () =>
-                              _showChapters(state, controller),
+                          onChapters: () => _showChapters(state, controller),
                           // Read at the press, not from the build: the
                           // position has moved on since this frame was drawn.
                           onPreviousChapter: () {
@@ -627,13 +620,25 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
     final l10n = AppLocalizations.of(context);
     final current = ref.read(streamQualityProvider);
+    final media = state.media ?? widget.media;
+    // The original's video track, as the server described it — present
+    // whether the server is handing the file over or transcoding it.
+    final video = media.serverStreams
+        .where((s) => s.type == ServerStreamType.video)
+        .firstOrNull;
+    final offered = qualitiesFor(
+      sourceBitrate: media.sourceBitrate,
+      sourceWidth: video?.width,
+      sourceHeight: video?.height,
+      selected: current.id,
+    );
 
     await TrackSheet.show(
       context: context,
       title: l10n.playbackQuality,
       selectedId: current.id,
       options: <TrackOption>[
-        for (final StreamQuality q in streamQualities)
+        for (final StreamQuality q in offered)
           TrackOption(
             id: q.id,
             label: q.isOriginal ? l10n.qualityOriginal : q.label,
@@ -770,7 +775,10 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     unawaited(
       notification.update(
         title: state.media?.ref.title ?? widget.media.ref.title,
-        subtitle: state.media?.sourceLine ?? widget.media.sourceLine,
+        subtitle: playerSubtitleLine(
+          state.media ?? widget.media,
+          AppLocalizations.of(context),
+        ),
         playing: state.playing,
         position: state.position,
         duration: state.duration,
@@ -902,7 +910,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       case LogicalKeyboardKey.enter:
         // The first press over a hidden chrome only brings it up: a remote
         // user reaching for the controls should not pause the film to do it.
-        if (wasVisible || key == LogicalKeyboardKey.space ||
+        if (wasVisible ||
+            key == LogicalKeyboardKey.space ||
             key == LogicalKeyboardKey.keyK) {
           controller.playOrPause();
         }

@@ -99,7 +99,11 @@ class OfflineMediaSource
     _local.add(ref.itemId);
 
     return PlayableMedia(
-      ref: MediaRef(sourceId: profileId, itemId: entry.itemId, title: entry.title),
+      ref: MediaRef(
+        sourceId: profileId,
+        itemId: entry.itemId,
+        title: entry.title,
+      ),
       uri: Uri.file(file.path),
       kind: kind,
       capabilities: const SourceCapabilities(
@@ -134,6 +138,10 @@ class OfflineMediaSource
       // Artist and cover wait for music downloads (MUSIC_PLAN M3); what the
       // player needs now is to know a downloaded song is not a film.
       isAudio: entry.kind == ServerItemKind.audio,
+      seriesTitle: entry.seriesTitle,
+      seasonNumber: entry.seasonNumber,
+      episodeNumber: entry.episodeNumber,
+      year: entry.year,
     );
   }
 
@@ -180,18 +188,19 @@ class OfflineMediaSource
     final seriesId = _copyOf(mediaRef.itemId)?.seriesId;
     if (seriesId == null) return none;
 
-    final episodes = <DownloadEntry>[
-      for (final DownloadEntry e in downloads.entries)
-        if (e.profileId == profileId &&
-            e.seriesId == seriesId &&
-            e.status == DownloadStatus.completed)
-          e,
-    ]..sort((a, b) {
-        final season = (a.seasonNumber ?? 0).compareTo(b.seasonNumber ?? 0);
-        return season != 0
-            ? season
-            : (a.episodeNumber ?? 0).compareTo(b.episodeNumber ?? 0);
-      });
+    final episodes =
+        <DownloadEntry>[
+          for (final DownloadEntry e in downloads.entries)
+            if (e.profileId == profileId &&
+                e.seriesId == seriesId &&
+                e.status == DownloadStatus.completed)
+              e,
+        ]..sort((a, b) {
+          final season = (a.seasonNumber ?? 0).compareTo(b.seasonNumber ?? 0);
+          return season != 0
+              ? season
+              : (a.episodeNumber ?? 0).compareTo(b.episodeNumber ?? 0);
+        });
 
     final items = <MediaRef>[
       for (final DownloadEntry e in episodes)
@@ -234,7 +243,10 @@ class OfflineMediaSource
   }
 
   @override
-  Future<void> reportStopped(String itemId, {required Duration position}) async {
+  Future<void> reportStopped(
+    String itemId, {
+    required Duration position,
+  }) async {
     if (!_local.contains(itemId)) {
       await online?.reportStopped(itemId, position: position);
       return;
