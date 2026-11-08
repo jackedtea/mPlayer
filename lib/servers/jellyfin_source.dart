@@ -786,6 +786,49 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
+  Future<List<ServerItem>> allCollections() async {
+    final json = await _get('/Items', <String, String>{
+      'userId': _profile.userId,
+      'recursive': 'true',
+      'includeItemTypes': 'BoxSet',
+      'sortBy': 'SortName',
+      'sortOrder': 'Ascending',
+      'fields': _fields,
+    });
+
+    return _itemsOf(json).map(serverItemFromJson).toList();
+  }
+
+  @override
+  Future<void> addToCollection(
+    String collectionId,
+    List<String> itemIds,
+  ) async {
+    if (itemIds.isEmpty) return;
+    // Query, not body: `/Collections` binds every argument from the query,
+    // the opposite of `/Playlists`.
+    await _post(
+      '/Collections/$collectionId/Items',
+      const <String, dynamic>{},
+      <String, String>{'ids': itemIds.join(',')},
+    );
+  }
+
+  @override
+  Future<String?> createCollection(String name, List<String> itemIds) async {
+    final json = await _post(
+      '/Collections',
+      const <String, dynamic>{},
+      <String, String>{
+        'name': name,
+        if (itemIds.isNotEmpty) 'ids': itemIds.join(','),
+      },
+    );
+
+    return json['Id'] as String?;
+  }
+
+  @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) =>
       imageUrlFor(item, base: _base, maxWidth: maxWidth);
 

@@ -1540,6 +1540,34 @@ class AppLocalizationsVi extends AppLocalizations {
   String get addToPlaylist => 'Thêm vào danh sách phát';
 
   @override
+  String get addToCollection => 'Thêm vào bộ sưu tập';
+
+  @override
+  String get newCollection => 'Bộ sưu tập mới';
+
+  @override
+  String addedToCollection(String name) {
+    return 'Đã thêm vào $name';
+  }
+
+  @override
+  String get selectItems => 'Chọn';
+
+  @override
+  String get selectAll => 'Chọn tất cả';
+
+  @override
+  String get clearSelection => 'Bỏ chọn';
+
+  @override
+  String selectedCount(int count) {
+    return 'Đã chọn $count';
+  }
+
+  @override
+  String get shuffleItems => 'Phát ngẫu nhiên';
+
+  @override
   String get newPlaylist => 'Danh sách phát mới';
 
   @override

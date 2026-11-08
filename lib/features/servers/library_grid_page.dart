@@ -18,7 +18,9 @@ import '../../widgets/gradient_art.dart';
 import '../../widgets/poster_tile.dart';
 import '../../widgets/remote_art.dart';
 import '../../widgets/section_header.dart';
+import 'item_actions.dart' show showPlaylistSheet;
 import 'library_filter_sheet.dart';
+import 'library_item_menu.dart';
 import 'library_view_settings.dart';
 import 'server_library.dart';
 import 'shelves.dart';
@@ -511,7 +513,6 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
     );
   }
 
-
   /// The library's own name, once the views have loaded.
   String? _titleFor(WidgetRef ref) {
     final viewId = widget.viewId;
@@ -630,13 +631,13 @@ enum _LibraryTab {
   static List<_LibraryTab> forKind(String kind) => kind == 'music'
       ? const <_LibraryTab>[albums, artists, songs, playlists, genres]
       : <_LibraryTab>[
-    browse,
-    suggestions,
-    if (kind == 'tvshows') upcoming,
-    if (kind == 'movies' || kind == 'tvshows') genres,
-    collections,
-    playlists,
-  ];
+          browse,
+          suggestions,
+          if (kind == 'tvshows') upcoming,
+          if (kind == 'movies' || kind == 'tvshows') genres,
+          collections,
+          playlists,
+        ];
 
   String label(AppLocalizations l10n) {
     return switch (this) {
@@ -982,6 +983,9 @@ class _PlaylistsTab extends ConsumerWidget {
       loading: request.isLoading,
       emptyText: AppLocalizations.of(context).noPlaylists,
       onTap: (item) => openServerPlaylist(context, item),
+      // A playlist is played from its own page and cannot be collected or
+      // put in another playlist, so the menu would hold nothing.
+      itemMenu: false,
     );
   }
 }
@@ -1010,13 +1014,14 @@ class _PlaylistItems extends ConsumerWidget {
 /// Column count is the user's setting; the poster is whatever a cell leaves
 /// after the ink ring, so the artwork follows the columns rather than the
 /// other way round.
-class PosterGrid extends ConsumerWidget {
+class PosterGrid extends ConsumerStatefulWidget {
   const PosterGrid({
     super.key,
     required this.items,
     required this.onTap,
     this.loading = false,
     this.emptyText,
+    this.itemMenu = true,
   });
 
   final List<ServerItem> items;
@@ -1028,13 +1033,66 @@ class PosterGrid extends ConsumerWidget {
   /// already says "0 items".
   final String? emptyText;
 
+  /// Whether a long press (or a right click) opens the item menu — Play,
+  /// Shuffle, Select, Add to collection, Add to playlist — and whether the
+  /// grid can be put into multi-select.
+  final bool itemMenu;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PosterGrid> createState() => _PosterGridState();
+}
+
+class _PosterGridState extends ConsumerState<PosterGrid> {
+  /// The ids picked in multi-select. Empty is not selecting: deselecting the
+  /// last one leaves the mode, the way a phone's gallery does.
+  final _selected = <String>{};
+
+  bool get _selecting => _selected.isNotEmpty;
+
+  void _toggle(ServerItem item) {
+    setState(() {
+      if (!_selected.remove(item.id)) _selected.add(item.id);
+    });
+  }
+
+  void _clear() => setState(_selected.clear);
+
+  /// The selected items, in grid order, among those still listed.
+  List<ServerItem> get _selectedItems => <ServerItem>[
+    for (final ServerItem i in widget.items)
+      if (_selected.contains(i.id)) i,
+  ];
+
+  /// The selected ids that can go into a collection or a playlist.
+  List<String> get _collectableIds => <String>[
+    for (final ServerItem i in _selectedItems)
+      if (canCollect(i)) i.id,
+  ];
+
+  void _openMenu(ServerItem item, Offset position) {
+    if (_selecting) {
+      _toggle(item);
+      return;
+    }
+    showLibraryItemMenu(
+      context,
+      ref,
+      item,
+      position: position,
+      onSelect: () => _toggle(item),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final spacing = context.spacing;
+    final items = widget.items;
 
     if (items.isEmpty) {
-      if (loading) return const Center(child: CircularProgressIndicator());
-      final text = emptyText;
+      if (widget.loading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final text = widget.emptyText;
       return text == null ? const SizedBox.shrink() : _EmptyNote(text: text);
     }
 
@@ -1045,7 +1103,7 @@ class PosterGrid extends ConsumerWidget {
     final info = ref.watch(libraryCardInfoProvider);
     final l10n = AppLocalizations.of(context);
 
-    return LayoutBuilder(
+    final grid = LayoutBuilder(
       builder: (context, constraints) {
         final gutter =
             (spacing.screenHorizontal(context.windowSize) - spacing.hitInset)
@@ -1061,7 +1119,8 @@ class PosterGrid extends ConsumerWidget {
             gutter,
             0,
             gutter,
-            spacing.md + context.systemBottomInset,
+            // The selection bar takes the inset while it is up.
+            spacing.md + (_selecting ? 0 : context.systemBottomInset),
           ),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
@@ -1076,17 +1135,197 @@ class PosterGrid extends ConsumerWidget {
             ),
           ),
           itemCount: items.length,
-          itemBuilder: (context, i) => PosterTile(
-            item: libraryItemFrom(items[i]),
-            caption: info.caption ? cardCaption(items[i], l10n, info) : null,
-            badge: info.count ? cardCount(items[i], l10n) : null,
-            artUrl: artUrlFor(ref, items[i], maxWidth: 300),
-            width: posterWidth,
-            posterHeight: posterHeight,
-            onTap: () => onTap(items[i]),
-          ),
+          itemBuilder: (context, i) {
+            final item = items[i];
+            final tile = PosterTile(
+              item: libraryItemFrom(item),
+              caption: info.caption ? cardCaption(item, l10n, info) : null,
+              badge: info.count ? cardCount(item, l10n) : null,
+              artUrl: artUrlFor(ref, item, maxWidth: 300),
+              width: posterWidth,
+              posterHeight: posterHeight,
+              onTap: () => _selecting ? _toggle(item) : widget.onTap(item),
+            );
+            if (!widget.itemMenu) return tile;
+
+            // Long press on a touch screen, right click with a mouse. The
+            // tile's own InkWell has no long-press handler, so this one wins
+            // that gesture while taps still reach the tile.
+            return GestureDetector(
+              onLongPressStart: (d) => _openMenu(item, d.globalPosition),
+              onSecondaryTapUp: (d) => _openMenu(item, d.globalPosition),
+              child: _selecting
+                  ? _SelectableTile(
+                      selected: _selected.contains(item.id),
+                      inset: spacing.hitInset,
+                      child: tile,
+                    )
+                  : tile,
+            );
+          },
         );
       },
+    );
+
+    if (!_selecting) return grid;
+
+    // Back leaves the selection before it leaves the screen.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _clear();
+      },
+      child: Column(
+        children: <Widget>[
+          Expanded(child: grid),
+          _SelectionBar(
+            count: _selectedItems.length,
+            onClear: _clear,
+            onSelectAll: () =>
+                setState(() => _selected.addAll(items.map((i) => i.id))),
+            onPlay: () => playLibraryItems(context, ref, _selectedItems),
+            onShuffle: () =>
+                playLibraryItems(context, ref, _selectedItems, shuffle: true),
+            onAddToCollection: () =>
+                showCollectionSheet(context, ref, itemIds: _collectableIds),
+            onAddToPlaylist: () =>
+                showPlaylistSheet(context, ref, itemIds: _collectableIds),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A tile in multi-select: a check in the corner, and the artwork dimmed
+/// once it is picked so the picked ones read at a glance.
+class _SelectableTile extends StatelessWidget {
+  const _SelectableTile({
+    required this.selected,
+    required this.inset,
+    required this.child,
+  });
+
+  final bool selected;
+  final double inset;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    final spacing = context.spacing;
+
+    return Stack(
+      children: <Widget>[
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: selected ? 0.6 : 1,
+          child: child,
+        ),
+        Positioned(
+          top: inset + spacing.xs,
+          left: inset + spacing.xs,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected
+                    ? scheme.primary
+                    : scheme.scrim.withValues(alpha: 0.45),
+                border: Border.all(color: scheme.onPrimary, width: 2),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Icon(
+                  Icons.check_rounded,
+                  size: 16,
+                  color: selected ? scheme.onPrimary : Colors.transparent,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// What can be done to the whole selection, at the foot of the grid where a
+/// thumb already is.
+class _SelectionBar extends StatelessWidget {
+  const _SelectionBar({
+    required this.count,
+    required this.onClear,
+    required this.onSelectAll,
+    required this.onPlay,
+    required this.onShuffle,
+    required this.onAddToCollection,
+    required this.onAddToPlaylist,
+  });
+
+  final int count;
+  final VoidCallback onClear;
+  final VoidCallback onSelectAll;
+  final VoidCallback onPlay;
+  final VoidCallback onShuffle;
+  final VoidCallback onAddToCollection;
+  final VoidCallback onAddToPlaylist;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final spacing = context.spacing;
+
+    return Material(
+      color: context.colors.surfaceContainer,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: spacing.xs),
+          child: Row(
+            children: <Widget>[
+              IconButton(
+                tooltip: l10n.clearSelection,
+                icon: const Icon(Icons.close_rounded),
+                onPressed: onClear,
+              ),
+              Expanded(
+                child: Text(
+                  l10n.selectedCount(count),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.titleSmall,
+                ),
+              ),
+              IconButton(
+                tooltip: l10n.selectAll,
+                icon: const Icon(Icons.select_all_rounded),
+                onPressed: onSelectAll,
+              ),
+              IconButton(
+                tooltip: l10n.play,
+                icon: const Icon(Icons.play_arrow_rounded),
+                onPressed: onPlay,
+              ),
+              IconButton(
+                tooltip: l10n.shuffleItems,
+                icon: const Icon(Icons.shuffle_rounded),
+                onPressed: onShuffle,
+              ),
+              IconButton(
+                tooltip: l10n.addToCollection,
+                icon: const Icon(Icons.library_add_outlined),
+                onPressed: onAddToCollection,
+              ),
+              IconButton(
+                tooltip: l10n.addToPlaylist,
+                icon: const Icon(Icons.playlist_add_rounded),
+                onPressed: onAddToPlaylist,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1149,18 +1388,19 @@ class _ViewSheet extends ConsumerWidget {
     final groupingId = groupingViewId;
 
     Widget heading(String text) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            spacing.lg,
-            spacing.md,
-            spacing.lg,
-            spacing.sm,
-          ),
-          child: Text(
-            text,
-            style: context.texts.titleSmall
-                ?.copyWith(color: context.colors.primary),
-          ),
-        );
+      padding: EdgeInsets.fromLTRB(
+        spacing.lg,
+        spacing.md,
+        spacing.lg,
+        spacing.sm,
+      ),
+      child: Text(
+        text,
+        style: context.texts.titleSmall?.copyWith(
+          color: context.colors.primary,
+        ),
+      ),
+    );
 
     return SafeArea(
       child: SingleChildScrollView(

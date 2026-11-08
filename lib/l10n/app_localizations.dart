@@ -2822,6 +2822,54 @@ abstract class AppLocalizations {
   /// **'Add to playlist'**
   String get addToPlaylist;
 
+  /// No description provided for @addToCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to collection'**
+  String get addToCollection;
+
+  /// No description provided for @newCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'New collection'**
+  String get newCollection;
+
+  /// No description provided for @addedToCollection.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to {name}'**
+  String addedToCollection(String name);
+
+  /// No description provided for @selectItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get selectItems;
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get selectAll;
+
+  /// No description provided for @clearSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get clearSelection;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCount(int count);
+
+  /// No description provided for @shuffleItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle'**
+  String get shuffleItems;
+
   /// No description provided for @newPlaylist.
   ///
   /// In en, this message translates to:

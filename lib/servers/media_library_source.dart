@@ -964,6 +964,21 @@ abstract class MediaLibrarySource {
     bool audio = false,
   });
 
+  /// Every collection (box set) on the server, for "Add to collection".
+  ///
+  /// Not scoped to a library, unlike [collections]: a box set lives in its
+  /// own folder and can hold items from anywhere.
+  Future<List<ServerItem>> allCollections();
+
+  /// Adds [itemIds] to the collection [collectionId].
+  ///
+  /// Needs the account's collection-management permission; the server's 403
+  /// arrives as a [ServerException] with a sentence.
+  Future<void> addToCollection(String collectionId, List<String> itemIds);
+
+  /// Creates a collection named [name] holding [itemIds] and returns its id.
+  Future<String?> createCollection(String name, List<String> itemIds);
+
   /// Tells the server where playback got to. Called on start, periodically,
   /// and once on stop — the server is the authority on watch state when two
   /// devices disagree.

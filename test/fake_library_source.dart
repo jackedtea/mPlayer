@@ -215,6 +215,19 @@ class FakeLibrarySource implements MediaLibrarySource {
       null;
 
   @override
+  Future<List<ServerItem>> allCollections() async => const <ServerItem>[];
+
+  @override
+  Future<void> addToCollection(
+    String collectionId,
+    List<String> itemIds,
+  ) async {}
+
+  @override
+  Future<String?> createCollection(String name, List<String> itemIds) async =>
+      null;
+
+  @override
   Future<List<ServerItem>> artistAppearsOn(String artistId) async =>
       const <ServerItem>[];
 

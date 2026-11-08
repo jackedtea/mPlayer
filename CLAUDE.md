@@ -252,6 +252,14 @@ Also open:
 - **Long presses**: a card in `ServerCardShelf` (Next up, Continue watching)
   opens `openServerItemDetail` — an episode's series, else the item; an
   episode row on the series screen opens its ⋮ menu (`ItemActionMenu.menuKey`).
+  A library tile (`PosterGrid`, long press or right click) opens
+  `showLibraryItemMenu` (`library_item_menu.dart`): Play, Shuffle (containers
+  only), Select, Add to collection, Add to playlist. Select puts the grid in
+  multi-select (taps toggle, Back clears, a bar at the foot acts on all).
+  Collections are `allCollections` / `addToCollection` / `createCollection`
+  on the source, all query-bound on `/Collections`; they need the account's
+  collection-management permission, and a 403 is a snackbar. The Playlists
+  tab passes `itemMenu: false`.
 - **Series rows map to items by position in the same season grouping**
   `seriesDetailFrom` uses (`_episodesBySeason`). Matching on number + title
   sent every season's "Episode 1" to season 1's item.

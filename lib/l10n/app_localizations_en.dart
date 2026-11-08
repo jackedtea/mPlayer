@@ -1538,6 +1538,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addToPlaylist => 'Add to playlist';
 
   @override
+  String get addToCollection => 'Add to collection';
+
+  @override
+  String get newCollection => 'New collection';
+
+  @override
+  String addedToCollection(String name) {
+    return 'Added to $name';
+  }
+
+  @override
+  String get selectItems => 'Select';
+
+  @override
+  String get selectAll => 'Select all';
+
+  @override
+  String get clearSelection => 'Clear selection';
+
+  @override
+  String selectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get shuffleItems => 'Shuffle';
+
+  @override
   String get newPlaylist => 'New playlist';
 
   @override
