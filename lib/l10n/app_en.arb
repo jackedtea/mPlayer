@@ -525,6 +525,7 @@
   "selectedCount": "{count} selected",
   "@selectedCount": {"placeholders": {"count": {"type": "int"}}},
   "shuffleItems": "Shuffle",
+  "playAllFromHere": "Play all from here",
   "newPlaylist": "New playlist",
   "playlistName": "Name",
   "markWatched": "Mark as watched",

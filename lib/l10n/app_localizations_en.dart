@@ -1566,6 +1566,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shuffleItems => 'Shuffle';
 
   @override
+  String get playAllFromHere => 'Play all from here';
+
+  @override
   String get newPlaylist => 'New playlist';
 
   @override

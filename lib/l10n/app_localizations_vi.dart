@@ -1568,6 +1568,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get shuffleItems => 'Phát ngẫu nhiên';
 
   @override
+  String get playAllFromHere => 'Phát tất cả từ đây';
+
+  @override
   String get newPlaylist => 'Danh sách phát mới';
 
   @override

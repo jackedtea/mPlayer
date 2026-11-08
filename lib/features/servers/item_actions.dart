@@ -424,7 +424,7 @@ List<ItemAction> itemActionsFor(
     if (item.kind != ServerItemKind.musicArtist)
       downloadAll.isEmpty
           ? _downloadAction(context, ref, item)
-          : _downloadAllAction(context, ref, downloadAll),
+          : downloadAllAction(context, ref, downloadAll),
   ];
 }
 
@@ -501,7 +501,7 @@ ItemAction _downloadAction(
 /// Asks first, with the count, because a long series is a lot of disk and
 /// one press should not commit to it unseen. The listing carries no file
 /// sizes, so the count is the honest figure there is.
-ItemAction _downloadAllAction(
+ItemAction downloadAllAction(
   BuildContext context,
   WidgetRef ref,
   List<ServerItem> episodes,

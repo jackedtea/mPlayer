@@ -109,13 +109,12 @@ Future<void> showLibraryItemMenu(
   VoidCallback? onSelect,
 }) async {
   final l10n = AppLocalizations.of(context);
-  final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
 
   final playable = _isPlayable(item.kind) || _isContainer(item.kind);
   final shuffleable = _isContainer(item.kind);
   final collectable = canCollect(item);
 
-  final entries = <(IconData, String, VoidCallback)?>[
+  final entries = <_Entry>[
     if (playable)
       (
         Icons.play_arrow_rounded,
@@ -144,7 +143,20 @@ Future<void> showLibraryItemMenu(
       ),
     ],
   ];
+  await _showEntries(context, position, entries);
+}
+
+/// One menu row: its glyph, its label and what it does. Null is a divider.
+typedef _Entry = (IconData, String, VoidCallback)?;
+
+/// Opens [entries] as a popup menu at the global [position].
+Future<void> _showEntries(
+  BuildContext context,
+  Offset position,
+  List<_Entry> entries,
+) async {
   if (entries.isEmpty) return;
+  final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
 
   final chosen = await showMenu<int>(
     context: context,
@@ -153,8 +165,7 @@ Future<void> showLibraryItemMenu(
       Offset.zero & overlay.size,
     ),
     items: <PopupMenuEntry<int>>[
-      for (final (int i, (IconData, String, VoidCallback)? e)
-          in entries.indexed)
+      for (final (int i, _Entry e) in entries.indexed)
         if (e == null)
           const PopupMenuDivider()
         else
@@ -172,6 +183,74 @@ Future<void> showLibraryItemMenu(
   );
   if (chosen == null) return;
   entries[chosen]?.$3();
+}
+
+/// The menu a long press (or a right click) on a season tab opens.
+///
+/// [seasons] is every season's episodes in tab order and [index] the one
+/// pressed. Play carries on inside the season — the part-watched episode,
+/// else the first unwatched — and the queue stops at its end; "Play all from
+/// here" runs on through every season after it. Everything else acts on the
+/// season's episodes: a playlist holds episodes, a collection the season
+/// itself where the server named it.
+Future<void> showSeasonMenu(
+  BuildContext context,
+  WidgetRef ref, {
+  required Offset position,
+  required List<List<ServerItem>> seasons,
+  required int index,
+}) async {
+  if (index >= seasons.length || seasons[index].isEmpty) return;
+  final l10n = AppLocalizations.of(context);
+  final season = seasons[index];
+  final ids = <String>[for (final ServerItem e in season) e.id];
+  final seasonId = season.first.seasonId;
+
+  void play() {
+    final next = nextEpisodeOf(season);
+    playServerQueue(
+      context,
+      ref,
+      ids,
+      startIndex: next == null ? 0 : season.indexOf(next),
+    );
+  }
+
+  void playOn() => playServerQueue(context, ref, <String>[
+    for (final List<ServerItem> s in seasons.skip(index))
+      for (final ServerItem e in s) e.id,
+  ]);
+
+  await _showEntries(context, position, <_Entry>[
+    (Icons.play_arrow_rounded, l10n.play, play),
+    if (index < seasons.length - 1)
+      (Icons.playlist_play_rounded, l10n.playAllFromHere, playOn),
+    (
+      Icons.shuffle_rounded,
+      l10n.shuffleItems,
+      () => shufflePlay(context, ref, season),
+    ),
+    null,
+    (
+      Icons.library_add_outlined,
+      l10n.addToCollection,
+      () => showCollectionSheet(
+        context,
+        ref,
+        itemIds: seasonId == null ? ids : <String>[seasonId],
+      ),
+    ),
+    (
+      Icons.playlist_add_rounded,
+      l10n.addToPlaylist,
+      () => showPlaylistSheet(context, ref, itemIds: ids),
+    ),
+    (
+      Icons.download_for_offline_outlined,
+      l10n.downloadAll,
+      () => downloadAllAction(context, ref, season).onSelected(),
+    ),
+  ]);
 }
 
 /// The collections on the server, for the sheet behind "Add to collection".

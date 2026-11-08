@@ -2870,6 +2870,12 @@ abstract class AppLocalizations {
   /// **'Shuffle'**
   String get shuffleItems;
 
+  /// No description provided for @playAllFromHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Play all from here'**
+  String get playAllFromHere;
+
   /// No description provided for @newPlaylist.
   ///
   /// In en, this message translates to:

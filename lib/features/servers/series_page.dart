@@ -18,6 +18,7 @@ import '../../widgets/remote_art.dart';
 import '../downloads/download_ui.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
+import 'library_item_menu.dart';
 import 'media_info_sheet.dart';
 import 'server_library.dart';
 
@@ -251,9 +252,22 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                   tabAlignment: TabAlignment.start,
                   indicatorWeight: 3,
                   indicatorSize: TabBarIndicatorSize.label,
+                  // The padding moves into each tab, so a season's long press
+                  // covers the whole tab rather than the words alone.
+                  labelPadding: EdgeInsets.zero,
                   tabs: <Widget>[
-                    for (final Season s in series.seasons) Tab(text: s.name),
-                    Tab(text: l10n.about),
+                    for (final (int i, Season s) in series.seasons.indexed)
+                      _SeasonTab(
+                        label: s.name,
+                        onMenu: (position) => showSeasonMenu(
+                          context,
+                          ref,
+                          position: position,
+                          seasons: bySeason,
+                          index: i,
+                        ),
+                      ),
+                    _SeasonTab(label: l10n.about),
                   ],
                 ),
                 background: scheme.surface,
@@ -280,8 +294,8 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                           // The rows are grouped copies of the flat list; the item
                           // behind one is found by grouping the flat list the same
                           // way.
-                          final source = s < bySeason.length &&
-                                  i < bySeason[s].length
+                          final source =
+                              s < bySeason.length && i < bySeason[s].length
                               ? bySeason[s][i]
                               : null;
                           return _EpisodeRow(
@@ -368,7 +382,6 @@ class _TabBarHeader extends SliverPersistentHeaderDelegate {
       old.divider != divider;
 }
 
-
 /// What a series' Play button plays: the episode part-watched, then the first
 /// unwatched, then the very first — which is also what a fresh series does.
 ServerItem? nextEpisodeOf(List<ServerItem> episodes) {
@@ -406,6 +419,38 @@ List<List<ServerItem>> _episodesBySeason(List<ServerItem> episodes) {
   }
   final numbers = bySeason.keys.toList()..sort();
   return <List<ServerItem>>[for (final int n in numbers) bySeason[n]!];
+}
+
+/// A season tab that opens the season menu on a long press or a right
+/// click. A tap still reaches the tab bar and switches to it.
+class _SeasonTab extends StatelessWidget {
+  const _SeasonTab({required this.label, this.onMenu});
+
+  final String label;
+
+  /// Opens the menu at a global position; null for a tab with no menu.
+  final ValueChanged<Offset>? onMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    final menu = onMenu;
+    final child = SizedBox(
+      height: kTextTabBarHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Center(child: Text(label, softWrap: false)),
+      ),
+    );
+    if (menu == null) return Tab(child: child);
+    return Tab(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPressStart: (d) => menu(d.globalPosition),
+        onSecondaryTapUp: (d) => menu(d.globalPosition),
+        child: child,
+      ),
+    );
+  }
 }
 
 class _EpisodeRow extends StatefulWidget {

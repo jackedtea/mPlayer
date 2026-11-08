@@ -259,7 +259,13 @@ Also open:
   Collections are `allCollections` / `addToCollection` / `createCollection`
   on the source, all query-bound on `/Collections`; they need the account's
   collection-management permission, and a 403 is a snackbar. The Playlists
-  tab passes `itemMenu: false`.
+  tab passes `itemMenu: false`. A season tab (`_SeasonTab`, long press or
+  right click; `labelPadding` moved into the tab so the whole tab answers)
+  opens `showSeasonMenu`: Play (from the season's next episode), Play all
+  from here (this season and every later one), Shuffle, Add to collection
+  (the season by `ServerItem.seasonId`, else its episodes), Add to playlist
+  (the episodes), Download all. No Select: the episode list has no
+  multi-select.
 - **Series rows map to items by position in the same season grouping**
   `seriesDetailFrom` uses (`_episodesBySeason`). Matching on number + title
   sent every season's "Episode 1" to season 1's item.

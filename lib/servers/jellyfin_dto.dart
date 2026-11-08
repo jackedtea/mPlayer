@@ -142,6 +142,7 @@ ServerItem serverItemFromJson(
         : null,
     seriesId: json['SeriesId'] as String?,
     seriesTitle: json['SeriesName'] as String?,
+    seasonId: json['SeasonId'] as String?,
     seasonNumber: json['ParentIndexNumber'] as int?,
     episodeNumber: json['IndexNumber'] as int?,
     rating: (json['CommunityRating'] as num?)?.toDouble(),

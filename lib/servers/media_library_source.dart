@@ -57,6 +57,7 @@ class ServerItem {
     this.originalTitle,
     this.seriesId,
     this.seriesTitle,
+    this.seasonId,
     this.seasonNumber,
     this.episodeNumber,
     this.rating,
@@ -124,6 +125,10 @@ class ServerItem {
 
   final String? seriesId;
   final String? seriesTitle;
+
+  /// The season an episode sits in, from `SeasonId`. What a whole season is
+  /// put into a collection by.
+  final String? seasonId;
   final int? seasonNumber;
   final int? episodeNumber;
 
