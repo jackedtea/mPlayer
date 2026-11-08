@@ -26,19 +26,19 @@ class JellyfinAdmin implements ServerAdmin {
     required String token,
     required this.identity,
     Dio? client,
-  })  : _profile = profile,
-        // ignore: prefer_initializing_formals
-        _token = token,
-        _base = Uri.parse(profile.uri),
-        _dio = client ?? _defaultClient();
+  }) : _profile = profile,
+       // ignore: prefer_initializing_formals
+       _token = token,
+       _base = Uri.parse(profile.uri),
+       _dio = client ?? _defaultClient();
 
   static Dio _defaultClient() => Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 8),
-          receiveTimeout: const Duration(seconds: 20),
-          validateStatus: (_) => true,
-        ),
-      );
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 20),
+      validateStatus: (_) => true,
+    ),
+  );
 
   final ServerProfile _profile;
   final String _token;
@@ -47,15 +47,15 @@ class JellyfinAdmin implements ServerAdmin {
   final ClientIdentity identity;
 
   Map<String, String> get _headers => <String, String>{
-        'Authorization': authorizationHeader(
-          client: identity.client,
-          device: identity.deviceName,
-          deviceId: identity.deviceId,
-          version: identity.version,
-          token: _token,
-        ),
-        'Accept': 'application/json',
-      };
+    'Authorization': authorizationHeader(
+      client: identity.client,
+      device: identity.deviceName,
+      deviceId: identity.deviceId,
+      version: identity.version,
+      token: _token,
+    ),
+    'Accept': 'application/json',
+  };
 
   // ------------------------------------------------------------- server
 
@@ -183,19 +183,97 @@ class JellyfinAdmin implements ServerAdmin {
     // The same read-change-write rule the rename follows, and for a sharper
     // reason: this object *is* the account's permissions, and posting one
     // field would strip every library grant and parental limit it has.
-    final user = await _getMap('/Users/$userId');
-    final policy = user['Policy'];
-    if (policy is! Map) {
-      throw const ServerException(
-        'The server did not describe that account, so nothing was changed.',
-      );
-    }
-
+    final policy = await _serverPolicy(userId);
     await _post('/Users/$userId/Policy', <String, dynamic>{
       ...policy.cast<String, dynamic>(),
       'IsDisabled': disabled,
     });
   }
+
+  @override
+  Future<AdminUserDetail> user(String userId) async {
+    final detail = adminUserDetailFromJson(await _getMap('/Users/$userId'));
+    if (detail == null) throw const ServerException(_undescribed);
+    return detail;
+  }
+
+  @override
+  Future<void> setUserPolicy(String userId, UserPolicy policy) async {
+    // Read *now*, not the copy the editor opened with: another administrator
+    // may have changed a field this screen does not show in the meantime, and
+    // writing the old copy back would quietly undo it.
+    final server = await _serverPolicy(userId);
+    await _post('/Users/$userId/Policy', applyUserPolicy(server, policy));
+  }
+
+  /// The account's policy exactly as the server holds it.
+  ///
+  /// Refuses rather than guessing when the server will not say: a write built
+  /// on a guessed policy is a write that resets the account.
+  Future<Map<Object?, Object?>> _serverPolicy(String userId) async {
+    final user = await _getMap('/Users/$userId');
+    final policy = user['Policy'];
+    if (policy is! Map) throw const ServerException(_undescribed);
+    return policy;
+  }
+
+  static const _undescribed =
+      'The server did not describe that account, so nothing was changed.';
+
+  @override
+  Future<AdminUser> createUser(String name, String password) async {
+    final response = await _send(
+      () => _dio.postUri<dynamic>(
+        _url('/Users/New'),
+        data: <String, dynamic>{
+          'Name': name.trim(),
+          // Absent rather than empty: the server only sets a password when one
+          // is given, and an empty one is no password either way.
+          if (password.isNotEmpty) 'Password': password,
+        },
+        options: Options(headers: _headers),
+      ),
+    );
+
+    final data = response.data;
+    if (data is Map<String, dynamic>) return adminUserFromJson(data);
+    // Made, but answered with nothing readable: the list will show it.
+    return AdminUser(id: '', name: name.trim());
+  }
+
+  @override
+  Future<void> deleteUser(String userId) => _delete('/Users/$userId');
+
+  @override
+  Future<void> setUserPassword(String userId, String password) {
+    // The `{userId}/Password` spelling, not `Password?userId=`: the second
+    // only exists from 10.10, and the first is still served beside it. With a
+    // userId that is not the caller's own, an administrator is not asked for
+    // the current password — which is the point of doing this from here.
+    return _post('/Users/$userId/Password', <String, dynamic>{
+      'CurrentPw': '',
+      'NewPw': password,
+    });
+  }
+
+  @override
+  Future<List<AdminLibrary>> libraries() async {
+    final list = await _getList('/Library/MediaFolders', <String, String>{
+      'isHidden': 'false',
+    });
+
+    return <AdminLibrary>[
+      for (final Object? entry in list)
+        if (entry is Map<String, dynamic>)
+          if (adminLibraryFromJson(entry) case final AdminLibrary l
+              when l.id.isNotEmpty)
+            l,
+    ];
+  }
+
+  @override
+  Future<List<ParentalRatingOption>> parentalRatings() async =>
+      parentalRatingsFromJson(await _getList('/Localization/ParentalRatings'));
 
   @override
   Future<List<AdminDevice>> devices() async {
@@ -251,7 +329,9 @@ class JellyfinAdmin implements ServerAdmin {
         if (entry is Map<String, dynamic>) serverPluginFromJson(entry),
     ];
 
-    plugins.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    plugins.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
     return plugins;
   }
 
@@ -367,17 +447,15 @@ class JellyfinAdmin implements ServerAdmin {
     try {
       response = await request();
     } on DioException catch (e) {
-      throw ServerException(
-        switch (e.type) {
-          DioExceptionType.connectionTimeout ||
-          DioExceptionType.connectionError =>
-            '${_profile.name} did not answer. Check it is on and reachable '
-                'from this network.',
-          DioExceptionType.receiveTimeout =>
-            '${_profile.name} took too long to answer.',
-          _ => 'Could not reach ${_profile.name}.',
-        },
-      );
+      throw ServerException(switch (e.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.connectionError =>
+          '${_profile.name} did not answer. Check it is on and reachable '
+              'from this network.',
+        DioExceptionType.receiveTimeout =>
+          '${_profile.name} took too long to answer.',
+        _ => 'Could not reach ${_profile.name}.',
+      });
     }
 
     final status = response.statusCode ?? 0;
@@ -388,9 +466,15 @@ class JellyfinAdmin implements ServerAdmin {
         isUnauthorised: true,
       );
     }
+    // A refusal the server explained is passed on in its words. The policy
+    // route answers 403 for "there must be at least one administrator" and
+    // "administrators cannot be disabled" — reading those as "you are not an
+    // administrator" would tell an administrator something false.
+    final reason = _refusalReason(response.data);
+
     if (status == 403) {
       throw ServerException(
-        'Your account on ${_profile.name} is not an administrator.',
+        reason ?? 'Your account on ${_profile.name} is not an administrator.',
       );
     }
     // A restart or a shutdown kills the connection *because it worked*. The
@@ -398,9 +482,29 @@ class JellyfinAdmin implements ServerAdmin {
     // closes; a client treating the dropped response as a failure would tell
     // the user nothing happened when the server is already going down.
     if (status < 200 || status >= 300) {
-      throw ServerException('${_profile.name} refused the request ($status).');
+      throw ServerException(
+        reason ?? '${_profile.name} refused the request ($status).',
+      );
     }
 
     return response;
+  }
+
+  /// The sentence a refusal carried, if it carried one.
+  ///
+  /// Jellyfin answers some refusals with a bare string and others with
+  /// problem details; an HTML error page or a stack trace is not a sentence
+  /// and is not passed on.
+  static String? _refusalReason(Object? data) {
+    final text = switch (data) {
+      final String s => s,
+      {'detail': final String s} => s,
+      {'title': final String s} when !s.startsWith('One or more') => s,
+      _ => null,
+    };
+    final trimmed = text?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    if (trimmed.length > 200 || trimmed.startsWith('<')) return null;
+    return trimmed;
   }
 }

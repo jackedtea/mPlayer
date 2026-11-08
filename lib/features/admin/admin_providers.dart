@@ -81,6 +81,47 @@ final adminUsersProvider = FutureProvider<List<AdminUser>>(
   (ref) => _withAdmin(ref, (a) => a.users(), const <AdminUser>[]),
 );
 
+/// One account and its policy, asked again each time its screen opens.
+///
+/// `autoDispose` because the policy is exactly the thing another
+/// administrator may have changed since, and an editor opening on a cached
+/// copy would show — and then save — the old one.
+final adminUserProvider = FutureProvider.autoDispose
+    .family<AdminUserDetail?, String>(
+      (ref, userId) =>
+          _withAdmin<AdminUserDetail?>(ref, (a) => a.user(userId), null),
+    );
+
+/// The libraries an account can be given, for the access list.
+final adminLibrariesProvider = FutureProvider.autoDispose<List<AdminLibrary>>(
+  (ref) => _withAdmin(ref, (a) => a.libraries(), const <AdminLibrary>[]),
+);
+
+/// The ratings the parental limit can be set to. A server that will not say
+/// costs the editor that one row and nothing else.
+final parentalRatingsProvider =
+    FutureProvider.autoDispose<List<ParentalRatingOption>>((ref) async {
+      try {
+        return await _withAdmin(
+          ref,
+          (a) => a.parentalRatings(),
+          const <ParentalRatingOption>[],
+        );
+      } on ServerException {
+        return const <ParentalRatingOption>[];
+      }
+    });
+
+/// The signed-in account's id, so the screens can refuse to let an
+/// administrator delete, disable or demote themselves.
+///
+/// The server refuses some of those on its own (the last administrator) and
+/// not others (an administrator demoting themselves while another exists),
+/// and losing the section mid-edit is not an outcome anybody chose.
+final currentAdminUserIdProvider = Provider<String?>(
+  (ref) => ref.watch(serverRegistryProvider).active?.userId,
+);
+
 final adminDevicesProvider = FutureProvider<List<AdminDevice>>(
   (ref) => _withAdmin(ref, (a) => a.devices(), const <AdminDevice>[]),
 );

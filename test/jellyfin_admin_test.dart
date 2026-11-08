@@ -306,6 +306,186 @@ void main() {
     });
   });
 
+  group('editing an account', () {
+    Map<String, dynamic> serverUser() => <String, dynamic>{
+          'Id': 'u2',
+          'Name': 'kids',
+          'HasConfiguredPassword': false,
+          'Policy': <String, dynamic>{
+            'IsAdministrator': false,
+            'EnableAllFolders': false,
+            'EnabledFolders': <String>['lib-1'],
+            'MaxParentalRating': 10,
+            // Fields the editor does not model, which must survive a save.
+            'BlockedTags': <String>['horror'],
+            'AccessSchedules': <Map<String, dynamic>>[
+              <String, dynamic>{'DayOfWeek': 'Sunday', 'StartHour': 8},
+            ],
+            'EnableCollectionManagement': false,
+          },
+        };
+
+    test('reads the policy and whether there is a password', () async {
+      final (admin, _) = adminWith((_) => _json(serverUser()));
+
+      final detail = await admin.user('u2');
+
+      expect(detail.user.name, 'kids');
+      expect(detail.hasPassword, isFalse);
+      expect(detail.policy.enableAllFolders, isFalse);
+      expect(detail.policy.enabledFolders, <String>['lib-1']);
+      expect(detail.policy.maxParentalRating, 10);
+    });
+
+    test('a save keeps every field the editor does not show', () async {
+      final (admin, adapter) = adminWith((options) {
+        if (options.method == 'GET') return _json(serverUser());
+        return _json(<String, dynamic>{});
+      });
+
+      final detail = await admin.user('u2');
+      await admin.setUserPolicy(
+        'u2',
+        detail.policy.copyWith(
+          enabledFolders: <String>['lib-1', 'lib-2'],
+          parentalRating: (score: null, subScore: null),
+        ),
+      );
+
+      final post = adapter.requests.last;
+      expect(post.method, 'POST');
+      expect(post.uri.path, '/Users/u2/Policy');
+
+      final body = post.data as Map;
+      expect(body['EnabledFolders'], <String>['lib-1', 'lib-2']);
+      expect(body.containsKey('MaxParentalRating'), isTrue);
+      expect(body['MaxParentalRating'], isNull);
+      expect(body['BlockedTags'], <String>['horror']);
+      expect(body['AccessSchedules'], hasLength(1));
+    });
+
+    test('the policy is read again at save time, not reused', () async {
+      // Another administrator may have changed a field this screen does not
+      // show since it opened; writing the old copy back would undo it.
+      var reads = 0;
+      final (admin, _) = adminWith((options) {
+        if (options.method == 'GET') {
+          reads++;
+          return _json(serverUser());
+        }
+        return _json(<String, dynamic>{});
+      });
+
+      await admin.setUserPolicy('u2', const UserPolicy());
+      expect(reads, 1);
+    });
+
+    test('"all libraries" sends no stale grant list beside it', () {
+      final body = applyUserPolicy(
+        serverUser()['Policy'] as Map<String, dynamic>,
+        const UserPolicy(
+          enableAllFolders: true,
+          enabledFolders: <String>['lib-1'],
+        ),
+      );
+      expect(body['EnableAllFolders'], isTrue);
+      expect(body['EnabledFolders'], isEmpty);
+    });
+
+    test('a switch the server does not have is not sent', () {
+      // EnableCollectionManagement arrived in 10.9.
+      final body = applyUserPolicy(
+        <String, dynamic>{'IsAdministrator': false},
+        const UserPolicy(enableCollectionManagement: true),
+      );
+      expect(body.containsKey('EnableCollectionManagement'), isFalse);
+    });
+
+    test('a new account sends no password when none was typed', () async {
+      final (admin, adapter) = adminWith(
+        (_) => _json(<String, dynamic>{'Id': 'new', 'Name': 'anna'}),
+      );
+
+      final made = await admin.createUser(' anna ', '');
+
+      expect(made.id, 'new');
+      final post = adapter.requests.single;
+      expect(post.uri.path, '/Users/New');
+      expect(post.data, <String, dynamic>{'Name': 'anna'});
+    });
+
+    test('a password is set without the old one', () async {
+      final (admin, adapter) = adminWith((_) => _json(<String, dynamic>{}));
+
+      await admin.setUserPassword('u2', 'secret');
+
+      final post = adapter.requests.single;
+      expect(post.uri.path, '/Users/u2/Password');
+      expect((post.data as Map)['NewPw'], 'secret');
+    });
+
+    test('deleting is a DELETE on the account', () async {
+      final (admin, adapter) = adminWith((_) => _json(<String, dynamic>{}));
+
+      await admin.deleteUser('u2');
+
+      expect(adapter.requests.single.method, 'DELETE');
+      expect(adapter.requests.single.uri.path, '/Users/u2');
+    });
+
+    test('libraries leave out what the server hid', () async {
+      final (admin, adapter) = adminWith(
+        (_) => _json(<String, dynamic>{
+          'Items': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'Id': 'lib-1',
+              'Name': 'Films',
+              'CollectionType': 'movies',
+            },
+            <String, dynamic>{'Name': 'no id'},
+          ],
+        }),
+      );
+
+      final libraries = await admin.libraries();
+
+      expect(adapter.requests.single.uri.queryParameters['isHidden'], 'false');
+      expect(libraries.map((l) => l.name), <String>['Films']);
+    });
+  });
+
+  group('parental ratings', () {
+    test('one option per score, names joined, lowest first', () {
+      final options = parentalRatingsFromJson(<Object?>[
+        <String, dynamic>{'Name': 'TV-14', 'Value': 14},
+        <String, dynamic>{'Name': 'PG-13', 'Value': 13},
+        <String, dynamic>{'Name': 'TV-PG', 'Value': 13},
+        <String, dynamic>{'Name': 'Unrated'},
+      ]);
+
+      expect(options.map((o) => o.name), <String>['PG-13 / TV-PG', 'TV-14']);
+      expect(options.map((o) => o.score), <int>[13, 14]);
+    });
+
+    test('the 10.11 rating score, with its sub-score', () {
+      final options = parentalRatingsFromJson(<Object?>[
+        <String, dynamic>{
+          'Name': '12A',
+          'Value': 12,
+          'RatingScore': <String, dynamic>{'Score': 12, 'SubScore': 1},
+        },
+        <String, dynamic>{
+          'Name': '12',
+          'Value': 12,
+          'RatingScore': <String, dynamic>{'Score': 12},
+        },
+      ]);
+
+      expect(options.map((o) => o.name), <String>['12', '12A']);
+      expect(options.last.subScore, 1);
+    });
+  });
+
   group('what a rejection means', () {
     test('403 says the account is not an administrator, not "sign in again"',
         () async {
@@ -322,6 +502,30 @@ void main() {
           isA<ServerException>()
               .having((e) => e.isUnauthorised, 'isUnauthorised', isFalse)
               .having((e) => e.message, 'message', contains('administrator')),
+        ),
+      );
+    });
+
+    test('a refusal the server explained is passed on in its words',
+        () async {
+      // The policy route answers 403 for "there must be at least one
+      // administrator"; "you are not an administrator" would be false.
+      final (admin, _) = adminWith(
+        (_) => _json(
+          'There must be at least one user in the system with administrative '
+          'access.',
+          status: 403,
+        ),
+      );
+
+      await expectLater(
+        admin.setUserPassword('u1', 'x'),
+        throwsA(
+          isA<ServerException>().having(
+            (e) => e.message,
+            'message',
+            contains('at least one user'),
+          ),
         ),
       );
     });

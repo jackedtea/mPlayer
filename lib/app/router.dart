@@ -11,6 +11,7 @@ import '../features/admin/admin_activity_page.dart';
 import '../features/admin/admin_dashboard_page.dart';
 import '../features/admin/admin_plugins_page.dart';
 import '../features/admin/admin_tasks_page.dart';
+import '../features/admin/admin_user_page.dart';
 import '../features/admin/admin_users_page.dart';
 import '../features/downloads/download_settings_page.dart';
 import '../features/downloads/downloads_page.dart';
@@ -179,6 +180,13 @@ GoRouter buildRouter() {
           GoRoute(
             path: 'users',
             builder: (context, state) => const AdminUsersPage(),
+            routes: <RouteBase>[
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    AdminUserPage(userId: state.pathParameters['id']!),
+              ),
+            ],
           ),
           GoRoute(
             path: 'activity',

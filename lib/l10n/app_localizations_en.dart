@@ -453,6 +453,186 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminCannotRestart => 'This server cannot restart itself.';
 
   @override
+  String get adminUserYou => 'You';
+
+  @override
+  String get adminAddUser => 'Add user';
+
+  @override
+  String get adminNewUserTitle => 'New user';
+
+  @override
+  String get adminUserNameLabel => 'Name';
+
+  @override
+  String get adminPasswordOptional => 'Password (optional)';
+
+  @override
+  String get adminCreate => 'Create';
+
+  @override
+  String adminUserCreated(String name) {
+    return '$name created.';
+  }
+
+  @override
+  String get adminSetPassword => 'Set password';
+
+  @override
+  String get adminNewPassword => 'New password';
+
+  @override
+  String get adminConfirmPassword => 'Confirm password';
+
+  @override
+  String get adminPasswordMismatch => 'The passwords do not match.';
+
+  @override
+  String get adminPasswordEmptyHint =>
+      'Leave empty to remove the password. Every device signed in to this account is signed out.';
+
+  @override
+  String adminPasswordChanged(String name) {
+    return 'Password changed for $name.';
+  }
+
+  @override
+  String adminPasswordRemoved(String name) {
+    return '$name no longer has a password.';
+  }
+
+  @override
+  String get adminHasPassword => 'Has a password';
+
+  @override
+  String get adminNoPassword => 'No password';
+
+  @override
+  String get adminDeleteUser => 'Delete user';
+
+  @override
+  String adminDeleteUserQuestion(String name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get adminDeleteUserBody =>
+      'The account, its playlists and its watch history are removed, and every device it is signed in on is signed out. This cannot be undone.';
+
+  @override
+  String adminUserDeleted(String name) {
+    return '$name deleted.';
+  }
+
+  @override
+  String adminUserSaved(String name) {
+    return 'Changes to $name saved.';
+  }
+
+  @override
+  String get adminUserNotFound => 'The server did not describe this account.';
+
+  @override
+  String get adminSectionAccount => 'Account';
+
+  @override
+  String get adminPolicyAdminBody =>
+      'Can manage the server and every account on it.';
+
+  @override
+  String get adminPolicyDisabledBody => 'Cannot sign in.';
+
+  @override
+  String get adminPolicyAdminNotDisabled =>
+      'An administrator cannot be disabled.';
+
+  @override
+  String get adminPolicyHidden => 'Hidden from the sign-in screen';
+
+  @override
+  String get adminPolicySelf => 'You cannot change this for your own account.';
+
+  @override
+  String get adminSectionLibraries => 'Library access';
+
+  @override
+  String get adminPolicyAllLibraries => 'All libraries';
+
+  @override
+  String get adminPolicyAllLibrariesBody => 'Including libraries added later.';
+
+  @override
+  String get adminNoLibraries => 'This server has no libraries.';
+
+  @override
+  String get adminSectionPlayback => 'Playback';
+
+  @override
+  String get adminPolicyPlayback => 'Allow playback';
+
+  @override
+  String get adminPolicyVideoTranscoding => 'Allow video transcoding';
+
+  @override
+  String get adminPolicyAudioTranscoding => 'Allow audio transcoding';
+
+  @override
+  String get adminPolicyRemuxing => 'Allow remuxing';
+
+  @override
+  String get adminPolicyRemoteAccess => 'Allow remote access';
+
+  @override
+  String get adminPolicyRemoteAccessBody =>
+      'From outside the server\'s network.';
+
+  @override
+  String get adminPolicyBitrate => 'Remote bitrate limit';
+
+  @override
+  String get adminPolicySessions => 'Maximum active sessions';
+
+  @override
+  String get adminNoLimit => 'No limit';
+
+  @override
+  String adminMbps(String value) {
+    return '$value Mbps';
+  }
+
+  @override
+  String get adminSectionContent => 'Content';
+
+  @override
+  String get adminPolicyDownloads => 'Allow downloads';
+
+  @override
+  String get adminPolicyDeletion => 'Allow deleting media';
+
+  @override
+  String get adminPolicyCollections => 'Allow managing collections';
+
+  @override
+  String get adminSectionParental => 'Parental control';
+
+  @override
+  String get adminPolicyMaxRating => 'Maximum allowed rating';
+
+  @override
+  String adminRatingScore(int score) {
+    return 'Rating $score';
+  }
+
+  @override
+  String get adminDiscardQuestion => 'Discard changes?';
+
+  @override
+  String get adminDiscardBody => 'What you changed here has not been saved.';
+
+  @override
+  String get adminDiscard => 'Discard';
+
+  @override
   String get actionSend => 'Send';
 
   @override

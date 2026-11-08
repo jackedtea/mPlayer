@@ -140,10 +140,10 @@ enum TaskState {
   running;
 
   static TaskState fromWire(String? name) => switch (name) {
-        'Running' => TaskState.running,
-        'Cancelling' => TaskState.cancelling,
-        _ => TaskState.idle,
-      };
+    'Running' => TaskState.running,
+    'Cancelling' => TaskState.cancelling,
+    _ => TaskState.idle,
+  };
 }
 
 /// An account on the server.
@@ -166,6 +166,206 @@ class AdminUser {
   final bool isHidden;
   final DateTime? lastActivity;
   final String? imageTag;
+}
+
+/// The part of an account's policy these screens edit.
+///
+/// **Not the whole policy**, and that is deliberate: Jellyfin's has some forty
+/// fields — access schedules, blocked tags, channel grants, SyncPlay — and a
+/// phone is not where those get set well. The client reads the server's own
+/// object fresh before every write and lays these fields over it, so anything
+/// not modelled here survives untouched rather than being reset to a default.
+@immutable
+class UserPolicy {
+  const UserPolicy({
+    this.isAdministrator = false,
+    this.isDisabled = false,
+    this.isHidden = false,
+    this.enableAllFolders = true,
+    this.enabledFolders = const <String>[],
+    this.enableMediaPlayback = true,
+    this.enableVideoTranscoding = true,
+    this.enableAudioTranscoding = true,
+    this.enableRemuxing = true,
+    this.enableContentDownloading = true,
+    this.enableContentDeletion = false,
+    this.enableCollectionManagement = false,
+    this.enableRemoteAccess = true,
+    this.remoteBitrateLimit = 0,
+    this.maxActiveSessions = 0,
+    this.maxParentalRating,
+    this.maxParentalSubRating,
+  });
+
+  final bool isAdministrator;
+  final bool isDisabled;
+
+  /// Kept off the sign-in screen's list of faces.
+  final bool isHidden;
+
+  /// Every library, including ones added later — not the same as ticking
+  /// every library there is today, which would leave a new one out.
+  final bool enableAllFolders;
+
+  /// Library ids, consulted only while [enableAllFolders] is false.
+  final List<String> enabledFolders;
+
+  final bool enableMediaPlayback;
+  final bool enableVideoTranscoding;
+  final bool enableAudioTranscoding;
+  final bool enableRemuxing;
+  final bool enableContentDownloading;
+  final bool enableContentDeletion;
+  final bool enableCollectionManagement;
+  final bool enableRemoteAccess;
+
+  /// Bits per second for a client outside the LAN. Zero is no limit.
+  final int remoteBitrateLimit;
+
+  /// Zero is no limit.
+  final int maxActiveSessions;
+
+  /// The highest rating score the account may see, or null for everything.
+  final int? maxParentalRating;
+
+  /// 10.11's finer step inside one score (a country's "12A" beside "12").
+  /// Cleared whenever the rating is picked from here.
+  final int? maxParentalSubRating;
+
+  UserPolicy copyWith({
+    bool? isAdministrator,
+    bool? isDisabled,
+    bool? isHidden,
+    bool? enableAllFolders,
+    List<String>? enabledFolders,
+    bool? enableMediaPlayback,
+    bool? enableVideoTranscoding,
+    bool? enableAudioTranscoding,
+    bool? enableRemuxing,
+    bool? enableContentDownloading,
+    bool? enableContentDeletion,
+    bool? enableCollectionManagement,
+    bool? enableRemoteAccess,
+    int? remoteBitrateLimit,
+    int? maxActiveSessions,
+    // A rating can be set back to "no limit", which a plain nullable cannot
+    // say, so the two travel as one optional record.
+    ({int? score, int? subScore})? parentalRating,
+  }) {
+    return UserPolicy(
+      isAdministrator: isAdministrator ?? this.isAdministrator,
+      isDisabled: isDisabled ?? this.isDisabled,
+      isHidden: isHidden ?? this.isHidden,
+      enableAllFolders: enableAllFolders ?? this.enableAllFolders,
+      enabledFolders: enabledFolders ?? this.enabledFolders,
+      enableMediaPlayback: enableMediaPlayback ?? this.enableMediaPlayback,
+      enableVideoTranscoding:
+          enableVideoTranscoding ?? this.enableVideoTranscoding,
+      enableAudioTranscoding:
+          enableAudioTranscoding ?? this.enableAudioTranscoding,
+      enableRemuxing: enableRemuxing ?? this.enableRemuxing,
+      enableContentDownloading:
+          enableContentDownloading ?? this.enableContentDownloading,
+      enableContentDeletion:
+          enableContentDeletion ?? this.enableContentDeletion,
+      enableCollectionManagement:
+          enableCollectionManagement ?? this.enableCollectionManagement,
+      enableRemoteAccess: enableRemoteAccess ?? this.enableRemoteAccess,
+      remoteBitrateLimit: remoteBitrateLimit ?? this.remoteBitrateLimit,
+      maxActiveSessions: maxActiveSessions ?? this.maxActiveSessions,
+      maxParentalRating: parentalRating == null
+          ? maxParentalRating
+          : parentalRating.score,
+      maxParentalSubRating: parentalRating == null
+          ? maxParentalSubRating
+          : parentalRating.subScore,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is UserPolicy &&
+      other.isAdministrator == isAdministrator &&
+      other.isDisabled == isDisabled &&
+      other.isHidden == isHidden &&
+      other.enableAllFolders == enableAllFolders &&
+      listEquals(other.enabledFolders, enabledFolders) &&
+      other.enableMediaPlayback == enableMediaPlayback &&
+      other.enableVideoTranscoding == enableVideoTranscoding &&
+      other.enableAudioTranscoding == enableAudioTranscoding &&
+      other.enableRemuxing == enableRemuxing &&
+      other.enableContentDownloading == enableContentDownloading &&
+      other.enableContentDeletion == enableContentDeletion &&
+      other.enableCollectionManagement == enableCollectionManagement &&
+      other.enableRemoteAccess == enableRemoteAccess &&
+      other.remoteBitrateLimit == remoteBitrateLimit &&
+      other.maxActiveSessions == maxActiveSessions &&
+      other.maxParentalRating == maxParentalRating &&
+      other.maxParentalSubRating == maxParentalSubRating;
+
+  @override
+  int get hashCode => Object.hashAll(<Object?>[
+    isAdministrator,
+    isDisabled,
+    isHidden,
+    enableAllFolders,
+    Object.hashAll(enabledFolders),
+    enableMediaPlayback,
+    enableVideoTranscoding,
+    enableAudioTranscoding,
+    enableRemuxing,
+    enableContentDownloading,
+    enableContentDeletion,
+    enableCollectionManagement,
+    enableRemoteAccess,
+    remoteBitrateLimit,
+    maxActiveSessions,
+    maxParentalRating,
+    maxParentalSubRating,
+  ]);
+}
+
+/// One account, with what it is allowed to do.
+@immutable
+class AdminUserDetail {
+  const AdminUserDetail({
+    required this.user,
+    required this.policy,
+    this.hasPassword = true,
+  });
+
+  final AdminUser user;
+  final UserPolicy policy;
+
+  /// False for an account anyone can sign in to by tapping its name.
+  final bool hasPassword;
+}
+
+/// A library, as the access list names it.
+@immutable
+class AdminLibrary {
+  const AdminLibrary({required this.id, required this.name, this.kind = ''});
+
+  final String id;
+  final String name;
+
+  /// The server's `CollectionType` — movies, tvshows, music — or empty.
+  final String kind;
+}
+
+/// A rating the parental limit can be set to.
+@immutable
+class ParentalRatingOption {
+  const ParentalRatingOption({
+    required this.name,
+    required this.score,
+    this.subScore,
+  });
+
+  /// "PG-13", "FSK-16", "TV-MA".
+  final String name;
+  final int score;
+  final int? subScore;
 }
 
 /// A client that has signed in and been remembered.
@@ -223,10 +423,10 @@ enum ActivitySeverity {
   error;
 
   static ActivitySeverity fromWire(String? name) => switch (name) {
-        'Warning' => ActivitySeverity.warning,
-        'Error' || 'Critical' || 'Fatal' => ActivitySeverity.error,
-        _ => ActivitySeverity.information,
-      };
+    'Warning' => ActivitySeverity.warning,
+    'Error' || 'Critical' || 'Fatal' => ActivitySeverity.error,
+    _ => ActivitySeverity.information,
+  };
 }
 
 /// An installed plugin.
@@ -269,13 +469,13 @@ enum PluginStatus {
   superceded;
 
   static PluginStatus fromWire(String? name) => switch (name) {
-        'Disabled' => PluginStatus.disabled,
-        'RestartRequired' => PluginStatus.restartPending,
-        'NotSupported' => PluginStatus.notSupported,
-        'Malfunctioned' => PluginStatus.malfunctioned,
-        'Superceded' => PluginStatus.superceded,
-        _ => PluginStatus.active,
-      };
+    'Disabled' => PluginStatus.disabled,
+    'RestartRequired' => PluginStatus.restartPending,
+    'NotSupported' => PluginStatus.notSupported,
+    'Malfunctioned' => PluginStatus.malfunctioned,
+    'Superceded' => PluginStatus.superceded,
+    _ => PluginStatus.active,
+  };
 }
 
 /// Everything the administration screens can ask a server to do.
@@ -317,6 +517,36 @@ abstract class ServerAdmin {
   /// replaces the object rather than patching it, so posting one field would
   /// silently reset every other permission the account has.
   Future<void> setUserDisabled(String userId, {required bool disabled});
+
+  /// One account and its policy.
+  Future<AdminUserDetail> user(String userId);
+
+  /// Writes [policy] over the account's current one.
+  ///
+  /// The server's policy is **read fresh and written whole**, with only the
+  /// fields [UserPolicy] models replaced. Posting the model alone would reset
+  /// every field it does not carry — access schedules, blocked tags, channel
+  /// grants — to the server's defaults.
+  Future<void> setUserPolicy(String userId, UserPolicy policy);
+
+  /// Makes an account and answers with it. [password] may be empty, which
+  /// leaves an account anyone can sign in to by tapping its name.
+  Future<AdminUser> createUser(String name, String password);
+
+  /// Deletes an account, its playlists and every session it has open.
+  Future<void> deleteUser(String userId);
+
+  /// Sets another account's password without knowing the old one, which only
+  /// an administrator may do. Empty removes the password.
+  ///
+  /// Every session that account had open is signed out by the server.
+  Future<void> setUserPassword(String userId, String password);
+
+  /// The libraries an account can be granted, hidden ones left out.
+  Future<List<AdminLibrary>> libraries();
+
+  /// The ratings the server knows, lowest score first, one per score.
+  Future<List<ParentalRatingOption>> parentalRatings();
 
   Future<List<AdminDevice>> devices();
 

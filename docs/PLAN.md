@@ -418,6 +418,8 @@ code path is complete and unit-tested; neither has been run against a real NAS.
 - [x] Server administration — `servers/server_admin.dart` + `jellyfin_admin*.dart` and
       `features/admin/`: dashboard with live sessions (stop, message), scheduled tasks,
       library scan, users and devices, activity log, plugins, rename/restart/shut down
+- [x] Account management — create, delete, set password, and a policy editor (role, library
+      access, playback, downloads, parental limit) at `/admin/users/:id`
 - [ ] Offline downloads of server items — still parked; see `refs/jellyfin-android`'s
       `downloads/` for the shape of it
 - [ ] Transcode settings (max bitrate, resolution cap, force direct play) — the quality

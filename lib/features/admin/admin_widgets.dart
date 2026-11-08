@@ -27,9 +27,15 @@ class AdminScaffold extends ConsumerWidget {
     required this.onRefresh,
     this.actions = const <Widget>[],
     this.floatingActionButton,
+    this.bottomBar,
   });
 
   final String title;
+
+  /// Pinned to the foot of the screen, where a thumb reaches it — the user
+  /// editor's Save. Drawn only behind a passed guard: a Save under "not an
+  /// administrator" would be a button for nothing.
+  final Widget? bottomBar;
   final Widget child;
 
   /// What a pull invalidates. Passed rather than inferred: only the screen
@@ -51,6 +57,7 @@ class AdminScaffold extends ConsumerWidget {
         actions: actions,
       ),
       floatingActionButton: floatingActionButton,
+      bottomNavigationBar: admin.value == null ? null : bottomBar,
       body: switch (admin) {
         // The client is built from the stored token, which means a read from
         // the keychain — brief, but not instant, and a flash of "not an
@@ -160,10 +167,14 @@ Future<bool> confirmAdminAction(
           child: Text(l10n.actionCancel),
         ),
         FilledButton(
+          // The dialog's own context, not the caller's: the caller may be a
+          // screen that leaves while this dialog is still animating out —
+          // deleting an account pops its editor — and a rebuild reading a
+          // deactivated context's theme throws.
           style: destructive
               ? FilledButton.styleFrom(
-                  backgroundColor: context.colors.error,
-                  foregroundColor: context.colors.onError,
+                  backgroundColor: dialogContext.colors.error,
+                  foregroundColor: dialogContext.colors.onError,
                 )
               : null,
           onPressed: () => Navigator.of(dialogContext).pop(true),

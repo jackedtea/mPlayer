@@ -5,12 +5,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/server_admin.dart';
 import '../../widgets/section_header.dart';
 import 'admin_providers.dart';
+import 'admin_user_page.dart' show showCreateUserDialog;
 import 'admin_widgets.dart';
 
 /// Accounts and the devices they have signed in from.
@@ -31,6 +33,12 @@ class AdminUsersPage extends ConsumerWidget {
 
     return AdminScaffold(
       title: l10n.adminUsers,
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'admin-add-user',
+        onPressed: () => _createUser(context, ref, l10n),
+        icon: const Icon(Icons.person_add_alt_rounded),
+        label: Text(l10n.adminAddUser),
+      ),
       onRefresh: () async {
         ref
           ..invalidate(adminUsersProvider)
@@ -65,6 +73,32 @@ class AdminUsersPage extends ConsumerWidget {
   }
 }
 
+Future<void> _createUser(
+  BuildContext context,
+  WidgetRef ref,
+  AppLocalizations l10n,
+) async {
+  final answer = await showCreateUserDialog(context);
+  if (answer == null || !context.mounted) return;
+
+  final router = GoRouter.of(context);
+  AdminUser? made;
+  await runAdminAction(
+    context,
+    ref,
+    action: (admin) async =>
+        made = await admin.createUser(answer.name, answer.password),
+    success: l10n.adminUserCreated(answer.name),
+    refresh: () => ref.invalidate(adminUsersProvider),
+  );
+
+  // Straight into the new account: a fresh one can see every library and do
+  // nearly everything, and the next thing an administrator does is usually
+  // narrow that.
+  final id = made?.id ?? '';
+  if (id.isNotEmpty) router.push('/admin/users/$id');
+}
+
 class _UserRow extends ConsumerWidget {
   const _UserRow({required this.user});
 
@@ -75,7 +109,10 @@ class _UserRow extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final scheme = context.colors;
 
+    final isSelf = ref.watch(currentAdminUserIdProvider) == user.id;
+
     final tags = <String>[
+      if (isSelf) l10n.adminUserYou,
       if (user.isAdministrator) l10n.adminUserAdmin,
       if (user.isDisabled) l10n.adminUserDisabled,
       if (user.lastActivity != null) relativeTime(user.lastActivity, l10n),
@@ -102,21 +139,27 @@ class _UserRow extends ConsumerWidget {
         ),
       ),
       subtitle: tags.isEmpty ? null : Text(tags),
-      trailing: TextButton(
-        onPressed: () => runAdminAction(
-          context,
-          ref,
-          action: (admin) =>
-              admin.setUserDisabled(user.id, disabled: !user.isDisabled),
-          success: user.isDisabled
-              ? l10n.adminUserEnabled(user.name)
-              : l10n.adminUserNowDisabled(user.name),
-          refresh: () => ref.invalidate(adminUsersProvider),
-        ),
-        child: Text(
-          user.isDisabled ? l10n.adminUserEnable : l10n.adminUserDisable,
-        ),
-      ),
+      onTap: () => context.push('/admin/users/${user.id}'),
+      // No switch on your own row, and none on an administrator's that is
+      // already on: the server refuses to disable an administrator, so the
+      // button could only ever produce an error.
+      trailing: isSelf || (user.isAdministrator && !user.isDisabled)
+          ? const Icon(Icons.chevron_right_rounded)
+          : TextButton(
+              onPressed: () => runAdminAction(
+                context,
+                ref,
+                action: (admin) =>
+                    admin.setUserDisabled(user.id, disabled: !user.isDisabled),
+                success: user.isDisabled
+                    ? l10n.adminUserEnabled(user.name)
+                    : l10n.adminUserNowDisabled(user.name),
+                refresh: () => ref.invalidate(adminUsersProvider),
+              ),
+              child: Text(
+                user.isDisabled ? l10n.adminUserEnable : l10n.adminUserDisable,
+              ),
+            ),
     );
   }
 }
@@ -131,9 +174,10 @@ class _DeviceRow extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
 
     final detail = <String>[
-      <String>[device.appName, device.appVersion]
-          .where((s) => s.isNotEmpty)
-          .join(' '),
+      <String>[
+        device.appName,
+        device.appVersion,
+      ].where((s) => s.isNotEmpty).join(' '),
       device.username,
       relativeTime(device.lastSeen, l10n),
     ].where((s) => s.isNotEmpty).join(' · ');

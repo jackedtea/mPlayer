@@ -454,6 +454,187 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminCannotRestart => 'Máy chủ này không tự khởi động lại được.';
 
   @override
+  String get adminUserYou => 'Bạn';
+
+  @override
+  String get adminAddUser => 'Thêm người dùng';
+
+  @override
+  String get adminNewUserTitle => 'Người dùng mới';
+
+  @override
+  String get adminUserNameLabel => 'Tên';
+
+  @override
+  String get adminPasswordOptional => 'Mật khẩu (không bắt buộc)';
+
+  @override
+  String get adminCreate => 'Tạo';
+
+  @override
+  String adminUserCreated(String name) {
+    return 'Đã tạo $name.';
+  }
+
+  @override
+  String get adminSetPassword => 'Đặt mật khẩu';
+
+  @override
+  String get adminNewPassword => 'Mật khẩu mới';
+
+  @override
+  String get adminConfirmPassword => 'Nhập lại mật khẩu';
+
+  @override
+  String get adminPasswordMismatch => 'Hai mật khẩu không khớp.';
+
+  @override
+  String get adminPasswordEmptyHint =>
+      'Để trống để bỏ mật khẩu. Mọi thiết bị đang đăng nhập tài khoản này sẽ bị đăng xuất.';
+
+  @override
+  String adminPasswordChanged(String name) {
+    return 'Đã đổi mật khẩu cho $name.';
+  }
+
+  @override
+  String adminPasswordRemoved(String name) {
+    return '$name không còn mật khẩu.';
+  }
+
+  @override
+  String get adminHasPassword => 'Có mật khẩu';
+
+  @override
+  String get adminNoPassword => 'Không có mật khẩu';
+
+  @override
+  String get adminDeleteUser => 'Xoá người dùng';
+
+  @override
+  String adminDeleteUserQuestion(String name) {
+    return 'Xoá $name?';
+  }
+
+  @override
+  String get adminDeleteUserBody =>
+      'Tài khoản, danh sách phát và lịch sử xem của nó sẽ bị xoá, mọi thiết bị đang đăng nhập sẽ bị đăng xuất. Không thể hoàn tác.';
+
+  @override
+  String adminUserDeleted(String name) {
+    return 'Đã xoá $name.';
+  }
+
+  @override
+  String adminUserSaved(String name) {
+    return 'Đã lưu thay đổi cho $name.';
+  }
+
+  @override
+  String get adminUserNotFound =>
+      'Máy chủ không trả về thông tin tài khoản này.';
+
+  @override
+  String get adminSectionAccount => 'Tài khoản';
+
+  @override
+  String get adminPolicyAdminBody =>
+      'Có thể quản lý máy chủ và mọi tài khoản trên đó.';
+
+  @override
+  String get adminPolicyDisabledBody => 'Không đăng nhập được.';
+
+  @override
+  String get adminPolicyAdminNotDisabled =>
+      'Không thể tắt tài khoản quản trị viên.';
+
+  @override
+  String get adminPolicyHidden => 'Ẩn khỏi màn hình đăng nhập';
+
+  @override
+  String get adminPolicySelf =>
+      'Bạn không thể đổi mục này cho tài khoản của chính mình.';
+
+  @override
+  String get adminSectionLibraries => 'Quyền truy cập thư viện';
+
+  @override
+  String get adminPolicyAllLibraries => 'Tất cả thư viện';
+
+  @override
+  String get adminPolicyAllLibrariesBody => 'Bao gồm cả thư viện thêm sau này.';
+
+  @override
+  String get adminNoLibraries => 'Máy chủ này chưa có thư viện nào.';
+
+  @override
+  String get adminSectionPlayback => 'Phát';
+
+  @override
+  String get adminPolicyPlayback => 'Cho phép phát';
+
+  @override
+  String get adminPolicyVideoTranscoding => 'Cho phép chuyển mã video';
+
+  @override
+  String get adminPolicyAudioTranscoding => 'Cho phép chuyển mã âm thanh';
+
+  @override
+  String get adminPolicyRemuxing => 'Cho phép đóng gói lại (remux)';
+
+  @override
+  String get adminPolicyRemoteAccess => 'Cho phép truy cập từ xa';
+
+  @override
+  String get adminPolicyRemoteAccessBody => 'Từ ngoài mạng của máy chủ.';
+
+  @override
+  String get adminPolicyBitrate => 'Giới hạn bitrate từ xa';
+
+  @override
+  String get adminPolicySessions => 'Số phiên hoạt động tối đa';
+
+  @override
+  String get adminNoLimit => 'Không giới hạn';
+
+  @override
+  String adminMbps(String value) {
+    return '$value Mbps';
+  }
+
+  @override
+  String get adminSectionContent => 'Nội dung';
+
+  @override
+  String get adminPolicyDownloads => 'Cho phép tải xuống';
+
+  @override
+  String get adminPolicyDeletion => 'Cho phép xoá media';
+
+  @override
+  String get adminPolicyCollections => 'Cho phép quản lý bộ sưu tập';
+
+  @override
+  String get adminSectionParental => 'Kiểm soát của phụ huynh';
+
+  @override
+  String get adminPolicyMaxRating => 'Phân loại cao nhất được xem';
+
+  @override
+  String adminRatingScore(int score) {
+    return 'Phân loại $score';
+  }
+
+  @override
+  String get adminDiscardQuestion => 'Bỏ các thay đổi?';
+
+  @override
+  String get adminDiscardBody => 'Những gì bạn đã đổi ở đây chưa được lưu.';
+
+  @override
+  String get adminDiscard => 'Bỏ';
+
+  @override
   String get actionSend => 'Gửi';
 
   @override

@@ -890,6 +890,324 @@ abstract class AppLocalizations {
   /// **'This server cannot restart itself.'**
   String get adminCannotRestart;
 
+  /// No description provided for @adminUserYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get adminUserYou;
+
+  /// No description provided for @adminAddUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Add user'**
+  String get adminAddUser;
+
+  /// No description provided for @adminNewUserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New user'**
+  String get adminNewUserTitle;
+
+  /// No description provided for @adminUserNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get adminUserNameLabel;
+
+  /// No description provided for @adminPasswordOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Password (optional)'**
+  String get adminPasswordOptional;
+
+  /// No description provided for @adminCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get adminCreate;
+
+  /// No description provided for @adminUserCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} created.'**
+  String adminUserCreated(String name);
+
+  /// No description provided for @adminSetPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Set password'**
+  String get adminSetPassword;
+
+  /// No description provided for @adminNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get adminNewPassword;
+
+  /// No description provided for @adminConfirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get adminConfirmPassword;
+
+  /// No description provided for @adminPasswordMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The passwords do not match.'**
+  String get adminPasswordMismatch;
+
+  /// No description provided for @adminPasswordEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to remove the password. Every device signed in to this account is signed out.'**
+  String get adminPasswordEmptyHint;
+
+  /// No description provided for @adminPasswordChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed for {name}.'**
+  String adminPasswordChanged(String name);
+
+  /// No description provided for @adminPasswordRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} no longer has a password.'**
+  String adminPasswordRemoved(String name);
+
+  /// No description provided for @adminHasPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Has a password'**
+  String get adminHasPassword;
+
+  /// No description provided for @adminNoPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'No password'**
+  String get adminNoPassword;
+
+  /// No description provided for @adminDeleteUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete user'**
+  String get adminDeleteUser;
+
+  /// No description provided for @adminDeleteUserQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String adminDeleteUserQuestion(String name);
+
+  /// No description provided for @adminDeleteUserBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The account, its playlists and its watch history are removed, and every device it is signed in on is signed out. This cannot be undone.'**
+  String get adminDeleteUserBody;
+
+  /// No description provided for @adminUserDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} deleted.'**
+  String adminUserDeleted(String name);
+
+  /// No description provided for @adminUserSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes to {name} saved.'**
+  String adminUserSaved(String name);
+
+  /// No description provided for @adminUserNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not describe this account.'**
+  String get adminUserNotFound;
+
+  /// No description provided for @adminSectionAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get adminSectionAccount;
+
+  /// No description provided for @adminPolicyAdminBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Can manage the server and every account on it.'**
+  String get adminPolicyAdminBody;
+
+  /// No description provided for @adminPolicyDisabledBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot sign in.'**
+  String get adminPolicyDisabledBody;
+
+  /// No description provided for @adminPolicyAdminNotDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'An administrator cannot be disabled.'**
+  String get adminPolicyAdminNotDisabled;
+
+  /// No description provided for @adminPolicyHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden from the sign-in screen'**
+  String get adminPolicyHidden;
+
+  /// No description provided for @adminPolicySelf.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot change this for your own account.'**
+  String get adminPolicySelf;
+
+  /// No description provided for @adminSectionLibraries.
+  ///
+  /// In en, this message translates to:
+  /// **'Library access'**
+  String get adminSectionLibraries;
+
+  /// No description provided for @adminPolicyAllLibraries.
+  ///
+  /// In en, this message translates to:
+  /// **'All libraries'**
+  String get adminPolicyAllLibraries;
+
+  /// No description provided for @adminPolicyAllLibrariesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Including libraries added later.'**
+  String get adminPolicyAllLibrariesBody;
+
+  /// No description provided for @adminNoLibraries.
+  ///
+  /// In en, this message translates to:
+  /// **'This server has no libraries.'**
+  String get adminNoLibraries;
+
+  /// No description provided for @adminSectionPlayback.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback'**
+  String get adminSectionPlayback;
+
+  /// No description provided for @adminPolicyPlayback.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow playback'**
+  String get adminPolicyPlayback;
+
+  /// No description provided for @adminPolicyVideoTranscoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow video transcoding'**
+  String get adminPolicyVideoTranscoding;
+
+  /// No description provided for @adminPolicyAudioTranscoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow audio transcoding'**
+  String get adminPolicyAudioTranscoding;
+
+  /// No description provided for @adminPolicyRemuxing.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow remuxing'**
+  String get adminPolicyRemuxing;
+
+  /// No description provided for @adminPolicyRemoteAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow remote access'**
+  String get adminPolicyRemoteAccess;
+
+  /// No description provided for @adminPolicyRemoteAccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'From outside the server\'s network.'**
+  String get adminPolicyRemoteAccessBody;
+
+  /// No description provided for @adminPolicyBitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote bitrate limit'**
+  String get adminPolicyBitrate;
+
+  /// No description provided for @adminPolicySessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum active sessions'**
+  String get adminPolicySessions;
+
+  /// No description provided for @adminNoLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No limit'**
+  String get adminNoLimit;
+
+  /// No description provided for @adminMbps.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} Mbps'**
+  String adminMbps(String value);
+
+  /// No description provided for @adminSectionContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get adminSectionContent;
+
+  /// No description provided for @adminPolicyDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow downloads'**
+  String get adminPolicyDownloads;
+
+  /// No description provided for @adminPolicyDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow deleting media'**
+  String get adminPolicyDeletion;
+
+  /// No description provided for @adminPolicyCollections.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow managing collections'**
+  String get adminPolicyCollections;
+
+  /// No description provided for @adminSectionParental.
+  ///
+  /// In en, this message translates to:
+  /// **'Parental control'**
+  String get adminSectionParental;
+
+  /// No description provided for @adminPolicyMaxRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum allowed rating'**
+  String get adminPolicyMaxRating;
+
+  /// No description provided for @adminRatingScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating {score}'**
+  String adminRatingScore(int score);
+
+  /// No description provided for @adminDiscardQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get adminDiscardQuestion;
+
+  /// No description provided for @adminDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'What you changed here has not been saved.'**
+  String get adminDiscardBody;
+
+  /// No description provided for @adminDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get adminDiscard;
+
   /// No description provided for @actionSend.
   ///
   /// In en, this message translates to:

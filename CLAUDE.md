@@ -1218,6 +1218,36 @@ refresh gives the same information at the moment it is wanted. Note that `AdminL
 its empty state as a scrollable — `RefreshIndicator` needs one that reaches its edge, and a
 `Column` holding one line of text silently cannot be pulled.
 
+### Accounts (2026-11-08)
+
+`/admin/users/:id` (`admin_user_page.dart`) edits one account: the switches Jellyfin's
+own editor has for role, library access, playback, content and the parental limit, plus
+Set password and Delete behind the ⋮. Add user is the FAB on the users list and opens the
+new account straight away.
+
+- **`UserPolicy` models about fifteen of the policy's forty fields.** `setUserPolicy`
+  reads the server's object **at save time** (not the copy the editor opened with) and
+  `applyUserPolicy` lays the modelled fields over it, so access schedules, blocked tags,
+  channel grants and the rest survive. A switch the server lacks
+  (`EnableCollectionManagement` before 10.9) is not sent.
+- **The editor is a draft**: one write on Save, Cancel restores, Back with changes asks.
+  A fresh answer from the server (first load, after a save, a pull) replaces the draft.
+- **Your own account** cannot be demoted, disabled or deleted from here. An
+  administrator's Disabled switch is off too: the server answers 403 to it.
+- **403 is not always "not an administrator".** The policy route refuses the last
+  administrator's demotion and any administrator's disabling with 403 and a sentence;
+  `_send` now passes a short plain-text or problem-details reason through and keeps the
+  old wording only when the body says nothing.
+- Passwords go to `/Users/{id}/Password` (still served beside 10.10's `?userId=` form)
+  with `NewPw` only; an administrator setting someone else's is not asked for the old
+  one. Empty removes it. The server signs that account's devices out.
+- Ratings come from `/Localization/ParentalRatings`, one option per score with the
+  country's names joined ("PG-13 / TV-PG"). 10.11 moved the number into `RatingScore`
+  with a `SubScore`; picking a rating here writes both, and a value set elsewhere that is
+  not in the list is still shown as chosen.
+- `confirmAdminAction` styles its button from the **dialog's** context: Delete pops the
+  editor while the dialog is still animating out, and the caller's context is gone.
+
 Deliberately **not** built: installing plugins from a repository (browsing remote packages
 and checking versions against the server's ABI is a job for the machine it runs on), and
 the rest of `/System/Configuration` beyond the server name — Jellyfin's configuration is

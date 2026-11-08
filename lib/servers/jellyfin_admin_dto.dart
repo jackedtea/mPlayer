@@ -21,13 +21,17 @@ ServerSystemInfo systemInfoFromJson(Map<String, dynamic> json) {
     // Jellyfin 10.9 renamed this; both spellings are in the wild and neither
     // is worth losing the line over.
     architecture:
-        json['SystemArchitecture'] as String? ?? json['Architecture'] as String? ?? '',
+        json['SystemArchitecture'] as String? ??
+        json['Architecture'] as String? ??
+        '',
     canRestart: json['CanSelfRestart'] as bool? ?? false,
     // Removed from the payload in 10.9, where every server that can restart
     // can also stop. Defaulting to the restart answer keeps the button
     // present where it works instead of hiding it on every modern server.
     canShutdown:
-        json['CanSelfShutdown'] as bool? ?? json['CanSelfRestart'] as bool? ?? false,
+        json['CanSelfShutdown'] as bool? ??
+        json['CanSelfRestart'] as bool? ??
+        false,
     startupWizardCompleted: json['StartupWizardCompleted'] as bool? ?? true,
   );
 }
@@ -55,8 +59,9 @@ AdminSession? adminSessionFromJson(Map<String, dynamic> json) {
     position: playState is Map
         ? ticksToPosition(playState['PositionTicks'])
         : null,
-    runtime:
-        nowPlaying is Map ? ticksToPosition(nowPlaying['RunTimeTicks']) : null,
+    runtime: nowPlaying is Map
+        ? ticksToPosition(nowPlaying['RunTimeTicks'])
+        : null,
     isPaused: playState is Map && playState['IsPaused'] == true,
     supportsRemoteControl: json['SupportsRemoteControl'] as bool? ?? false,
     lastActivity: DateTime.tryParse(json['LastActivityDate'] as String? ?? ''),
@@ -76,9 +81,7 @@ String _nowPlayingTitle(Map<Object?, Object?> item) {
   final episode = item['IndexNumber'];
   final code = season is int && episode is int ? 'S${season}E$episode' : '';
 
-  return <String>[series, code, name]
-      .where((s) => s.isNotEmpty)
-      .join(' · ');
+  return <String>[series, code, name].where((s) => s.isNotEmpty).join(' · ');
 }
 
 ScheduledTask scheduledTaskFromJson(Map<String, dynamic> json) {
@@ -96,7 +99,8 @@ ScheduledTask scheduledTaskFromJson(Map<String, dynamic> json) {
         : null,
     // "Completed" is the only good outcome; Failed, Cancelled and Aborted are
     // all worth colouring, and an absent result is a task that has never run.
-    lastFailed: lastResult is Map &&
+    lastFailed:
+        lastResult is Map &&
         lastResult['Status'] != null &&
         lastResult['Status'] != 'Completed',
   );
@@ -133,7 +137,8 @@ ActivityEntry activityEntryFromJson(Map<String, dynamic> json) {
     // The id is an int on this route and a string on every other one.
     id: '${json['Id'] ?? ''}',
     name: json['Name'] as String? ?? '',
-    overview: json['Overview'] as String? ?? json['ShortOverview'] as String? ?? '',
+    overview:
+        json['Overview'] as String? ?? json['ShortOverview'] as String? ?? '',
     type: json['Type'] as String? ?? '',
     severity: ActivitySeverity.fromWire(json['Severity'] as String?),
     at: DateTime.tryParse(json['Date'] as String? ?? ''),
@@ -151,4 +156,151 @@ ServerPlugin serverPluginFromJson(Map<String, dynamic> json) {
     status: PluginStatus.fromWire(json['Status'] as String?),
     canUninstall: json['CanUninstall'] as bool? ?? true,
   );
+}
+
+UserPolicy userPolicyFromJson(Map<Object?, Object?> json) {
+  bool flag(String key, bool fallback) =>
+      json[key] is bool ? json[key]! as bool : fallback;
+  int number(String key) => (json[key] as num?)?.toInt() ?? 0;
+
+  final folders = json['EnabledFolders'];
+
+  return UserPolicy(
+    isAdministrator: flag('IsAdministrator', false),
+    isDisabled: flag('IsDisabled', false),
+    isHidden: flag('IsHidden', false),
+    enableAllFolders: flag('EnableAllFolders', true),
+    enabledFolders: folders is List
+        ? <String>[
+            for (final Object? id in folders)
+              if (id is String) id,
+          ]
+        : const <String>[],
+    enableMediaPlayback: flag('EnableMediaPlayback', true),
+    enableVideoTranscoding: flag('EnableVideoPlaybackTranscoding', true),
+    enableAudioTranscoding: flag('EnableAudioPlaybackTranscoding', true),
+    enableRemuxing: flag('EnablePlaybackRemuxing', true),
+    enableContentDownloading: flag('EnableContentDownloading', true),
+    enableContentDeletion: flag('EnableContentDeletion', false),
+    // 10.9 and later; an older server has no such switch and the account
+    // cannot manage collections either way.
+    enableCollectionManagement: flag('EnableCollectionManagement', false),
+    enableRemoteAccess: flag('EnableRemoteAccess', true),
+    remoteBitrateLimit: number('RemoteClientBitrateLimit'),
+    maxActiveSessions: number('MaxActiveSessions'),
+    maxParentalRating: (json['MaxParentalRating'] as num?)?.toInt(),
+    maxParentalSubRating: (json['MaxParentalSubRating'] as num?)?.toInt(),
+  );
+}
+
+/// [server]'s own policy object with [policy]'s fields laid over it.
+///
+/// The whole object goes back because the route replaces rather than patches:
+/// every key the model does not carry has to be the server's own value, or the
+/// write resets it.
+Map<String, dynamic> applyUserPolicy(
+  Map<Object?, Object?> server,
+  UserPolicy policy,
+) {
+  return <String, dynamic>{
+    ...server.cast<String, dynamic>(),
+    'IsAdministrator': policy.isAdministrator,
+    'IsDisabled': policy.isDisabled,
+    'IsHidden': policy.isHidden,
+    'EnableAllFolders': policy.enableAllFolders,
+    'EnabledFolders': policy.enableAllFolders
+        // Jellyfin's own editor sends an empty grant list with "all": a stale
+        // list beside it is harmless to the server and confusing to read.
+        ? const <String>[]
+        : policy.enabledFolders,
+    'EnableMediaPlayback': policy.enableMediaPlayback,
+    'EnableVideoPlaybackTranscoding': policy.enableVideoTranscoding,
+    'EnableAudioPlaybackTranscoding': policy.enableAudioTranscoding,
+    'EnablePlaybackRemuxing': policy.enableRemuxing,
+    'EnableContentDownloading': policy.enableContentDownloading,
+    'EnableContentDeletion': policy.enableContentDeletion,
+    // Only written where the server has the switch: sending an unknown key to
+    // 10.8 is ignored, but there is no reason to send it.
+    if (server.containsKey('EnableCollectionManagement'))
+      'EnableCollectionManagement': policy.enableCollectionManagement,
+    'EnableRemoteAccess': policy.enableRemoteAccess,
+    'RemoteClientBitrateLimit': policy.remoteBitrateLimit,
+    'MaxActiveSessions': policy.maxActiveSessions,
+    'MaxParentalRating': policy.maxParentalRating,
+    if (server.containsKey('MaxParentalSubRating') ||
+        policy.maxParentalSubRating != null)
+      'MaxParentalSubRating': policy.maxParentalSubRating,
+  };
+}
+
+/// `/Users/{id}`, or null when the server left the policy out — which it
+/// does for nobody an administrator asks about, and which would otherwise
+/// draw an editor full of defaults that are not the account's.
+AdminUserDetail? adminUserDetailFromJson(Map<String, dynamic> json) {
+  final policy = json['Policy'];
+  if (policy is! Map) return null;
+
+  return AdminUserDetail(
+    user: adminUserFromJson(json),
+    policy: userPolicyFromJson(policy),
+    // `HasConfiguredPassword` is the one that means it: `HasPassword` is true
+    // on some versions for every account, password or not.
+    hasPassword:
+        json['HasConfiguredPassword'] as bool? ??
+        json['HasPassword'] as bool? ??
+        true,
+  );
+}
+
+AdminLibrary adminLibraryFromJson(Map<String, dynamic> json) {
+  return AdminLibrary(
+    id: json['Id'] as String? ?? '',
+    name: json['Name'] as String? ?? '',
+    kind: json['CollectionType'] as String? ?? '',
+  );
+}
+
+/// `/Localization/ParentalRatings`, one option per score.
+///
+/// A country's list names several ratings at one score ("PG-13" and "TV-14"
+/// both sit at 13), and offering both is offering the same limit twice under
+/// two names. They are joined the way Jellyfin's own editor joins them.
+/// 10.11 moved the number into `RatingScore` and keeps `Value` alongside; a
+/// rating with neither is "unrated" and is not a limit anyone can pick.
+List<ParentalRatingOption> parentalRatingsFromJson(List<Object?> json) {
+  final byScore = <(int, int?), List<String>>{};
+
+  for (final Object? entry in json) {
+    if (entry is! Map) continue;
+    final name = (entry['Name'] as String?)?.trim() ?? '';
+    if (name.isEmpty) continue;
+
+    final scoreObject = entry['RatingScore'];
+    final score = scoreObject is Map
+        ? (scoreObject['Score'] as num?)?.toInt()
+        : (entry['Value'] as num?)?.toInt();
+    if (score == null) continue;
+    final subScore = scoreObject is Map
+        ? (scoreObject['SubScore'] as num?)?.toInt()
+        : null;
+
+    final names = byScore.putIfAbsent((score, subScore), () => <String>[]);
+    if (!names.contains(name)) names.add(name);
+  }
+
+  final keys = byScore.keys.toList()
+    ..sort((a, b) {
+      final byMain = a.$1.compareTo(b.$1);
+      if (byMain != 0) return byMain;
+      return (a.$2 ?? -1).compareTo(b.$2 ?? -1);
+    });
+
+  return <ParentalRatingOption>[
+    for (final (int, int?) key in keys)
+      ParentalRatingOption(
+        name: byScore[key]!.join(' / '),
+        score: key.$1,
+        subScore: key.$2,
+      ),
+  ];
 }

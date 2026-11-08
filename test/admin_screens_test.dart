@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/router.dart';
 import 'package:mplayer/features/admin/admin_providers.dart';
+import 'package:mplayer/features/admin/admin_user_page.dart';
 import 'package:mplayer/servers/server_admin.dart';
 
 /// A server that answers every administration question.
@@ -66,6 +67,56 @@ class FakeAdmin implements ServerAdmin {
   Future<List<AdminUser>> users() async => <AdminUser>[
         const AdminUser(id: 'u1', name: 'minh', isAdministrator: true),
         const AdminUser(id: 'u2', name: 'guest', isDisabled: true),
+        const AdminUser(id: 'u3', name: 'kids'),
+      ];
+
+  /// What the editor saved, per account.
+  final Map<String, UserPolicy> savedPolicies = <String, UserPolicy>{};
+
+  @override
+  Future<AdminUserDetail> user(String userId) async {
+    final user = (await users()).firstWhere((u) => u.id == userId);
+    return AdminUserDetail(
+      user: user,
+      policy: savedPolicies[userId] ??
+          UserPolicy(
+            isAdministrator: user.isAdministrator,
+            isDisabled: user.isDisabled,
+          ),
+      hasPassword: userId != 'u3',
+    );
+  }
+
+  @override
+  Future<void> setUserPolicy(String userId, UserPolicy policy) async {
+    calls.add('policy:$userId');
+    savedPolicies[userId] = policy;
+  }
+
+  @override
+  Future<AdminUser> createUser(String name, String password) async {
+    calls.add('create:$name:$password');
+    return AdminUser(id: 'new', name: name);
+  }
+
+  @override
+  Future<void> deleteUser(String userId) async => calls.add('delete:$userId');
+
+  @override
+  Future<void> setUserPassword(String userId, String password) async =>
+      calls.add('password:$userId:$password');
+
+  @override
+  Future<List<AdminLibrary>> libraries() async => const <AdminLibrary>[
+        AdminLibrary(id: 'films', name: 'Films', kind: 'movies'),
+        AdminLibrary(id: 'shows', name: 'Shows', kind: 'tvshows'),
+      ];
+
+  @override
+  Future<List<ParentalRatingOption>> parentalRatings() async =>
+      const <ParentalRatingOption>[
+        ParentalRatingOption(name: 'PG', score: 10),
+        ParentalRatingOption(name: 'PG-13 / TV-14', score: 13),
       ];
 
   @override
@@ -194,6 +245,15 @@ Future<FakeAdmin?> pumpAdmin(
 
   return resolved;
 }
+
+/// The editor's own list. `Scrollable.first` would be the users list under
+/// it once the editor was pushed from there.
+final Finder _editorScrollable = find
+    .descendant(
+      of: find.byType(AdminUserPage),
+      matching: find.byType(Scrollable),
+    )
+    .first;
 
 void main() {
   group('the guard', () {
@@ -355,7 +415,184 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, 'Disable'));
       await tester.pumpAndSettle();
 
-      expect(admin!.calls, contains('disable:u1:true'));
+      // u3: the administrator's row has no such button, because the server
+      // refuses to disable an administrator.
+      expect(admin!.calls, contains('disable:u3:true'));
+    });
+
+    testWidgets('an administrator offers no Disable button', (tester) async {
+      await pumpAdmin(tester, '/admin/users');
+
+      final minh = find.ancestor(
+        of: find.text('minh'),
+        matching: find.byType(ListTile),
+      );
+      expect(
+        find.descendant(of: minh, matching: find.byType(TextButton)),
+        findsNothing,
+      );
+    });
+
+    testWidgets('Add user creates the account and opens it', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/users');
+
+      await tester.tap(find.text('Add user'));
+      await tester.pumpAndSettle();
+
+      // Create waits for a name.
+      final create = find.widgetWithText(FilledButton, 'Create');
+      expect(tester.widget<FilledButton>(create).onPressed, isNull);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Name'), 'anna');
+      await tester.pumpAndSettle();
+      await tester.tap(create);
+      await tester.pumpAndSettle();
+
+      expect(admin!.calls, contains('create:anna:'));
+    });
+  });
+
+  group('the user editor', () {
+    testWidgets('a row opens its account', (tester) async {
+      await pumpAdmin(tester, '/admin/users');
+
+      await tester.tap(find.text('kids'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Library access'), findsOneWidget);
+      expect(find.textContaining('No password'), findsOneWidget);
+    });
+
+    testWidgets('nothing is saved until Save, and Save sends the draft',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/users/u3');
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      expect(tester.widget<FilledButton>(save).onPressed, isNull);
+
+      await tester.tap(find.text('All libraries'));
+      await tester.pumpAndSettle();
+      // The per-library list appears once "all" is off.
+      await tester.tap(find.text('Films'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.calls, isEmpty);
+
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(admin.calls, contains('policy:u3'));
+      final saved = admin.savedPolicies['u3']!;
+      expect(saved.enableAllFolders, isFalse);
+      expect(saved.enabledFolders, <String>['films']);
+    });
+
+    testWidgets('the parental limit is picked from the ratings the server has',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/users/u3');
+
+      await tester.scrollUntilVisible(
+        find.text('Maximum allowed rating'),
+        200,
+        scrollable: _editorScrollable,
+      );
+      await tester.tap(find.text('Maximum allowed rating'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('PG-13 / TV-14'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.savedPolicies['u3']!.maxParentalRating, 13);
+    });
+
+    testWidgets('an administrator cannot be switched to disabled',
+        (tester) async {
+      await pumpAdmin(tester, '/admin/users/u1');
+
+      final disabled = find.widgetWithText(SwitchListTile, 'Disabled');
+      expect(tester.widget<SwitchListTile>(disabled).onChanged, isNull);
+    });
+
+    testWidgets('leaving with unsaved changes asks first', (tester) async {
+      await pumpAdmin(tester, '/admin/users');
+      await tester.tap(find.text('kids'));
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Allow downloads'),
+        200,
+        scrollable: _editorScrollable,
+      );
+      // Clear of the Save bar at the foot.
+      await tester.drag(_editorScrollable, const Offset(0, -200));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Allow downloads'));
+      await tester.pumpAndSettle();
+
+      // Something to lose: Save is live.
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'))
+            .onPressed,
+        isNotNull,
+      );
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Discard changes?'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Discard'));
+      await tester.pumpAndSettle();
+      expect(find.text('Library access'), findsNothing);
+      expect(find.text('Devices'), findsOneWidget);
+    });
+
+    testWidgets('a password has to be typed the same twice', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/users/u3');
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set password'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.widgetWithText(TextField, 'New password'), 'one');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Confirm password'), 'two');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('The passwords do not match.'), findsOneWidget);
+      expect(admin!.calls, isEmpty);
+
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Confirm password'), 'one');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save').last);
+      await tester.pumpAndSettle();
+
+      expect(admin.calls, contains('password:u3:one'));
+    });
+
+    testWidgets('deleting asks, then leaves the screen', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/users');
+      await tester.tap(find.text('kids'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete user'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete kids?'), findsOneWidget);
+      expect(admin!.calls, isEmpty);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete user'));
+      await tester.pumpAndSettle();
+
+      expect(admin.calls, contains('delete:u3'));
+      expect(find.text('Library access'), findsNothing);
     });
   });
 
