@@ -22,6 +22,7 @@ import 'playback_state.dart';
 import 'remembered_tracks.dart';
 import 'segment_skipper.dart';
 import 'server_tracks.dart';
+import 'silent_end.dart';
 import 'smart_subtitles.dart';
 
 /// Hand-written, per the project's no-codegen rule for Riverpod.
@@ -76,6 +77,18 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// The server's subtitle for this file, when it is one of the sidecar
   /// files not yet in the decoder's list; picked up as soon as it arrives.
   int? _pendingServerSubtitle;
+
+  /// Fires once the position has stood still near the end of a file; see
+  /// `silent_end.dart`. Re-armed by every tick that moves, so it only goes off
+  /// when playback has stopped moving.
+  Timer? _silentEnd;
+
+  /// Whether the user, rather than the decoder, paused the file.
+  bool _pausedByUser = false;
+
+  /// Whether the end of the open file has been acted on, so a decoder that
+  /// reports the end after [_silentEnd] has does not skip an episode.
+  bool _endHandled = false;
 
   bool get autoPlayNext => ref.read(playerSettingsProvider).autoPlayNext;
 
@@ -146,6 +159,9 @@ class PlaybackController extends Notifier<PlaybackState> {
     _pendingServerSubtitle = null;
     _lastPosition = null;
     _skipped.clear();
+    _silentEnd?.cancel();
+    _pausedByUser = false;
+    _endHandled = false;
     // The next file may well decode differently from this one — the setting
     // is the same, the codec is not — so the reading is dropped rather than
     // carried over and shown against the wrong video.
@@ -428,11 +444,20 @@ class PlaybackController extends Notifier<PlaybackState> {
     if (queue == null) await loadSiblingQueue(media.ref);
   }
 
-  Future<void> playOrPause() async => _player?.playOrPause();
+  Future<void> playOrPause() async {
+    _pausedByUser = state.playing;
+    await _player?.playOrPause();
+  }
 
-  Future<void> play() async => _player?.play();
+  Future<void> play() async {
+    _pausedByUser = false;
+    await _player?.play();
+  }
 
-  Future<void> pause() async => _player?.pause();
+  Future<void> pause() async {
+    _pausedByUser = true;
+    await _player?.pause();
+  }
 
   Future<void> seek(Duration to) async {
     final duration = state.duration;
@@ -821,6 +846,7 @@ class PlaybackController extends Notifier<PlaybackState> {
         state = state.copyWith(position: v);
         unawaited(_applySegments(previous, v));
         unawaited(_recordProgress());
+        _watchForSilentEnd();
       }),
       s.duration.listen((v) {
         state = state.copyWith(duration: v);
@@ -836,19 +862,7 @@ class PlaybackController extends Notifier<PlaybackState> {
       s.buffering.listen((v) => state = state.copyWith(buffering: v)),
       s.completed.listen((v) {
         state = state.copyWith(completed: v);
-        // Roll on to the next file in the folder, which is what the Player
-        // settings page already calls "Auto-play next episode". Music rolls
-        // on regardless, and the last file simply stops.
-        if (!v) return;
-        if (state.queue.rollsOn(autoPlay: autoPlayNext)) {
-          unawaited(playNext());
-        } else if (state.loop == LoopMode.all && !state.queue.hasNext) {
-          // The end of the folder with repeat-all on: back to the top. mpv
-          // never saw the folder, so this is the one loop it cannot do
-          // itself. `hasNext` guards it so the roll-on above still wins
-          // mid-folder.
-          unawaited(_restartQueue());
-        }
+        if (v) _onFileEnded();
       }),
       s.volume.listen((v) => state = state.copyWith(volume: v)),
       s.rate.listen((v) => state = state.copyWith(speed: v)),
@@ -1342,7 +1356,59 @@ class PlaybackController extends Notifier<PlaybackState> {
     }
   }
 
+  /// What the end of a file does, whoever noticed it: mpv, or [_silentEnd].
+  ///
+  /// Roll on to the next file in the folder, which is what the Player settings
+  /// page calls "Auto-play next episode". Music rolls on regardless, and the
+  /// last file simply stops.
+  void _onFileEnded() {
+    _silentEnd?.cancel();
+    if (_endHandled) return;
+    _endHandled = true;
+
+    if (state.queue.rollsOn(autoPlay: autoPlayNext)) {
+      unawaited(playNext());
+    } else if (state.loop == LoopMode.all && !state.queue.hasNext) {
+      // The end of the folder with repeat-all on: back to the top. mpv never
+      // saw the folder, so this is the one loop it cannot do itself.
+      // `hasNext` guards it so the roll-on above still wins mid-folder.
+      unawaited(_restartQueue());
+    }
+  }
+
+  /// Arms [_silentEnd] while the position is near the end, from the latest
+  /// tick, so it goes off only once ticks stop arriving.
+  void _watchForSilentEnd() {
+    _silentEnd?.cancel();
+    if (_endHandled || state.completed || state.media == null) return;
+    if (!endedSilently(
+      position: state.position,
+      duration: state.duration,
+      pausedByUser: _pausedByUser,
+    )) {
+      return;
+    }
+
+    final media = state.media;
+    _silentEnd = Timer(silentEndStall, () {
+      // Still the same file, still not paused by hand, still not reported.
+      if (!identical(state.media, media) || state.completed) return;
+      if (!endedSilently(
+        position: state.position,
+        duration: state.duration,
+        pausedByUser: _pausedByUser,
+      )) {
+        return;
+      }
+      debugPrint(
+        'Ended without eof-reached at ${state.position} of ${state.duration}',
+      );
+      _onFileEnded();
+    });
+  }
+
   Future<void> _teardownAsync() async {
+    _silentEnd?.cancel();
     for (final sub in _subs) {
       await sub.cancel();
     }
