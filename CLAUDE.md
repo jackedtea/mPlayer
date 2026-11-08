@@ -241,12 +241,20 @@ Also open:
   are a third column right of the titles (`DetailHeader.aside`), and the
   slivers that draw them under the header are phone-only. A phone keeps the
   centred layout.
-- **The movie detail uses the same `DetailHeader` past compact**
-  (`_wideHeader` in `movie_detail_page.dart`): real backdrop, poster,
-  facts, a labelled Play / `Continue · 1:02:45` (plus Start over once started) ahead of
-  the `ItemActionIcons`, overview and genres as the aside. A phone keeps the
-  `BackdropHeader` layout. `_MetaRow` now draws only the parts the server
-  filled in — an absent certificate used to leave an empty outlined box.
+- **The movie detail uses the series layout at every width** (2026-11-08):
+  `DetailHeader` inside `CollapsingHeaderSliver` (`widgets/collapsing_header.dart`,
+  shared with the series screen), facts drawn only where the server filled
+  them in. Past compact: a labelled Play / `Continue · 1:02:45` (plus Start
+  over once started) ahead of the `ItemActionIcons`, overview and genres as
+  the aside. A phone: centred glyph row, Play in `ItemPrimaryActionBar`,
+  overview and genres as slivers under the header. `BackdropHeader` is no
+  longer used there.
+- **Long presses**: a card in `ServerCardShelf` (Next up, Continue watching)
+  opens `openServerItemDetail` — an episode's series, else the item; an
+  episode row on the series screen opens its ⋮ menu (`ItemActionMenu.menuKey`).
+- **Series rows map to items by position in the same season grouping**
+  `seriesDetailFrom` uses (`_episodesBySeason`). Matching on number + title
+  sent every season's "Episode 1" to season 1's item.
 - **Mouse back/forward** (`app/mouse_navigation.dart`, wrapped in
   `MaterialApp.router`'s builder): back goes through
   `routerDelegate.popRoute()` so PopScope screens are asked first; forward

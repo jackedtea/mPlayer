@@ -30,6 +30,7 @@ class ContinueWatchingCard extends StatelessWidget {
     required this.item,
     this.onTap,
     this.onPlay,
+    this.onLongPress,
     this.width = 200,
     this.artHeight = 112,
     this.artUrl,
@@ -49,6 +50,10 @@ class ContinueWatchingCard extends StatelessWidget {
   /// screen instead, this is what stops a play button from doing something
   /// that is plainly not playing.
   final VoidCallback? onPlay;
+
+  /// A long press anywhere on the card — on a Next up episode, the way to
+  /// its series rather than the episode itself.
+  final VoidCallback? onLongPress;
   final double width;
   final double artHeight;
 
@@ -92,6 +97,7 @@ class ContinueWatchingCard extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       // Concentric with the artwork's radius once the inset is added.
       borderRadius: BorderRadius.circular(radii.card + spacing.hitInset),
       child: Padding(

@@ -143,11 +143,7 @@ void main() {
       router.push('/library/movie', extra: 'm1');
       await tester.pumpAndSettle();
 
-      // The vertical one: the action chips under the backdrop are a
-      // horizontal ListView, so `byType` alone matches two.
-      final page = find.byWidgetPredicate(
-        (w) => w is ListView && w.scrollDirection == Axis.vertical,
-      );
+      final page = find.byType(CustomScrollView);
       await tester.drag(page, const Offset(0, -400));
       await tester.pumpAndSettle();
 

@@ -4,8 +4,6 @@
 // See the LICENSE file at the app root for the full notice.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,6 +11,7 @@ import '../../app/tokens.dart';
 import '../../core/models/library_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
+import '../../widgets/collapsing_header.dart';
 import '../../widgets/detail_header.dart';
 import '../../widgets/gradient_art.dart';
 import '../../widgets/remote_art.dart';
@@ -42,17 +41,6 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
 
   bool _overviewExpanded = false;
 
-  /// The header's natural height, measured once it has laid out. Until then
-  /// it is drawn as a plain sliver; after, it is the collapsing header with
-  /// the pinned toolbar, which needs its full height to know how far to
-  /// collapse. Re-measured whenever it changes, as it does on rotation.
-  double? _headerHeight;
-
-  void _setHeaderHeight(Size size) {
-    if (!mounted || _headerHeight == size.height) return;
-    setState(() => _headerHeight = size.height);
-  }
-
   @override
   void dispose() {
     _tabs?.dispose();
@@ -67,30 +55,6 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
   void _playNext(List<ServerItem> episodes, ServerItem series) {
     final next = nextEpisodeOf(episodes);
     if (next != null) playServerItem(context, ref, next.id);
-  }
-
-  /// The header as a sliver: measured on its first layout, then collapsing
-  /// under a pinned toolbar that keeps [title] on screen.
-  Widget _headerSliver(String title, Widget header) {
-    final measured = _headerHeight;
-    if (measured == null) {
-      return SliverToBoxAdapter(
-        child: MeasureSize(onSize: _setHeaderHeight, child: header),
-      );
-    }
-    return SliverPersistentHeader(
-      pinned: true,
-      delegate: _CollapsingHeader(
-        header: header,
-        height: measured,
-        title: title,
-        topInset: context.systemTopInset,
-        background: context.colors.surface,
-        brightness: Theme.of(context).brightness,
-        backTooltip: AppLocalizations.of(context).actionBack,
-        onSize: _setHeaderHeight,
-      ),
-    );
   }
 
   /// The overview and the genres, for the column beside the titles. Null
@@ -165,6 +129,7 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
     }
 
     final series = seriesDetailFrom(item, episodes, l10n);
+    final bySeason = _episodesBySeason(episodes);
 
     // The seasons are grouped out of the episode list, so until that request
     // lands there are no season tabs to draw — and the screen showed nothing
@@ -195,9 +160,9 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
           : null,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => <Widget>[
-          _headerSliver(
-            item.title,
-            DetailHeader(
+          CollapsingHeaderSliver(
+            title: item.title,
+            header: DetailHeader(
               seed: series.title,
               title: item.title,
               originalTitle: item.originalTitle,
@@ -312,10 +277,13 @@ class _SeriesPageState extends ConsumerState<SeriesPage>
                         ),
                         itemCount: season.episodes.length,
                         itemBuilder: (context, i) {
-                          // The rows are grouped copies of the flat list, so the
-                          // item behind one is found by matching what identifies it
-                          // rather than by an index into a list it is not in.
-                          final source = _episodeAt(episodes, series, s, i);
+                          // The rows are grouped copies of the flat list; the item
+                          // behind one is found by grouping the flat list the same
+                          // way.
+                          final source = s < bySeason.length &&
+                                  i < bySeason[s].length
+                              ? bySeason[s][i]
+                              : null;
                           return _EpisodeRow(
                             episode: season.episodes[i],
                             item: source,
@@ -400,170 +368,6 @@ class _TabBarHeader extends SliverPersistentHeaderDelegate {
       old.divider != divider;
 }
 
-/// The series header, scrolling away under a toolbar that keeps the title.
-///
-/// The backdrop, poster and facts scroll up as they always did; over the last
-/// stretch of the collapse a solid bar fades in under the status bar with the
-/// back arrow and the series' name, and stays pinned there. The page runs
-/// edge to edge for the backdrop, and this bar is also what keeps everything
-/// pinned below it — the season tabs — out from under the clock.
-class _CollapsingHeader extends SliverPersistentHeaderDelegate {
-  _CollapsingHeader({
-    required this.header,
-    required this.height,
-    required this.title,
-    required this.topInset,
-    required this.background,
-    required this.brightness,
-    required this.backTooltip,
-    required this.onSize,
-  });
-
-  final Widget header;
-
-  /// The header's measured natural height.
-  final double height;
-  final String title;
-  final double topInset;
-  final Color background;
-  final Brightness brightness;
-  final String backTooltip;
-  final ValueChanged<Size> onSize;
-
-  /// How much of the collapse the toolbar takes to fade in.
-  static const _fade = 48.0;
-
-  @override
-  double get minExtent => topInset + kToolbarHeight;
-
-  @override
-  double get maxExtent => height < minExtent ? minExtent : height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
-    final range = maxExtent - minExtent;
-    final shown = range <= 0
-        ? 1.0
-        : ((shrinkOffset - (range - _fade)) / _fade).clamp(0.0, 1.0);
-
-    return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          // At its natural height, slid up by however far the page has
-          // scrolled — so it scrolls rather than squashing — and measured
-          // again in case that height changes.
-          Positioned(
-            top: -shrinkOffset,
-            left: 0,
-            right: 0,
-            child: MeasureSize(onSize: onSize, child: header),
-          ),
-          if (shown > 0)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: minExtent,
-              child: IgnorePointer(
-                ignoring: shown < 0.5,
-                child: Opacity(
-                  opacity: shown,
-                  child: _annotated(
-                    shown >= 0.5,
-                    Material(
-                      color: background,
-                      child: Padding(
-                        padding: EdgeInsets.only(top: topInset),
-                        child: Row(
-                          children: <Widget>[
-                            const SizedBox(width: 4),
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back_rounded),
-                              tooltip: backTooltip,
-                              onPressed: () {
-                                if (context.canPop()) context.pop();
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: context.texts.titleLarge,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Status-bar icons for the page colour once the bar is mostly in; until
-  /// then the backdrop under them annotates its own.
-  Widget _annotated(bool solid, Widget child) {
-    if (!solid) return child;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: brightness == Brightness.dark
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
-      child: child,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_CollapsingHeader old) => true;
-}
-
-/// Reports its child's size after every layout that changes it.
-///
-/// Used for the series header, whose height depends on its title, facts and
-/// the window's width, and which the collapsing header needs before it can
-/// say how far to collapse.
-class MeasureSize extends SingleChildRenderObjectWidget {
-  const MeasureSize({super.key, required this.onSize, required super.child});
-
-  final ValueChanged<Size> onSize;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) =>
-      RenderMeasureSize(onSize);
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    RenderMeasureSize renderObject,
-  ) {
-    renderObject.onSize = onSize;
-  }
-}
-
-class RenderMeasureSize extends RenderProxyBox {
-  RenderMeasureSize(this.onSize);
-
-  ValueChanged<Size> onSize;
-  Size? _last;
-
-  @override
-  void performLayout() {
-    super.performLayout();
-    if (size == _last) return;
-    _last = size;
-    // After the frame: reporting during layout would ask for a rebuild in
-    // the middle of one.
-    final reported = size;
-    WidgetsBinding.instance.addPostFrameCallback((_) => onSize(reported));
-  }
-}
 
 /// What a series' Play button plays: the episode part-watched, then the first
 /// unwatched, then the very first — which is also what a fresh series does.
@@ -588,27 +392,23 @@ String? nextEpisodeCaption(ServerItem? episode, AppLocalizations l10n) {
   return parts.isEmpty ? null : parts.join(' · ');
 }
 
-/// The server item behind the row at [index] of season [seasonIndex].
+/// The episodes grouped into seasons, the server items behind the rows.
 ///
-/// Matched on season and episode number rather than on position: the grouped
-/// view and the flat list agree on those, and a special with no number would
-/// otherwise shift everything after it.
-ServerItem? _episodeAt(
-  List<ServerItem> episodes,
-  SeriesDetail series,
-  int seasonIndex,
-  int index,
-) {
-  final row = series.seasons[seasonIndex].episodes[index];
-  for (final ServerItem item in episodes) {
-    if (item.episodeNumber == row.number && item.title == row.title) {
-      return item;
-    }
+/// Grouped exactly as [seriesDetailFrom] groups the rows — by season number,
+/// specials as 0, seasons in order, episodes in the order the server listed
+/// them — so the same position names the same episode. Matching on episode
+/// number and title instead sent every season's "Episode 1" to the first
+/// season's: same cover, same play target, same menu.
+List<List<ServerItem>> _episodesBySeason(List<ServerItem> episodes) {
+  final bySeason = <int, List<ServerItem>>{};
+  for (final ServerItem e in episodes) {
+    bySeason.putIfAbsent(e.seasonNumber ?? 0, () => <ServerItem>[]).add(e);
   }
-  return null;
+  final numbers = bySeason.keys.toList()..sort();
+  return <List<ServerItem>>[for (final int n in numbers) bySeason[n]!];
 }
 
-class _EpisodeRow extends StatelessWidget {
+class _EpisodeRow extends StatefulWidget {
   const _EpisodeRow({
     required this.episode,
     required this.onTap,
@@ -640,12 +440,27 @@ class _EpisodeRow extends StatelessWidget {
   final VoidCallback onPlay;
 
   @override
+  State<_EpisodeRow> createState() => _EpisodeRowState();
+}
+
+class _EpisodeRowState extends State<_EpisodeRow> {
+  /// The ⋮ menu, which a long press anywhere on the row also opens.
+  final _menu = GlobalKey<PopupMenuButtonState<int>>();
+
+  @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
     final scheme = context.colors;
+    final episode = widget.episode;
+    final item = widget.item;
 
     return InkWell(
-      onTap: onTap,
+      onTap: widget.onTap,
+      // The same menu as the ⋮ at the end of the row, for a thumb that is
+      // already on the episode rather than at the far edge of the screen.
+      onLongPress: item == null
+          ? null
+          : () => _menu.currentState?.showButtonMenu(),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: spacing.screenHorizontal(context.windowSize),
@@ -658,9 +473,9 @@ class _EpisodeRow extends StatelessWidget {
             // the episode's screen like the rest of the row — a button that
             // says one thing and does another.
             InkWell(
-              onTap: onPlay,
+              onTap: widget.onPlay,
               borderRadius: context.radii.chipAll,
-              child: _EpisodeThumb(episode: episode, artUrl: artUrl),
+              child: _EpisodeThumb(episode: episode, artUrl: widget.artUrl),
             ),
             SizedBox(width: spacing.md),
             Expanded(
@@ -700,7 +515,7 @@ class _EpisodeRow extends StatelessWidget {
                       ),
                       if (item != null) ...<Widget>[
                         SizedBox(width: spacing.sm),
-                        DownloadBadge(itemId: item!.id),
+                        DownloadBadge(itemId: item.id),
                       ],
                     ],
                   ),
@@ -712,10 +527,11 @@ class _EpisodeRow extends StatelessWidget {
             // of what can be done to an episode lives.
             if (item != null)
               ItemActionMenu(
-                item: item!,
-                seriesId: seriesId,
-                shuffleFrom: siblings,
-                onMediaInfo: () => showMediaInfo(context, item!.id),
+                menuKey: _menu,
+                item: item,
+                seriesId: widget.seriesId,
+                shuffleFrom: widget.siblings,
+                onMediaInfo: () => showMediaInfo(context, item.id),
               ),
           ],
         ),

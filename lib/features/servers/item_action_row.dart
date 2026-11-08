@@ -331,12 +331,18 @@ class ItemActionMenu extends ConsumerWidget {
     this.seriesId,
     this.shuffleFrom = const <ServerItem>[],
     this.onMediaInfo,
+    this.menuKey,
   });
 
   final ServerItem item;
   final String? seriesId;
   final List<ServerItem> shuffleFrom;
   final Future<void> Function()? onMediaInfo;
+
+  /// Lets the row around the button open the same menu — a long press on an
+  /// episode row calls `menuKey.currentState?.showButtonMenu()`, so the menu
+  /// drops from the ⋮ it belongs to rather than from wherever the finger was.
+  final GlobalKey<PopupMenuButtonState<int>>? menuKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -351,6 +357,7 @@ class ItemActionMenu extends ConsumerWidget {
     );
 
     return PopupMenuButton<int>(
+      key: menuKey,
       icon: const Icon(Icons.more_vert_rounded),
       tooltip: MaterialLocalizations.of(context).showMenuTooltip,
       onSelected: (i) => actions[i].onSelected(),

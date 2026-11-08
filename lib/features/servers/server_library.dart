@@ -653,6 +653,21 @@ void openServerItem(BuildContext context, ServerItem item) {
   }
 }
 
+/// Opens the detail screen of what [item] belongs to: an episode's series,
+/// and anything else as [openServerItem] would.
+///
+/// Next up and Continue watching hold episodes, and tapping one opens that
+/// episode — so a long press is how to reach the series without going via
+/// the episode's own screen.
+void openServerItemDetail(BuildContext context, ServerItem item) {
+  final seriesId = item.seriesId;
+  if (item.kind == ServerItemKind.episode && seriesId != null) {
+    context.push('/library/series', extra: seriesId);
+  } else {
+    openServerItem(context, item);
+  }
+}
+
 /// Opens an artist's page. The name rides in the query so the page has
 /// something to say before its first request lands.
 void openMusicArtist(BuildContext context, ServerArtistRef artist) {

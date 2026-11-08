@@ -81,35 +81,26 @@ void main() {
     expect(find.byType(CertificateBox), findsOneWidget);
   });
 
-  testWidgets('a phone keeps the backdrop header', (tester) async {
-    await _open(tester, const Size(400, 800));
-
-    expect(find.byType(BackdropHeader), findsOneWidget);
-    expect(find.byType(DetailHeader), findsNothing);
-  });
-
-  testWidgets('a missing certificate draws no empty box and no stray dots', (
+  testWidgets('a phone gets the same poster header as a series', (
     tester,
   ) async {
+    await _open(tester, const Size(400, 800));
+
+    expect(find.byType(DetailHeader), findsOneWidget);
+    expect(find.byType(BackdropHeader), findsNothing);
+    // The overview and genres under the header, once each.
+    expect(find.textContaining('Wai Siu Bo'), findsOneWidget);
+    expect(find.text('Comedy'), findsOneWidget);
+  });
+
+  testWidgets('a missing certificate draws no empty box', (tester) async {
     await _open(
       tester,
       const Size(400, 800),
       source: const _Movie(certificate: null),
     );
 
-    // Rating · year · runtime: two dots, and no outlined box.
-    expect(find.text('·'), findsNWidgets(2));
-    expect(
-      find.descendant(
-        of: find.byType(BackdropHeader),
-        matching: find.byWidgetPredicate(
-          (w) =>
-              w is Container &&
-              w.decoration is BoxDecoration &&
-              (w.decoration! as BoxDecoration).border != null,
-        ),
-      ),
-      findsNothing,
-    );
+    expect(find.byType(CertificateBox), findsNothing);
+    expect(find.text('1992'), findsOneWidget);
   });
 }

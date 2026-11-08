@@ -129,6 +129,9 @@ class ServerCardShelf extends ConsumerWidget {
               // tap into it.
               onTap: () => openServerItem(context, resolved[i]),
               onPlay: () => playServerItem(context, ref, resolved[i].id),
+              // The card opens the episode; a long press goes one level up,
+              // to the series it belongs to — or, for a film, to the film.
+              onLongPress: () => openServerItemDetail(context, resolved[i]),
             ),
           ),
         );
