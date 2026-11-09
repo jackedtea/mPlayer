@@ -131,6 +131,7 @@ ServerItem serverItemFromJson(
     runtime: ticksToDuration(json['RunTimeTicks']),
     position: ticksToDuration(userData?['PlaybackPositionTicks']),
     played: userData?['Played'] as bool? ?? false,
+    playedPercentage: (userData?['PlayedPercentage'] as num?)?.toDouble(),
     favourite: userData?['IsFavorite'] as bool? ?? false,
     imageTag: _primaryImageTag(json),
     imageOwnerId: _imageOwnerId(json),

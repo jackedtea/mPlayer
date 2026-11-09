@@ -73,12 +73,17 @@ class LibraryItem {
     required this.title,
     required this.year,
     this.watched = false,
+    this.progress = 0,
   });
 
   final String id;
   final String title;
   final String year;
   final bool watched;
+
+  /// 0..1: a film part-watched, or a series part-way through its episodes.
+  /// Zero draws no bar, and a watched item draws the tick instead.
+  final double progress;
 }
 
 /// A top-level library on a server (screen 1d).
@@ -176,6 +181,7 @@ class Episode {
     required this.description,
     required this.meta,
     this.progress = 0,
+    this.watched = false,
   });
 
   final int number;
@@ -187,6 +193,9 @@ class Episode {
 
   /// 0..1. Zero draws no bar at all — an unwatched episode has no progress.
   final double progress;
+
+  /// Played to the end — drawn as a tick over the still.
+  final bool watched;
 }
 
 @immutable

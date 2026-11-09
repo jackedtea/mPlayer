@@ -15,6 +15,7 @@ import '../../servers/media_library_source.dart';
 import '../../widgets/collapsing_header.dart';
 import '../../widgets/detail_header.dart';
 import '../../widgets/gradient_art.dart';
+import '../../widgets/poster_tile.dart';
 import '../../widgets/remote_art.dart';
 import '../downloads/download_ui.dart';
 import 'detail_sections.dart';
@@ -729,6 +730,10 @@ class _EpisodeThumb extends StatelessWidget {
             // `RemoteArt` draws nothing while it loads and nothing on
             // failure, so there is always something underneath it.
             RemoteArt(url: artUrl),
+            // A watched still is dimmed under its tick, so a season reads as
+            // seen-and-not at a glance down the list.
+            if (episode.watched)
+              ColoredBox(color: Colors.black.withValues(alpha: 0.38)),
             Center(
               child: Icon(
                 Icons.play_circle_rounded,
@@ -736,6 +741,12 @@ class _EpisodeThumb extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.86),
               ),
             ),
+            if (episode.watched)
+              Positioned(
+                right: context.spacing.xs,
+                top: context.spacing.xs,
+                child: const WatchedBadge(),
+              ),
             // No bar at all on an unwatched episode — an empty track would
             // read as "started but at zero".
             if (episode.progress > 0)

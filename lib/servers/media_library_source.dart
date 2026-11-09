@@ -49,6 +49,7 @@ class ServerItem {
     this.runtime,
     this.position,
     this.played = false,
+    this.playedPercentage,
     this.favourite = false,
     this.imageTag,
     this.imageOwnerId,
@@ -96,6 +97,11 @@ class ServerItem {
   final Duration? position;
 
   final bool played;
+
+  /// How much of a series or a season has been watched, 0..100 — the
+  /// server's own figure, counted in episodes. Null on anything else, and
+  /// on a series nobody has started.
+  final double? playedPercentage;
   final bool favourite;
 
   /// Changes whenever the artwork does, so it is part of the image URL and

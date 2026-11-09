@@ -138,7 +138,25 @@ class PosterTile extends StatelessWidget {
                         Positioned(
                           right: spacing.xs + 2,
                           top: spacing.xs + 2,
-                          child: const _WatchedBadge(),
+                          child: const WatchedBadge(),
+                        )
+                      // Part-way through: a film left half-watched, a series
+                      // with some of its episodes seen. No bar at all at
+                      // zero — an empty track reads as "started at nothing".
+                      else if (item.progress > 0)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: LinearProgressIndicator(
+                            value: item.progress,
+                            minHeight: 3,
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.35),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              context.colors.primary,
+                            ),
+                          ),
                         ),
                       if (badge != null)
                         Positioned(
@@ -190,8 +208,9 @@ class PosterTile extends StatelessWidget {
 
 /// Corner tick marking an item as already seen — the library grid's
 /// "Unwatched" filter is only meaningful if watched state is visible.
-class _WatchedBadge extends StatelessWidget {
-  const _WatchedBadge();
+/// Shared with the episode stills on a series screen.
+class WatchedBadge extends StatelessWidget {
+  const WatchedBadge({super.key});
 
   @override
   Widget build(BuildContext context) {

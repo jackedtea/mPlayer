@@ -912,7 +912,20 @@ LibraryItem libraryItemFrom(ServerItem item) {
     // A tick means "seen it, skip it" on a film. A record played once is not
     // done with, and a wall of ticks over albums says nothing.
     watched: item.played && !item.kind.isMusic,
+    progress: item.played || item.kind.isMusic ? 0 : _tileProgress(item),
   );
+}
+
+/// How far into [item] the user is, for the bar along a poster's foot: the
+/// position in a film or an episode, the share of episodes watched in a
+/// series or a season.
+double _tileProgress(ServerItem item) {
+  final percent = item.playedPercentage;
+  if (item.kind == ServerItemKind.series || item.kind == ServerItemKind.season) {
+    return percent == null ? 0 : (percent / 100).clamp(0.0, 1.0);
+  }
+  if (!item.isStarted) return 0;
+  return item.watchedFraction ?? 0;
 }
 
 /// The line under a library card's title: the year — a series' span of them
@@ -1068,6 +1081,7 @@ Episode episodeFrom(ServerItem item, AppLocalizations l10n) {
     // A watched episode shows no bar: the tick already says so, and a full
     // bar under it says the same thing twice.
     progress: item.played ? 0 : fraction,
+    watched: item.played,
   );
 }
 
