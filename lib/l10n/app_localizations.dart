@@ -3242,6 +3242,30 @@ abstract class AppLocalizations {
   /// **'Links'**
   String get externalLinks;
 
+  /// No description provided for @personBorn.
+  ///
+  /// In en, this message translates to:
+  /// **'Born: {date}'**
+  String personBorn(String date);
+
+  /// No description provided for @personDied.
+  ///
+  /// In en, this message translates to:
+  /// **'Died: {date}'**
+  String personDied(String date);
+
+  /// No description provided for @personAge.
+  ///
+  /// In en, this message translates to:
+  /// **'{age} years old'**
+  String personAge(int age);
+
+  /// No description provided for @personBirthPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Birth place: {place}'**
+  String personBirthPlace(String place);
+
   /// No description provided for @episodeLength.
   ///
   /// In en, this message translates to:

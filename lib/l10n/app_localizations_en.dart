@@ -1779,6 +1779,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get externalLinks => 'Links';
 
   @override
+  String personBorn(String date) {
+    return 'Born: $date';
+  }
+
+  @override
+  String personDied(String date) {
+    return 'Died: $date';
+  }
+
+  @override
+  String personAge(int age) {
+    return '$age years old';
+  }
+
+  @override
+  String personBirthPlace(String place) {
+    return 'Birth place: $place';
+  }
+
+  @override
   String get episodeLength => 'Episode length';
 
   @override

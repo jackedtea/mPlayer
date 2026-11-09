@@ -1782,6 +1782,26 @@ class AppLocalizationsVi extends AppLocalizations {
   String get externalLinks => 'Liên kết';
 
   @override
+  String personBorn(String date) {
+    return 'Sinh: $date';
+  }
+
+  @override
+  String personDied(String date) {
+    return 'Mất: $date';
+  }
+
+  @override
+  String personAge(int age) {
+    return '$age tuổi';
+  }
+
+  @override
+  String personBirthPlace(String place) {
+    return 'Nơi sinh: $place';
+  }
+
+  @override
   String get episodeLength => 'Thời lượng tập';
 
   @override

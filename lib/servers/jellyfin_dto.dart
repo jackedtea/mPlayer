@@ -180,6 +180,12 @@ ServerItem serverItemFromJson(
     // The server dates the end rather than numbering the year, so it is the
     // one field here that has to be parsed out of a timestamp.
     endYear: DateTime.tryParse(json['EndDate'] as String? ?? '')?.year,
+    endDate: DateTime.tryParse(json['EndDate'] as String? ?? ''),
+    productionLocations: <String>[
+      for (final Object? l
+          in (json['ProductionLocations'] as List?) ?? const <Object?>[])
+        if (l is String && l.trim().isNotEmpty) l.trim(),
+    ],
     album: json['Album'] as String?,
     albumId: json['AlbumId'] as String?,
     artists: _artistRefs(json['ArtistItems'], json['Artists']),

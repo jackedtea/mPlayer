@@ -1007,7 +1007,8 @@ class JellyfinSource implements MediaLibrarySource {
   /// again — a hundred-poster grid would carry both a hundred times over for
   /// something only the player ever reads.
   static const _detailFields =
-      '$_fields,Chapters,Trickplay,OriginalTitle,ExternalUrls';
+      '$_fields,Chapters,Trickplay,OriginalTitle,ExternalUrls,'
+      'ProductionLocations';
 
   /// [_fields] for music listings, without what only a film or a series
   /// carries. `People` above all: on a track it is every composer and

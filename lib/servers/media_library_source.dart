@@ -70,6 +70,8 @@ class ServerItem {
     this.studios = const <String>[],
     this.status,
     this.endYear,
+    this.endDate,
+    this.productionLocations = const <String>[],
     this.playlistEntryId,
     this.premiereDate,
     this.chapters = const <ServerChapter>[],
@@ -162,6 +164,14 @@ class ServerItem {
   /// When a series finished. Null while it is still running, and null for a
   /// film, where [year] is the whole story.
   final int? endYear;
+
+  /// The full `EndDate`. On a person it is the day they died, which a year
+  /// alone cannot say an age from.
+  final DateTime? endDate;
+
+  /// `ProductionLocations`: where a film was made, and on a person where
+  /// they were born. Only the detail fetch asks for it.
+  final List<String> productionLocations;
 
   /// This item's identity *inside a playlist*, which is not its own id: the
   /// same film can sit in a playlist twice, and a removal names the entry
