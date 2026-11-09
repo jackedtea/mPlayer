@@ -33,15 +33,16 @@ class AdminActivityPage extends ConsumerWidget {
         children: <Widget>[
           for (final ActivityEntry entry
               in entries.value ?? const <ActivityEntry>[])
-            _EntryRow(entry: entry),
+            ActivityEntryRow(entry: entry),
         ],
       ),
     );
   }
 }
 
-class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry});
+/// One line of the activity log. Shared with an account's Activity tab.
+class ActivityEntryRow extends StatelessWidget {
+  const ActivityEntryRow({super.key, required this.entry});
 
   final ActivityEntry entry;
 
@@ -54,13 +55,13 @@ class _EntryRow extends StatelessWidget {
     final (IconData icon, Color colour) = switch (entry.severity) {
       ActivitySeverity.error => (Icons.error_outline_rounded, scheme.error),
       ActivitySeverity.warning => (
-          Icons.warning_amber_rounded,
-          semantic.warning,
-        ),
+        Icons.warning_amber_rounded,
+        semantic.warning,
+      ),
       ActivitySeverity.information => (
-          Icons.info_outline_rounded,
-          scheme.onSurfaceVariant,
-        ),
+        Icons.info_outline_rounded,
+        scheme.onSurfaceVariant,
+      ),
     };
 
     return ListTile(

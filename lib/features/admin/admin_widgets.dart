@@ -28,7 +28,13 @@ class AdminScaffold extends ConsumerWidget {
     this.actions = const <Widget>[],
     this.floatingActionButton,
     this.bottomBar,
+    this.tabs,
   });
+
+  /// A tab bar under the title, for a screen that splits into views — one
+  /// account's settings and its activity. The [child] is then the matching
+  /// `TabBarView`, and the caller owns the controller.
+  final PreferredSizeWidget? tabs;
 
   final String title;
 
@@ -55,6 +61,9 @@ class AdminScaffold extends ConsumerWidget {
         backgroundColor: context.colors.surfaceContainerHigh,
         title: Text(title),
         actions: actions,
+        // Behind the guard like the Save bar: tabs over "not an
+        // administrator" would be tabs onto the same sentence twice.
+        bottom: admin.value == null ? null : tabs,
       ),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: admin.value == null ? null : bottomBar,
@@ -65,14 +74,11 @@ class AdminScaffold extends ConsumerWidget {
         AsyncLoading() => const Center(child: CircularProgressIndicator()),
         AsyncError(:final error) => AdminNote(text: '$error'),
         AsyncData(value: null) => AdminNote(
-            text: ref.watch(serverRegistryProvider).hasServer
-                ? l10n.adminNotAdmin
-                : l10n.adminNoServer,
-          ),
-        AsyncData() => RefreshIndicator(
-            onRefresh: onRefresh,
-            child: child,
-          ),
+          text: ref.watch(serverRegistryProvider).hasServer
+              ? l10n.adminNotAdmin
+              : l10n.adminNoServer,
+        ),
+        AsyncData() => RefreshIndicator(onRefresh: onRefresh, child: child),
       },
     );
   }
@@ -94,8 +100,9 @@ class AdminNote extends StatelessWidget {
         child: Text(
           text,
           textAlign: TextAlign.center,
-          style: context.texts.bodyMedium
-              ?.copyWith(color: context.colors.onSurfaceVariant),
+          style: context.texts.bodyMedium?.copyWith(
+            color: context.colors.onSurfaceVariant,
+          ),
         ),
       ),
     );

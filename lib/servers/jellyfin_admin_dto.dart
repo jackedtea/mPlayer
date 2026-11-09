@@ -143,7 +143,7 @@ ActivityEntry activityEntryFromJson(Map<String, dynamic> json) {
     severity: ActivitySeverity.fromWire(json['Severity'] as String?),
     at: DateTime.tryParse(json['Date'] as String? ?? ''),
     // Present only on an entry a user caused; a scheduled scan has none.
-    username: json['UserId'] as String? ?? '',
+    userId: json['UserId'] as String? ?? '',
   );
 }
 
@@ -303,4 +303,83 @@ List<ParentalRatingOption> parentalRatingsFromJson(List<Object?> json) {
         subScore: key.$2,
       ),
   ];
+}
+
+AdminLibraryFolder adminLibraryFolderFromJson(Map<String, dynamic> json) {
+  final locations = json['Locations'];
+  return AdminLibraryFolder(
+    name: json['Name'] as String? ?? '',
+    itemId: json['ItemId'] as String? ?? '',
+    kind: json['CollectionType'] as String? ?? '',
+    paths: locations is List
+        ? <String>[
+            for (final Object? p in locations)
+              if (p is String) p,
+          ]
+        : const <String>[],
+    // Reported only while a scan runs — and as 100 for a while after one
+    // finishes on some versions, which reads as "done", not "running".
+    refreshProgress: switch ((json['RefreshProgress'] as num?)?.toDouble()) {
+      final double p when p < 100 && json['RefreshStatus'] != 'Idle' => p,
+      _ => null,
+    },
+  );
+}
+
+/// The query a refresh of [mode] sends — what Jellyfin's own dialog sends.
+Map<String, String> refreshQuery(MetadataRefresh mode) {
+  final full = mode != MetadataRefresh.scan;
+  return <String, String>{
+    // Ignored from 10.11, which always walks the children; needed before it.
+    'Recursive': 'true',
+    'MetadataRefreshMode': full ? 'FullRefresh' : 'Default',
+    'ImageRefreshMode': full ? 'FullRefresh' : 'Default',
+    'ReplaceAllMetadata': '${mode == MetadataRefresh.replaceAll}',
+    'ReplaceAllImages': 'false',
+  };
+}
+
+ItemMetadata itemMetadataFromJson(Map<String, dynamic> json) {
+  List<String> strings(String key) => switch (json[key]) {
+    final List<Object?> list => <String>[
+      for (final Object? v in list)
+        if (v is String && v.trim().isNotEmpty) v.trim(),
+    ],
+    _ => const <String>[],
+  };
+
+  return ItemMetadata(
+    name: json['Name'] as String? ?? '',
+    originalTitle: json['OriginalTitle'] as String? ?? '',
+    // `ForcedSortName` is the one a person set; `SortName` is the server's own
+    // derivation, and writing that back would freeze it.
+    sortName: json['ForcedSortName'] as String? ?? '',
+    year: (json['ProductionYear'] as num?)?.toInt(),
+    overview: json['Overview'] as String? ?? '',
+    officialRating: json['OfficialRating'] as String? ?? '',
+    genres: strings('Genres'),
+    tags: strings('Tags'),
+    locked: json['LockData'] as bool? ?? false,
+  );
+}
+
+/// [server]'s item with [metadata] laid over it, for the whole-object write.
+Map<String, dynamic> applyItemMetadata(
+  Map<String, dynamic> server,
+  ItemMetadata metadata,
+) {
+  String? text(String value) => value.trim().isEmpty ? null : value.trim();
+
+  return <String, dynamic>{
+    ...server,
+    'Name': metadata.name.trim(),
+    'OriginalTitle': text(metadata.originalTitle),
+    'ForcedSortName': text(metadata.sortName),
+    'ProductionYear': metadata.year,
+    'Overview': text(metadata.overview),
+    'OfficialRating': text(metadata.officialRating),
+    'Genres': metadata.genres,
+    'Tags': metadata.tags,
+    'LockData': metadata.locked,
+  };
 }

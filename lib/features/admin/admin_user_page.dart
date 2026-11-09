@@ -11,10 +11,17 @@ import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/server_admin.dart';
 import '../../widgets/section_header.dart';
+import 'admin_activity_page.dart' show ActivityEntryRow;
 import 'admin_providers.dart';
 import 'admin_widgets.dart';
 
-/// One account: what it may do, its password, and deleting it.
+/// One account, in two tabs: what it may do (Profile), and what it has been
+/// doing and from where (Activity). Its password and deleting it are behind
+/// the ⋮.
+///
+/// Two tabs rather than one long page because the two are asked at different
+/// times: the editor is a form with a Save at its foot, and the activity is a
+/// log that would push that form a screen further down every week.
 ///
 /// **The editor is a draft.** Nothing reaches the server until Save, and Save
 /// sends the whole draft at once — a switch that wrote on every flip would be
@@ -29,7 +36,20 @@ class AdminUserPage extends ConsumerStatefulWidget {
   ConsumerState<AdminUserPage> createState() => _AdminUserPageState();
 }
 
-class _AdminUserPageState extends ConsumerState<AdminUserPage> {
+class _AdminUserPageState extends ConsumerState<AdminUserPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 2, vsync: this)
+    // The Save bar belongs to the Profile tab; redraw when the tab changes.
+    ..addListener(() {
+      if (!_tabs.indexIsChanging) setState(() {});
+    });
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
   /// The account as the server last described it, which the draft is
   /// compared against to know whether there is anything to save.
   AdminUserDetail? _source;
@@ -83,31 +103,62 @@ class _AdminUserPageState extends ConsumerState<AdminUserPage> {
         actions: <Widget>[
           if (_source != null) _UserMenu(detail: _source!, isSelf: isSelf),
         ],
+        tabs: TabBar(
+          controller: _tabs,
+          tabs: <Widget>[
+            Tab(text: l10n.adminTabProfile),
+            Tab(text: l10n.adminTabActivity),
+          ],
+        ),
         onRefresh: () async {
-          ref.invalidate(adminUserProvider(widget.userId));
-          ref.invalidate(adminLibrariesProvider);
+          ref
+            ..invalidate(adminUserProvider(widget.userId))
+            ..invalidate(adminLibrariesProvider)
+            ..invalidate(adminUserDevicesProvider(widget.userId));
+          final user = _source?.user;
+          if (user != null) {
+            ref.invalidate(
+              adminUserActivityProvider((id: user.id, name: user.name)),
+            );
+          }
           await ref.read(adminUserProvider(widget.userId).future);
         },
-        bottomBar: _draft == null ? null : _saveBar(context, l10n, name),
-        child: switch (detail) {
-          AsyncError(:final error) => AdminList(
-            emptyText: '$error',
-            children: const <Widget>[],
-          ),
-          _ when _draft == null => AdminList(
-            loading: detail.isLoading,
-            emptyText: l10n.adminUserNotFound,
-            children: const <Widget>[],
-          ),
-          _ => _PolicyEditor(
-            detail: _source!,
-            policy: _draft!,
-            isSelf: isSelf,
-            onChanged: _edit,
-          ),
-        },
+        bottomBar: _draft == null || _tabs.index != 0
+            ? null
+            : _saveBar(context, l10n, name),
+        child: TabBarView(
+          controller: _tabs,
+          children: <Widget>[
+            _profile(detail, l10n, isSelf),
+            _UserActivity(userId: widget.userId, name: _source?.user.name),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _profile(
+    AsyncValue<AdminUserDetail?> detail,
+    AppLocalizations l10n,
+    bool isSelf,
+  ) {
+    return switch (detail) {
+      AsyncError(:final error) => AdminList(
+        emptyText: '$error',
+        children: const <Widget>[],
+      ),
+      _ when _draft == null => AdminList(
+        loading: detail.isLoading,
+        emptyText: l10n.adminUserNotFound,
+        children: const <Widget>[],
+      ),
+      _ => _PolicyEditor(
+        detail: _source!,
+        policy: _draft!,
+        isSelf: isSelf,
+        onChanged: _edit,
+      ),
+    };
   }
 
   Widget _saveBar(BuildContext context, AppLocalizations l10n, String name) {
@@ -171,6 +222,69 @@ class _AdminUserPageState extends ConsumerState<AdminUserPage> {
     );
 
     if (mounted) setState(() => _saving = false);
+  }
+}
+
+/// The Activity tab: the devices the account signs in from, then the log.
+class _UserActivity extends ConsumerWidget {
+  const _UserActivity({required this.userId, required this.name});
+
+  final String userId;
+
+  /// Null until the account has loaded — the log is asked for by name too.
+  final String? name;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final spacing = context.spacing;
+    final devices = ref.watch(adminUserDevicesProvider(userId));
+    final accountName = name;
+    final entries = accountName == null
+        ? const AsyncLoading<List<ActivityEntry>>()
+        : ref.watch(adminUserActivityProvider((id: userId, name: accountName)));
+
+    return AdminList(
+      children: <Widget>[
+        SectionHeader(title: l10n.adminDevices),
+        ...switch (devices) {
+          AsyncData(:final value) when value.isNotEmpty => <Widget>[
+            for (final AdminDevice device in value)
+              ListTile(
+                leading: const Icon(Icons.devices_rounded),
+                title: Text(device.name.isEmpty ? device.appName : device.name),
+                subtitle: Text(
+                  <String>[
+                    <String>[
+                      device.appName,
+                      device.appVersion,
+                    ].where((s) => s.isNotEmpty).join(' '),
+                    relativeTime(device.lastSeen, l10n),
+                  ].where((s) => s.isNotEmpty).join(' · '),
+                ),
+              ),
+          ],
+          AsyncError(:final error) => <Widget>[AdminNote(text: '$error')],
+          AsyncLoading() => const <Widget>[
+            Center(child: CircularProgressIndicator()),
+          ],
+          _ => <Widget>[AdminNote(text: l10n.adminNoDevices)],
+        },
+        SizedBox(height: spacing.sectionGap),
+        SectionHeader(title: l10n.adminActivity),
+        ...switch (entries) {
+          AsyncData(:final value) when value.isNotEmpty => <Widget>[
+            for (final ActivityEntry entry in value)
+              ActivityEntryRow(entry: entry),
+          ],
+          AsyncError(:final error) => <Widget>[AdminNote(text: '$error')],
+          AsyncLoading() => const <Widget>[
+            Center(child: CircularProgressIndicator()),
+          ],
+          _ => <Widget>[AdminNote(text: l10n.adminNoUserActivity)],
+        },
+      ],
+    );
   }
 }
 

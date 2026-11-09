@@ -486,6 +486,186 @@ void main() {
     });
   });
 
+  group('one account, its devices and its log', () {
+    test('devices are asked for by user', () async {
+      final (admin, adapter) =
+          adminWith((_) => _json(<String, dynamic>{'Items': <Object>[]}));
+
+      await admin.devices(userId: 'u2');
+
+      expect(adapter.requests.single.uri.queryParameters['userId'], 'u2');
+    });
+
+    test('the log is filtered by name on the wire and by id here', () async {
+      // 10.11 filters on the name; an older server ignores it and sends
+      // everyone's, so the id check is what makes it exact.
+      final (admin, adapter) = adminWith(
+        (_) => _json(<String, dynamic>{
+          'Items': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'Id': 1,
+              'Name': 'kids signed in',
+              'UserId': '0f8fad5b-d9cb-469f-a165-70867728950e',
+            },
+            <String, dynamic>{
+              'Id': 2,
+              'Name': 'minh signed in',
+              'UserId': 'aaaaaaaa-0000-0000-0000-000000000000',
+            },
+            <String, dynamic>{'Id': 3, 'Name': 'Scan finished'},
+          ],
+        }),
+      );
+
+      final entries = await admin.activity(
+        // Without dashes, as `/Users` spells it.
+        user: (id: '0F8FAD5BD9CB469FA16570867728950E', name: 'kids'),
+      );
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['username'], 'kids');
+      expect(query['hasUserId'], 'true');
+      expect(entries.map((e) => e.name), <String>['kids signed in']);
+    });
+  });
+
+  group('libraries and items', () {
+    test('folders carry their paths, and progress only while scanning', () {
+      final running = adminLibraryFolderFromJson(<String, dynamic>{
+        'Name': 'Films',
+        'ItemId': 'lib-1',
+        'CollectionType': 'movies',
+        'Locations': <String>['/media/films', '/mnt/more'],
+        'RefreshProgress': 42.5,
+        'RefreshStatus': 'Active',
+      });
+      expect(running.paths, hasLength(2));
+      expect(running.refreshProgress, 42.5);
+
+      final idle = adminLibraryFolderFromJson(<String, dynamic>{
+        'Name': 'Shows',
+        'ItemId': 'lib-2',
+        'RefreshProgress': 100,
+        'RefreshStatus': 'Idle',
+      });
+      expect(idle.refreshProgress, isNull);
+    });
+
+    test('a scan keeps metadata; a replace throws it away, never images', () {
+      final scan = refreshQuery(MetadataRefresh.scan);
+      expect(scan['MetadataRefreshMode'], 'Default');
+      expect(scan['ReplaceAllMetadata'], 'false');
+
+      final missing = refreshQuery(MetadataRefresh.missing);
+      expect(missing['MetadataRefreshMode'], 'FullRefresh');
+      expect(missing['ReplaceAllMetadata'], 'false');
+
+      final replace = refreshQuery(MetadataRefresh.replaceAll);
+      expect(replace['MetadataRefreshMode'], 'FullRefresh');
+      expect(replace['ReplaceAllMetadata'], 'true');
+      expect(replace['ReplaceAllImages'], 'false');
+    });
+
+    test('refreshing posts to the item with the query', () async {
+      final (admin, adapter) = adminWith((_) => _json(<String, dynamic>{}));
+
+      await admin.refreshItem('lib-1', MetadataRefresh.missing);
+
+      final request = adapter.requests.single;
+      expect(request.method, 'POST');
+      expect(request.uri.path, '/Items/lib-1/Refresh');
+      expect(request.uri.queryParameters['Recursive'], 'true');
+    });
+
+    test('rename and remove address the library by name', () async {
+      final (admin, adapter) = adminWith((_) => _json(<String, dynamic>{}));
+
+      await admin.renameLibrary('Films', ' Movies ');
+      await admin.deleteLibrary('Films');
+
+      final rename = adapter.requests.first;
+      expect(rename.uri.path, '/Library/VirtualFolders/Name');
+      expect(rename.uri.queryParameters['name'], 'Films');
+      expect(rename.uri.queryParameters['newName'], 'Movies');
+
+      final remove = adapter.requests.last;
+      expect(remove.method, 'DELETE');
+      expect(remove.uri.path, '/Library/VirtualFolders');
+      expect(remove.uri.queryParameters['name'], 'Films');
+    });
+
+    test('metadata is read from the item, sort name only when forced', () {
+      final m = itemMetadataFromJson(<String, dynamic>{
+        'Name': 'Dune',
+        'SortName': 'dune',
+        'ProductionYear': 2021,
+        'Genres': <String>['Science Fiction', ' '],
+        'Tags': <String>['imax'],
+        'LockData': true,
+      });
+
+      expect(m.name, 'Dune');
+      // The server's own derivation; writing it back would freeze it.
+      expect(m.sortName, '');
+      expect(m.year, 2021);
+      expect(m.genres, <String>['Science Fiction']);
+      expect(m.locked, isTrue);
+    });
+
+    test('a save keeps every field the editor does not show', () async {
+      final server = <String, dynamic>{
+        'Id': 'i1',
+        'Name': 'Dune',
+        'ProductionYear': 2021,
+        'People': <Map<String, dynamic>>[
+          <String, dynamic>{'Name': 'Denis Villeneuve', 'Type': 'Director'},
+        ],
+        'ProviderIds': <String, dynamic>{'Imdb': 'tt1160419'},
+        'PremiereDate': '2021-09-15T00:00:00.0000000Z',
+      };
+      var reads = 0;
+      final (admin, adapter) = adminWith((options) {
+        if (options.method == 'GET') {
+          reads++;
+          return _json(server);
+        }
+        return _json(<String, dynamic>{});
+      });
+
+      await admin.setItemMetadata(
+        'i1',
+        const ItemMetadata(name: 'Dune: Part One', overview: '  '),
+      );
+
+      // Read at save time, not reused from when the editor opened.
+      expect(reads, 1);
+      final get = adapter.requests.first;
+      expect(get.uri.path, '/Items/i1');
+      expect(get.uri.queryParameters['userId'], 'u1');
+
+      final post = adapter.requests.last;
+      expect(post.uri.path, '/Items/i1');
+      final body = post.data as Map;
+      expect(body['Name'], 'Dune: Part One');
+      // Blank is "none", not an overview of spaces.
+      expect(body['Overview'], isNull);
+      // The year was cleared in the editor's copy, so it goes.
+      expect(body['ProductionYear'], isNull);
+      expect(body['People'], hasLength(1));
+      expect(body['ProviderIds'], <String, dynamic>{'Imdb': 'tt1160419'});
+      expect(body['PremiereDate'], isNotNull);
+    });
+
+    test('deleting an item is a DELETE on it', () async {
+      final (admin, adapter) = adminWith((_) => _json(<String, dynamic>{}));
+
+      await admin.deleteItem('i1');
+
+      expect(adapter.requests.single.method, 'DELETE');
+      expect(adapter.requests.single.uri.path, '/Items/i1');
+    });
+  });
+
   group('what a rejection means', () {
     test('403 says the account is not an administrator, not "sign in again"',
         () async {

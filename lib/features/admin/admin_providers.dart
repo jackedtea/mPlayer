@@ -122,6 +122,46 @@ final currentAdminUserIdProvider = Provider<String?>(
   (ref) => ref.watch(serverRegistryProvider).active?.userId,
 );
 
+/// The devices one account has signed in from, for its Activity tab.
+final adminUserDevicesProvider = FutureProvider.autoDispose
+    .family<List<AdminDevice>, String>(
+      (ref, userId) => _withAdmin(
+        ref,
+        (a) => a.devices(userId: userId),
+        const <AdminDevice>[],
+      ),
+    );
+
+/// What one account has done lately, for its Activity tab.
+///
+/// Keyed by id and name together because the server filters by name and the
+/// client by id; a record has the value equality a family key needs.
+final adminUserActivityProvider = FutureProvider.autoDispose
+    .family<List<ActivityEntry>, ({String id, String name})>(
+      (ref, user) => _withAdmin(
+        ref,
+        (a) => a.activity(limit: 100, user: user),
+        const <ActivityEntry>[],
+      ),
+    );
+
+/// Every library with its folders on disk.
+final adminLibraryFoldersProvider =
+    FutureProvider.autoDispose<List<AdminLibraryFolder>>(
+      (ref) => _withAdmin(
+        ref,
+        (a) => a.libraryFolders(),
+        const <AdminLibraryFolder>[],
+      ),
+    );
+
+/// One item's editable metadata, asked again each time the editor opens.
+final adminItemMetadataProvider = FutureProvider.autoDispose
+    .family<ItemMetadata?, String>(
+      (ref, itemId) =>
+          _withAdmin<ItemMetadata?>(ref, (a) => a.itemMetadata(itemId), null),
+    );
+
 final adminDevicesProvider = FutureProvider<List<AdminDevice>>(
   (ref) => _withAdmin(ref, (a) => a.devices(), const <AdminDevice>[]),
 );

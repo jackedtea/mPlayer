@@ -1208,6 +1208,252 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get adminDiscard;
 
+  /// No description provided for @adminTabProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get adminTabProfile;
+
+  /// No description provided for @adminTabActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get adminTabActivity;
+
+  /// No description provided for @adminNoUserActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing logged for this account recently.'**
+  String get adminNoUserActivity;
+
+  /// No description provided for @adminLibraries.
+  ///
+  /// In en, this message translates to:
+  /// **'Libraries'**
+  String get adminLibraries;
+
+  /// No description provided for @adminLibraryNoFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'No folders'**
+  String get adminLibraryNoFolders;
+
+  /// No description provided for @adminLibraryScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan library'**
+  String get adminLibraryScan;
+
+  /// No description provided for @adminLibraryRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename library'**
+  String get adminLibraryRename;
+
+  /// No description provided for @adminLibraryRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Renamed to {name}.'**
+  String adminLibraryRenamed(String name);
+
+  /// No description provided for @adminLibraryRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove library'**
+  String get adminLibraryRemove;
+
+  /// No description provided for @adminLibraryRemoveQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String adminLibraryRemoveQuestion(String name);
+
+  /// No description provided for @adminLibraryRemoveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The library, its metadata and everyone\'s watch history in it are removed from the server. The files on disk are not touched.'**
+  String get adminLibraryRemoveBody;
+
+  /// No description provided for @adminLibraryRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} removed.'**
+  String adminLibraryRemoved(String name);
+
+  /// No description provided for @adminLibraryNoId.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not say which item this library is, so it cannot be scanned on its own.'**
+  String get adminLibraryNoId;
+
+  /// No description provided for @adminRefreshMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh metadata'**
+  String get adminRefreshMetadata;
+
+  /// No description provided for @adminRefreshQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh of {name} started.'**
+  String adminRefreshQueued(String name);
+
+  /// No description provided for @adminRefreshScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan for new and updated files'**
+  String get adminRefreshScan;
+
+  /// No description provided for @adminRefreshScanBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps the metadata that is there.'**
+  String get adminRefreshScanBody;
+
+  /// No description provided for @adminRefreshMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for missing metadata'**
+  String get adminRefreshMissing;
+
+  /// No description provided for @adminRefreshMissingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Fills in what is empty from the metadata providers.'**
+  String get adminRefreshMissingBody;
+
+  /// No description provided for @adminRefreshReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace all metadata'**
+  String get adminRefreshReplace;
+
+  /// No description provided for @adminRefreshReplaceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Throws away the current metadata, edits included, and fetches it again. Images are kept.'**
+  String get adminRefreshReplaceBody;
+
+  /// No description provided for @adminEditMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit metadata'**
+  String get adminEditMetadata;
+
+  /// No description provided for @adminDeleteItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete from server'**
+  String get adminDeleteItem;
+
+  /// No description provided for @adminDeleteItemQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String adminDeleteItemQuestion(String name);
+
+  /// No description provided for @adminDeleteItemBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The files are deleted from the server\'s disk, for everyone. This cannot be undone.'**
+  String get adminDeleteItemBody;
+
+  /// No description provided for @adminItemDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} deleted.'**
+  String adminItemDeleted(String name);
+
+  /// No description provided for @adminItemNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not describe this item.'**
+  String get adminItemNotFound;
+
+  /// No description provided for @adminMetadataSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} saved.'**
+  String adminMetadataSaved(String name);
+
+  /// No description provided for @adminFieldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get adminFieldTitle;
+
+  /// No description provided for @adminFieldOriginalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Original title'**
+  String get adminFieldOriginalTitle;
+
+  /// No description provided for @adminFieldSortName.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort title'**
+  String get adminFieldSortName;
+
+  /// No description provided for @adminFieldSortNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to sort by the title.'**
+  String get adminFieldSortNameHint;
+
+  /// No description provided for @adminFieldYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get adminFieldYear;
+
+  /// No description provided for @adminFieldYearInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a year.'**
+  String get adminFieldYearInvalid;
+
+  /// No description provided for @adminFieldRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate'**
+  String get adminFieldRating;
+
+  /// No description provided for @adminFieldOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get adminFieldOverview;
+
+  /// No description provided for @adminFieldGenres.
+  ///
+  /// In en, this message translates to:
+  /// **'Genres'**
+  String get adminFieldGenres;
+
+  /// No description provided for @adminFieldTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get adminFieldTags;
+
+  /// No description provided for @adminFieldListHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate with commas.'**
+  String get adminFieldListHint;
+
+  /// No description provided for @adminFieldLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock this item'**
+  String get adminFieldLock;
+
+  /// No description provided for @adminFieldLockBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshes leave its metadata alone, so these edits are kept.'**
+  String get adminFieldLockBody;
+
   /// No description provided for @actionSend.
   ///
   /// In en, this message translates to:

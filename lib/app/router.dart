@@ -9,6 +9,8 @@ import 'package:go_router/go_router.dart';
 
 import '../features/admin/admin_activity_page.dart';
 import '../features/admin/admin_dashboard_page.dart';
+import '../features/admin/admin_item_page.dart';
+import '../features/admin/admin_libraries_page.dart';
 import '../features/admin/admin_plugins_page.dart';
 import '../features/admin/admin_tasks_page.dart';
 import '../features/admin/admin_user_page.dart';
@@ -173,6 +175,19 @@ GoRouter buildRouter() {
         parentNavigatorKey: _rootKey,
         builder: (context, state) => const AdminDashboardPage(),
         routes: <RouteBase>[
+          GoRoute(
+            path: 'libraries',
+            builder: (context, state) => const AdminLibrariesPage(),
+          ),
+          // One item's metadata editor, opened from the item's own ⋮. The
+          // title rides in the query for the app bar before the item loads.
+          GoRoute(
+            path: 'item/:id',
+            builder: (context, state) => AdminItemPage(
+              itemId: state.pathParameters['id']!,
+              title: state.uri.queryParameters['title'] ?? '',
+            ),
+          ),
           GoRoute(
             path: 'tasks',
             builder: (context, state) => const AdminTasksPage(),

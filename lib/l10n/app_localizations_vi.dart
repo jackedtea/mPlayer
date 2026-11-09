@@ -635,6 +635,150 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminDiscard => 'Bỏ';
 
   @override
+  String get adminTabProfile => 'Hồ sơ';
+
+  @override
+  String get adminTabActivity => 'Hoạt động';
+
+  @override
+  String get adminNoUserActivity =>
+      'Gần đây không có gì được ghi lại cho tài khoản này.';
+
+  @override
+  String get adminLibraries => 'Thư viện';
+
+  @override
+  String get adminLibraryNoFolders => 'Chưa có thư mục nào';
+
+  @override
+  String get adminLibraryScan => 'Quét thư viện';
+
+  @override
+  String get adminLibraryRename => 'Đổi tên thư viện';
+
+  @override
+  String adminLibraryRenamed(String name) {
+    return 'Đã đổi tên thành $name.';
+  }
+
+  @override
+  String get adminLibraryRemove => 'Gỡ thư viện';
+
+  @override
+  String adminLibraryRemoveQuestion(String name) {
+    return 'Gỡ $name?';
+  }
+
+  @override
+  String get adminLibraryRemoveBody =>
+      'Thư viện, metadata và lịch sử xem của mọi người trong đó sẽ bị gỡ khỏi máy chủ. Các file trên ổ đĩa không bị đụng tới.';
+
+  @override
+  String adminLibraryRemoved(String name) {
+    return 'Đã gỡ $name.';
+  }
+
+  @override
+  String get adminLibraryNoId =>
+      'Máy chủ không cho biết thư viện này là mục nào, nên không thể quét riêng nó.';
+
+  @override
+  String get adminRefreshMetadata => 'Làm mới metadata';
+
+  @override
+  String adminRefreshQueued(String name) {
+    return 'Đã bắt đầu làm mới $name.';
+  }
+
+  @override
+  String get adminRefreshScan => 'Quét file mới và file đã thay đổi';
+
+  @override
+  String get adminRefreshScanBody => 'Giữ nguyên metadata hiện có.';
+
+  @override
+  String get adminRefreshMissing => 'Tìm metadata còn thiếu';
+
+  @override
+  String get adminRefreshMissingBody =>
+      'Lấy phần còn trống từ các nguồn metadata.';
+
+  @override
+  String get adminRefreshReplace => 'Thay toàn bộ metadata';
+
+  @override
+  String get adminRefreshReplaceBody =>
+      'Bỏ metadata hiện tại, kể cả phần đã sửa tay, rồi lấy lại từ đầu. Ảnh được giữ nguyên.';
+
+  @override
+  String get adminEditMetadata => 'Sửa metadata';
+
+  @override
+  String get adminDeleteItem => 'Xoá khỏi máy chủ';
+
+  @override
+  String adminDeleteItemQuestion(String name) {
+    return 'Xoá $name?';
+  }
+
+  @override
+  String get adminDeleteItemBody =>
+      'Các file sẽ bị xoá khỏi ổ đĩa của máy chủ, với tất cả mọi người. Không thể hoàn tác.';
+
+  @override
+  String adminItemDeleted(String name) {
+    return 'Đã xoá $name.';
+  }
+
+  @override
+  String get adminItemNotFound => 'Máy chủ không trả về thông tin mục này.';
+
+  @override
+  String adminMetadataSaved(String name) {
+    return 'Đã lưu $name.';
+  }
+
+  @override
+  String get adminFieldTitle => 'Tiêu đề';
+
+  @override
+  String get adminFieldOriginalTitle => 'Tiêu đề gốc';
+
+  @override
+  String get adminFieldSortName => 'Tiêu đề để sắp xếp';
+
+  @override
+  String get adminFieldSortNameHint => 'Để trống để sắp xếp theo tiêu đề.';
+
+  @override
+  String get adminFieldYear => 'Năm';
+
+  @override
+  String get adminFieldYearInvalid => 'Không phải là năm.';
+
+  @override
+  String get adminFieldRating => 'Phân loại độ tuổi';
+
+  @override
+  String get adminFieldOverview => 'Tóm tắt';
+
+  @override
+  String get adminFieldGenres => 'Thể loại';
+
+  @override
+  String get adminFieldTags => 'Thẻ';
+
+  @override
+  String get adminFieldListHint => 'Phân cách bằng dấu phẩy.';
+
+  @override
+  String get adminFieldLock => 'Khoá mục này';
+
+  @override
+  String get adminFieldLockBody =>
+      'Các lần làm mới sẽ không đụng tới metadata của nó, nên phần đã sửa được giữ lại.';
+
+  @override
   String get actionSend => 'Gửi';
 
   @override

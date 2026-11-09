@@ -276,8 +276,11 @@ class JellyfinAdmin implements ServerAdmin {
       parentalRatingsFromJson(await _getList('/Localization/ParentalRatings'));
 
   @override
-  Future<List<AdminDevice>> devices() async {
-    final json = await _getMap('/Devices');
+  Future<List<AdminDevice>> devices({String? userId}) async {
+    final json = await _getMap(
+      '/Devices',
+      userId == null ? null : <String, String>{'userId': userId},
+    );
     final items = json['Items'];
     if (items is! List) return const <AdminDevice>[];
 
@@ -303,10 +306,19 @@ class JellyfinAdmin implements ServerAdmin {
   // ------------------------------------------------------------ history
 
   @override
-  Future<List<ActivityEntry>> activity({int limit = 50}) async {
+  Future<List<ActivityEntry>> activity({
+    int limit = 50,
+    ({String id, String name})? user,
+  }) async {
     final json = await _getMap('/System/ActivityLog/Entries', <String, String>{
       'startIndex': '0',
       'limit': '$limit',
+      if (user != null) ...<String, String>{
+        'hasUserId': 'true',
+        // 10.11's filter. Matched on the name, so the id check below is what
+        // makes it exact — and what filters at all on an older server.
+        'username': user.name,
+      },
     });
 
     final items = json['Items'];
@@ -314,9 +326,88 @@ class JellyfinAdmin implements ServerAdmin {
 
     return <ActivityEntry>[
       for (final Object? entry in items)
-        if (entry is Map<String, dynamic>) activityEntryFromJson(entry),
+        if (entry is Map<String, dynamic>)
+          if (activityEntryFromJson(entry) case final ActivityEntry e
+              when user == null || _sameId(e.userId, user.id))
+            e,
     ];
   }
+
+  /// Jellyfin writes the same id with and without dashes on different routes.
+  static bool _sameId(String a, String b) =>
+      a.replaceAll('-', '').toLowerCase() ==
+      b.replaceAll('-', '').toLowerCase();
+
+  // ---------------------------------------------------- libraries and items
+
+  @override
+  Future<List<AdminLibraryFolder>> libraryFolders() async {
+    final list = await _getList('/Library/VirtualFolders');
+    final folders = <AdminLibraryFolder>[
+      for (final Object? entry in list)
+        if (entry is Map<String, dynamic>)
+          if (adminLibraryFolderFromJson(entry) case final AdminLibraryFolder f
+              when f.name.isNotEmpty)
+            f,
+    ];
+    folders.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
+    return folders;
+  }
+
+  @override
+  Future<void> refreshItem(String itemId, MetadataRefresh mode) async {
+    await _send(
+      () => _dio.postUri<dynamic>(
+        _url('/Items/$itemId/Refresh', refreshQuery(mode)),
+        options: Options(headers: _headers),
+      ),
+    );
+  }
+
+  @override
+  Future<void> renameLibrary(String name, String newName) async {
+    await _send(
+      () => _dio.postUri<dynamic>(
+        _url('/Library/VirtualFolders/Name', <String, String>{
+          'name': name,
+          'newName': newName.trim(),
+          // A rename moves the library's folder in the server's config
+          // directory; nothing on disk changes, so there is nothing to scan.
+          'refreshLibrary': 'false',
+        }),
+        options: Options(headers: _headers),
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteLibrary(String name) => _delete(
+    '/Library/VirtualFolders',
+    <String, String>{'name': name, 'refreshLibrary': 'true'},
+  );
+
+  @override
+  Future<void> deleteItem(String itemId) => _delete('/Items/$itemId');
+
+  @override
+  Future<ItemMetadata> itemMetadata(String itemId) async =>
+      itemMetadataFromJson(await _rawItem(itemId));
+
+  @override
+  Future<void> setItemMetadata(String itemId, ItemMetadata metadata) async {
+    // Read at save time, for the reason the user policy is: the route clears
+    // every field it is not sent, and the copy the editor opened with may be
+    // older than a refresh that ran meanwhile.
+    final server = await _rawItem(itemId);
+    await _post('/Items/$itemId', applyItemMetadata(server, metadata));
+  }
+
+  /// The item exactly as the server describes it — every field, since a
+  /// single-item read is not trimmed by a field list.
+  Future<Map<String, dynamic>> _rawItem(String itemId) =>
+      _getMap('/Items/$itemId', <String, String>{'userId': _profile.userId});
 
   // ------------------------------------------------------------ plugins
 

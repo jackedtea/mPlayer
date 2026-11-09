@@ -13,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../../servers/media_library_source.dart';
 import '../../downloads/download_models.dart';
 import '../../downloads/downloads_controller.dart';
+import '../admin/admin_item_actions.dart';
 import '../downloads/download_ui.dart';
 import '../music/music_actions.dart';
 import 'server_library.dart';
@@ -425,6 +426,8 @@ List<ItemAction> itemActionsFor(
       downloadAll.isEmpty
           ? _downloadAction(context, ref, item)
           : downloadAllAction(context, ref, downloadAll),
+    // Last, so they fall into the overflow wherever a row runs short.
+    ...adminItemActions(context, ref, item),
   ];
 }
 

@@ -42,15 +42,18 @@ class AdminDashboardPage extends ConsumerWidget {
           ..invalidate(adminSessionsProvider);
         await ref.read(adminSessionsProvider.future);
       },
-      actions: <Widget>[
-        _ServerMenu(info: info.value),
-      ],
+      actions: <Widget>[_ServerMenu(info: info.value)],
       child: AdminList(
         children: <Widget>[
           _ServerCard(info: info.value),
           SizedBox(height: spacing.md),
 
-          // The four screens this one is the way in to.
+          // The screens this one is the way in to.
+          _NavRow(
+            icon: Icons.video_library_outlined,
+            label: l10n.adminLibraries,
+            onTap: () => context.push('/admin/libraries'),
+          ),
           _NavRow(
             icon: Icons.schedule_rounded,
             label: l10n.adminTasks,
@@ -110,9 +113,10 @@ class _ServerCard extends ConsumerWidget {
       if (resolved != null && resolved.version.isNotEmpty)
         'Jellyfin ${resolved.version}',
       if (resolved != null)
-        <String>[resolved.operatingSystem, resolved.architecture]
-            .where((s) => s.isNotEmpty)
-            .join(' · '),
+        <String>[
+          resolved.operatingSystem,
+          resolved.architecture,
+        ].where((s) => s.isNotEmpty).join(' · '),
       if (profile != null) profile.uri,
     ].where((s) => s.isNotEmpty).toList();
 
@@ -138,8 +142,9 @@ class _ServerCard extends ConsumerWidget {
               SizedBox(height: spacing.xs),
               Text(
                 line,
-                style: context.texts.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: context.texts.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ],
@@ -162,8 +167,7 @@ class _ServerMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final serverName =
-        ref.watch(serverRegistryProvider).active?.name ?? '';
+    final serverName = ref.watch(serverRegistryProvider).active?.name ?? '';
 
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert_rounded),
@@ -172,10 +176,7 @@ class _ServerMenu extends ConsumerWidget {
           value: 'scan',
           child: Text(l10n.adminScanLibraries),
         ),
-        PopupMenuItem<String>(
-          value: 'rename',
-          child: Text(l10n.adminRename),
-        ),
+        PopupMenuItem<String>(value: 'rename', child: Text(l10n.adminRename)),
         // Absent, not disabled, where the server says it cannot: a menu item
         // that explains why it does nothing is a menu item nobody wanted.
         if (info?.canRestart ?? false)
@@ -239,8 +240,7 @@ class _ServerMenu extends ConsumerWidget {
             child: Text(l10n.actionCancel),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(controller.text),
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
             child: Text(l10n.actionSave),
           ),
         ],
@@ -305,11 +305,7 @@ class _ServerMenu extends ConsumerWidget {
 }
 
 class _NavRow extends StatelessWidget {
-  const _NavRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _NavRow({required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;
@@ -337,9 +333,10 @@ class _SessionRow extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final scheme = context.colors;
 
-    final device = <String>[session.deviceName, session.client]
-        .where((s) => s.isNotEmpty)
-        .join(' · ');
+    final device = <String>[
+      session.deviceName,
+      session.client,
+    ].where((s) => s.isNotEmpty).join(' · ');
 
     return ListTile(
       isThreeLine: session.isPlaying,
@@ -350,8 +347,8 @@ class _SessionRow extends ConsumerWidget {
         child: Icon(
           session.isPlaying
               ? (session.isPaused
-                  ? Icons.pause_rounded
-                  : Icons.play_arrow_rounded)
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded)
               : Icons.devices_rounded,
           color: session.isPlaying
               ? scheme.onPrimaryContainer
@@ -380,7 +377,9 @@ class _SessionRow extends ConsumerWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: session.isPlaying ? scheme.primary : scheme.onSurfaceVariant,
+              color: session.isPlaying
+                  ? scheme.primary
+                  : scheme.onSurfaceVariant,
             ),
           ),
           if (session.progress case final double progress) ...<Widget>[
@@ -390,8 +389,9 @@ class _SessionRow extends ConsumerWidget {
             Text(
               '${formatDuration(session.position!)} / '
               '${formatDuration(session.runtime!)}',
-              style: context.texts.labelSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: context.texts.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ],
         ],

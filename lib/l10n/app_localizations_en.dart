@@ -633,6 +633,149 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminDiscard => 'Discard';
 
   @override
+  String get adminTabProfile => 'Profile';
+
+  @override
+  String get adminTabActivity => 'Activity';
+
+  @override
+  String get adminNoUserActivity => 'Nothing logged for this account recently.';
+
+  @override
+  String get adminLibraries => 'Libraries';
+
+  @override
+  String get adminLibraryNoFolders => 'No folders';
+
+  @override
+  String get adminLibraryScan => 'Scan library';
+
+  @override
+  String get adminLibraryRename => 'Rename library';
+
+  @override
+  String adminLibraryRenamed(String name) {
+    return 'Renamed to $name.';
+  }
+
+  @override
+  String get adminLibraryRemove => 'Remove library';
+
+  @override
+  String adminLibraryRemoveQuestion(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String get adminLibraryRemoveBody =>
+      'The library, its metadata and everyone\'s watch history in it are removed from the server. The files on disk are not touched.';
+
+  @override
+  String adminLibraryRemoved(String name) {
+    return '$name removed.';
+  }
+
+  @override
+  String get adminLibraryNoId =>
+      'The server did not say which item this library is, so it cannot be scanned on its own.';
+
+  @override
+  String get adminRefreshMetadata => 'Refresh metadata';
+
+  @override
+  String adminRefreshQueued(String name) {
+    return 'Refresh of $name started.';
+  }
+
+  @override
+  String get adminRefreshScan => 'Scan for new and updated files';
+
+  @override
+  String get adminRefreshScanBody => 'Keeps the metadata that is there.';
+
+  @override
+  String get adminRefreshMissing => 'Search for missing metadata';
+
+  @override
+  String get adminRefreshMissingBody =>
+      'Fills in what is empty from the metadata providers.';
+
+  @override
+  String get adminRefreshReplace => 'Replace all metadata';
+
+  @override
+  String get adminRefreshReplaceBody =>
+      'Throws away the current metadata, edits included, and fetches it again. Images are kept.';
+
+  @override
+  String get adminEditMetadata => 'Edit metadata';
+
+  @override
+  String get adminDeleteItem => 'Delete from server';
+
+  @override
+  String adminDeleteItemQuestion(String name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get adminDeleteItemBody =>
+      'The files are deleted from the server\'s disk, for everyone. This cannot be undone.';
+
+  @override
+  String adminItemDeleted(String name) {
+    return '$name deleted.';
+  }
+
+  @override
+  String get adminItemNotFound => 'The server did not describe this item.';
+
+  @override
+  String adminMetadataSaved(String name) {
+    return '$name saved.';
+  }
+
+  @override
+  String get adminFieldTitle => 'Title';
+
+  @override
+  String get adminFieldOriginalTitle => 'Original title';
+
+  @override
+  String get adminFieldSortName => 'Sort title';
+
+  @override
+  String get adminFieldSortNameHint => 'Leave empty to sort by the title.';
+
+  @override
+  String get adminFieldYear => 'Year';
+
+  @override
+  String get adminFieldYearInvalid => 'Not a year.';
+
+  @override
+  String get adminFieldRating => 'Certificate';
+
+  @override
+  String get adminFieldOverview => 'Overview';
+
+  @override
+  String get adminFieldGenres => 'Genres';
+
+  @override
+  String get adminFieldTags => 'Tags';
+
+  @override
+  String get adminFieldListHint => 'Separate with commas.';
+
+  @override
+  String get adminFieldLock => 'Lock this item';
+
+  @override
+  String get adminFieldLockBody =>
+      'Refreshes leave its metadata alone, so these edits are kept.';
+
+  @override
   String get actionSend => 'Send';
 
   @override

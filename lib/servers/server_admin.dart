@@ -398,7 +398,7 @@ class ActivityEntry {
     this.type = '',
     this.severity = ActivitySeverity.information,
     this.at,
-    this.username = '',
+    this.userId = '',
   });
 
   final String id;
@@ -414,7 +414,10 @@ class ActivityEntry {
 
   final ActivitySeverity severity;
   final DateTime? at;
-  final String username;
+
+  /// The account that caused it. Empty for what the server did by itself
+  /// — a scheduled scan, a plugin update.
+  final String userId;
 }
 
 enum ActivitySeverity {
@@ -476,6 +479,129 @@ enum PluginStatus {
     'Superceded' => PluginStatus.superceded,
     _ => PluginStatus.active,
   };
+}
+
+/// A library as the server's configuration holds it.
+@immutable
+class AdminLibraryFolder {
+  const AdminLibraryFolder({
+    required this.name,
+    required this.itemId,
+    this.kind = '',
+    this.paths = const <String>[],
+    this.refreshProgress,
+  });
+
+  /// The key the rename and delete routes take.
+  final String name;
+
+  /// The key a refresh takes.
+  final String itemId;
+
+  /// `movies`, `tvshows`, `music`, `boxsets` — or empty for mixed content.
+  final String kind;
+
+  /// Folders on the server's disk, as the server sees them.
+  final List<String> paths;
+
+  /// 0..100 while the library is being scanned, otherwise null.
+  final double? refreshProgress;
+}
+
+/// How deep a refresh goes — the three choices Jellyfin's own dialog offers.
+enum MetadataRefresh {
+  /// Look for new and changed files; leave the metadata that is there.
+  scan,
+
+  /// Also fetch what is missing from the metadata providers.
+  missing,
+
+  /// Throw the metadata away and fetch it all again. Images are kept.
+  replaceAll,
+}
+
+/// The handful of an item's fields worth editing from a phone.
+@immutable
+class ItemMetadata {
+  const ItemMetadata({
+    this.name = '',
+    this.originalTitle = '',
+    this.sortName = '',
+    this.year,
+    this.overview = '',
+    this.officialRating = '',
+    this.genres = const <String>[],
+    this.tags = const <String>[],
+    this.locked = false,
+  });
+
+  final String name;
+  final String originalTitle;
+
+  /// Empty means the server derives it from the name.
+  final String sortName;
+  final int? year;
+  final String overview;
+
+  /// The certificate as text — "PG-13", "16+". Empty for none.
+  final String officialRating;
+  final List<String> genres;
+  final List<String> tags;
+
+  /// Whether the server leaves this item alone on a refresh. Worth offering
+  /// beside an edit: a hand-fixed title is otherwise undone by the next scan.
+  final bool locked;
+
+  ItemMetadata copyWith({
+    String? name,
+    String? originalTitle,
+    String? sortName,
+    // A year can be cleared, which a plain nullable cannot say.
+    ({int? value})? year,
+    String? overview,
+    String? officialRating,
+    List<String>? genres,
+    List<String>? tags,
+    bool? locked,
+  }) {
+    return ItemMetadata(
+      name: name ?? this.name,
+      originalTitle: originalTitle ?? this.originalTitle,
+      sortName: sortName ?? this.sortName,
+      year: year == null ? this.year : year.value,
+      overview: overview ?? this.overview,
+      officialRating: officialRating ?? this.officialRating,
+      genres: genres ?? this.genres,
+      tags: tags ?? this.tags,
+      locked: locked ?? this.locked,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ItemMetadata &&
+      other.name == name &&
+      other.originalTitle == originalTitle &&
+      other.sortName == sortName &&
+      other.year == year &&
+      other.overview == overview &&
+      other.officialRating == officialRating &&
+      listEquals(other.genres, genres) &&
+      listEquals(other.tags, tags) &&
+      other.locked == locked;
+
+  @override
+  int get hashCode => Object.hash(
+    name,
+    originalTitle,
+    sortName,
+    year,
+    overview,
+    officialRating,
+    Object.hashAll(genres),
+    Object.hashAll(tags),
+    locked,
+  );
 }
 
 /// Everything the administration screens can ask a server to do.
@@ -548,11 +674,47 @@ abstract class ServerAdmin {
   /// The ratings the server knows, lowest score first, one per score.
   Future<List<ParentalRatingOption>> parentalRatings();
 
-  Future<List<AdminDevice>> devices();
+  /// Every remembered device, or only [userId]'s.
+  Future<List<AdminDevice>> devices({String? userId});
 
   Future<void> deleteDevice(String deviceId);
 
-  Future<List<ActivityEntry>> activity({int limit = 50});
+  /// The newest [limit] entries, or only those [user] caused.
+  ///
+  /// The server filters by name from 10.11; an older one ignores the filter,
+  /// so the entries are also kept to the account's id here — which on such a
+  /// server means "this account's among the newest [limit]", not all of them.
+  Future<List<ActivityEntry>> activity({
+    int limit = 50,
+    ({String id, String name})? user,
+  });
+
+  /// Every library, with the folders on disk it reads.
+  Future<List<AdminLibraryFolder>> libraryFolders();
+
+  /// Rescans one library, folder or item. Returns once the server has queued
+  /// it; the work shows up as a running task.
+  Future<void> refreshItem(String itemId, MetadataRefresh mode);
+
+  /// Renames a library. Addressed by name: that is how the server keys them.
+  Future<void> renameLibrary(String name, String newName);
+
+  /// Removes a library from the server. **The files stay on disk**; only the
+  /// library, its metadata and its watch state go.
+  Future<void> deleteLibrary(String name);
+
+  /// Deletes an item **and its files on disk**.
+  Future<void> deleteItem(String itemId);
+
+  /// The fields of [itemId] the metadata editor shows.
+  Future<ItemMetadata> itemMetadata(String itemId);
+
+  /// Writes [metadata] over [itemId].
+  ///
+  /// The item is read fresh and written **whole**, like a user policy: the
+  /// route replaces every field it is sent, and a field it is not sent is
+  /// cleared — cast, provider ids, dates, studios.
+  Future<void> setItemMetadata(String itemId, ItemMetadata metadata);
 
   Future<List<ServerPlugin>> plugins();
 

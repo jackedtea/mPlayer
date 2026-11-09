@@ -1227,8 +1227,9 @@ The chip row over the grid is Unwatched · the sort · a filter button carrying 
 
 `lib/servers/server_admin.dart` (types + interface), `jellyfin_admin_dto.dart` (pure
 parsing) and `jellyfin_admin.dart` (the client), behind five screens in
-`lib/features/admin/`: a dashboard with the sessions on it, and Tasks, Users & devices,
-Activity and Plugins under it.
+`lib/features/admin/`: a dashboard with the sessions on it, and Libraries, Tasks,
+Users & devices, Activity and Plugins under it, plus an account editor and an item
+metadata editor.
 
 **It is a separate client from `JellyfinSource`, and the reason is 403.** For the
 catalogue, every rejection means the session is gone and the answer is to sign in again.
@@ -1298,6 +1299,43 @@ new account straight away.
   not in the list is still shown as chosen.
 - `confirmAdminAction` styles its button from the **dialog's** context: Delete pops the
   editor while the dialog is still animating out, and the caller's context is gone.
+- **Two tabs, Profile and Activity** (2026-11-09). Profile is the editor, and the Save
+  bar shows only there. Activity is the account's devices (`/Devices?userId=`) and its
+  log: `/System/ActivityLog/Entries` filters by `username` from 10.11 only, so entries
+  are also kept to the account's id client-side (ids compared without dashes). On an
+  older server that means "this account's among the newest 100", not all of them.
+  `AdminScaffold.tabs` puts a `TabBar` under the title, behind the guard. Tests that
+  scroll the editor must pick the **vertical** scrollable: the `TabBarView` is one too.
+
+### Libraries and items (2026-11-09)
+
+- **`/admin/libraries`** (`admin_libraries_page.dart`) lists `/Library/VirtualFolders`
+  with each library's paths and a progress bar while it scans. Per library: Scan,
+  Refresh metadata, Rename, Remove. Rename and remove are **keyed by name**; scan and
+  refresh by `ItemId` (a library missing it says so rather than scanning everything).
+  Remove leaves the files on disk and says so. **Adding a library or a folder is not
+  built**: it means picking a path on the server's disk, and only the server's own
+  browser knows which exist.
+- **Refresh** (`POST /Items/{id}/Refresh`, `refreshQuery`) offers Jellyfin's three
+  depths: scan (Default/Default), missing metadata (FullRefresh, keep), replace all
+  (FullRefresh + `ReplaceAllMetadata`). Images are never replaced from here.
+  `Recursive=true` is sent for servers before 10.11, which ignores it.
+- **Item actions** (`admin_item_actions.dart`): Refresh metadata, Edit metadata,
+  Delete from server, appended **last** to `itemActionsFor` for an administrator, so
+  they land in the overflow of the glyph row and at the end of chips and ⋮ menus.
+  Delete closes the page only when the route's `extra` is that item, so deleting an
+  episode from its series' list leaves the series open. `invalidateItem` drops the
+  item and the lists it may be in.
+- **Metadata editor** (`/admin/item/:id`, `admin_item_page.dart`): title, original
+  title, sort title, year, certificate, overview, genres and tags (comma-separated),
+  and Lock. `POST /Items/{id}` **clears every field it is not sent** (cast, provider
+  ids, dates), so `setItemMetadata` reads `/Items/{id}?userId=` at save time and
+  `applyItemMetadata` lays the edited fields over it. The sort title read back is
+  `ForcedSortName`, never `SortName`, which would freeze the server's derivation.
+  Controllers are filled from a `ref.listenManual`, not in `build`: filling them
+  notifies the fields mid-build. It pops `true` after a save.
+- Dialogs with a text field are **their own `StatefulWidget`** (`_RenameDialog`):
+  disposing a controller right after `showDialog` returns breaks the closing animation.
 
 Deliberately **not** built: installing plugins from a repository (browsing remote packages
 and checking versions against the server's ABI is a job for the machine it runs on), and

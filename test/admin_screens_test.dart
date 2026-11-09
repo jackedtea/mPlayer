@@ -120,8 +120,9 @@ class FakeAdmin implements ServerAdmin {
       ];
 
   @override
-  Future<List<AdminDevice>> devices() async => <AdminDevice>[
-        const AdminDevice(
+  Future<List<AdminDevice>> devices({String? userId}) async => <AdminDevice>[
+        if (userId == null || userId == 'u3')
+          const AdminDevice(
           id: 'd1',
           name: 'Living room TV',
           appName: 'Jellyfin Android TV',
@@ -130,18 +131,31 @@ class FakeAdmin implements ServerAdmin {
       ];
 
   @override
-  Future<List<ActivityEntry>> activity({int limit = 50}) async =>
+  Future<List<ActivityEntry>> activity({
+    int limit = 50,
+    ({String id, String name})? user,
+  }) async =>
       <ActivityEntry>[
-        const ActivityEntry(
-          id: '1',
-          name: 'minh signed in',
-          severity: ActivitySeverity.information,
-        ),
-        const ActivityEntry(
-          id: '2',
-          name: 'Playback failed',
-          severity: ActivitySeverity.error,
-        ),
+        if (user == null)
+          const ActivityEntry(
+            id: '1',
+            name: 'minh signed in',
+            severity: ActivitySeverity.information,
+            userId: 'u1',
+          ),
+        if (user == null || user.id == 'u3')
+          const ActivityEntry(
+            id: '3',
+            name: 'kids is playing Bluey',
+            userId: 'u3',
+          ),
+        // The server's own line, caused by no account.
+        if (user == null)
+          const ActivityEntry(
+            id: '2',
+            name: 'Playback failed',
+            severity: ActivitySeverity.error,
+          ),
       ];
 
   @override
@@ -210,6 +224,50 @@ class FakeAdmin implements ServerAdmin {
   Future<void> shutdownServer() async => calls.add('shutdown');
 
   @override
+  Future<List<AdminLibraryFolder>> libraryFolders() async =>
+      const <AdminLibraryFolder>[
+        AdminLibraryFolder(
+          name: 'Films',
+          itemId: 'lib-films',
+          kind: 'movies',
+          paths: <String>['/media/films'],
+        ),
+      ];
+
+  @override
+  Future<void> refreshItem(String itemId, MetadataRefresh mode) async =>
+      calls.add('refresh:$itemId:${mode.name}');
+
+  @override
+  Future<void> renameLibrary(String name, String newName) async =>
+      calls.add('renameLibrary:$name:$newName');
+
+  @override
+  Future<void> deleteLibrary(String name) async =>
+      calls.add('deleteLibrary:$name');
+
+  @override
+  Future<void> deleteItem(String itemId) async =>
+      calls.add('deleteItem:$itemId');
+
+  final Map<String, ItemMetadata> savedMetadata = <String, ItemMetadata>{};
+
+  @override
+  Future<ItemMetadata> itemMetadata(String itemId) async =>
+      savedMetadata[itemId] ??
+      const ItemMetadata(
+        name: 'Dune',
+        year: 2021,
+        genres: <String>['Science Fiction'],
+      );
+
+  @override
+  Future<void> setItemMetadata(String itemId, ItemMetadata metadata) async {
+    calls.add('metadata:$itemId');
+    savedMetadata[itemId] = metadata;
+  }
+
+  @override
   Future<void> dispose() async {}
 }
 
@@ -248,10 +306,14 @@ Future<FakeAdmin?> pumpAdmin(
 
 /// The editor's own list. `Scrollable.first` would be the users list under
 /// it once the editor was pushed from there.
+///
+/// Vertical only: the tabs' own `PageView` is a horizontal scrollable too.
 final Finder _editorScrollable = find
     .descendant(
       of: find.byType(AdminUserPage),
-      matching: find.byType(Scrollable),
+      matching: find.byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+      ),
     )
     .first;
 
@@ -631,7 +693,164 @@ void main() {
       expect(find.text('minh signed in'), findsOneWidget);
       expect(find.text('Playback failed'), findsOneWidget);
       expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.info_outline_rounded), findsNWidgets(2));
+    });
+  });
+
+  group('an account in two tabs', () {
+    testWidgets('Profile holds the editor and its Save', (tester) async {
+      await pumpAdmin(tester, '/admin/users/u3');
+
+      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('Activity'), findsOneWidget);
+      expect(find.text('Library access'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+    });
+
+    testWidgets('Activity shows the account own devices and log, no Save',
+        (tester) async {
+      await pumpAdmin(tester, '/admin/users/u3');
+
+      await tester.tap(find.text('Activity'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Living room TV'), findsOneWidget);
+      expect(find.text('kids is playing Bluey'), findsOneWidget);
+      // Someone else's line is not in it.
+      expect(find.text('minh signed in'), findsNothing);
+      expect(find.widgetWithText(FilledButton, 'Save'), findsNothing);
+    });
+
+    testWidgets('an account with nothing logged says so', (tester) async {
+      await pumpAdmin(tester, '/admin/users/u1');
+
+      await tester.tap(find.text('Activity'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No devices have signed in.'), findsOneWidget);
+      expect(
+        find.text('Nothing logged for this account recently.'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('libraries', () {
+    testWidgets('the dashboard leads to them', (tester) async {
+      await pumpAdmin(tester, '/admin');
+
+      await tester.tap(find.text('Libraries'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Films'), findsOneWidget);
+      expect(find.text('/media/films'), findsOneWidget);
+    });
+
+    testWidgets('scanning one asks the server for that library only',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/libraries');
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Scan library'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.calls, <String>['refresh:lib-films:scan']);
+    });
+
+    testWidgets('a refresh asks how deep to go', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/libraries');
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Refresh metadata'));
+      await tester.pumpAndSettle();
+      expect(admin!.calls, isEmpty);
+
+      await tester.tap(find.text('Replace all metadata'));
+      await tester.pumpAndSettle();
+      expect(admin.calls, <String>['refresh:lib-films:replaceAll']);
+    });
+
+    testWidgets('removing one asks first, and says the files stay',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/libraries');
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove library'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remove Films?'), findsOneWidget);
+      expect(find.textContaining('not touched'), findsOneWidget);
+      expect(admin!.calls, isEmpty);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove library'));
+      await tester.pumpAndSettle();
+      expect(admin.calls, <String>['deleteLibrary:Films']);
+    });
+
+    testWidgets('renaming sends the old name and the new one', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/libraries');
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename library'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Movies');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.calls, <String>['renameLibrary:Films:Movies']);
+    });
+  });
+
+  group('the metadata editor', () {
+    testWidgets('opens on what the server holds, with nothing to save',
+        (tester) async {
+      await pumpAdmin(tester, '/admin/item/i1?title=Dune');
+
+      expect(find.widgetWithText(TextField, 'Dune'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '2021'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Science Fiction'), findsOneWidget);
+      final save = find.widgetWithText(FilledButton, 'Save');
+      expect(tester.widget<FilledButton>(save).onPressed, isNull);
+    });
+
+    testWidgets('saves the fields typed, genres split on commas',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/item/i1?title=Dune');
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Dune'),
+        'Dune: Part One',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Science Fiction'),
+        'Science Fiction, Adventure,, adventure',
+      );
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.calls, <String>['metadata:i1']);
+      final saved = admin.savedMetadata['i1']!;
+      expect(saved.name, 'Dune: Part One');
+      expect(saved.year, 2021);
+      expect(saved.genres, <String>['Science Fiction', 'Adventure']);
+    });
+
+    testWidgets('a year that is not one cannot be saved', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/item/i1?title=Dune');
+
+      await tester.enterText(find.widgetWithText(TextField, '2021'), '20x1');
+      await tester.pump();
+
+      expect(find.text('Not a year.'), findsOneWidget);
+      final save = find.widgetWithText(FilledButton, 'Save');
+      expect(tester.widget<FilledButton>(save).onPressed, isNull);
+      expect(admin!.calls, isEmpty);
     });
   });
 }
