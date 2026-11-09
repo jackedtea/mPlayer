@@ -126,6 +126,78 @@ void main() {
       expect(found, isA<UpdateAvailable>());
     });
 
+    test('the rolling dev release is read as the build it holds', () {
+      Map<String, Object> rolling(String name, List<String> files) =>
+          <String, Object>{
+            'tag_name': 'dev',
+            'name': name,
+            'prerelease': true,
+            'html_url': 'https://github.com/x/releases/tag/dev',
+            'assets': <Object>[
+              for (final f in files)
+                <String, Object>{
+                  'name': f,
+                  'browser_download_url': 'https://dl/$f',
+                  'size': 1,
+                },
+            ],
+          };
+
+      final release = devReleaseFromJson(rolling(
+        'mPlayer 1.0.0-dev.560ac9e',
+        <String>['mPlayer-1.0.0-dev-560ac9e-android-arm64-v8a.apk'],
+      ));
+      expect(release?.tag, 'dev-560ac9e');
+      expect(isUpdate(release!, '1.0.0-dev-560ac9e'), isFalse);
+      expect(isUpdate(release, '1.0.0-dev-e8eb495'), isTrue);
+      expect(
+        assetFor(release, UpdatePlatform.android, abis: <String>['arm64-v8a'])
+            ?.name,
+        endsWith('arm64-v8a.apk'),
+      );
+
+      // A title without the commit falls back to the file names.
+      expect(
+        devReleaseFromJson(rolling(
+          'Dev',
+          <String>['mPlayer-1.0.0-dev-abc1234-windows-x64-setup.exe'],
+        ))?.tag,
+        'dev-abc1234',
+      );
+      // And with neither, there is nothing to offer.
+      expect(devReleaseFromJson(rolling('Dev', <String>[])), isNull);
+    });
+
+    test('the newest dev build is the last published, not the first listed',
+        () {
+      Map<String, Object> entry(String tag, String published,
+              {bool prerelease = true}) =>
+          <String, Object>{
+            'tag_name': tag,
+            'prerelease': prerelease,
+            'draft': false,
+            'published_at': published,
+            'html_url': 'https://github.com/x/releases/tag/$tag',
+          };
+
+      // The order GitHub really answered in on 2026-11-09.
+      final listing = <Object>[
+        entry('dev-e8eb495', '2026-11-08T02:02:22Z'),
+        entry('dev-a19387b', '2026-11-08T13:55:04Z'),
+        entry('dev-579b6f5', '2026-11-08T03:23:23Z'),
+        entry('dev-560ac9e', '2026-11-09T00:05:27Z'),
+        entry('dev-245e2f5', '2026-11-08T14:13:11Z'),
+        entry('v9.9.9', '2026-11-10T00:00:00Z', prerelease: false),
+      ];
+
+      final newest = newestDevRelease(listing);
+      expect(newest?.tag, 'dev-560ac9e');
+      // And so the build that is running is up to date.
+      expect(isUpdate(newest!, '1.0.0-dev-560ac9e'), isFalse);
+      expect(newestDevRelease(<Object>[]), isNull);
+      expect(newestDevRelease(null), isNull);
+    });
+
     test('a GitHub release reads its files', () {
       final release = releaseFromJson(<String, dynamic>{
         'tag_name': 'v1.3.0',

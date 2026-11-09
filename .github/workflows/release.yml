@@ -637,6 +637,60 @@ jobs:
           files: artifacts/*
           fail_on_unmatched_files: true
 
+      # One fixed release, tagged `dev`, that always holds the newest dev
+      # build: the tag is moved to the commit just built and the files are
+      # swapped for its own. A dev build of the app asks for exactly this
+      # (`/releases/tags/dev`) rather than scanning the release list, whose
+      # order GitHub does not keep — on 2026-11-09 it offered a morning build
+      # to that night's. The per-commit `dev-<sha>` release above stays, for
+      # history and the Telegram links.
+      #
+      # The title must keep the commit in it (`…-dev.<sha>`): it is how the
+      # app tells which build the release holds. New files go up before the
+      # old ones come down (their names carry the commit, so they never
+      # clash), so at no moment does the release hold nothing to install.
+      #
+      # The tag `dev` does not match the `dev-*` patterns that "Already
+      # built?" and the changelog look for, so it never stands in for a
+      # build there.
+      - name: Update the rolling dev release
+        if: needs.prepare.outputs.is_dev == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+          TITLE: ${{ needs.prepare.outputs.release_name }}
+          NOTES: ${{ steps.notes.outputs.notes }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$NOTES" > notes.md
+
+          # Move the tag, or make it the first time.
+          if gh api "repos/$REPO/git/ref/tags/dev" >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$REPO/git/refs/tags/dev" \
+              -f sha="$SHA" -F force=true >/dev/null
+          else
+            gh api -X POST "repos/$REPO/git/refs" \
+              -f ref=refs/tags/dev -f sha="$SHA" >/dev/null
+          fi
+
+          if gh release view dev --repo "$REPO" >/dev/null 2>&1; then
+            OLD="$(gh release view dev --repo "$REPO" --json assets -q '.assets[].name')"
+            gh release edit dev --repo "$REPO" \
+              --title "$TITLE" --notes-file notes.md --prerelease
+            gh release upload dev artifacts/* --repo "$REPO" --clobber
+            NEW="$(cd artifacts && ls -1)"
+            for name in $OLD; do
+              if ! printf '%s\n' "$NEW" | grep -qxF "$name"; then
+                gh release delete-asset dev "$name" --repo "$REPO" -y
+              fi
+            done
+          else
+            gh release create dev artifacts/* --repo "$REPO" \
+              --title "$TITLE" --notes-file notes.md \
+              --prerelease --latest=false --verify-tag
+          fi
+
   # ---------------------------------------------------------------------------
   # Telegram
   # ---------------------------------------------------------------------------

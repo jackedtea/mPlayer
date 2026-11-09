@@ -181,8 +181,16 @@ Also open:
 - **Updates** (`core/update_check.dart`, `core/updater.dart`,
   `features/settings/update_dialog.dart`). Channel-aware: a release build
   asks `/releases/latest` and compares numbers; a dev build (`-dev-<sha>`)
-  scans for the newest `dev-*` prerelease and compares commits, because
-  "latest" never points at a prerelease. The launch check lives in
+  asks only `/releases/tags/dev` and compares commits, because "latest"
+  never points at a prerelease. That rolling `dev` release is kept by the
+  workflow's "Update the rolling dev release" step: tag moved to the built
+  commit, files swapped (new up before old down). Its tag says nothing about
+  the build, so `devReleaseFromJson` reads the commit from the title
+  (`…-dev.<sha>`, keep it there) or a file name and re-tags it `dev-<sha>`.
+  **Never scan `/releases` for the newest**: GitHub does not keep that list
+  in order, and a 2026-11-09 dev build was offered an older one that way.
+  The scan (`newestDevRelease`, by `published_at`) survives only as the
+  fallback while `tags/dev` is a 404. The launch check lives in
   `AdaptiveScaffold` (never over the player), runs in **release builds
   only** (`updateAutoCheckAllowedProvider` = `kReleaseMode`, which also keeps
   widget tests off the network), at most every 20 h (a day with slack, so
@@ -303,6 +311,13 @@ Also open:
   keeping http(s) alone, drawn by `ExternalLinks` (`detail_sections.dart`)
   as chips opened with `url_launcher` — at the foot of the movie and episode
   screens and of the series' About tab.
+- **Person page** (`person_page.dart`): the person is an ordinary item, so
+  `serverItemProvider(personId)` brings the photo, biography (`overview`),
+  born (`premiereDate`), died (`endDate`, the full date — `endYear` cannot
+  give an age), birth place (`productionLocations`, on the detail fetch) and
+  links. Photo beside the facts; biography and links under them on a phone,
+  beside on wider. Credits split into Movies and Shows grids. A person the
+  server will not describe falls back to the name from the query string.
 - **Mouse back/forward** (`app/mouse_navigation.dart`, wrapped in
   `MaterialApp.router`'s builder): back goes through
   `routerDelegate.popRoute()` so PopScope screens are asked first; forward

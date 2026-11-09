@@ -25,7 +25,9 @@ const _api = 'https://api.github.com/repos/jackedtea/mPlayer/releases';
 /// `v1.2.0`, and every `dev` push as a **prerelease** tagged `dev-<sha>`,
 /// built with a `.canary` application id and a version name ending
 /// `-dev-<sha>`. GitHub's "latest" never points at a prerelease, so a dev
-/// build asking it would never hear of the next dev build.
+/// build asking it would never hear of the next dev build — it asks the
+/// rolling release tagged `dev` instead, which CI moves to every new dev
+/// build, and nothing else.
 enum UpdateChannel {
   stable,
   dev;
@@ -198,6 +200,67 @@ ReleaseInfo? releaseFromJson(Object? json) {
   );
 }
 
+/// The rolling `dev` release, read as the build it holds.
+///
+/// Its tag is always `dev`, so the commit comes from the title CI gives it
+/// (`mPlayer 1.0.0-dev.<sha>`), else from a file name
+/// (`mPlayer-1.0.0-dev-<sha>-…`), and the result is tagged `dev-<sha>` —
+/// what [isUpdate] compares and what "skip this version" remembers, so
+/// skipping one dev build does not silence the next. Null when neither
+/// names a commit: an update that cannot say what it is is not offered.
+@visibleForTesting
+ReleaseInfo? devReleaseFromJson(Object? json) {
+  final release = releaseFromJson(json);
+  if (release == null || json is! Map) return null;
+
+  final sha = _devSha(json['name'] as String? ?? '') ??
+      release.assets.map((a) => _devSha(a.name)).nonNulls.firstOrNull;
+  if (sha == null) return null;
+
+  return ReleaseInfo(
+    version: release.version,
+    tag: 'dev-$sha',
+    url: release.url,
+    notes: release.notes,
+    assets: release.assets,
+  );
+}
+
+/// The newest `dev-*` prerelease in a `/releases` listing, or null.
+///
+/// Only a fallback now, for before the rolling `dev` release exists.
+///
+/// Newest by **publish time**, not by position: the listing is not in
+/// order. Several dev builds from one day come back shuffled — on
+/// 2026-11-09 the morning's `dev-e8eb495` sat first and that night's
+/// `dev-560ac9e` fourth — and taking the first offered a build from hours
+/// earlier as the update. `created_at` is no better: it is the tagged
+/// commit's time, and an older commit can be released after a newer one.
+@visibleForTesting
+ReleaseInfo? newestDevRelease(Object? listing) {
+  if (listing is! List) return null;
+
+  Map<dynamic, dynamic>? newest;
+  DateTime? newestAt;
+  for (final Object? entry in listing) {
+    if (entry is! Map ||
+        entry['prerelease'] != true ||
+        entry['draft'] == true ||
+        !(entry['tag_name'] as String? ?? '').startsWith('dev-')) {
+      continue;
+    }
+    final at = DateTime.tryParse(
+      entry['published_at'] as String? ?? entry['created_at'] as String? ?? '',
+    );
+    if (at == null) continue;
+    if (newestAt == null || at.isAfter(newestAt)) {
+      newest = entry;
+      newestAt = at;
+    }
+  }
+  return newest == null ? null : releaseFromJson(newest);
+}
+
 /// The newest release on [channel], or null when GitHub cannot be reached.
 ///
 /// Null rather than an exception: failing to reach GitHub is not an error the
@@ -223,21 +286,21 @@ Future<ReleaseInfo?> latestRelease({
         return releaseFromJson(response.data);
 
       case UpdateChannel.dev:
-        // Newest first; the first dev prerelease is the newest dev build.
         final response = await dio.get<Object?>(
-          _api,
-          queryParameters: <String, String>{'per_page': '15'},
+          '$_api/tags/dev',
+          // A 404 is an answer here (see below), not a failure.
+          options: Options(validateStatus: (code) => code == 200 || code == 404),
         );
-        final list = response.data;
-        if (list is! List) return null;
-        for (final Object? entry in list) {
-          if (entry is Map &&
-              entry['prerelease'] == true &&
-              (entry['tag_name'] as String? ?? '').startsWith('dev-')) {
-            return releaseFromJson(entry);
-          }
-        }
-        return null;
+        if (response.statusCode == 200) return devReleaseFromJson(response.data);
+
+        // No rolling release yet: the workflow that keeps it had not run
+        // when this build was made. The newest of the per-commit ones, until
+        // it has.
+        final listing = await dio.get<Object?>(
+          _api,
+          queryParameters: <String, String>{'per_page': '30'},
+        );
+        return newestDevRelease(listing.data);
     }
   } catch (e) {
     debugPrint('Update check failed: $e');
