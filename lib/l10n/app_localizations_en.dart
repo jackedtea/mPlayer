@@ -1779,6 +1779,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get externalLinks => 'Links';
 
   @override
+  String get mediaImages => 'Images';
+
+  @override
+  String get imagePrimary => 'Poster';
+
+  @override
+  String get imageBackdrop => 'Backdrop';
+
+  @override
+  String get imageLogo => 'Logo';
+
+  @override
+  String get imageThumb => 'Thumbnail';
+
+  @override
+  String get imageBanner => 'Banner';
+
+  @override
+  String get imageArt => 'Clear art';
+
+  @override
+  String get imageDisc => 'Disc';
+
+  @override
+  String imageOf(int index, int count) {
+    return '$index of $count';
+  }
+
+  @override
   String personBorn(String date) {
     return 'Born: $date';
   }

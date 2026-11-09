@@ -870,6 +870,68 @@ List<ServerLink> _linksOf(Map<String, dynamic> json) {
   return links;
 }
 
+/// The order a gallery shows an item's pictures in: the poster first, as the
+/// thing itself, then the backdrops, then the rest.
+const _imageOrder = <String>[
+  'Primary', 'Backdrop', 'Logo', 'Thumb', 'Banner', 'Art', 'Disc', 'Box',
+  'BoxRear', 'Screenshot', 'Menu',
+];
+
+/// `/Items/{id}/Images`, sorted for a gallery. Chapter stills and profile
+/// pictures are left out: the first belong to the scrubber, the second to
+/// users rather than to media.
+List<ServerImage> serverImagesFromJson(Object? json) {
+  final images = <ServerImage>[
+    if (json is List)
+      for (final Object? entry in json)
+        if (entry is Map &&
+            entry['ImageType'] is String &&
+            entry['ImageTag'] is String &&
+            entry['ImageType'] != 'Chapter' &&
+            entry['ImageType'] != 'Profile')
+          ServerImage(
+            type: entry['ImageType'] as String,
+            tag: entry['ImageTag'] as String,
+            index: entry['ImageIndex'] as int? ?? 0,
+            width: entry['Width'] as int?,
+            height: entry['Height'] as int?,
+          ),
+  ];
+  int rank(String type) {
+    final i = _imageOrder.indexOf(type);
+    return i < 0 ? _imageOrder.length : i;
+  }
+
+  images.sort((a, b) {
+    final byType = rank(a.type).compareTo(rank(b.type));
+    return byType != 0 ? byType : a.index.compareTo(b.index);
+  });
+  return images;
+}
+
+/// The address of one [ServerImage] of [itemId].
+Uri itemImageUrlFor(
+  String itemId,
+  ServerImage image, {
+  required Uri base,
+  int? maxWidth,
+}) {
+  return base.replace(
+    pathSegments: <String>[
+      ...base.pathSegments.where((s) => s.isNotEmpty),
+      'Items',
+      itemId,
+      'Images',
+      image.type,
+      '${image.index}',
+    ],
+    queryParameters: <String, String>{
+      'tag': image.tag,
+      if (maxWidth != null) 'maxWidth': '$maxWidth',
+    },
+  );
+}
+
 /// `VideoRangeType` says which HDR ("HDR10", "DOVI"); `VideoRange` only
 /// SDR or HDR. "Unknown" from either is no answer.
 String? _videoRange(Map<String, dynamic> json) {

@@ -3242,6 +3242,60 @@ abstract class AppLocalizations {
   /// **'Links'**
   String get externalLinks;
 
+  /// No description provided for @mediaImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get mediaImages;
+
+  /// No description provided for @imagePrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Poster'**
+  String get imagePrimary;
+
+  /// No description provided for @imageBackdrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Backdrop'**
+  String get imageBackdrop;
+
+  /// No description provided for @imageLogo.
+  ///
+  /// In en, this message translates to:
+  /// **'Logo'**
+  String get imageLogo;
+
+  /// No description provided for @imageThumb.
+  ///
+  /// In en, this message translates to:
+  /// **'Thumbnail'**
+  String get imageThumb;
+
+  /// No description provided for @imageBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner'**
+  String get imageBanner;
+
+  /// No description provided for @imageArt.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear art'**
+  String get imageArt;
+
+  /// No description provided for @imageDisc.
+  ///
+  /// In en, this message translates to:
+  /// **'Disc'**
+  String get imageDisc;
+
+  /// No description provided for @imageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{index} of {count}'**
+  String imageOf(int index, int count);
+
   /// No description provided for @personBorn.
   ///
   /// In en, this message translates to:

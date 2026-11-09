@@ -269,6 +269,13 @@ class FakeLibrarySource implements MediaLibrarySource {
   Future<int> itemCount(String viewId, {bool groupCollections = false}) async => 0;
 
   @override
+  Future<List<ServerImage>> images(String itemId) async =>
+      const <ServerImage>[];
+
+  @override
+  Uri? itemImageUrl(String itemId, ServerImage image, {int? maxWidth}) => null;
+
+  @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) => null;
 
   @override

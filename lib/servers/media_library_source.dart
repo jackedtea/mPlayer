@@ -544,6 +544,36 @@ class MediaSegment {
 
 /// A chapter as the *server* holds it, with the artwork it generated for it.
 ///
+/// One picture of an item, as `/Items/{id}/Images` lists it.
+@immutable
+class ServerImage {
+  const ServerImage({
+    required this.type,
+    required this.tag,
+    this.index = 0,
+    this.width,
+    this.height,
+  });
+
+  /// The server's image type: `Primary`, `Backdrop`, `Logo`, `Thumb`,
+  /// `Banner`, `Art`, `Disc`, …
+  final String type;
+
+  /// Which one of its type: the *n*th backdrop. Zero for the single kinds.
+  final int index;
+  final String tag;
+  final int? width;
+  final int? height;
+
+  /// Width over height, or null where the server did not measure it.
+  double? get aspectRatio {
+    final w = width;
+    final h = height;
+    if (w == null || h == null || w <= 0 || h <= 0) return null;
+    return w / h;
+  }
+}
+
 /// One of an item's [ServerItem.links]: "IMDb" and where it goes.
 @immutable
 class ServerLink {
@@ -945,6 +975,14 @@ abstract class MediaLibrarySource {
 
   /// The still the server generated for a chapter, or null where it has none.
   ///
+  /// Every picture the server holds for [itemId] — the poster, each
+  /// backdrop, the logo, thumb, banner, clear art and disc — with its size.
+  /// Empty rather than an error where the server will not say.
+  Future<List<ServerImage>> images(String itemId);
+
+  /// One of [images] at [maxWidth] (the original where null).
+  Uri? itemImageUrl(String itemId, ServerImage image, {int? maxWidth});
+
   /// Takes the item as well as the chapter because the route is numbered
   /// rather than identified: a chapter still is the *n*th image of an item,
   /// and the chapter alone does not say whose.

@@ -313,6 +313,13 @@ Also open:
   links. Photo beside the facts; biography and links under them on a phone,
   beside on wider. Credits split into Movies and Shows grids. A person the
   server will not describe falls back to the name from the query string.
+- **Images** (`media_images.dart`): `/Items/{id}/Images` (`images`, with
+  width/height, sorted poster → backdrops → logo/thumb/banner/art/disc;
+  chapter stills and profiles left out) drawn as a row at each picture's own
+  shape — cut-outs (logo, art, disc) contained on a panel — on the movie
+  screen and the series' About tab, between cast and suggestions. A tap opens
+  `showImageViewer`: full screen, swipe or arrows, pinch to zoom, the
+  original size. Fewer than two pictures draws nothing.
 - **Mouse back/forward** (`app/mouse_navigation.dart`, wrapped in
   `MaterialApp.router`'s builder): back goes through
   `routerDelegate.popRoute()` so PopScope screens are asked first; forward

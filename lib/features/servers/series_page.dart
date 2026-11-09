@@ -21,6 +21,7 @@ import 'detail_sections.dart';
 import 'item_action_row.dart';
 import 'item_actions.dart' show downloadAllAction, showPlaylistSheet;
 import 'library_item_menu.dart';
+import 'media_images.dart';
 import 'media_info_sheet.dart';
 import 'server_library.dart';
 
@@ -816,6 +817,10 @@ class _AboutTab extends StatelessWidget {
           ),
           PeopleStrip(people: item.people),
         ],
+        MediaImagesStrip(
+          itemId: item.id,
+          padding: padding.copyWith(top: spacing.xl, bottom: 0),
+        ),
         SizedBox(height: spacing.xl),
         SimilarStrip(itemId: item.id, title: l10n.moreLikeThis),
         ExternalLinks(

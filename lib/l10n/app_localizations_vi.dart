@@ -1782,6 +1782,35 @@ class AppLocalizationsVi extends AppLocalizations {
   String get externalLinks => 'Liên kết';
 
   @override
+  String get mediaImages => 'Hình ảnh';
+
+  @override
+  String get imagePrimary => 'Poster';
+
+  @override
+  String get imageBackdrop => 'Ảnh nền';
+
+  @override
+  String get imageLogo => 'Logo';
+
+  @override
+  String get imageThumb => 'Ảnh thu nhỏ';
+
+  @override
+  String get imageBanner => 'Banner';
+
+  @override
+  String get imageArt => 'Clear art';
+
+  @override
+  String get imageDisc => 'Đĩa';
+
+  @override
+  String imageOf(int index, int count) {
+    return '$index/$count';
+  }
+
+  @override
   String personBorn(String date) {
     return 'Sinh: $date';
   }

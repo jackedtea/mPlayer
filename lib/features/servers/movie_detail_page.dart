@@ -15,6 +15,7 @@ import '../../widgets/collapsing_header.dart';
 import '../../widgets/detail_header.dart';
 import 'detail_sections.dart';
 import 'item_action_row.dart';
+import 'media_images.dart';
 import 'media_info_sheet.dart';
 import 'server_library.dart';
 
@@ -162,6 +163,10 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
                 ),
                 PeopleStrip(people: item.people),
               ],
+              MediaImagesStrip(
+                itemId: item.id,
+                padding: padding.copyWith(top: spacing.xl, bottom: 0),
+              ),
               SizedBox(height: spacing.xl),
               SimilarStrip(itemId: item.id, title: l10n.moreLikeThis),
               ExternalLinks(

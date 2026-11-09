@@ -829,6 +829,20 @@ class JellyfinSource implements MediaLibrarySource {
   }
 
   @override
+  Future<List<ServerImage>> images(String itemId) async {
+    try {
+      final json = await _get('/Items/$itemId/Images', const <String, String>{});
+      return serverImagesFromJson(json['Items']);
+    } on ServerException {
+      return const <ServerImage>[];
+    }
+  }
+
+  @override
+  Uri? itemImageUrl(String itemId, ServerImage image, {int? maxWidth}) =>
+      itemImageUrlFor(itemId, image, base: _base, maxWidth: maxWidth);
+
+  @override
   Uri? imageUrl(ServerItem item, {int? maxWidth}) =>
       imageUrlFor(item, base: _base, maxWidth: maxWidth);
 
