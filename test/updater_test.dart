@@ -126,48 +126,6 @@ void main() {
       expect(found, isA<UpdateAvailable>());
     });
 
-    test('the rolling dev release is read as the build it holds', () {
-      Map<String, Object> rolling(String name, List<String> files) =>
-          <String, Object>{
-            'tag_name': 'dev',
-            'name': name,
-            'prerelease': true,
-            'html_url': 'https://github.com/x/releases/tag/dev',
-            'assets': <Object>[
-              for (final f in files)
-                <String, Object>{
-                  'name': f,
-                  'browser_download_url': 'https://dl/$f',
-                  'size': 1,
-                },
-            ],
-          };
-
-      final release = devReleaseFromJson(rolling(
-        'mPlayer 1.0.0-dev.560ac9e',
-        <String>['mPlayer-1.0.0-dev-560ac9e-android-arm64-v8a.apk'],
-      ));
-      expect(release?.tag, 'dev-560ac9e');
-      expect(isUpdate(release!, '1.0.0-dev-560ac9e'), isFalse);
-      expect(isUpdate(release, '1.0.0-dev-e8eb495'), isTrue);
-      expect(
-        assetFor(release, UpdatePlatform.android, abis: <String>['arm64-v8a'])
-            ?.name,
-        endsWith('arm64-v8a.apk'),
-      );
-
-      // A title without the commit falls back to the file names.
-      expect(
-        devReleaseFromJson(rolling(
-          'Dev',
-          <String>['mPlayer-1.0.0-dev-abc1234-windows-x64-setup.exe'],
-        ))?.tag,
-        'dev-abc1234',
-      );
-      // And with neither, there is nothing to offer.
-      expect(devReleaseFromJson(rolling('Dev', <String>[])), isNull);
-    });
-
     test('the newest dev build is the last published, not the first listed',
         () {
       Map<String, Object> entry(String tag, String published,

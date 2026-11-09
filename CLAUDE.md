@@ -181,16 +181,11 @@ Also open:
 - **Updates** (`core/update_check.dart`, `core/updater.dart`,
   `features/settings/update_dialog.dart`). Channel-aware: a release build
   asks `/releases/latest` and compares numbers; a dev build (`-dev-<sha>`)
-  asks only `/releases/tags/dev` and compares commits, because "latest"
-  never points at a prerelease. That rolling `dev` release is kept by the
-  workflow's "Update the rolling dev release" step: tag moved to the built
-  commit, files swapped (new up before old down). Its tag says nothing about
-  the build, so `devReleaseFromJson` reads the commit from the title
-  (`…-dev.<sha>`, keep it there) or a file name and re-tags it `dev-<sha>`.
-  **Never scan `/releases` for the newest**: GitHub does not keep that list
-  in order, and a 2026-11-09 dev build was offered an older one that way.
-  The scan (`newestDevRelease`, by `published_at`) survives only as the
-  fallback while `tags/dev` is a 404. The launch check lives in
+  takes the `dev-<sha>` prerelease with the latest `published_at` and
+  compares commits, because "latest" never points at a prerelease.
+  **Never take the first one listed**: GitHub does not keep `/releases` in
+  order, and on 2026-11-09 a dev build was offered an older one that way
+  (`newestDevRelease`). The launch check lives in
   `AdaptiveScaffold` (never over the player), runs in **release builds
   only** (`updateAutoCheckAllowedProvider` = `kReleaseMode`, which also keeps
   widget tests off the network), at most every 20 h (a day with slack, so
