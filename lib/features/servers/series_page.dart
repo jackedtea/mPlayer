@@ -638,47 +638,52 @@ class _EpisodeRowState extends State<_EpisodeRow> {
               ),
               SizedBox(width: spacing.md),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(
-                      '${episode.number}. ${episode.title}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.texts.titleSmall?.copyWith(
-                        color: scheme.onSurface,
+                // Dimmed with the still once watched, so the whole row
+                // reads as done rather than only its picture.
+                child: Opacity(
+                  opacity: episode.watched ? 0.55 : 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        '${episode.number}. ${episode.title}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.titleSmall?.copyWith(
+                          color: scheme.onSurface,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: spacing.xs / 2),
-                    Text(
-                      episode.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.texts.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                      SizedBox(height: spacing.xs / 2),
+                      Text(
+                        episode.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: spacing.xs),
-                    Row(
-                      children: <Widget>[
-                        Flexible(
-                          child: Text(
-                            episode.meta,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.texts.bodySmall?.copyWith(
-                              color: scheme.outline,
+                      SizedBox(height: spacing.xs),
+                      Row(
+                        children: <Widget>[
+                          Flexible(
+                            child: Text(
+                              episode.meta,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.texts.bodySmall?.copyWith(
+                                color: scheme.outline,
+                              ),
                             ),
                           ),
-                        ),
-                        if (item != null) ...<Widget>[
-                          SizedBox(width: spacing.sm),
-                          DownloadBadge(itemId: item.id),
+                          if (item != null) ...<Widget>[
+                            SizedBox(width: spacing.sm),
+                            DownloadBadge(itemId: item.id),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               // No play button here: the still is the play affordance now, and
