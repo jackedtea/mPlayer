@@ -634,6 +634,93 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminDiscard => 'Discard';
 
   @override
+  String get adminAddLibrary => 'Add library';
+
+  @override
+  String get adminLibraryKind => 'Content type';
+
+  @override
+  String get adminKindMovies => 'Movies';
+
+  @override
+  String get adminKindShows => 'Shows';
+
+  @override
+  String get adminKindMusic => 'Music';
+
+  @override
+  String get adminKindMusicVideos => 'Music videos';
+
+  @override
+  String get adminKindHomeVideos => 'Home videos and photos';
+
+  @override
+  String get adminKindBooks => 'Books';
+
+  @override
+  String get adminKindMixed => 'Mixed movies and shows';
+
+  @override
+  String get adminLibraryFolders => 'Folders';
+
+  @override
+  String get adminLibraryNeedsFolder =>
+      'Add at least one folder on the server for this library to read.';
+
+  @override
+  String get adminAddFolder => 'Add folder';
+
+  @override
+  String get adminRemoveFolder => 'Remove folder';
+
+  @override
+  String get adminRemoveFolderQuestion => 'Remove this folder?';
+
+  @override
+  String adminRemoveFolderBody(String path) {
+    return '$path stays on disk, but the library stops reading it and forgets what was in it.';
+  }
+
+  @override
+  String get adminFolderAdded => 'Folder added. The library is being scanned.';
+
+  @override
+  String get adminFolderRemoved => 'Folder removed.';
+
+  @override
+  String adminLibraryCreated(String name) {
+    return '$name created. Its first scan has started.';
+  }
+
+  @override
+  String get adminPickFolder => 'Choose a folder on the server';
+
+  @override
+  String get adminPickFolderHint => 'Open a drive first';
+
+  @override
+  String get adminUseFolder => 'Use this folder';
+
+  @override
+  String get adminFolderPath => 'Path on the server';
+
+  @override
+  String get adminFolderPathHint =>
+      'Or type one, such as a network share, and open it.';
+
+  @override
+  String get adminOpenFolder => 'Open';
+
+  @override
+  String get adminFolderUp => 'Up one level';
+
+  @override
+  String get adminNoDrives => 'The server lists no drives.';
+
+  @override
+  String get adminFolderEmpty => 'No folders inside.';
+
+  @override
   String get adminDirectPlay => 'Direct play';
 
   @override

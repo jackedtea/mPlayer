@@ -56,6 +56,7 @@ const _routes = <String>[
   '/admin/users',
   '/admin/users/u1',
   '/admin/libraries',
+  '/admin/libraries/new',
   '/admin/item/i1',
   '/admin/storage',
   '/admin/logs',

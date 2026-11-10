@@ -636,6 +636,93 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminDiscard => 'Bỏ';
 
   @override
+  String get adminAddLibrary => 'Thêm thư viện';
+
+  @override
+  String get adminLibraryKind => 'Loại nội dung';
+
+  @override
+  String get adminKindMovies => 'Phim';
+
+  @override
+  String get adminKindShows => 'Phim bộ';
+
+  @override
+  String get adminKindMusic => 'Nhạc';
+
+  @override
+  String get adminKindMusicVideos => 'Video ca nhạc';
+
+  @override
+  String get adminKindHomeVideos => 'Video gia đình và ảnh';
+
+  @override
+  String get adminKindBooks => 'Sách';
+
+  @override
+  String get adminKindMixed => 'Phim lẻ và phim bộ lẫn lộn';
+
+  @override
+  String get adminLibraryFolders => 'Thư mục';
+
+  @override
+  String get adminLibraryNeedsFolder =>
+      'Thêm ít nhất một thư mục trên máy chủ để thư viện này đọc.';
+
+  @override
+  String get adminAddFolder => 'Thêm thư mục';
+
+  @override
+  String get adminRemoveFolder => 'Gỡ thư mục';
+
+  @override
+  String get adminRemoveFolderQuestion => 'Gỡ thư mục này?';
+
+  @override
+  String adminRemoveFolderBody(String path) {
+    return '$path vẫn nằm trên ổ đĩa, nhưng thư viện sẽ ngừng đọc và quên những gì có trong đó.';
+  }
+
+  @override
+  String get adminFolderAdded => 'Đã thêm thư mục. Thư viện đang được quét.';
+
+  @override
+  String get adminFolderRemoved => 'Đã gỡ thư mục.';
+
+  @override
+  String adminLibraryCreated(String name) {
+    return 'Đã tạo $name. Lần quét đầu tiên đã bắt đầu.';
+  }
+
+  @override
+  String get adminPickFolder => 'Chọn thư mục trên máy chủ';
+
+  @override
+  String get adminPickFolderHint => 'Hãy mở một ổ đĩa trước';
+
+  @override
+  String get adminUseFolder => 'Dùng thư mục này';
+
+  @override
+  String get adminFolderPath => 'Đường dẫn trên máy chủ';
+
+  @override
+  String get adminFolderPathHint =>
+      'Hoặc gõ một đường dẫn, ví dụ ổ chia sẻ mạng, rồi mở nó.';
+
+  @override
+  String get adminOpenFolder => 'Mở';
+
+  @override
+  String get adminFolderUp => 'Lên một cấp';
+
+  @override
+  String get adminNoDrives => 'Máy chủ không liệt kê ổ đĩa nào.';
+
+  @override
+  String get adminFolderEmpty => 'Không có thư mục con nào.';
+
+  @override
   String get adminDirectPlay => 'Phát trực tiếp';
 
   @override

@@ -526,3 +526,27 @@ String logTail(String text, int maxBytes) {
 
 /// The server's minimum severity for "problems only".
 bool isProblem(ActivityEntry e) => e.severity != ActivitySeverity.information;
+
+/// One entry of `/Environment/DirectoryContents` or `/Environment/Drives`, or
+/// null for a file or an entry with no path.
+ServerFolder? serverFolderFromJson(Map<String, dynamic> json) {
+  final path = json['Path'] as String?;
+  if (path == null || path.isEmpty) return null;
+  // Drives carry no Type; a listing asked for folders only still says so.
+  final type = json['Type'];
+  if (type != null && type != 'Directory' && type != 1) return null;
+  final name = (json['Name'] as String?)?.trim() ?? '';
+  return ServerFolder(name: name.isEmpty ? path : name, path: path);
+}
+
+/// The library kinds a person can make, in the order Jellyfin's own dialog
+/// lists them. Null is mixed content, which the server is sent as no type.
+const List<String?> libraryKinds = <String?>[
+  'movies',
+  'tvshows',
+  'music',
+  'musicvideos',
+  'homevideos',
+  'books',
+  null,
+];

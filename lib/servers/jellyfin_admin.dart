@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import 'jellyfin_admin_dto.dart';
@@ -387,6 +389,107 @@ class JellyfinAdmin implements ServerAdmin {
     '/Library/VirtualFolders',
     <String, String>{'name': name, 'refreshLibrary': 'true'},
   );
+
+  @override
+  Future<void> addLibrary({
+    required String name,
+    required String? kind,
+    required List<String> paths,
+  }) async {
+    // The paths go comma-separated in the query, which a path holding a
+    // comma would split in two. Those are added one by one afterwards
+    // instead, through the route that takes a path in its body.
+    final plain = <String>[for (final p in paths) if (!p.contains(',')) p];
+    final awkward = <String>[for (final p in paths) if (p.contains(',')) p];
+
+    await _send(
+      () => _dio.postUri<dynamic>(
+        _url('/Library/VirtualFolders', <String, String>{
+          'name': name.trim(),
+          'collectionType': ?kind,
+          if (plain.isNotEmpty) 'paths': plain.join(','),
+          // Scanned once everything is in, not once per folder.
+          'refreshLibrary': '${awkward.isEmpty}',
+        }),
+        options: Options(headers: _headers),
+      ),
+    );
+
+    for (final (int i, String path) in awkward.indexed) {
+      await _addPath(name.trim(), path, refresh: i == awkward.length - 1);
+    }
+  }
+
+  @override
+  Future<void> addLibraryPath(String name, String path) =>
+      _addPath(name, path, refresh: true);
+
+  Future<void> _addPath(String name, String path, {required bool refresh}) {
+    return _send(
+      () => _dio.postUri<dynamic>(
+        _url('/Library/VirtualFolders/Paths', <String, String>{
+          'refreshLibrary': '$refresh',
+        }),
+        data: <String, dynamic>{
+          'Name': name,
+          'PathInfo': <String, dynamic>{'Path': path},
+        },
+        options: Options(headers: _headers),
+      ),
+    );
+  }
+
+  @override
+  Future<void> removeLibraryPath(String name, String path) => _delete(
+        '/Library/VirtualFolders/Paths',
+        <String, String>{'name': name, 'path': path, 'refreshLibrary': 'true'},
+      );
+
+  @override
+  Future<List<ServerFolder>> drives() async {
+    final list = await _getList('/Environment/Drives');
+    return _foldersFrom(list, sort: false);
+  }
+
+  @override
+  Future<List<ServerFolder>> folders(String path) async {
+    final list = await _getList('/Environment/DirectoryContents', <String, String>{
+      'path': path,
+      'includeDirectories': 'true',
+      'includeFiles': 'false',
+    });
+    return _foldersFrom(list, sort: true);
+  }
+
+  List<ServerFolder> _foldersFrom(List<Object?> list, {required bool sort}) {
+    final folders = <ServerFolder>[
+      for (final Object? entry in list)
+        if (entry is Map<String, dynamic>)
+          if (serverFolderFromJson(entry) case final ServerFolder f) f,
+    ];
+    if (sort) {
+      folders.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+    }
+    return folders;
+  }
+
+  @override
+  Future<String?> parentFolder(String path) async {
+    final response = await _send(
+      () => _dio.getUri<dynamic>(
+        _url('/Environment/ParentPath', <String, String>{'path': path}),
+        // A bare JSON string — or nothing at all, at a root.
+        options: Options(headers: _headers, responseType: ResponseType.plain),
+      ),
+    );
+    var text = (response.data as String? ?? '').trim();
+    if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
+      text = jsonDecode(text) as String;
+    }
+    return text.isEmpty || text == 'null' ? null : text;
+  }
 
   @override
   Future<void> deleteItem(String itemId) => _delete('/Items/$itemId');

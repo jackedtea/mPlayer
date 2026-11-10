@@ -825,6 +825,17 @@ class ServerApiKey {
   final DateTime? created;
 }
 
+/// A folder on the server's own disk, as its browser lists it.
+@immutable
+class ServerFolder {
+  const ServerFolder({required this.name, required this.path});
+
+  final String name;
+
+  /// Full, in the server's own spelling — `D:\Films`, `/srv/media`.
+  final String path;
+}
+
 /// Everything the administration screens can ask a server to do.
 abstract class ServerAdmin {
   /// What the server is and whether it can be restarted from here.
@@ -923,6 +934,32 @@ abstract class ServerAdmin {
   /// Removes a library from the server. **The files stay on disk**; only the
   /// library, its metadata and its watch state go.
   Future<void> deleteLibrary(String name);
+
+  /// Makes a library of [kind] (a `CollectionType` — `movies`, `tvshows` —
+  /// or null for mixed content) reading [paths], and starts its first scan.
+  Future<void> addLibrary({
+    required String name,
+    required String? kind,
+    required List<String> paths,
+  });
+
+  /// Adds a folder on the server's disk to the library called [name].
+  Future<void> addLibraryPath(String name, String path);
+
+  /// Stops the library called [name] reading [path]. The folder's files stay
+  /// on disk; what the library knew about them goes.
+  Future<void> removeLibraryPath(String name, String path);
+
+  /// The roots the server can browse from — drives on Windows, `/` and its
+  /// mounts elsewhere.
+  Future<List<ServerFolder>> drives();
+
+  /// The folders inside [path], sorted by name. Files are left out: a
+  /// library reads folders.
+  Future<List<ServerFolder>> folders(String path);
+
+  /// The folder above [path], or null at a root.
+  Future<String?> parentFolder(String path);
 
   /// Deletes an item **and its files on disk**.
   Future<void> deleteItem(String itemId);

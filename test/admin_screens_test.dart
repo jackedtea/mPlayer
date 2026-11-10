@@ -12,6 +12,8 @@ import 'package:mplayer/app/router.dart';
 import 'package:mplayer/features/admin/admin_dashboard_page.dart';
 import 'package:mplayer/features/admin/admin_providers.dart';
 import 'package:mplayer/features/admin/admin_user_page.dart';
+import 'package:mplayer/servers/media_library_source.dart'
+    show ServerException;
 import 'package:mplayer/servers/server_admin.dart';
 
 /// A server that answers every administration question.
@@ -373,6 +375,52 @@ class FakeAdmin implements ServerAdmin {
     calls.add('revokeKey:$token');
     keys.removeWhere((k) => k.token == token);
   }
+
+  /// A server disk of `/`, `/media` and `/media/films`.
+  static const Map<String, List<String>> disk = <String, List<String>>{
+    '/': <String>['media'],
+    '/media': <String>['films'],
+    '/media/films': <String>[],
+  };
+
+  @override
+  Future<List<ServerFolder>> drives() async =>
+      const <ServerFolder>[ServerFolder(name: '/', path: '/')];
+
+  @override
+  Future<List<ServerFolder>> folders(String path) async {
+    final children = disk[path];
+    if (children == null) {
+      throw const ServerException('That folder does not exist on the server.');
+    }
+    return <ServerFolder>[
+      for (final String c in children)
+        ServerFolder(name: c, path: path == '/' ? '/$c' : '$path/$c'),
+    ];
+  }
+
+  @override
+  Future<String?> parentFolder(String path) async {
+    if (path == '/') return null;
+    final cut = path.lastIndexOf('/');
+    return cut <= 0 ? '/' : path.substring(0, cut);
+  }
+
+  @override
+  Future<void> addLibrary({
+    required String name,
+    required String? kind,
+    required List<String> paths,
+  }) async =>
+      calls.add('addLibrary:$name:$kind:${paths.join('|')}');
+
+  @override
+  Future<void> addLibraryPath(String name, String path) async =>
+      calls.add('addPath:$name:$path');
+
+  @override
+  Future<void> removeLibraryPath(String name, String path) async =>
+      calls.add('removePath:$name:$path');
 
   @override
   Future<void> dispose() async {}
@@ -1203,6 +1251,128 @@ void main() {
       expect(find.text('Daily at 03:00 · When the server starts'),
           findsOneWidget);
       expect(find.text('Only when run by hand'), findsOneWidget);
+    });
+  });
+
+  group('adding a library', () {
+    /// Walks the fake server disk down to /media/films (or only /media)
+    /// and picks it.
+    Future<void> pickFilms(WidgetTester tester, {bool deep = true}) async {
+      await tester.tap(find.text('Add folder'));
+      await tester.pumpAndSettle();
+      expect(find.text('Choose a folder on the server'), findsOneWidget);
+
+      // A drive list is not a folder: nothing to use yet.
+      final use = find.byType(FilledButton);
+      expect(tester.widget<FilledButton>(use).onPressed, isNull);
+
+      await tester.tap(find.text('/'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('media'));
+      await tester.pumpAndSettle();
+      if (deep) {
+        await tester.tap(find.text('films'));
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.text('Use this folder'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the FAB opens the form, and Create waits for a folder',
+        (tester) async {
+      await pumpAdmin(tester, '/admin/libraries');
+
+      await tester.tap(find.text('Add library'));
+      await tester.pumpAndSettle();
+
+      // The name follows the kind until it is typed over.
+      expect(find.widgetWithText(TextField, 'Movies'), findsOneWidget);
+      final create = find.widgetWithText(FilledButton, 'Create');
+      expect(tester.widget<FilledButton>(create).onPressed, isNull);
+    });
+
+    testWidgets('a folder picked on the server makes the library',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/libraries/new');
+
+      await tester.tap(find.text('Shows'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Shows'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Add folder'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await pickFilms(tester);
+      expect(find.text('/media/films'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.calls, <String>['addLibrary:Shows:tvshows:/media/films']);
+      // Back on the list once it is made.
+      expect(find.text('Add library'), findsOneWidget);
+    });
+
+    testWidgets('Up walks back towards the drives', (tester) async {
+      await pumpAdmin(tester, '/admin/libraries/new');
+      await tester.scrollUntilVisible(
+        find.text('Add folder'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Add folder'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('/'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('media'));
+      await tester.pumpAndSettle();
+      expect(find.text('films'), findsOneWidget);
+
+      await tester.tap(find.text('Up one level'));
+      await tester.pumpAndSettle();
+      expect(find.text('media'), findsOneWidget);
+    });
+
+    testWidgets('a typed path that does not exist fails in the picker',
+        (tester) async {
+      await pumpAdmin(tester, '/admin/libraries/new');
+      await tester.scrollUntilVisible(
+        find.text('Add folder'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Add folder'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '/nope');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('does not exist'), findsOneWidget);
+    });
+
+    testWidgets('an existing library gains and loses folders',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/libraries');
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Folders'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.delete_outline_rounded).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove folder'));
+      await tester.pumpAndSettle();
+      expect(admin!.calls, <String>['removePath:Films:/media/films']);
+
+      // A folder the library already reads is not added twice; another is.
+      await pickFilms(tester, deep: false);
+      expect(admin.calls.last, 'addPath:Films:/media');
     });
   });
 }

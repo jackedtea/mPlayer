@@ -1208,6 +1208,168 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get adminDiscard;
 
+  /// No description provided for @adminAddLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Add library'**
+  String get adminAddLibrary;
+
+  /// No description provided for @adminLibraryKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Content type'**
+  String get adminLibraryKind;
+
+  /// No description provided for @adminKindMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Movies'**
+  String get adminKindMovies;
+
+  /// No description provided for @adminKindShows.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows'**
+  String get adminKindShows;
+
+  /// No description provided for @adminKindMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get adminKindMusic;
+
+  /// No description provided for @adminKindMusicVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'Music videos'**
+  String get adminKindMusicVideos;
+
+  /// No description provided for @adminKindHomeVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'Home videos and photos'**
+  String get adminKindHomeVideos;
+
+  /// No description provided for @adminKindBooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Books'**
+  String get adminKindBooks;
+
+  /// No description provided for @adminKindMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed movies and shows'**
+  String get adminKindMixed;
+
+  /// No description provided for @adminLibraryFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders'**
+  String get adminLibraryFolders;
+
+  /// No description provided for @adminLibraryNeedsFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one folder on the server for this library to read.'**
+  String get adminLibraryNeedsFolder;
+
+  /// No description provided for @adminAddFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add folder'**
+  String get adminAddFolder;
+
+  /// No description provided for @adminRemoveFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove folder'**
+  String get adminRemoveFolder;
+
+  /// No description provided for @adminRemoveFolderQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this folder?'**
+  String get adminRemoveFolderQuestion;
+
+  /// No description provided for @adminRemoveFolderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} stays on disk, but the library stops reading it and forgets what was in it.'**
+  String adminRemoveFolderBody(String path);
+
+  /// No description provided for @adminFolderAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder added. The library is being scanned.'**
+  String get adminFolderAdded;
+
+  /// No description provided for @adminFolderRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder removed.'**
+  String get adminFolderRemoved;
+
+  /// No description provided for @adminLibraryCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} created. Its first scan has started.'**
+  String adminLibraryCreated(String name);
+
+  /// No description provided for @adminPickFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a folder on the server'**
+  String get adminPickFolder;
+
+  /// No description provided for @adminPickFolderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a drive first'**
+  String get adminPickFolderHint;
+
+  /// No description provided for @adminUseFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this folder'**
+  String get adminUseFolder;
+
+  /// No description provided for @adminFolderPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Path on the server'**
+  String get adminFolderPath;
+
+  /// No description provided for @adminFolderPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Or type one, such as a network share, and open it.'**
+  String get adminFolderPathHint;
+
+  /// No description provided for @adminOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get adminOpenFolder;
+
+  /// No description provided for @adminFolderUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Up one level'**
+  String get adminFolderUp;
+
+  /// No description provided for @adminNoDrives.
+  ///
+  /// In en, this message translates to:
+  /// **'The server lists no drives.'**
+  String get adminNoDrives;
+
+  /// No description provided for @adminFolderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No folders inside.'**
+  String get adminFolderEmpty;
+
   /// No description provided for @adminDirectPlay.
   ///
   /// In en, this message translates to:

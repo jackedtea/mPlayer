@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/admin/admin_activity_page.dart';
+import '../features/admin/admin_add_library_page.dart';
 import '../features/admin/admin_api_keys_page.dart';
 import '../features/admin/admin_dashboard_page.dart';
 import '../features/admin/admin_item_page.dart';
@@ -181,6 +182,12 @@ GoRouter buildRouter() {
           GoRoute(
             path: 'libraries',
             builder: (context, state) => const AdminLibrariesPage(),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'new',
+                builder: (context, state) => const AdminAddLibraryPage(),
+              ),
+            ],
           ),
           // One item's metadata editor, opened from the item's own ⋮. The
           // title rides in the query for the app bar before the item loads.

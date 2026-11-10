@@ -138,33 +138,63 @@ class _ServerCard extends ConsumerWidget {
       if (profile != null) profile.uri,
     ].where((s) => s.isNotEmpty).toList();
 
+    // Inset from the app bar above as well as from the sides: flush against
+    // the bar, the card read as part of it.
     return Padding(
-      padding: spacing.screenPadding(context.windowSize),
+      padding: EdgeInsets.fromLTRB(
+        spacing.screenHorizontal(context.windowSize),
+        spacing.md,
+        spacing.screenHorizontal(context.windowSize),
+        0,
+      ),
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.all(spacing.lg),
+        // A tinted container rather than a surface tone: the surface tones
+        // sit a step from the page and the app bar, and the card vanished
+        // between them on a dark theme.
         decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
+          color: scheme.secondaryContainer,
           borderRadius: context.radii.cardAll,
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              resolved?.name.isNotEmpty ?? false
-                  ? resolved!.name
-                  : profile?.name ?? '',
-              style: context.texts.titleMedium,
+            CircleAvatar(
+              backgroundColor: scheme.primary,
+              child: Icon(Icons.dns_rounded, color: scheme.onPrimary),
             ),
-            for (final String line in lines) ...<Widget>[
-              SizedBox(height: spacing.xs),
-              Text(
-                line,
-                style: context.texts.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+            SizedBox(width: spacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    resolved?.name.isNotEmpty ?? false
+                        ? resolved!.name
+                        : profile?.name ?? '',
+                    style: context.texts.titleLarge?.copyWith(
+                      color: scheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  for (final String line in lines) ...<Widget>[
+                    SizedBox(height: spacing.xs),
+                    Text(
+                      line,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.bodyMedium?.copyWith(
+                        color: scheme.onSecondaryContainer
+                            .withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),

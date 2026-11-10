@@ -5,22 +5,24 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/server_admin.dart';
 import '../servers/server_library.dart' show serverViewsProvider;
+import 'admin_folder_picker.dart';
 import 'admin_item_actions.dart' show pickRefreshMode;
 import 'admin_providers.dart';
 import 'admin_widgets.dart';
 
 /// The server's libraries, with the folders each one reads, and what can be
-/// done to one: scan it, refresh its metadata, rename it, remove it.
+/// done to one: scan it, refresh its metadata, rename it, change its folders,
+/// remove it. Add library is the FAB.
 ///
-/// **Adding** a library, or a folder to one, is deliberately absent. It means
-/// choosing a path on the server's disk, and the server's own file browser
-/// is the only thing that knows which of its paths exist — typed from a
-/// phone, a path is a typo that makes an empty library.
+/// Folders are only ever picked by walking the **server's own** directory
+/// listing (`pickServerFolder`): typed from a phone, a path is a typo that
+/// makes an empty library.
 class AdminLibrariesPage extends ConsumerWidget {
   const AdminLibrariesPage({super.key});
 
@@ -31,6 +33,12 @@ class AdminLibrariesPage extends ConsumerWidget {
 
     return AdminScaffold(
       title: l10n.adminLibraries,
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'admin-add-library',
+        onPressed: () => context.push('/admin/libraries/new'),
+        icon: const Icon(Icons.add_rounded),
+        label: Text(l10n.adminAddLibrary),
+      ),
       onRefresh: () async {
         ref.invalidate(adminLibraryFoldersProvider);
         await ref.read(adminLibraryFoldersProvider.future);
@@ -101,6 +109,11 @@ class _LibraryRow extends ConsumerWidget {
             Icons.drive_file_rename_outline_rounded,
             l10n.adminLibraryRename,
             () => _rename(context, ref),
+          ),
+          _item(
+            Icons.folder_open_rounded,
+            l10n.adminLibraryFolders,
+            () => showLibraryFolders(context, folder.name),
           ),
           _item(
             Icons.delete_outline_rounded,
@@ -211,8 +224,9 @@ class _RenameDialog extends StatefulWidget {
 }
 
 class _RenameDialogState extends State<_RenameDialog> {
-  late final TextEditingController _name =
-      TextEditingController(text: widget.initial);
+  late final TextEditingController _name = TextEditingController(
+    text: widget.initial,
+  );
 
   @override
   void dispose() {
@@ -257,3 +271,98 @@ IconData libraryIcon(String kind) => switch (kind) {
   'livetv' => Icons.live_tv_rounded,
   _ => Icons.folder_outlined,
 };
+
+/// The folders one library reads, each removable, and Add folder.
+///
+/// A sheet over the list rather than a page of its own: two or three paths
+/// is all a library usually has, and the list behind it is where the result
+/// shows.
+Future<void> showLibraryFolders(BuildContext context, String name) {
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => _LibraryFoldersSheet(name: name),
+  );
+}
+
+class _LibraryFoldersSheet extends ConsumerWidget {
+  const _LibraryFoldersSheet({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final spacing = context.spacing;
+    // Read from the same list the page shows, so a change here redraws both.
+    final library = ref
+        .watch(adminLibraryFoldersProvider)
+        .value
+        ?.where((f) => f.name == name)
+        .firstOrNull;
+    final paths = library?.paths ?? const <String>[];
+
+    void refresh() => ref
+      ..invalidate(adminLibraryFoldersProvider)
+      ..invalidate(scheduledTasksProvider);
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          ListTile(
+            title: Text(name, style: context.texts.titleMedium),
+            subtitle: Text(l10n.adminLibraryFolders),
+          ),
+          for (final String path in paths)
+            ListTile(
+              leading: const Icon(Icons.folder_outlined),
+              title: Text(path, maxLines: 2, overflow: TextOverflow.ellipsis),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline_rounded),
+                tooltip: l10n.adminRemoveFolder,
+                onPressed: () async {
+                  final sure = await confirmAdminAction(
+                    context,
+                    title: l10n.adminRemoveFolderQuestion,
+                    body: l10n.adminRemoveFolderBody(path),
+                    confirmLabel: l10n.adminRemoveFolder,
+                  );
+                  if (!sure || !context.mounted) return;
+                  await runAdminAction(
+                    context,
+                    ref,
+                    action: (admin) => admin.removeLibraryPath(name, path),
+                    success: l10n.adminFolderRemoved,
+                    refresh: refresh,
+                  );
+                },
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.all(spacing.md),
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.create_new_folder_outlined),
+              label: Text(l10n.adminAddFolder),
+              onPressed: () async {
+                final path = await pickServerFolder(context);
+                if (path == null || paths.contains(path) || !context.mounted) {
+                  return;
+                }
+                await runAdminAction(
+                  context,
+                  ref,
+                  action: (admin) => admin.addLibraryPath(name, path),
+                  success: l10n.adminFolderAdded,
+                  refresh: refresh,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
