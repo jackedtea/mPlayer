@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import '../admin/admin_item_actions.dart' show AdminItemMenu;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -259,6 +260,13 @@ class _LibraryGridPageState extends ConsumerState<LibraryGridPage>
             tooltip: l10n.viewOptions,
             onPressed: _pickView,
           ),
+          // Scan, refresh and edit, for an administrator; nothing otherwise.
+          if (viewId != null)
+            AdminItemMenu(
+              itemId: viewId,
+              title: _titleFor(ref) ?? widget.title,
+              isLibrary: _hasTabs,
+            ),
           // Search moved to the FAB: it is the frequent action here, and the
           // top-right corner is the one place a thumb cannot reach. Grid size
           // stays up here — it is set once and then left alone.

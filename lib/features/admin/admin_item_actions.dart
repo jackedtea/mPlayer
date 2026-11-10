@@ -164,3 +164,76 @@ Future<MetadataRefresh?> pickRefreshMode(BuildContext context) {
     },
   );
 }
+
+/// The ⋮ an administrator gets in a library's app bar — what Jellyfin's web
+/// client offers on a library: scan it, refresh its metadata, edit it.
+///
+/// Draws nothing for anyone else, so the bar keeps its shape for a viewer.
+/// [isLibrary] is false for a box set or playlist drilled into, which has
+/// metadata to refresh and edit but no files of its own to scan.
+class AdminItemMenu extends ConsumerWidget {
+  const AdminItemMenu({
+    super.key,
+    required this.itemId,
+    required this.title,
+    this.isLibrary = true,
+  });
+
+  final String itemId;
+  final String title;
+  final bool isLibrary;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(isAdministratorProvider) || itemId.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final l10n = AppLocalizations.of(context);
+
+    PopupMenuItem<VoidCallback> item(
+      IconData icon,
+      String label,
+      VoidCallback action,
+    ) {
+      return PopupMenuItem<VoidCallback>(
+        value: action,
+        child: ListTile(leading: Icon(icon), title: Text(label)),
+      );
+    }
+
+    Future<void> refresh(MetadataRefresh mode) => runAdminAction(
+      context,
+      ref,
+      action: (admin) => admin.refreshItem(itemId, mode),
+      success: l10n.adminRefreshQueued(title),
+      refresh: () => ref.invalidate(scheduledTasksProvider),
+    );
+
+    return PopupMenuButton<VoidCallback>(
+      icon: const Icon(Icons.more_vert_rounded),
+      tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+      onSelected: (action) => action(),
+      itemBuilder: (_) => <PopupMenuEntry<VoidCallback>>[
+        if (isLibrary)
+          item(
+            Icons.youtube_searched_for_rounded,
+            l10n.adminLibraryScan,
+            () => refresh(MetadataRefresh.scan),
+          ),
+        item(Icons.refresh_rounded, l10n.adminRefreshMetadata, () async {
+          final mode = await pickRefreshMode(context);
+          if (mode != null && context.mounted) await refresh(mode);
+        }),
+        item(Icons.edit_note_rounded, l10n.adminEditMetadata, () async {
+          final saved = await context.push<bool>(
+            '/admin/item/$itemId?title=${Uri.encodeQueryComponent(title)}',
+          );
+          if (saved != true) return;
+          invalidateItem(ref, itemId);
+          // A library's name is read from the views, for the switcher.
+          ref.invalidate(serverViewsProvider);
+        }),
+      ],
+    );
+  }
+}

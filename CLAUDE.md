@@ -1330,6 +1330,10 @@ new account straight away.
   Delete closes the page only when the route's `extra` is that item, so deleting an
   episode from its series' list leaves the series open. `invalidateItem` drops the
   item and the lists it may be in.
+- **Library ⋮** (`AdminItemMenu`, 2026-11-10): in the library screen's app bar, for an
+  administrator only (nothing is drawn otherwise), as the web client offers on a
+  library: Scan library, Refresh metadata (the three depths), Edit metadata. A box set
+  or playlist drilled into gets the last two; it has no files of its own to scan.
 - **Metadata editor** (`/admin/item/:id`, `admin_item_page.dart`): title, original
   title, sort title, year, certificate, overview, genres and tags (comma-separated),
   and Lock. `POST /Items/{id}` **clears every field it is not sent** (cast, provider
