@@ -256,6 +256,36 @@ jobs:
           channel: stable
           cache: true
 
+      # Flutter pins an exact NDK (`flutter.ndkVersion`) that the runner
+      # image may not carry. Left to Gradle, it is downloaded once while
+      # `:app` is configured and a dropped connection fails the build
+      # ("Failed to install the following SDK components"). Installed here
+      # instead, with retries. The version is read from Flutter's own
+      # FlutterExtension.kt so a Flutter bump cannot leave it stale.
+      - name: Install the NDK
+        run: |
+          set -euo pipefail
+          NDK=$(grep -oP 'val ndkVersion: String = "\K[^"]+' \
+            "$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt")
+          echo "Flutter wants NDK $NDK"
+          if [ -f "$ANDROID_HOME/ndk/$NDK/source.properties" ]; then
+            echo "Already on the runner."
+            exit 0
+          fi
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          for attempt in 1 2 3 4; do
+            # Licences fed from a process substitution, not `yes |`: under
+            # pipefail, `yes` dying of SIGPIPE would fail a good install.
+            if "$SDKMANAGER" --install "ndk;$NDK" < <(yes) > /dev/null; then
+              [ -f "$ANDROID_HOME/ndk/$NDK/source.properties" ] && exit 0
+            fi
+            echo "::warning::NDK install attempt $attempt failed; retrying."
+            rm -rf "$ANDROID_HOME/ndk/$NDK"
+            sleep $(( attempt * 15 ))
+          done
+          echo "::error::Could not install NDK $NDK."
+          exit 1
+
       - run: flutter pub get
 
       # The suite pumps every route at all three breakpoints; a layout
