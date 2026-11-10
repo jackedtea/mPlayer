@@ -232,7 +232,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsAdminSub => 'Sessions, tasks, users, plugins';
+  String get settingsAdminSub =>
+      'Sessions, libraries, users, tasks, activity, plugins';
 
   @override
   String get adminTitle => 'Administration';

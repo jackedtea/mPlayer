@@ -76,7 +76,7 @@
   "@hoursAgo": {"placeholders": {"count": {"type": "int"}}},
   "daysAgo": "{count}d ago",
   "@daysAgo": {"placeholders": {"count": {"type": "int"}}},
-  "settingsAdminSub": "Sessions, tasks, users, plugins",
+  "settingsAdminSub": "Sessions, libraries, users, tasks, activity, plugins",
   "adminTitle": "Administration",
   "adminNotAdmin": "This account is not an administrator.",
   "adminNoServer": "Sign in to a server first.",

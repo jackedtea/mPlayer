@@ -71,7 +71,7 @@
   "@hoursAgo": {"placeholders": {"count": {"type": "int"}}},
   "daysAgo": "{count} ngày trước",
   "@daysAgo": {"placeholders": {"count": {"type": "int"}}},
-  "settingsAdminSub": "Phiên phát, tác vụ, người dùng, plugin",
+  "settingsAdminSub": "Phiên phát, thư viện, người dùng, tác vụ, hoạt động, plugin",
   "adminTitle": "Quản trị",
   "adminNotAdmin": "Tài khoản này không phải quản trị viên.",
   "adminNoServer": "Hãy đăng nhập vào một máy chủ trước.",

@@ -233,7 +233,8 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get settingsAdminSub => 'Phiên phát, tác vụ, người dùng, plugin';
+  String get settingsAdminSub =>
+      'Phiên phát, thư viện, người dùng, tác vụ, hoạt động, plugin';
 
   @override
   String get adminTitle => 'Quản trị';

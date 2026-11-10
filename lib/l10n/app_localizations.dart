@@ -503,7 +503,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAdminSub.
   ///
   /// In en, this message translates to:
-  /// **'Sessions, tasks, users, plugins'**
+  /// **'Sessions, libraries, users, tasks, activity, plugins'**
   String get settingsAdminSub;
 
   /// No description provided for @adminTitle.

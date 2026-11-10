@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mplayer/app/app.dart';
 import 'package:mplayer/app/router.dart';
+import 'package:mplayer/features/admin/admin_dashboard_page.dart';
 import 'package:mplayer/features/admin/admin_providers.dart';
 import 'package:mplayer/features/admin/admin_user_page.dart';
 import 'package:mplayer/servers/server_admin.dart';
@@ -361,6 +362,25 @@ void main() {
 
       await pumpAdmin(tester, '/settings');
       expect(find.text('Server administration'), findsOneWidget);
+    });
+
+    testWidgets('Settings has one way in, and it is the dashboard',
+        (tester) async {
+      // The dashboard is the one list of administration screens. Shortcuts
+      // to each of them here duplicated it, and drifted from it as soon as
+      // a screen was added to one place and not the other.
+      await pumpAdmin(tester, '/settings');
+
+      expect(find.text('Users'), findsNothing);
+      expect(find.text('Scheduled tasks'), findsNothing);
+      expect(find.text('Activity log'), findsNothing);
+      expect(find.text('Plugins'), findsNothing);
+
+      await tester.ensureVisible(find.text('Server administration'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Server administration'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AdminDashboardPage), findsOneWidget);
     });
   });
 

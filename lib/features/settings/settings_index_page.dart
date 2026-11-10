@@ -90,8 +90,13 @@ class SettingsIndexPage extends ConsumerWidget {
   /// permanently greyed section inviting a user to administer a server they
   /// cannot is worse than no section.
   ///
-  /// Every path is outside `/settings`, because these belong to the server
-  /// rather than to this installation.
+  /// **One row, into the dashboard**, which is the one place that lists the
+  /// administration screens. Shortcuts to each of them used to sit here as
+  /// well; they duplicated the dashboard and drifted from it as soon as a
+  /// screen was added to one and not the other.
+  ///
+  /// The path is outside `/settings`, because it belongs to the server rather
+  /// than to this installation.
   static List<_SettingsEntry> _serverEntries(AppLocalizations l10n) {
     return <_SettingsEntry>[
       _SettingsEntry(
@@ -99,26 +104,6 @@ class SettingsIndexPage extends ConsumerWidget {
         subtitle: l10n.settingsAdminSub,
         icon: Icons.admin_panel_settings_rounded,
         path: '/admin',
-      ),
-      _SettingsEntry(
-        title: l10n.adminUsers,
-        icon: Icons.people_rounded,
-        path: '/admin/users',
-      ),
-      _SettingsEntry(
-        title: l10n.adminTasks,
-        icon: Icons.schedule_rounded,
-        path: '/admin/tasks',
-      ),
-      _SettingsEntry(
-        title: l10n.adminActivity,
-        icon: Icons.history_rounded,
-        path: '/admin/activity',
-      ),
-      _SettingsEntry(
-        title: l10n.adminPlugins,
-        icon: Icons.extension_rounded,
-        path: '/admin/plugins',
       ),
     ];
   }
