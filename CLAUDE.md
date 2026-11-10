@@ -159,7 +159,9 @@ Also open:
   Edit server / Switch server, or Add server with none), then App settings
   and, for an administrator, one Server administration row into the `/admin`
   dashboard (2026-11-10: the per-screen shortcuts beside it duplicated the
-  dashboard and had already drifted from it).
+  dashboard and had already drifted from it). **About is the last row**, under the
+  server section (2026-11-11); the page prints no version line of its own — the
+  hard-coded "mPlayer 1.0.0 · build 1" it had was never the real version.
   A Quick Connect row approves another device's code
   (`POST /QuickConnect/Authorize`); its 401/403 means the feature is off, so it
   bypasses `_send`, which would read them as an expired session.
@@ -1319,9 +1321,20 @@ new account straight away.
   with each library's paths and a progress bar while it scans. Per library: Scan,
   Refresh metadata, Rename, Remove. Rename and remove are **keyed by name**; scan and
   refresh by `ItemId` (a library missing it says so rather than scanning everything).
-  Remove leaves the files on disk and says so. **Adding a library or a folder is not
-  built**: it means picking a path on the server's disk, and only the server's own
-  browser knows which exist.
+  Remove leaves the files on disk and says so.
+- **Add library** (2026-11-11, FAB → `/admin/libraries/new`,
+  `admin_add_library_page.dart`): content type, name (follows the type until typed
+  over), one or more folders; Create starts the first scan. Each library's ⋮ has
+  **Folders**, a sheet to add or remove the folders it reads
+  (`/Library/VirtualFolders/Paths`). The thirty other library options are left to the
+  server's defaults and the web dashboard.
+- **Folders are picked on the server**, never typed blind: `pickServerFolder`
+  (`admin_folder_picker.dart`) walks `/Environment/Drives` → `DirectoryContents`
+  (folders only) → `ParentPath` (a bare JSON string, or nothing at a root, so it is
+  read as plain text). A path can be typed — a network share is under no drive — and
+  is **opened** first, so a wrong one fails in the picker. A drive list cannot be
+  chosen; something has to be opened. Create sends the paths comma-separated, so a
+  path holding a comma is added afterwards through `Paths` instead.
 - **Refresh** (`POST /Items/{id}/Refresh`, `refreshQuery`) offers Jellyfin's three
   depths: scan (Default/Default), missing metadata (FullRefresh, keep), replace all
   (FullRefresh + `ReplaceAllMetadata`). Images are never replaced from here.

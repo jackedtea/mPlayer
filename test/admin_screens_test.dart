@@ -518,6 +518,20 @@ void main() {
       expect(find.text('Server administration'), findsOneWidget);
     });
 
+    testWidgets('About comes last, under the server section, with no '
+        'version line of its own', (tester) async {
+      await pumpAdmin(tester, '/settings');
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(find.text('About'), 300,
+          scrollable: scrollable);
+      expect(find.textContaining('build 1'), findsNothing);
+
+      final about = tester.getTopLeft(find.text('About')).dy;
+      final admin = tester.getTopLeft(find.text('Server administration')).dy;
+      expect(about, greaterThan(admin));
+    });
+
     testWidgets('Settings has one way in, and it is the dashboard',
         (tester) async {
       // The dashboard is the one list of administration screens. Shortcuts

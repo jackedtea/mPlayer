@@ -77,14 +77,18 @@ class SettingsIndexPage extends ConsumerWidget {
         icon: Icons.settings_remote_rounded,
         path: '/remote',
       ),
-      _SettingsEntry(
+    ];
+  }
+
+  /// Last on the page, under the server section for an administrator: it is
+  /// about the app as a whole, and the version it carries is the real one —
+  /// which is why the page no longer prints a version line of its own.
+  static _SettingsEntry _aboutEntry(AppLocalizations l10n) => _SettingsEntry(
         title: l10n.settingsAbout,
         subtitle: l10n.settingsAboutSub,
         icon: Icons.info_rounded,
         route: 'about',
-      ),
-    ];
-  }
+      );
 
   /// Absent rather than disabled for anyone but an administrator: a
   /// permanently greyed section inviting a user to administer a server they
@@ -159,17 +163,8 @@ class SettingsIndexPage extends ConsumerWidget {
             ),
             child: const Divider(),
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.screenHorizontal(context.windowSize),
-              vertical: spacing.sm,
-            ),
-            child: Text(
-              'mPlayer 1.0.0 · build 1',
-              style: context.texts.bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-          ),
+          _tile(context, _aboutEntry(l10n)),
+          SizedBox(height: spacing.lg),
         ],
       ),
     );
