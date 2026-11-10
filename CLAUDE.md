@@ -1056,13 +1056,15 @@ clean now; a duplicate-key scan is the way to check after editing it.
   to `B` when `A` is empty, which would sign a main build with the dev key silently. The
   workflow passes both sets and chooses in shell.
 - Android ships **one APK per ABI** from a single job, `flutter build apk
-  --split-per-abi --target-platform android-arm,android-arm64,android-x64`, renamed to
-  `<base>-android-<abi>.apk` (arm64-v8a, armeabi-v7a, x86_64). Split again since
+  --split-per-abi --target-platform android-arm,android-arm64`, renamed to
+  `<base>-android-<abi>.apk` (arm64-v8a, armeabi-v7a). **No x86_64 APK** since
+  2026-11-10 (it served only emulators and a few Chromebooks); an x86_64 device
+  whose ABI list has no ARM entry finds no update. Split again since
   2026-11-08; releases from 2026-11-02 to 11-08 carried one
   `<base>-android-universal.apk` instead (~25–30 MB heavier: media_kit bundles an
   11–15 MB `libmpv.so` per ABI). No universal APK is built now.
 - **versionCode**: `--build-number` is `run_number + 5000`, and `--split-per-abi` adds
-  Flutter's 1000 × ABI number on top (armeabi-v7a 1, arm64-v8a 2, x86_64 4). The 5000
+  Flutter's 1000 × ABI number on top (armeabi-v7a 1, arm64-v8a 2). The 5000
   keeps every split APK above the universal ones (run + 5000, no ABI offset) — a lower
   versionCode is a downgrade Android refuses. Never lower it. Going back to universal
   would need run + 9000 or more to clear the split builds.

@@ -318,13 +318,14 @@ jobs:
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
       # One APK per ABI: each carries only its own media_kit libmpv.so
-      # (11-15 MB), not all three as a universal APK does.
+      # (11-15 MB), not every ABI as a universal APK does. ARM only: the
+      # x86_64 APK (emulators, a few Chromebooks) was dropped 2026-11-10.
       # --build-name so the APK reports the version the release is tagged
       # with (main moves its patch number every build, pubspec does not);
       # Gradle still appends the dev suffix. --build-number from the run, so
       # the versionCode keeps rising and each APK installs over the last.
       # --split-per-abi then adds 1000 x the ABI's number (armeabi-v7a 1,
-      # arm64-v8a 2, x86_64 4). The 5000 is kept so every split APK stays
+      # arm64-v8a 2). The 5000 is kept so every split APK stays
       # above the universal APKs shipped 2026-11-02..08 (run + 5000, no ABI
       # offset): a device holding one of those would otherwise refuse this
       # as a downgrade. Never lower it.
@@ -334,7 +335,7 @@ jobs:
           VERSION_NAME_SUFFIX: ${{ needs.prepare.outputs.version_name_suffix }}
         run: |
           flutter build apk --release --split-per-abi \
-            --target-platform android-arm,android-arm64,android-x64 \
+            --target-platform android-arm,android-arm64 \
             --build-name "${{ needs.prepare.outputs.version }}" \
             --build-number "$(( ${{ github.run_number }} + 5000 ))"
 
@@ -348,7 +349,7 @@ jobs:
         run: |
           set -euo pipefail
           ABIS=""
-          for abi in arm64-v8a armeabi-v7a x86_64; do
+          for abi in arm64-v8a armeabi-v7a; do
             SRC="build/app/outputs/flutter-apk/app-${abi}-release.apk"
             if [ -f "$SRC" ]; then
               mv "$SRC" "${BASE}-android-${abi}.apk"
@@ -600,7 +601,6 @@ jobs:
               case "$abi" in
                 arm64-v8a)   LABEL="Android · arm64-v8a (most phones)" ;;
                 armeabi-v7a) LABEL="Android · armeabi-v7a (older 32-bit)" ;;
-                x86_64)      LABEL="Android · x86_64 (emulators, Chromebooks)" ;;
                 *)           LABEL="Android · $abi" ;;
               esac
               echo "| \`${{ needs.prepare.outputs.artifact_base }}-android-${abi}.apk\` | $LABEL |"
