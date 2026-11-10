@@ -1208,6 +1208,432 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get adminDiscard;
 
+  /// No description provided for @adminDirectPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct play'**
+  String get adminDirectPlay;
+
+  /// No description provided for @adminDirectStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct stream'**
+  String get adminDirectStream;
+
+  /// No description provided for @adminTranscoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcoding'**
+  String get adminTranscoding;
+
+  /// No description provided for @adminSessionDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get adminSessionDevice;
+
+  /// No description provided for @adminSessionClient.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get adminSessionClient;
+
+  /// No description provided for @adminSessionAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get adminSessionAddress;
+
+  /// No description provided for @adminTranscodeReasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Why it is transcoding'**
+  String get adminTranscodeReasons;
+
+  /// No description provided for @adminTranscodeVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get adminTranscodeVideo;
+
+  /// No description provided for @adminTranscodeAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get adminTranscodeAudio;
+
+  /// No description provided for @adminTranscodeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied as is'**
+  String get adminTranscodeCopied;
+
+  /// No description provided for @adminTranscodeContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Container'**
+  String get adminTranscodeContainer;
+
+  /// No description provided for @adminTranscodeBitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'Bitrate'**
+  String get adminTranscodeBitrate;
+
+  /// No description provided for @adminTranscodeHardware.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoder'**
+  String get adminTranscodeHardware;
+
+  /// No description provided for @adminTranscodeSoftware.
+  ///
+  /// In en, this message translates to:
+  /// **'Software (no hardware acceleration)'**
+  String get adminTranscodeSoftware;
+
+  /// No description provided for @adminTranscodeAhead.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcoded ahead'**
+  String get adminTranscodeAhead;
+
+  /// No description provided for @adminReasonContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'The app cannot play this container'**
+  String get adminReasonContainer;
+
+  /// No description provided for @adminReasonVideoCodec.
+  ///
+  /// In en, this message translates to:
+  /// **'The app cannot decode this video codec'**
+  String get adminReasonVideoCodec;
+
+  /// No description provided for @adminReasonAudioCodec.
+  ///
+  /// In en, this message translates to:
+  /// **'The app cannot decode this audio codec'**
+  String get adminReasonAudioCodec;
+
+  /// No description provided for @adminReasonSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles have to be burned in'**
+  String get adminReasonSubtitle;
+
+  /// No description provided for @adminReasonResolution.
+  ///
+  /// In en, this message translates to:
+  /// **'The resolution is above the app\'s limit'**
+  String get adminReasonResolution;
+
+  /// No description provided for @adminReasonBitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'The bitrate is above the allowed limit'**
+  String get adminReasonBitrate;
+
+  /// No description provided for @adminReasonChannels.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many audio channels for the app'**
+  String get adminReasonChannels;
+
+  /// No description provided for @adminReasonRange.
+  ///
+  /// In en, this message translates to:
+  /// **'The app cannot show this HDR type'**
+  String get adminReasonRange;
+
+  /// No description provided for @adminReasonProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'The app cannot play this video profile or level'**
+  String get adminReasonProfile;
+
+  /// No description provided for @adminLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get adminLogs;
+
+  /// No description provided for @adminNoLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'The server lists no log files.'**
+  String get adminNoLogs;
+
+  /// No description provided for @adminLogFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter lines'**
+  String get adminLogFilter;
+
+  /// No description provided for @adminProblemsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings and errors'**
+  String get adminProblemsOnly;
+
+  /// No description provided for @adminLogNoLines.
+  ///
+  /// In en, this message translates to:
+  /// **'No lines match.'**
+  String get adminLogNoLines;
+
+  /// No description provided for @adminCopyLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the lines shown'**
+  String get adminCopyLog;
+
+  /// No description provided for @adminLogCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied.'**
+  String get adminLogCopied;
+
+  /// No description provided for @adminSpanAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Any time'**
+  String get adminSpanAll;
+
+  /// No description provided for @adminSpanDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 24 hours'**
+  String get adminSpanDay;
+
+  /// No description provided for @adminSpanWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 days'**
+  String get adminSpanWeek;
+
+  /// No description provided for @adminLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get adminLoadMore;
+
+  /// No description provided for @adminRestartPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart needed'**
+  String get adminRestartPending;
+
+  /// No description provided for @adminRestartPendingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Some changes take effect only after the server restarts.'**
+  String get adminRestartPendingBody;
+
+  /// No description provided for @adminRestartNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get adminRestartNow;
+
+  /// No description provided for @adminStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get adminStorage;
+
+  /// No description provided for @adminStorageUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This server cannot report disk use. It needs Jellyfin 10.10 or later.'**
+  String get adminStorageUnsupported;
+
+  /// No description provided for @adminStorageServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server folders'**
+  String get adminStorageServer;
+
+  /// No description provided for @adminStorageFree.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} free'**
+  String adminStorageFree(String size);
+
+  /// No description provided for @adminStorageUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} used here'**
+  String adminStorageUsed(String size);
+
+  /// No description provided for @adminFolderData.
+  ///
+  /// In en, this message translates to:
+  /// **'Program data'**
+  String get adminFolderData;
+
+  /// No description provided for @adminFolderWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Web client'**
+  String get adminFolderWeb;
+
+  /// No description provided for @adminFolderImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Image cache'**
+  String get adminFolderImages;
+
+  /// No description provided for @adminFolderCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache'**
+  String get adminFolderCache;
+
+  /// No description provided for @adminFolderLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get adminFolderLogs;
+
+  /// No description provided for @adminFolderMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Metadata'**
+  String get adminFolderMetadata;
+
+  /// No description provided for @adminFolderTranscodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcodes'**
+  String get adminFolderTranscodes;
+
+  /// No description provided for @adminApiKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'API keys'**
+  String get adminApiKeys;
+
+  /// No description provided for @adminNoApiKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'No API keys yet.'**
+  String get adminNoApiKeys;
+
+  /// No description provided for @adminNewApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'New key'**
+  String get adminNewApiKey;
+
+  /// No description provided for @adminApiKeyApp.
+  ///
+  /// In en, this message translates to:
+  /// **'App name'**
+  String get adminApiKeyApp;
+
+  /// No description provided for @adminApiKeyAppHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What will use it — shown in the list and the activity log.'**
+  String get adminApiKeyAppHint;
+
+  /// No description provided for @adminApiKeyCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Key for {name} created.'**
+  String adminApiKeyCreated(String name);
+
+  /// No description provided for @adminApiKeyUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed'**
+  String get adminApiKeyUnnamed;
+
+  /// No description provided for @adminCopyApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy key'**
+  String get adminCopyApiKey;
+
+  /// No description provided for @adminApiKeyCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Key copied.'**
+  String get adminApiKeyCopied;
+
+  /// No description provided for @adminRevokeApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get adminRevokeApiKey;
+
+  /// No description provided for @adminRevokeApiKeyQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke the key for {name}?'**
+  String adminRevokeApiKeyQuestion(String name);
+
+  /// No description provided for @adminRevokeApiKeyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Whatever uses it stops working until it is given a new key.'**
+  String get adminRevokeApiKeyBody;
+
+  /// No description provided for @adminApiKeyRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Key for {name} revoked.'**
+  String adminApiKeyRevoked(String name);
+
+  /// No description provided for @adminTriggerManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Only when run by hand'**
+  String get adminTriggerManual;
+
+  /// No description provided for @adminTriggerDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily at {time}'**
+  String adminTriggerDaily(String time);
+
+  /// No description provided for @adminTriggerWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'{day} at {time}'**
+  String adminTriggerWeekly(String day, String time);
+
+  /// No description provided for @adminTriggerEveryDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count, plural, =1{day} other{{count} days}}'**
+  String adminTriggerEveryDays(int count);
+
+  /// No description provided for @adminTriggerEveryHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count, plural, =1{hour} other{{count} hours}}'**
+  String adminTriggerEveryHours(int count);
+
+  /// No description provided for @adminTriggerEveryMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count, plural, =1{minute} other{{count} minutes}}'**
+  String adminTriggerEveryMinutes(int count);
+
+  /// No description provided for @adminTriggerStartup.
+  ///
+  /// In en, this message translates to:
+  /// **'When the server starts'**
+  String get adminTriggerStartup;
+
+  /// No description provided for @adminTriggerOther.
+  ///
+  /// In en, this message translates to:
+  /// **'On another trigger'**
+  String get adminTriggerOther;
+
   /// No description provided for @adminTabProfile.
   ///
   /// In en, this message translates to:

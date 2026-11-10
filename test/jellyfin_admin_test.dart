@@ -666,6 +666,227 @@ void main() {
     });
   });
 
+  group('what a session is doing to the server', () {
+    test('the play method and the transcode, with reasons as a list', () {
+      final session = adminSessionFromJson(<String, dynamic>{
+        'Id': 's1',
+        'NowPlayingItem': <String, dynamic>{'Name': 'Dune'},
+        'PlayState': <String, dynamic>{'PlayMethod': 'Transcode'},
+        'ApplicationVersion': '10.11.0',
+        'RemoteEndPoint': '192.168.1.20',
+        'TranscodingInfo': <String, dynamic>{
+          'IsVideoDirect': false,
+          'IsAudioDirect': true,
+          'VideoCodec': 'h264',
+          'Bitrate': 8400000,
+          'HardwareAccelerationType': 'none',
+          'TranscodeReasons': <String>['VideoCodecNotSupported'],
+        },
+      })!;
+
+      expect(session.playMethod, PlayMethod.transcode);
+      expect(session.clientVersion, '10.11.0');
+      expect(session.remoteAddress, '192.168.1.20');
+      final t = session.transcoding!;
+      expect(t.isVideoDirect, isFalse);
+      expect(t.bitrate, 8400000);
+      // "none" is software, said as nothing rather than as "NONE".
+      expect(t.hardwareAcceleration, '');
+      expect(t.reasons, <String>['VideoCodecNotSupported']);
+    });
+
+    test('older servers write the reasons as one string', () {
+      expect(
+        transcodeReasonsFromJson('ContainerNotSupported, AudioCodecNotSupported'),
+        <String>['ContainerNotSupported', 'AudioCodecNotSupported'],
+      );
+      expect(transcodeReasonsFromJson(null), isEmpty);
+    });
+
+    test('an idle session has no play method, whatever the state says', () {
+      final session = adminSessionFromJson(<String, dynamic>{
+        'Id': 's1',
+        'PlayState': <String, dynamic>{'PlayMethod': 'DirectPlay'},
+      })!;
+      expect(session.playMethod, isNull);
+      expect(session.transcoding, isNull);
+    });
+  });
+
+  group('tasks, storage and the system', () {
+    test('triggers come with their times', () {
+      final task = scheduledTaskFromJson(<String, dynamic>{
+        'Id': 't1',
+        'Name': 'Scan',
+        'Triggers': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'Type': 'DailyTrigger',
+            'TimeOfDayTicks': 3 * 60 * 60 * 10000000,
+          },
+          <String, dynamic>{
+            'Type': 'IntervalTrigger',
+            'IntervalTicks': 12 * 60 * 60 * 10000000,
+          },
+          <String, dynamic>{
+            'Type': 'WeeklyTrigger',
+            'DayOfWeek': 'Sunday',
+            'TimeOfDayTicks': 0,
+          },
+          <String, dynamic>{'Type': 'StartupTrigger'},
+        ],
+      });
+
+      expect(task.triggers.map((t) => t.kind), <TaskTriggerKind>[
+        TaskTriggerKind.daily,
+        TaskTriggerKind.interval,
+        TaskTriggerKind.weekly,
+        TaskTriggerKind.startup,
+      ]);
+      expect(task.triggers[0].timeOfDay, const Duration(hours: 3));
+      expect(task.triggers[1].interval, const Duration(hours: 12));
+      // Midnight is a real time, not "unset".
+      expect(task.triggers[2].timeOfDay, Duration.zero);
+      expect(task.triggers[2].dayOfWeek, 'Sunday');
+    });
+
+    test('a restart that is waiting is read', () {
+      final info = systemInfoFromJson(<String, dynamic>{
+        'ServerName': 'Home',
+        'HasPendingRestart': true,
+      });
+      expect(info.hasPendingRestart, isTrue);
+    });
+
+    test('storage: -1 is "could not measure", not a size', () {
+      final storage = serverStorageFromJson(<String, dynamic>{
+        'CacheFolder': <String, dynamic>{
+          'Path': '/cache',
+          'FreeSpace': 1000,
+          'UsedSpace': -1,
+        },
+        'Libraries': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'Name': 'Films',
+            'Folders': <Map<String, dynamic>>[
+              <String, dynamic>{'Path': '/media/films', 'FreeSpace': 5},
+            ],
+          },
+        ],
+      });
+      expect(storage.folders.single.kind, StorageFolderKind.cache);
+      expect(storage.folders.single.free, 1000);
+      expect(storage.folders.single.used, isNull);
+      expect(storage.libraries.single.folders.single.path, '/media/films');
+    });
+
+    test('a server before 10.10 has no storage to report', () async {
+      final (admin, _) = adminWith((_) => _json('', status: 404));
+      expect(await admin.storage(), isNull);
+    });
+
+    test('other storage failures are still failures', () async {
+      final (admin, _) = adminWith(
+        (_) => _json(<String, dynamic>{}, status: 500),
+      );
+      await expectLater(admin.storage(), throwsA(isA<ServerException>()));
+    });
+  });
+
+  group('logs', () {
+    test('a large log is cut to its tail, at a line', () {
+      final text = 'first line\nsecond line\nthird line\n';
+      final tail = logTail(text, 15);
+      expect(tail, 'third line\n');
+      expect(logTail(text, 1000), text);
+    });
+
+    test('the text is fetched as text, by name in the query', () async {
+      final (admin, adapter) = adminWith(
+        (_) => ResponseBody.fromString(
+          '{"looks": "like json"}\n[ERR] real line\n',
+          200,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>['application/json'],
+          },
+        ),
+      );
+
+      final text = await admin.logText('log_1.log');
+
+      expect(adapter.requests.single.uri.path, '/System/Logs/Log');
+      expect(adapter.requests.single.uri.queryParameters['name'], 'log_1.log');
+      expect(text, contains('real line'));
+    });
+  });
+
+  group('the activity log in pages', () {
+    test('asks from the start index, with the filters on the wire', () async {
+      final (admin, adapter) = adminWith(
+        (_) => _json(<String, dynamic>{
+          'TotalRecordCount': 120,
+          'Items': <Map<String, dynamic>>[
+            <String, dynamic>{'Id': 1, 'Name': 'ok', 'Severity': 'Information'},
+            <String, dynamic>{'Id': 2, 'Name': 'bad', 'Severity': 'Error'},
+          ],
+        }),
+      );
+
+      final page = await admin.activityPage(
+        startIndex: 50,
+        problemsOnly: true,
+        since: DateTime.utc(2026, 11, 9),
+      );
+
+      final query = adapter.requests.single.uri.queryParameters;
+      expect(query['startIndex'], '50');
+      expect(query['severity'], 'Warning');
+      expect(query['minDate'], startsWith('2026-11-09'));
+      // An older server ignored the filter; it is applied here too, and the
+      // next page still starts after everything that was sent.
+      expect(page.entries.map((e) => e.name), <String>['bad']);
+      expect(page.fetched, 2);
+      expect(page.total, 120);
+    });
+  });
+
+  group('API keys', () {
+    test('listed newest first, created by app name, revoked by key', () async {
+      final (admin, adapter) = adminWith((options) {
+        if (options.method == 'GET') {
+          return _json(<String, dynamic>{
+            'Items': <Map<String, dynamic>>[
+              <String, dynamic>{
+                'AccessToken': 'old',
+                'AppName': 'A',
+                'DateCreated': '2025-01-01T00:00:00Z',
+              },
+              <String, dynamic>{
+                'AccessToken': 'new',
+                'AppName': 'B',
+                'DateCreated': '2026-01-01T00:00:00Z',
+              },
+              <String, dynamic>{'AppName': 'no token'},
+            ],
+          });
+        }
+        return _json(<String, dynamic>{});
+      });
+
+      final keys = await admin.apiKeys();
+      expect(keys.map((k) => k.token), <String>['new', 'old']);
+
+      await admin.createApiKey(' Sonarr ');
+      final create = adapter.requests.last;
+      expect(create.method, 'POST');
+      expect(create.uri.path, '/Auth/Keys');
+      expect(create.uri.queryParameters['app'], 'Sonarr');
+
+      await admin.revokeApiKey('old');
+      expect(adapter.requests.last.method, 'DELETE');
+      expect(adapter.requests.last.uri.path, '/Auth/Keys/old');
+    });
+  });
+
   group('what a rejection means', () {
     test('403 says the account is not an administrator, not "sign in again"',
         () async {

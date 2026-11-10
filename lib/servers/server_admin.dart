@@ -26,6 +26,7 @@ class ServerSystemInfo {
     this.canRestart = false,
     this.canShutdown = false,
     this.startupWizardCompleted = true,
+    this.hasPendingRestart = false,
   });
 
   final String name;
@@ -47,6 +48,9 @@ class ServerSystemInfo {
   final bool canShutdown;
 
   final bool startupWizardCompleted;
+
+  /// A plugin, an update or a setting is waiting on a restart to take hold.
+  final bool hasPendingRestart;
 }
 
 /// Somebody watching something right now.
@@ -63,11 +67,27 @@ class AdminSession {
     this.isPaused = false,
     this.supportsRemoteControl = false,
     this.lastActivity,
+    this.playMethod,
+    this.transcoding,
+    this.clientVersion = '',
+    this.remoteAddress = '',
   });
 
   final String id;
   final String username;
   final String deviceName;
+
+  /// How what is playing reaches the client, or null when nothing plays.
+  final PlayMethod? playMethod;
+
+  /// What the server is doing to the stream, while it does anything at all.
+  /// Absent for a direct play, which is the server doing nothing.
+  final SessionTranscoding? transcoding;
+
+  final String clientVersion;
+
+  /// Where the client connects from, as the server sees it.
+  final String remoteAddress;
 
   /// The app on the far end — "Jellyfin Web", "mPlayer", "Infuse".
   final String client;
@@ -103,6 +123,73 @@ class AdminSession {
   }
 }
 
+/// How a session's stream reaches it, in rising order of work for the server.
+enum PlayMethod {
+  /// The file as it is.
+  directPlay,
+
+  /// Re-wrapped in another container; the streams themselves untouched.
+  directStream,
+
+  /// Re-encoded.
+  transcode;
+
+  static PlayMethod? fromWire(Object? name) => switch (name) {
+    'DirectPlay' => PlayMethod.directPlay,
+    'DirectStream' => PlayMethod.directStream,
+    'Transcode' => PlayMethod.transcode,
+    _ => null,
+  };
+}
+
+/// What the server is doing to one session's stream.
+@immutable
+class SessionTranscoding {
+  const SessionTranscoding({
+    this.isVideoDirect = true,
+    this.isAudioDirect = true,
+    this.videoCodec = '',
+    this.audioCodec = '',
+    this.container = '',
+    this.bitrate,
+    this.width,
+    this.height,
+    this.framerate,
+    this.audioChannels,
+    this.hardwareAcceleration = '',
+    this.completion,
+    this.reasons = const <String>[],
+  });
+
+  /// Copied rather than re-encoded. A stream that is re-wrapped only has both
+  /// true; a transcode has at least one false.
+  final bool isVideoDirect;
+  final bool isAudioDirect;
+
+  final String videoCodec;
+  final String audioCodec;
+  final String container;
+
+  /// Bits per second going out.
+  final int? bitrate;
+  final int? width;
+  final int? height;
+  final double? framerate;
+  final int? audioChannels;
+
+  /// The encoder's acceleration — `nvenc`, `qsv`, `vaapi` — or empty for
+  /// software, which is the one an administrator wants to know about.
+  final String hardwareAcceleration;
+
+  /// How far ahead of the viewer the transcode has got, 0..100.
+  final double? completion;
+
+  /// The server's own names for why — `ContainerNotSupported`,
+  /// `VideoCodecNotSupported`. Kept raw: the client words the ones it knows
+  /// and shows the rest as they are.
+  final List<String> reasons;
+}
+
 /// One of the server's maintenance jobs.
 @immutable
 class ScheduledTask {
@@ -114,6 +201,7 @@ class ScheduledTask {
     this.progress,
     this.lastEndedAt,
     this.lastFailed = false,
+    this.triggers = const <TaskTrigger>[],
   });
 
   final String id;
@@ -131,7 +219,50 @@ class ScheduledTask {
   /// finished task worth colouring.
   final bool lastFailed;
 
+  /// When the server runs it by itself. Empty is "only when asked".
+  final List<TaskTrigger> triggers;
+
   bool get isRunning => state != TaskState.idle;
+}
+
+/// One of the times a task runs by itself.
+@immutable
+class TaskTrigger {
+  const TaskTrigger({
+    required this.kind,
+    this.timeOfDay,
+    this.interval,
+    this.dayOfWeek = '',
+  });
+
+  final TaskTriggerKind kind;
+
+  /// For daily and weekly: the time after midnight, server time.
+  final Duration? timeOfDay;
+
+  /// For an interval trigger.
+  final Duration? interval;
+
+  /// For weekly: the server's English day name, `Sunday`.
+  final String dayOfWeek;
+}
+
+enum TaskTriggerKind {
+  daily,
+  weekly,
+  interval,
+  startup,
+
+  /// A kind this client has no wording for. Still listed, unnamed.
+  other;
+
+  static TaskTriggerKind fromWire(Object? name) => switch (name) {
+    'DailyTrigger' => TaskTriggerKind.daily,
+    'WeeklyTrigger' => TaskTriggerKind.weekly,
+    'IntervalTrigger' => TaskTriggerKind.interval,
+    'StartupTrigger' => TaskTriggerKind.startup,
+    _ => TaskTriggerKind.other,
+  };
 }
 
 enum TaskState {
@@ -604,6 +735,96 @@ class ItemMetadata {
   );
 }
 
+/// One of the server's log files.
+@immutable
+class ServerLogFile {
+  const ServerLogFile({required this.name, this.size = 0, this.modified});
+
+  final String name;
+
+  /// Bytes.
+  final int size;
+  final DateTime? modified;
+}
+
+/// A page of the activity log, and how many entries the log holds in all.
+@immutable
+class ActivityPage {
+  const ActivityPage({
+    required this.entries,
+    required this.fetched,
+    this.total,
+  });
+
+  /// After any filtering done here, which may leave fewer than were asked
+  /// for even when more remain.
+  final List<ActivityEntry> entries;
+
+  /// How many the server sent before that filtering — what the next page's
+  /// start index advances by.
+  final int fetched;
+
+  /// The server's own count, where it gave one.
+  final int? total;
+}
+
+/// Where the server keeps things, and how full each place is.
+@immutable
+class ServerStorage {
+  const ServerStorage({
+    this.folders = const <StorageFolder>[],
+    this.libraries = const <({String name, List<StorageFolder> folders})>[],
+  });
+
+  /// The server's own folders: data, cache, logs, metadata, transcodes.
+  final List<StorageFolder> folders;
+
+  /// Each library's folders on disk.
+  final List<({String name, List<StorageFolder> folders})> libraries;
+}
+
+/// One folder and the disk it is on.
+@immutable
+class StorageFolder {
+  const StorageFolder({
+    required this.path,
+    this.kind = StorageFolderKind.library,
+    this.free,
+    this.used,
+  });
+
+  final String path;
+  final StorageFolderKind kind;
+
+  /// Bytes free on the disk, or null when the server could not say.
+  final int? free;
+
+  /// Bytes the folder itself takes, or null when the server could not say.
+  final int? used;
+}
+
+enum StorageFolderKind {
+  programData,
+  web,
+  imageCache,
+  cache,
+  logs,
+  metadata,
+  transcodes,
+  library,
+}
+
+/// A key an outside program signs in with.
+@immutable
+class ServerApiKey {
+  const ServerApiKey({required this.token, this.appName = '', this.created});
+
+  /// The key itself — what the program sends, and what revoking it names.
+  final String token;
+  final String appName;
+  final DateTime? created;
+}
+
 /// Everything the administration screens can ask a server to do.
 abstract class ServerAdmin {
   /// What the server is and whether it can be restarted from here.
@@ -738,6 +959,37 @@ abstract class ServerAdmin {
   /// Asks the server to stop. **Nothing here can start it again** — that is
   /// the machine's job, which is why the button behind this is confirmed.
   Future<void> shutdownServer();
+
+  /// A page of the activity log, newest first, optionally only warnings and
+  /// errors, or only since [since].
+  ///
+  /// The server filters by severity from 10.11; the entries are also kept to
+  /// it here, which is why [ActivityPage.fetched] can exceed the entries.
+  Future<ActivityPage> activityPage({
+    int startIndex = 0,
+    int limit = 50,
+    bool problemsOnly = false,
+    DateTime? since,
+  });
+
+  /// The server's log files, newest first.
+  Future<List<ServerLogFile>> logFiles();
+
+  /// The text of one log file — its **last** [maxBytes] when it is larger,
+  /// cut at a line break, since the end is what anyone reading it wants.
+  Future<String> logText(String name, {int maxBytes = 512 * 1024});
+
+  /// Disk use, or null on a server older than 10.10, which cannot say.
+  Future<ServerStorage?> storage();
+
+  Future<List<ServerApiKey>> apiKeys();
+
+  /// Makes a key for [appName]. The server answers with nothing, so the new
+  /// key is found by listing again.
+  Future<void> createApiKey(String appName);
+
+  /// Revokes a key. Whatever signed in with it is signed out.
+  Future<void> revokeApiKey(String token);
 
   Future<void> dispose();
 }

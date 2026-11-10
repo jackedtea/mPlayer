@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
@@ -31,7 +32,8 @@ class AdminTasksPage extends ConsumerWidget {
         loading: tasks.isLoading,
         emptyText: l10n.adminNoTasks,
         children: <Widget>[
-          for (final ScheduledTask task in tasks.value ?? const <ScheduledTask>[])
+          for (final ScheduledTask task
+              in tasks.value ?? const <ScheduledTask>[])
             _TaskRow(task: task),
         ],
       ),
@@ -65,6 +67,18 @@ class _TaskRow extends ConsumerWidget {
                   : scheme.onSurfaceVariant,
             ),
           ),
+          // When it runs by itself: what tells "never run" apart from
+          // "runs at 3 a.m. and has not got there yet".
+          Text(
+            triggerSummary(
+              task.triggers,
+              l10n,
+              MaterialLocalizations.of(context),
+            ),
+            style: context.texts.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
           if (task.isRunning) ...<Widget>[
             const SizedBox(height: 6),
             LinearProgressIndicator(
@@ -82,12 +96,12 @@ class _TaskRow extends ConsumerWidget {
               onPressed: task.state == TaskState.cancelling
                   ? null
                   : () => runAdminAction(
-                        context,
-                        ref,
-                        action: (admin) => admin.stopTask(task.id),
-                        success: l10n.adminTaskStopping(task.name),
-                        refresh: () => ref.invalidate(scheduledTasksProvider),
-                      ),
+                      context,
+                      ref,
+                      action: (admin) => admin.stopTask(task.id),
+                      success: l10n.adminTaskStopping(task.name),
+                      refresh: () => ref.invalidate(scheduledTasksProvider),
+                    ),
               child: Text(l10n.adminStopTask),
             )
           : TextButton(
@@ -115,4 +129,63 @@ class _TaskRow extends ConsumerWidget {
     if (ended == null) return l10n.adminTaskNeverRun;
     return l10n.adminTaskLastRun(relativeTime(ended, l10n));
   }
+}
+
+/// "Daily at 03:00 · On startup", or "Only when run by hand".
+String triggerSummary(
+  List<TaskTrigger> triggers,
+  AppLocalizations l10n,
+  MaterialLocalizations material,
+) {
+  if (triggers.isEmpty) return l10n.adminTriggerManual;
+
+  String time(Duration? d) {
+    final t = d ?? Duration.zero;
+    return material.formatTimeOfDay(
+      TimeOfDay(hour: t.inHours % 24, minute: t.inMinutes % 60),
+      alwaysUse24HourFormat: true,
+    );
+  }
+
+  String every(Duration? d) {
+    final t = d ?? Duration.zero;
+    if (t.inMinutes % (24 * 60) == 0 && t.inDays > 0) {
+      return l10n.adminTriggerEveryDays(t.inDays);
+    }
+    if (t.inMinutes % 60 == 0 && t.inHours > 0) {
+      return l10n.adminTriggerEveryHours(t.inHours);
+    }
+    return l10n.adminTriggerEveryMinutes(t.inMinutes);
+  }
+
+  return <String>[
+    for (final TaskTrigger t in triggers)
+      switch (t.kind) {
+        TaskTriggerKind.daily => l10n.adminTriggerDaily(time(t.timeOfDay)),
+        TaskTriggerKind.weekly => l10n.adminTriggerWeekly(
+          weekdayName(t.dayOfWeek, l10n.localeName),
+          time(t.timeOfDay),
+        ),
+        TaskTriggerKind.interval => every(t.interval),
+        TaskTriggerKind.startup => l10n.adminTriggerStartup,
+        TaskTriggerKind.other => l10n.adminTriggerOther,
+      },
+  ].join(' · ');
+}
+
+/// The server's English day name in the reader's language.
+String weekdayName(String english, String locale) {
+  const days = <String>[
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
+  final i = days.indexOf(english);
+  if (i < 0) return english;
+  // 7 January 2024 was a Sunday.
+  return DateFormat.EEEE(locale).format(DateTime(2024, 1, 7 + i));
 }

@@ -636,6 +636,247 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminDiscard => 'Bỏ';
 
   @override
+  String get adminDirectPlay => 'Phát trực tiếp';
+
+  @override
+  String get adminDirectStream => 'Truyền trực tiếp';
+
+  @override
+  String get adminTranscoding => 'Đang chuyển mã';
+
+  @override
+  String get adminSessionDevice => 'Thiết bị';
+
+  @override
+  String get adminSessionClient => 'Ứng dụng';
+
+  @override
+  String get adminSessionAddress => 'Địa chỉ';
+
+  @override
+  String get adminTranscodeReasons => 'Vì sao phải chuyển mã';
+
+  @override
+  String get adminTranscodeVideo => 'Video';
+
+  @override
+  String get adminTranscodeAudio => 'Âm thanh';
+
+  @override
+  String get adminTranscodeCopied => 'Giữ nguyên';
+
+  @override
+  String get adminTranscodeContainer => 'Định dạng chứa';
+
+  @override
+  String get adminTranscodeBitrate => 'Bitrate';
+
+  @override
+  String get adminTranscodeHardware => 'Bộ mã hoá';
+
+  @override
+  String get adminTranscodeSoftware => 'Phần mềm (không tăng tốc phần cứng)';
+
+  @override
+  String get adminTranscodeAhead => 'Đã chuyển mã trước';
+
+  @override
+  String get adminReasonContainer =>
+      'Ứng dụng không phát được định dạng chứa này';
+
+  @override
+  String get adminReasonVideoCodec =>
+      'Ứng dụng không giải mã được codec video này';
+
+  @override
+  String get adminReasonAudioCodec =>
+      'Ứng dụng không giải mã được codec âm thanh này';
+
+  @override
+  String get adminReasonSubtitle => 'Phụ đề phải được ghi thẳng vào hình';
+
+  @override
+  String get adminReasonResolution => 'Độ phân giải vượt giới hạn của ứng dụng';
+
+  @override
+  String get adminReasonBitrate => 'Bitrate vượt giới hạn cho phép';
+
+  @override
+  String get adminReasonChannels => 'Quá nhiều kênh âm thanh so với ứng dụng';
+
+  @override
+  String get adminReasonRange => 'Ứng dụng không hiển thị được loại HDR này';
+
+  @override
+  String get adminReasonProfile =>
+      'Ứng dụng không phát được profile hoặc level video này';
+
+  @override
+  String get adminLogs => 'Nhật ký máy chủ';
+
+  @override
+  String get adminNoLogs => 'Máy chủ không có file nhật ký nào.';
+
+  @override
+  String get adminLogFilter => 'Lọc dòng';
+
+  @override
+  String get adminProblemsOnly => 'Cảnh báo và lỗi';
+
+  @override
+  String get adminLogNoLines => 'Không có dòng nào khớp.';
+
+  @override
+  String get adminCopyLog => 'Sao chép các dòng đang hiện';
+
+  @override
+  String get adminLogCopied => 'Đã sao chép.';
+
+  @override
+  String get adminSpanAll => 'Mọi lúc';
+
+  @override
+  String get adminSpanDay => '24 giờ qua';
+
+  @override
+  String get adminSpanWeek => '7 ngày qua';
+
+  @override
+  String get adminLoadMore => 'Tải thêm';
+
+  @override
+  String get adminRestartPending => 'Cần khởi động lại';
+
+  @override
+  String get adminRestartPendingBody =>
+      'Một số thay đổi chỉ có hiệu lực sau khi máy chủ khởi động lại.';
+
+  @override
+  String get adminRestartNow => 'Khởi động lại';
+
+  @override
+  String get adminStorage => 'Dung lượng';
+
+  @override
+  String get adminStorageUnsupported =>
+      'Máy chủ này không báo được dung lượng ổ đĩa. Cần Jellyfin 10.10 trở lên.';
+
+  @override
+  String get adminStorageServer => 'Thư mục của máy chủ';
+
+  @override
+  String adminStorageFree(String size) {
+    return 'Còn trống $size';
+  }
+
+  @override
+  String adminStorageUsed(String size) {
+    return 'Thư mục này dùng $size';
+  }
+
+  @override
+  String get adminFolderData => 'Dữ liệu chương trình';
+
+  @override
+  String get adminFolderWeb => 'Giao diện web';
+
+  @override
+  String get adminFolderImages => 'Bộ nhớ đệm ảnh';
+
+  @override
+  String get adminFolderCache => 'Bộ nhớ đệm';
+
+  @override
+  String get adminFolderLogs => 'Nhật ký';
+
+  @override
+  String get adminFolderMetadata => 'Metadata';
+
+  @override
+  String get adminFolderTranscodes => 'Tạm cho chuyển mã';
+
+  @override
+  String get adminApiKeys => 'Khoá API';
+
+  @override
+  String get adminNoApiKeys => 'Chưa có khoá API nào.';
+
+  @override
+  String get adminNewApiKey => 'Khoá mới';
+
+  @override
+  String get adminApiKeyApp => 'Tên ứng dụng';
+
+  @override
+  String get adminApiKeyAppHint =>
+      'Thứ sẽ dùng khoá này — hiện trong danh sách và nhật ký hoạt động.';
+
+  @override
+  String adminApiKeyCreated(String name) {
+    return 'Đã tạo khoá cho $name.';
+  }
+
+  @override
+  String get adminApiKeyUnnamed => 'Không tên';
+
+  @override
+  String get adminCopyApiKey => 'Sao chép khoá';
+
+  @override
+  String get adminApiKeyCopied => 'Đã sao chép khoá.';
+
+  @override
+  String get adminRevokeApiKey => 'Thu hồi';
+
+  @override
+  String adminRevokeApiKeyQuestion(String name) {
+    return 'Thu hồi khoá của $name?';
+  }
+
+  @override
+  String get adminRevokeApiKeyBody =>
+      'Thứ đang dùng khoá này sẽ ngừng hoạt động cho tới khi được cấp khoá mới.';
+
+  @override
+  String adminApiKeyRevoked(String name) {
+    return 'Đã thu hồi khoá của $name.';
+  }
+
+  @override
+  String get adminTriggerManual => 'Chỉ chạy khi bấm tay';
+
+  @override
+  String adminTriggerDaily(String time) {
+    return 'Hằng ngày lúc $time';
+  }
+
+  @override
+  String adminTriggerWeekly(String day, String time) {
+    return '$day lúc $time';
+  }
+
+  @override
+  String adminTriggerEveryDays(int count) {
+    return 'Mỗi $count ngày';
+  }
+
+  @override
+  String adminTriggerEveryHours(int count) {
+    return 'Mỗi $count giờ';
+  }
+
+  @override
+  String adminTriggerEveryMinutes(int count) {
+    return 'Mỗi $count phút';
+  }
+
+  @override
+  String get adminTriggerStartup => 'Khi máy chủ khởi động';
+
+  @override
+  String get adminTriggerOther => 'Theo điều kiện khác';
+
+  @override
   String get adminTabProfile => 'Hồ sơ';
 
   @override

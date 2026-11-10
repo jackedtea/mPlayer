@@ -57,6 +57,10 @@ const _routes = <String>[
   '/admin/users/u1',
   '/admin/libraries',
   '/admin/item/i1',
+  '/admin/storage',
+  '/admin/logs',
+  '/admin/logs/view?name=x.log',
+  '/admin/keys',
   '/admin/activity',
   '/admin/plugins',
   // Nothing found, which is the face a phone shows first.

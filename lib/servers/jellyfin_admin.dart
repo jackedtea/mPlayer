@@ -409,6 +409,116 @@ class JellyfinAdmin implements ServerAdmin {
   Future<Map<String, dynamic>> _rawItem(String itemId) =>
       _getMap('/Items/$itemId', <String, String>{'userId': _profile.userId});
 
+  @override
+  Future<ActivityPage> activityPage({
+    int startIndex = 0,
+    int limit = 50,
+    bool problemsOnly = false,
+    DateTime? since,
+  }) async {
+    final json = await _getMap('/System/ActivityLog/Entries', <String, String>{
+      'startIndex': '$startIndex',
+      'limit': '$limit',
+      if (since != null) 'minDate': since.toUtc().toIso8601String(),
+      // 10.11 only; an older server sends everything and the filter below
+      // does the work.
+      if (problemsOnly) 'severity': 'Warning',
+    });
+
+    final items = json['Items'];
+    final raw = <ActivityEntry>[
+      if (items is List)
+        for (final Object? entry in items)
+          if (entry is Map<String, dynamic>) activityEntryFromJson(entry),
+    ];
+
+    return ActivityPage(
+      entries: problemsOnly ? raw.where(isProblem).toList() : raw,
+      fetched: raw.length,
+      total: (json['TotalRecordCount'] as num?)?.toInt(),
+    );
+  }
+
+  // --------------------------------------------------------------- logs
+
+  @override
+  Future<List<ServerLogFile>> logFiles() async {
+    final list = await _getList('/System/Logs');
+    final files = <ServerLogFile>[
+      for (final Object? entry in list)
+        if (entry is Map<String, dynamic>)
+          if (serverLogFileFromJson(entry) case final ServerLogFile f
+              when f.name.isNotEmpty)
+            f,
+    ];
+    files.sort((a, b) {
+      final at = a.modified;
+      final bt = b.modified;
+      if (at == null || bt == null) return b.name.compareTo(a.name);
+      return bt.compareTo(at);
+    });
+    return files;
+  }
+
+  @override
+  Future<String> logText(String name, {int maxBytes = 512 * 1024}) async {
+    final response = await _send(
+      () => _dio.getUri<String>(
+        _url('/System/Logs/Log', <String, String>{'name': name}),
+        // A log is text, whatever content type the server labels it with —
+        // and parsing a JSON-looking line as JSON would lose the file.
+        options: Options(headers: _headers, responseType: ResponseType.plain),
+      ),
+    );
+    return logTail(response.data as String? ?? '', maxBytes);
+  }
+
+  // ------------------------------------------------------------ storage
+
+  @override
+  Future<ServerStorage?> storage() async {
+    try {
+      return serverStorageFromJson(await _getMap('/System/Info/Storage'));
+    } on ServerException catch (e) {
+      // Before 10.10 the route does not exist. That is "cannot say", which
+      // the dashboard draws as nothing, not as an error.
+      if (e.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  // ----------------------------------------------------------- API keys
+
+  @override
+  Future<List<ServerApiKey>> apiKeys() async {
+    final list = await _getList('/Auth/Keys');
+    final keys = <ServerApiKey>[
+      for (final Object? entry in list)
+        if (entry is Map<String, dynamic>)
+          if (serverApiKeyFromJson(entry) case final ServerApiKey k) k,
+    ];
+    keys.sort((a, b) {
+      final at = a.created;
+      final bt = b.created;
+      if (at == null || bt == null) return 0;
+      return bt.compareTo(at);
+    });
+    return keys;
+  }
+
+  @override
+  Future<void> createApiKey(String appName) async {
+    await _send(
+      () => _dio.postUri<dynamic>(
+        _url('/Auth/Keys', <String, String>{'app': appName.trim()}),
+        options: Options(headers: _headers),
+      ),
+    );
+  }
+
+  @override
+  Future<void> revokeApiKey(String token) => _delete('/Auth/Keys/$token');
+
   // ------------------------------------------------------------ plugins
 
   @override
@@ -575,6 +685,7 @@ class JellyfinAdmin implements ServerAdmin {
     if (status < 200 || status >= 300) {
       throw ServerException(
         reason ?? '${_profile.name} refused the request ($status).',
+        statusCode: status,
       );
     }
 

@@ -10,7 +10,7 @@
 /// tested against captured JSON with no server to break.
 library;
 
-import 'jellyfin_dto.dart' show ticksToPosition;
+import 'jellyfin_dto.dart' show ticksToDuration, ticksToPosition;
 import 'server_admin.dart';
 
 ServerSystemInfo systemInfoFromJson(Map<String, dynamic> json) {
@@ -33,6 +33,7 @@ ServerSystemInfo systemInfoFromJson(Map<String, dynamic> json) {
         json['CanSelfRestart'] as bool? ??
         false,
     startupWizardCompleted: json['StartupWizardCompleted'] as bool? ?? true,
+    hasPendingRestart: json['HasPendingRestart'] as bool? ?? false,
   );
 }
 
@@ -65,7 +66,54 @@ AdminSession? adminSessionFromJson(Map<String, dynamic> json) {
     isPaused: playState is Map && playState['IsPaused'] == true,
     supportsRemoteControl: json['SupportsRemoteControl'] as bool? ?? false,
     lastActivity: DateTime.tryParse(json['LastActivityDate'] as String? ?? ''),
+    playMethod: nowPlaying is Map && playState is Map
+        ? PlayMethod.fromWire(playState['PlayMethod'])
+        : null,
+    transcoding: switch (json['TranscodingInfo']) {
+      final Map<String, dynamic> t => sessionTranscodingFromJson(t),
+      _ => null,
+    },
+    clientVersion: json['ApplicationVersion'] as String? ?? '',
+    remoteAddress: json['RemoteEndPoint'] as String? ?? '',
   );
+}
+
+SessionTranscoding sessionTranscodingFromJson(Map<String, dynamic> json) {
+  return SessionTranscoding(
+    isVideoDirect: json['IsVideoDirect'] as bool? ?? true,
+    isAudioDirect: json['IsAudioDirect'] as bool? ?? true,
+    videoCodec: json['VideoCodec'] as String? ?? '',
+    audioCodec: json['AudioCodec'] as String? ?? '',
+    container: json['Container'] as String? ?? '',
+    bitrate: (json['Bitrate'] as num?)?.toInt(),
+    width: (json['Width'] as num?)?.toInt(),
+    height: (json['Height'] as num?)?.toInt(),
+    framerate: (json['Framerate'] as num?)?.toDouble(),
+    audioChannels: (json['AudioChannels'] as num?)?.toInt(),
+    hardwareAcceleration: switch (json['HardwareAccelerationType']) {
+      final String s when s != 'none' => s,
+      _ => '',
+    },
+    completion: (json['CompletionPercentage'] as num?)?.toDouble(),
+    reasons: transcodeReasonsFromJson(json['TranscodeReasons']),
+  );
+}
+
+/// A flags enum the server writes as a list of names on current versions and
+/// as one comma-separated string on older ones.
+List<String> transcodeReasonsFromJson(Object? value) {
+  final parts = switch (value) {
+    final List<Object?> list => <String>[
+      for (final v in list)
+        if (v is String) v,
+    ],
+    final String s => s.split(','),
+    _ => const <String>[],
+  };
+  return <String>[
+    for (final String p in parts)
+      if (p.trim().isNotEmpty) p.trim(),
+  ];
 }
 
 /// "Westworld · S1E10 · The Bicameral Mind", or just the film's name.
@@ -103,6 +151,22 @@ ScheduledTask scheduledTaskFromJson(Map<String, dynamic> json) {
         lastResult is Map &&
         lastResult['Status'] != null &&
         lastResult['Status'] != 'Completed',
+    triggers: switch (json['Triggers']) {
+      final List<Object?> list => <TaskTrigger>[
+        for (final Object? t in list)
+          if (t is Map) taskTriggerFromJson(t),
+      ],
+      _ => const <TaskTrigger>[],
+    },
+  );
+}
+
+TaskTrigger taskTriggerFromJson(Map<Object?, Object?> json) {
+  return TaskTrigger(
+    kind: TaskTriggerKind.fromWire(json['Type']),
+    timeOfDay: ticksToPosition(json['TimeOfDayTicks']),
+    interval: ticksToDuration(json['IntervalTicks']),
+    dayOfWeek: json['DayOfWeek'] as String? ?? '',
   );
 }
 
@@ -383,3 +447,82 @@ Map<String, dynamic> applyItemMetadata(
     'LockData': metadata.locked,
   };
 }
+
+ServerLogFile serverLogFileFromJson(Map<String, dynamic> json) {
+  return ServerLogFile(
+    name: json['Name'] as String? ?? '',
+    size: (json['Size'] as num?)?.toInt() ?? 0,
+    modified: DateTime.tryParse(json['DateModified'] as String? ?? ''),
+  );
+}
+
+StorageFolder storageFolderFromJson(
+  Map<Object?, Object?> json,
+  StorageFolderKind kind,
+) {
+  // The server writes -1 where it could not measure a disk.
+  int? bytes(Object? v) => switch (v) {
+    final num n when n >= 0 => n.toInt(),
+    _ => null,
+  };
+  return StorageFolder(
+    path: json['Path'] as String? ?? '',
+    kind: kind,
+    free: bytes(json['FreeSpace']),
+    used: bytes(json['UsedSpace']),
+  );
+}
+
+ServerStorage serverStorageFromJson(Map<String, dynamic> json) {
+  const keys = <String, StorageFolderKind>{
+    'ProgramDataFolder': StorageFolderKind.programData,
+    'CacheFolder': StorageFolderKind.cache,
+    'ImageCacheFolder': StorageFolderKind.imageCache,
+    'InternalMetadataFolder': StorageFolderKind.metadata,
+    'TranscodingTempFolder': StorageFolderKind.transcodes,
+    'LogFolder': StorageFolderKind.logs,
+    'WebFolder': StorageFolderKind.web,
+  };
+
+  return ServerStorage(
+    folders: <StorageFolder>[
+      for (final MapEntry<String, StorageFolderKind> k in keys.entries)
+        if (json[k.key] case final Map<Object?, Object?> f)
+          storageFolderFromJson(f, k.value),
+    ],
+    libraries: <({String name, List<StorageFolder> folders})>[
+      for (final Object? lib in json['Libraries'] as List? ?? const <Object?>[])
+        if (lib is Map)
+          (
+            name: lib['Name'] as String? ?? '',
+            folders: <StorageFolder>[
+              for (final Object? f
+                  in lib['Folders'] as List? ?? const <Object?>[])
+                if (f is Map)
+                  storageFolderFromJson(f, StorageFolderKind.library),
+            ],
+          ),
+    ],
+  );
+}
+
+ServerApiKey? serverApiKeyFromJson(Map<String, dynamic> json) {
+  final token = json['AccessToken'] as String?;
+  if (token == null || token.isEmpty) return null;
+  return ServerApiKey(
+    token: token,
+    appName: json['AppName'] as String? ?? '',
+    created: DateTime.tryParse(json['DateCreated'] as String? ?? ''),
+  );
+}
+
+/// The tail of a log: the last [maxBytes] characters, starting on a line.
+String logTail(String text, int maxBytes) {
+  if (text.length <= maxBytes) return text;
+  final cut = text.substring(text.length - maxBytes);
+  final firstBreak = cut.indexOf('\n');
+  return firstBreak < 0 ? cut : cut.substring(firstBreak + 1);
+}
+
+/// The server's minimum severity for "problems only".
+bool isProblem(ActivityEntry e) => e.severity != ActivitySeverity.information;

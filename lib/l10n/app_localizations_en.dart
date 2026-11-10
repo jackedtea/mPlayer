@@ -634,6 +634,263 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminDiscard => 'Discard';
 
   @override
+  String get adminDirectPlay => 'Direct play';
+
+  @override
+  String get adminDirectStream => 'Direct stream';
+
+  @override
+  String get adminTranscoding => 'Transcoding';
+
+  @override
+  String get adminSessionDevice => 'Device';
+
+  @override
+  String get adminSessionClient => 'App';
+
+  @override
+  String get adminSessionAddress => 'Address';
+
+  @override
+  String get adminTranscodeReasons => 'Why it is transcoding';
+
+  @override
+  String get adminTranscodeVideo => 'Video';
+
+  @override
+  String get adminTranscodeAudio => 'Audio';
+
+  @override
+  String get adminTranscodeCopied => 'Copied as is';
+
+  @override
+  String get adminTranscodeContainer => 'Container';
+
+  @override
+  String get adminTranscodeBitrate => 'Bitrate';
+
+  @override
+  String get adminTranscodeHardware => 'Encoder';
+
+  @override
+  String get adminTranscodeSoftware => 'Software (no hardware acceleration)';
+
+  @override
+  String get adminTranscodeAhead => 'Transcoded ahead';
+
+  @override
+  String get adminReasonContainer => 'The app cannot play this container';
+
+  @override
+  String get adminReasonVideoCodec => 'The app cannot decode this video codec';
+
+  @override
+  String get adminReasonAudioCodec => 'The app cannot decode this audio codec';
+
+  @override
+  String get adminReasonSubtitle => 'Subtitles have to be burned in';
+
+  @override
+  String get adminReasonResolution =>
+      'The resolution is above the app\'s limit';
+
+  @override
+  String get adminReasonBitrate => 'The bitrate is above the allowed limit';
+
+  @override
+  String get adminReasonChannels => 'Too many audio channels for the app';
+
+  @override
+  String get adminReasonRange => 'The app cannot show this HDR type';
+
+  @override
+  String get adminReasonProfile =>
+      'The app cannot play this video profile or level';
+
+  @override
+  String get adminLogs => 'Logs';
+
+  @override
+  String get adminNoLogs => 'The server lists no log files.';
+
+  @override
+  String get adminLogFilter => 'Filter lines';
+
+  @override
+  String get adminProblemsOnly => 'Warnings and errors';
+
+  @override
+  String get adminLogNoLines => 'No lines match.';
+
+  @override
+  String get adminCopyLog => 'Copy the lines shown';
+
+  @override
+  String get adminLogCopied => 'Copied.';
+
+  @override
+  String get adminSpanAll => 'Any time';
+
+  @override
+  String get adminSpanDay => 'Last 24 hours';
+
+  @override
+  String get adminSpanWeek => 'Last 7 days';
+
+  @override
+  String get adminLoadMore => 'Load more';
+
+  @override
+  String get adminRestartPending => 'Restart needed';
+
+  @override
+  String get adminRestartPendingBody =>
+      'Some changes take effect only after the server restarts.';
+
+  @override
+  String get adminRestartNow => 'Restart';
+
+  @override
+  String get adminStorage => 'Storage';
+
+  @override
+  String get adminStorageUnsupported =>
+      'This server cannot report disk use. It needs Jellyfin 10.10 or later.';
+
+  @override
+  String get adminStorageServer => 'Server folders';
+
+  @override
+  String adminStorageFree(String size) {
+    return '$size free';
+  }
+
+  @override
+  String adminStorageUsed(String size) {
+    return '$size used here';
+  }
+
+  @override
+  String get adminFolderData => 'Program data';
+
+  @override
+  String get adminFolderWeb => 'Web client';
+
+  @override
+  String get adminFolderImages => 'Image cache';
+
+  @override
+  String get adminFolderCache => 'Cache';
+
+  @override
+  String get adminFolderLogs => 'Logs';
+
+  @override
+  String get adminFolderMetadata => 'Metadata';
+
+  @override
+  String get adminFolderTranscodes => 'Transcodes';
+
+  @override
+  String get adminApiKeys => 'API keys';
+
+  @override
+  String get adminNoApiKeys => 'No API keys yet.';
+
+  @override
+  String get adminNewApiKey => 'New key';
+
+  @override
+  String get adminApiKeyApp => 'App name';
+
+  @override
+  String get adminApiKeyAppHint =>
+      'What will use it — shown in the list and the activity log.';
+
+  @override
+  String adminApiKeyCreated(String name) {
+    return 'Key for $name created.';
+  }
+
+  @override
+  String get adminApiKeyUnnamed => 'Unnamed';
+
+  @override
+  String get adminCopyApiKey => 'Copy key';
+
+  @override
+  String get adminApiKeyCopied => 'Key copied.';
+
+  @override
+  String get adminRevokeApiKey => 'Revoke';
+
+  @override
+  String adminRevokeApiKeyQuestion(String name) {
+    return 'Revoke the key for $name?';
+  }
+
+  @override
+  String get adminRevokeApiKeyBody =>
+      'Whatever uses it stops working until it is given a new key.';
+
+  @override
+  String adminApiKeyRevoked(String name) {
+    return 'Key for $name revoked.';
+  }
+
+  @override
+  String get adminTriggerManual => 'Only when run by hand';
+
+  @override
+  String adminTriggerDaily(String time) {
+    return 'Daily at $time';
+  }
+
+  @override
+  String adminTriggerWeekly(String day, String time) {
+    return '$day at $time';
+  }
+
+  @override
+  String adminTriggerEveryDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: 'day',
+    );
+    return 'Every $_temp0';
+  }
+
+  @override
+  String adminTriggerEveryHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours',
+      one: 'hour',
+    );
+    return 'Every $_temp0';
+  }
+
+  @override
+  String adminTriggerEveryMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes',
+      one: 'minute',
+    );
+    return 'Every $_temp0';
+  }
+
+  @override
+  String get adminTriggerStartup => 'When the server starts';
+
+  @override
+  String get adminTriggerOther => 'On another trigger';
+
+  @override
   String get adminTabProfile => 'Profile';
 
   @override

@@ -162,8 +162,23 @@ final adminItemMetadataProvider = FutureProvider.autoDispose
           _withAdmin<ItemMetadata?>(ref, (a) => a.itemMetadata(itemId), null),
     );
 
-final activityLogProvider = FutureProvider<List<ActivityEntry>>(
-  (ref) => _withAdmin(ref, (a) => a.activity(), const <ActivityEntry>[]),
+/// Where the server keeps things and how full the disks are, or null on a
+/// server too old to say.
+final serverStorageProvider = FutureProvider.autoDispose<ServerStorage?>(
+  (ref) => _withAdmin<ServerStorage?>(ref, (a) => a.storage(), null),
+);
+
+final serverLogFilesProvider = FutureProvider.autoDispose<List<ServerLogFile>>(
+  (ref) => _withAdmin(ref, (a) => a.logFiles(), const <ServerLogFile>[]),
+);
+
+/// One log file's text — its tail, when it is large.
+final serverLogTextProvider = FutureProvider.autoDispose.family<String, String>(
+  (ref, name) => _withAdmin(ref, (a) => a.logText(name), ''),
+);
+
+final apiKeysProvider = FutureProvider.autoDispose<List<ServerApiKey>>(
+  (ref) => _withAdmin(ref, (a) => a.apiKeys(), const <ServerApiKey>[]),
 );
 
 final serverPluginsProvider = FutureProvider<List<ServerPlugin>>(

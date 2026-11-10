@@ -8,10 +8,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/admin/admin_activity_page.dart';
+import '../features/admin/admin_api_keys_page.dart';
 import '../features/admin/admin_dashboard_page.dart';
 import '../features/admin/admin_item_page.dart';
 import '../features/admin/admin_libraries_page.dart';
+import '../features/admin/admin_logs_page.dart';
 import '../features/admin/admin_plugins_page.dart';
+import '../features/admin/admin_storage_page.dart';
 import '../features/admin/admin_tasks_page.dart';
 import '../features/admin/admin_user_page.dart';
 import '../features/admin/admin_users_page.dart';
@@ -187,6 +190,28 @@ GoRouter buildRouter() {
               itemId: state.pathParameters['id']!,
               title: state.uri.queryParameters['title'] ?? '',
             ),
+          ),
+          GoRoute(
+            path: 'storage',
+            builder: (context, state) => const AdminStoragePage(),
+          ),
+          GoRoute(
+            path: 'logs',
+            builder: (context, state) => const AdminLogsPage(),
+            routes: <RouteBase>[
+              // The file name rides in the query: log names carry dots and
+              // dashes a path segment would not mind, but a slash would.
+              GoRoute(
+                path: 'view',
+                builder: (context, state) => AdminLogViewerPage(
+                  name: state.uri.queryParameters['name'] ?? '',
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'keys',
+            builder: (context, state) => const AdminApiKeysPage(),
           ),
           GoRoute(
             path: 'tasks',

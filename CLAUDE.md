@@ -1347,6 +1347,43 @@ new account straight away.
 - Dialogs with a text field are **their own `StatefulWidget`** (`_RenameDialog`):
   disposing a controller right after `showDialog` returns breaks the closing animation.
 
+### Monitoring and keys (2026-11-10)
+
+- **Sessions**: each playing row says Direct play / Direct stream / Transcoding
+  (`PlayState.PlayMethod`, coloured by cost); a tap opens `showSessionDetails`
+  (`admin_session_sheet.dart`): app and version, address, and for a transcode the
+  reasons first, in words for the common ones (`transcodeReasonLabel`, the rest split
+  from CamelCase), then what video and audio become, bitrate, and the encoder —
+  "Software" when `HardwareAccelerationType` is `none` or absent. `TranscodeReasons`
+  is a list of names on current servers and **one comma-separated string** on older
+  ones (`transcodeReasonsFromJson`). An idle session has no play method even when
+  `PlayState` still carries the last one.
+- **Restart pending**: `HasPendingRestart` from `/System/Info` draws a card under the
+  server card, with Restart only where the server can restart itself.
+- **Storage** (`/admin/storage`): `/System/Info/Storage`, **10.10+**; a 404 is "this
+  server cannot say", not an error — `ServerException.statusCode` (new) is what tells
+  them apart. The server writes `-1` for a size it could not measure; that is null
+  here, and a bar is drawn only when both free and used are known. Under 10 GB free is
+  drawn in the error colour.
+- **Logs** (`/admin/logs`, `/admin/logs/view?name=`): `/System/Logs` newest first;
+  `Logs/Log` fetched with `ResponseType.plain` (a JSON-looking line must not be
+  parsed) and cut to its **last 512 KB** at a line break (`logTail`). Lines are a
+  reversed `ListView.builder`, so it opens on the newest without a jump; `[ERR]`/`[FTL]`
+  and `[WRN]` lines are coloured; a filter field and a Warnings-and-errors chip; Copy
+  copies the lines shown.
+- **Activity log pages**: `activityPage` (`startIndex`, `limit`, `minDate`,
+  `severity=Warning`) behind Load more, with Warnings-and-errors and Any time / 24 h /
+  7 days chips. `severity` is 10.11 only, so problems are also filtered here, and the
+  next page starts after what the server **sent** (`ActivityPage.fetched`), not what
+  survived. The pages live in the screen's state with a generation counter, so a page
+  landing after the filters changed is dropped.
+- **API keys** (`/admin/keys`): `/Auth/Keys`. A key is **masked** (first and last
+  four) and leaves the screen only through Copy. Create takes an app name and answers
+  nothing, so the list is fetched again; revoke asks first.
+- **Task triggers**: `Triggers` on `/ScheduledTasks` drawn under each task — "Daily at
+  03:00 · When the server starts", "Only when run by hand". The weekly day comes in
+  English and is put in the reader's language with `DateFormat.EEEE`.
+
 Deliberately **not** built: installing plugins from a repository (browsing remote packages
 and checking versions against the server's ABI is a job for the machine it runs on), and
 the rest of `/System/Configuration` beyond the server name — Jellyfin's configuration is

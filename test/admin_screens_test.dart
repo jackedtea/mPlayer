@@ -16,9 +16,17 @@ import 'package:mplayer/servers/server_admin.dart';
 
 /// A server that answers every administration question.
 class FakeAdmin implements ServerAdmin {
-  FakeAdmin({this.canRestart = true});
+  FakeAdmin({
+    this.canRestart = true,
+    this.pendingRestart = false,
+    this.hasStorage = true,
+  });
 
   final bool canRestart;
+  final bool pendingRestart;
+
+  /// False is a server before 10.10, which cannot report disk use.
+  final bool hasStorage;
 
   final List<String> calls = <String>[];
 
@@ -30,6 +38,7 @@ class FakeAdmin implements ServerAdmin {
         architecture: 'X64',
         canRestart: canRestart,
         canShutdown: canRestart,
+        hasPendingRestart: pendingRestart,
       );
 
   @override
@@ -43,6 +52,15 @@ class FakeAdmin implements ServerAdmin {
           position: Duration(minutes: 41),
           runtime: Duration(minutes: 155),
           supportsRemoteControl: true,
+          playMethod: PlayMethod.transcode,
+          transcoding: SessionTranscoding(
+            isVideoDirect: false,
+            videoCodec: 'h264',
+            width: 1920,
+            height: 1080,
+            bitrate: 8400000,
+            reasons: <String>['VideoCodecNotSupported', 'SomethingNew'],
+          ),
         ),
         const AdminSession(
           id: 'idle',
@@ -61,7 +79,17 @@ class FakeAdmin implements ServerAdmin {
           state: TaskState.running,
           progress: 62,
         ),
-        const ScheduledTask(id: 'idle', name: 'Clean transcode directory'),
+        const ScheduledTask(
+          id: 'idle',
+          name: 'Clean transcode directory',
+          triggers: <TaskTrigger>[
+            TaskTrigger(
+              kind: TaskTriggerKind.daily,
+              timeOfDay: Duration(hours: 3),
+            ),
+            TaskTrigger(kind: TaskTriggerKind.startup),
+          ],
+        ),
       ];
 
   @override
@@ -266,6 +294,84 @@ class FakeAdmin implements ServerAdmin {
   Future<void> setItemMetadata(String itemId, ItemMetadata metadata) async {
     calls.add('metadata:$itemId');
     savedMetadata[itemId] = metadata;
+  }
+
+  /// The pages asked for, as `start:problemsOnly`.
+  final List<String> activityAsks = <String>[];
+
+  @override
+  Future<ActivityPage> activityPage({
+    int startIndex = 0,
+    int limit = 50,
+    bool problemsOnly = false,
+    DateTime? since,
+  }) async {
+    activityAsks.add('$startIndex:$problemsOnly:${since != null}');
+    // Two pages of [limit] and a short third, for "Load more".
+    final count = startIndex >= 2 * limit ? 3 : limit;
+    final entries = <ActivityEntry>[
+      for (var i = 0; i < count; i++)
+        ActivityEntry(
+          id: '${startIndex + i}',
+          name: 'Entry ${startIndex + i}',
+          severity: problemsOnly
+              ? ActivitySeverity.error
+              : ActivitySeverity.information,
+        ),
+    ];
+    return ActivityPage(entries: entries, fetched: count);
+  }
+
+  @override
+  Future<List<ServerLogFile>> logFiles() async => const <ServerLogFile>[
+        ServerLogFile(name: 'log_20261110.log', size: 2048),
+      ];
+
+  @override
+  Future<String> logText(String name, {int maxBytes = 512 * 1024}) async =>
+      '[2026-11-10 03:00:00.000 +07:00] [INF] [1] Main: Server started\n'
+      '[2026-11-10 03:00:01.000 +07:00] [WRN] [1] Disk is getting full\n'
+      '[2026-11-10 03:00:02.000 +07:00] [ERR] [1] Playback failed\n';
+
+  @override
+  Future<ServerStorage?> storage() async => hasStorage
+      ? const ServerStorage(
+          folders: <StorageFolder>[
+            StorageFolder(
+              path: '/cache/transcodes',
+              kind: StorageFolderKind.transcodes,
+              free: 5 * 1024 * 1024 * 1024,
+              used: 20 * 1024 * 1024 * 1024,
+            ),
+          ],
+          libraries: <({String name, List<StorageFolder> folders})>[
+            (
+              name: 'Films',
+              folders: <StorageFolder>[
+                StorageFolder(path: '/media/films', free: 800000000000),
+              ],
+            ),
+          ],
+        )
+      : null;
+
+  final List<ServerApiKey> keys = <ServerApiKey>[
+    const ServerApiKey(token: 'abcd1234efgh5678', appName: 'Sonarr'),
+  ];
+
+  @override
+  Future<List<ServerApiKey>> apiKeys() async => List.of(keys);
+
+  @override
+  Future<void> createApiKey(String appName) async {
+    calls.add('createKey:$appName');
+    keys.add(ServerApiKey(token: 'new0000000000key', appName: appName));
+  }
+
+  @override
+  Future<void> revokeApiKey(String token) async {
+    calls.add('revokeKey:$token');
+    keys.removeWhere((k) => k.token == token);
   }
 
   @override
@@ -711,10 +817,15 @@ void main() {
         (tester) async {
       await pumpAdmin(tester, '/admin/activity');
 
-      expect(find.text('minh signed in'), findsOneWidget);
-      expect(find.text('Playback failed'), findsOneWidget);
-      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.info_outline_rounded), findsNWidgets(2));
+      expect(find.text('Entry 0'), findsOneWidget);
+      expect(find.byIcon(Icons.info_outline_rounded), findsWidgets);
+      expect(find.byIcon(Icons.error_outline_rounded), findsNothing);
+
+      // The fake answers "problems only" with errors.
+      await tester.tap(find.widgetWithText(FilterChip, 'Warnings and errors'));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.error_outline_rounded), findsWidgets);
+      expect(find.byIcon(Icons.info_outline_rounded), findsNothing);
     });
   });
 
@@ -898,6 +1009,200 @@ void main() {
       final save = find.widgetWithText(FilledButton, 'Save');
       expect(tester.widget<FilledButton>(save).onPressed, isNull);
       expect(admin!.calls, isEmpty);
+    });
+  });
+
+  group('sessions in detail', () {
+    testWidgets('a transcoding session says so, and why', (tester) async {
+      await pumpAdmin(tester, '/admin');
+
+      expect(find.text('Transcoding'), findsOneWidget);
+
+      await tester.tap(find.text('Dune'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Why it is transcoding'), findsOneWidget);
+      expect(
+        find.text('The app cannot decode this video codec'),
+        findsOneWidget,
+      );
+      // One the client has no wording for is still shown, readably.
+      expect(find.text('Something New'), findsOneWidget);
+      expect(find.text('8.4 Mbps'), findsOneWidget);
+      expect(find.text('Software (no hardware acceleration)'), findsOneWidget);
+    });
+  });
+
+  group('restart pending', () {
+    testWidgets('a waiting restart is announced and offered', (tester) async {
+      final admin = await pumpAdmin(
+        tester,
+        '/admin',
+        admin: FakeAdmin(pendingRestart: true),
+      );
+
+      expect(find.text('Restart needed'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Restart'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Restart server'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.calls, <String>['restart']);
+    });
+
+    testWidgets('no banner when nothing waits', (tester) async {
+      await pumpAdmin(tester, '/admin');
+      expect(find.text('Restart needed'), findsNothing);
+    });
+
+    testWidgets('a server that cannot restart gets the notice, no button',
+        (tester) async {
+      await pumpAdmin(
+        tester,
+        '/admin',
+        admin: FakeAdmin(pendingRestart: true, canRestart: false),
+      );
+      expect(find.text('Restart needed'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Restart'), findsNothing);
+    });
+  });
+
+  group('storage', () {
+    testWidgets('folders show free space, and low space is flagged',
+        (tester) async {
+      await pumpAdmin(tester, '/admin/storage');
+
+      expect(find.text('Transcodes'), findsOneWidget);
+      expect(find.text('5.0 GB free · 20.0 GB used here'), findsOneWidget);
+      expect(find.text('/media/films'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('an older server says it cannot report', (tester) async {
+      await pumpAdmin(
+        tester,
+        '/admin/storage',
+        admin: FakeAdmin(hasStorage: false),
+      );
+      expect(find.textContaining('10.10 or later'), findsOneWidget);
+    });
+  });
+
+  group('logs', () {
+    testWidgets('a file opens on its lines, and filters to problems',
+        (tester) async {
+      await pumpAdmin(tester, '/admin/logs');
+
+      await tester.tap(find.text('log_20261110.log'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Server started'), findsOneWidget);
+      expect(find.textContaining('Playback failed'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Warnings and errors'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Server started'), findsNothing);
+      expect(find.textContaining('Disk is getting full'), findsOneWidget);
+      expect(find.textContaining('Playback failed'), findsOneWidget);
+    });
+
+    testWidgets('typing narrows the lines', (tester) async {
+      await pumpAdmin(tester, '/admin/logs/view?name=log_20261110.log');
+
+      await tester.enterText(find.byType(TextField), 'disk');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Disk is getting full'), findsOneWidget);
+      expect(find.textContaining('Playback failed'), findsNothing);
+    });
+  });
+
+  group('the activity log, a page at a time', () {
+    testWidgets('Load more asks for the next page and stops at the end',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/activity');
+      expect(admin!.activityAsks, <String>['0:false:false']);
+
+      for (var page = 1; page <= 2; page++) {
+        await tester.scrollUntilVisible(
+          find.text('Load more'),
+          400,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.tap(find.text('Load more'));
+        await tester.pumpAndSettle();
+      }
+
+      expect(admin.activityAsks, <String>[
+        '0:false:false',
+        '50:false:false',
+        '100:false:false',
+      ]);
+      // The third page was short: there is nothing more to load.
+      expect(find.text('Load more'), findsNothing);
+    });
+
+    testWidgets('the filters start over with what they ask', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/activity');
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Warnings and errors'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Last 24 hours'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.activityAsks, <String>[
+        '0:false:false',
+        '0:true:false',
+        '0:true:true',
+      ]);
+    });
+  });
+
+  group('API keys', () {
+    testWidgets('a key is masked, never shown whole', (tester) async {
+      await pumpAdmin(tester, '/admin/keys');
+
+      expect(find.text('Sonarr'), findsOneWidget);
+      expect(find.textContaining('abcd••••5678'), findsOneWidget);
+      expect(find.textContaining('abcd1234efgh5678'), findsNothing);
+    });
+
+    testWidgets('a new key is made for a named app', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/keys');
+
+      await tester.tap(find.text('New key'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Home Assistant');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.calls, <String>['createKey:Home Assistant']);
+      expect(find.text('Home Assistant'), findsOneWidget);
+    });
+
+    testWidgets('revoking asks first', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/keys');
+
+      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+      await tester.pumpAndSettle();
+      expect(find.text('Revoke the key for Sonarr?'), findsOneWidget);
+      expect(admin!.calls, isEmpty);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Revoke'));
+      await tester.pumpAndSettle();
+      expect(admin.calls, <String>['revokeKey:abcd1234efgh5678']);
+    });
+  });
+
+  group('task triggers', () {
+    testWidgets('each task says when it runs by itself', (tester) async {
+      await pumpAdmin(tester, '/admin/tasks');
+
+      expect(find.text('Daily at 03:00 · When the server starts'),
+          findsOneWidget);
+      expect(find.text('Only when run by hand'), findsOneWidget);
     });
   });
 }

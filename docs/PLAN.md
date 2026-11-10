@@ -423,6 +423,9 @@ code path is complete and unit-tested; neither has been run against a real NAS.
       Activity tab (that account's devices and log)
 - [x] Library administration — `/admin/libraries` (scan, refresh metadata, rename,
       remove) and, on any item for an administrator, refresh / edit metadata / delete
+- [x] Server monitoring — session play method and transcode reasons, restart-pending
+      banner, disk use, log viewer, activity log paging and filters
+- [x] API keys and task triggers — list / create / revoke keys; each task's schedule
 - [ ] Offline downloads of server items — still parked; see `refs/jellyfin-android`'s
       `downloads/` for the shape of it
 - [ ] Transcode settings (max bitrate, resolution cap, force direct play) — the quality

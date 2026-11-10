@@ -1343,9 +1343,18 @@ class PlaybackCapabilities {
 /// [MediaSourceException] follows — a 401 from a server means "sign in
 /// again", not "401".
 class ServerException implements Exception {
-  const ServerException(this.message, {this.isUnauthorised = false});
+  const ServerException(
+    this.message, {
+    this.isUnauthorised = false,
+    this.statusCode,
+  });
 
   final String message;
+
+  /// The HTTP status, where the failure was one the server answered. Lets a
+  /// caller tell "no such route on this version" (404) from a real failure
+  /// without reading the sentence.
+  final int? statusCode;
 
   /// True when the token has expired or been revoked, which the UI answers
   /// by asking for the password again rather than by showing an error.

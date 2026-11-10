@@ -13,6 +13,7 @@ import '../../servers/server_admin.dart';
 import '../../servers/server_registry.dart';
 import '../../widgets/section_header.dart';
 import '../player/playback_state.dart' show formatDuration;
+import 'admin_session_sheet.dart';
 import 'admin_providers.dart';
 import 'admin_widgets.dart';
 
@@ -46,6 +47,8 @@ class AdminDashboardPage extends ConsumerWidget {
       child: AdminList(
         children: <Widget>[
           _ServerCard(info: info.value),
+          if (info.value case final ServerSystemInfo i when i.hasPendingRestart)
+            _RestartBanner(info: i),
           SizedBox(height: spacing.md),
 
           // The screens this one is the way in to.
@@ -73,6 +76,21 @@ class AdminDashboardPage extends ConsumerWidget {
             icon: Icons.extension_outlined,
             label: l10n.adminPlugins,
             onTap: () => context.push('/admin/plugins'),
+          ),
+          _NavRow(
+            icon: Icons.storage_rounded,
+            label: l10n.adminStorage,
+            onTap: () => context.push('/admin/storage'),
+          ),
+          _NavRow(
+            icon: Icons.description_outlined,
+            label: l10n.adminLogs,
+            onTap: () => context.push('/admin/logs'),
+          ),
+          _NavRow(
+            icon: Icons.key_outlined,
+            label: l10n.adminApiKeys,
+            onTap: () => context.push('/admin/keys'),
           ),
 
           SizedBox(height: spacing.sectionGap),
@@ -304,6 +322,59 @@ class _ServerMenu extends ConsumerWidget {
   }
 }
 
+/// Says a restart is waiting, and offers it where the server can do one.
+///
+/// A plugin installed or updated does nothing until then, and the web
+/// dashboard's own notice is easy to miss from a phone that never opens it.
+class _RestartBanner extends ConsumerWidget {
+  const _RestartBanner({required this.info});
+
+  final ServerSystemInfo info;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final spacing = context.spacing;
+    final warning = context.semantic.warning;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: spacing.screenHorizontal(context.windowSize),
+        vertical: spacing.sm,
+      ),
+      child: Card.outlined(
+        margin: EdgeInsets.zero,
+        child: ListTile(
+          leading: Icon(Icons.restart_alt_rounded, color: warning),
+          title: Text(l10n.adminRestartPending),
+          subtitle: Text(l10n.adminRestartPendingBody),
+          trailing: info.canRestart
+              ? TextButton(
+                  onPressed: () async {
+                    final go = await confirmAdminAction(
+                      context,
+                      title: l10n.adminRestartQuestion(info.name),
+                      body: l10n.adminRestartBody,
+                      confirmLabel: l10n.adminRestart,
+                    );
+                    if (!go || !context.mounted) return;
+                    await runAdminAction(
+                      context,
+                      ref,
+                      action: (admin) => admin.restartServer(),
+                      success: l10n.adminRestarting,
+                      refresh: () => ref.invalidate(systemInfoProvider),
+                    );
+                  },
+                  child: Text(l10n.adminRestartNow),
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
 class _NavRow extends StatelessWidget {
   const _NavRow({required this.icon, required this.label, required this.onTap});
 
@@ -339,6 +410,7 @@ class _SessionRow extends ConsumerWidget {
     ].where((s) => s.isNotEmpty).join(' · ');
 
     return ListTile(
+      onTap: () => showSessionDetails(context, session),
       isThreeLine: session.isPlaying,
       leading: CircleAvatar(
         backgroundColor: session.isPlaying
@@ -382,6 +454,10 @@ class _SessionRow extends ConsumerWidget {
                   : scheme.onSurfaceVariant,
             ),
           ),
+          // How it reaches the client — the first thing to look at when a
+          // server is struggling. The sheet behind a tap says why.
+          if (session.playMethod case final PlayMethod method)
+            PlayMethodChip(method: method),
           if (session.progress case final double progress) ...<Widget>[
             const SizedBox(height: 4),
             LinearProgressIndicator(value: progress, minHeight: 3),
