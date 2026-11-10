@@ -637,9 +637,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminTabProfile => 'Profile';
 
   @override
-  String get adminTabActivity => 'Activity';
-
-  @override
   String get adminNoUserActivity => 'Nothing logged for this account recently.';
 
   @override

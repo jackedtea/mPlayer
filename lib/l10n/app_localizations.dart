@@ -1214,12 +1214,6 @@ abstract class AppLocalizations {
   /// **'Profile'**
   String get adminTabProfile;
 
-  /// No description provided for @adminTabActivity.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity'**
-  String get adminTabActivity;
-
   /// No description provided for @adminNoUserActivity.
   ///
   /// In en, this message translates to:

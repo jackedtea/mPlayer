@@ -162,10 +162,6 @@ final adminItemMetadataProvider = FutureProvider.autoDispose
           _withAdmin<ItemMetadata?>(ref, (a) => a.itemMetadata(itemId), null),
     );
 
-final adminDevicesProvider = FutureProvider<List<AdminDevice>>(
-  (ref) => _withAdmin(ref, (a) => a.devices(), const <AdminDevice>[]),
-);
-
 final activityLogProvider = FutureProvider<List<ActivityEntry>>(
   (ref) => _withAdmin(ref, (a) => a.activity(), const <ActivityEntry>[]),
 );

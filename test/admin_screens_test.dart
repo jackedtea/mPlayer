@@ -483,11 +483,12 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Disable'), findsOneWidget);
     });
 
-    testWidgets('devices are listed under the accounts', (tester) async {
+    testWidgets('the list is accounts only; devices live on each account',
+        (tester) async {
       await pumpAdmin(tester, '/admin/users');
 
-      expect(find.text('Living room TV'), findsOneWidget);
-      expect(find.byIcon(Icons.delete_outline_rounded), findsOneWidget);
+      expect(find.text('Living room TV'), findsNothing);
+      expect(find.text('Devices'), findsNothing);
     });
 
     testWidgets('disabling an account sends the opposite of its current state',
@@ -628,7 +629,7 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Discard'));
       await tester.pumpAndSettle();
       expect(find.text('Library access'), findsNothing);
-      expect(find.text('Devices'), findsOneWidget);
+      expect(find.text('Add user'), findsOneWidget);
     });
 
     testWidgets('a password has to be typed the same twice', (tester) async {
@@ -717,37 +718,63 @@ void main() {
     });
   });
 
-  group('an account in two tabs', () {
+  group('an account in three tabs', () {
+    Future<void> openTab(WidgetTester tester, String label) async {
+      await tester.tap(find.descendant(
+        of: find.byType(TabBar),
+        matching: find.text(label),
+      ));
+      await tester.pumpAndSettle();
+    }
+
     testWidgets('Profile holds the editor and its Save', (tester) async {
       await pumpAdmin(tester, '/admin/users/u3');
 
-      expect(find.text('Profile'), findsOneWidget);
-      expect(find.text('Activity'), findsOneWidget);
+      final tabs = find.byType(TabBar);
+      for (final String label in <String>['Profile', 'Devices', 'Activity log']) {
+        expect(
+          find.descendant(of: tabs, matching: find.text(label)),
+          findsOneWidget,
+        );
+      }
       expect(find.text('Library access'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
     });
 
-    testWidgets('Activity shows the account own devices and log, no Save',
+    testWidgets('Devices lists the account own devices and forgets one',
         (tester) async {
-      await pumpAdmin(tester, '/admin/users/u3');
+      final admin = await pumpAdmin(tester, '/admin/users/u3');
 
-      await tester.tap(find.text('Activity'));
-      await tester.pumpAndSettle();
+      await openTab(tester, 'Devices');
 
       expect(find.text('Living room TV'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Save'), findsNothing);
+
+      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+      await tester.pumpAndSettle();
+      expect(admin!.calls, contains('forget:d1'));
+    });
+
+    testWidgets('Activity log shows only that account', (tester) async {
+      await pumpAdmin(tester, '/admin/users/u3');
+
+      await openTab(tester, 'Activity log');
+
       expect(find.text('kids is playing Bluey'), findsOneWidget);
-      // Someone else's line is not in it.
+      // Someone else's line is not in it, nor are the devices.
       expect(find.text('minh signed in'), findsNothing);
+      expect(find.text('Living room TV'), findsNothing);
       expect(find.widgetWithText(FilledButton, 'Save'), findsNothing);
     });
 
-    testWidgets('an account with nothing logged says so', (tester) async {
+    testWidgets('an account with nothing to show says so on each tab',
+        (tester) async {
       await pumpAdmin(tester, '/admin/users/u1');
 
-      await tester.tap(find.text('Activity'));
-      await tester.pumpAndSettle();
-
+      await openTab(tester, 'Devices');
       expect(find.text('No devices have signed in.'), findsOneWidget);
+
+      await openTab(tester, 'Activity log');
       expect(
         find.text('Nothing logged for this account recently.'),
         findsOneWidget,

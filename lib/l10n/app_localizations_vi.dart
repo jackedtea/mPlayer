@@ -639,9 +639,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminTabProfile => 'Hồ sơ';
 
   @override
-  String get adminTabActivity => 'Hoạt động';
-
-  @override
   String get adminNoUserActivity =>
       'Gần đây không có gì được ghi lại cho tài khoản này.';
 

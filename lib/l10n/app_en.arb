@@ -214,7 +214,6 @@
   "adminDiscardBody": "What you changed here has not been saved.",
   "adminDiscard": "Discard",
   "adminTabProfile": "Profile",
-  "adminTabActivity": "Activity",
   "adminNoUserActivity": "Nothing logged for this account recently.",
   "adminLibraries": "Libraries",
   "adminLibraryNoFolders": "No folders",

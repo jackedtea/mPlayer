@@ -38,7 +38,7 @@ class AdminUserPage extends ConsumerStatefulWidget {
 
 class _AdminUserPageState extends ConsumerState<AdminUserPage>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 2, vsync: this)
+  late final TabController _tabs = TabController(length: 3, vsync: this)
     // The Save bar belongs to the Profile tab; redraw when the tab changes.
     ..addListener(() {
       if (!_tabs.indexIsChanging) setState(() {});
@@ -107,7 +107,8 @@ class _AdminUserPageState extends ConsumerState<AdminUserPage>
           controller: _tabs,
           tabs: <Widget>[
             Tab(text: l10n.adminTabProfile),
-            Tab(text: l10n.adminTabActivity),
+            Tab(text: l10n.adminDevices),
+            Tab(text: l10n.adminActivity),
           ],
         ),
         onRefresh: () async {
@@ -130,7 +131,8 @@ class _AdminUserPageState extends ConsumerState<AdminUserPage>
           controller: _tabs,
           children: <Widget>[
             _profile(detail, l10n, isSelf),
-            _UserActivity(userId: widget.userId, name: _source?.user.name),
+            _UserDevices(userId: widget.userId),
+            _UserActivityLog(userId: widget.userId, name: _source?.user.name),
           ],
         ),
       ),
@@ -225,9 +227,71 @@ class _AdminUserPageState extends ConsumerState<AdminUserPage>
   }
 }
 
-/// The Activity tab: the devices the account signs in from, then the log.
-class _UserActivity extends ConsumerWidget {
-  const _UserActivity({required this.userId, required this.name});
+/// The Devices tab: what the account has signed in from, each one forgettable.
+///
+/// Forgetting a device signs it out. Done from here rather than from a list
+/// of every device on the server: "which of this person's devices is that"
+/// is the question an administrator asks, and a server-wide list answers a
+/// different one.
+class _UserDevices extends ConsumerWidget {
+  const _UserDevices({required this.userId});
+
+  final String userId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final devices = ref.watch(adminUserDevicesProvider(userId));
+
+    return switch (devices) {
+      AsyncError(:final error) => AdminList(
+        emptyText: '$error',
+        children: const <Widget>[],
+      ),
+      _ => AdminList(
+        loading: devices.isLoading,
+        emptyText: l10n.adminNoDevices,
+        children: <Widget>[
+          for (final AdminDevice device
+              in devices.value ?? const <AdminDevice>[])
+            ListTile(
+              leading: const Icon(Icons.devices_rounded),
+              title: Text(
+                device.name.isEmpty ? device.appName : device.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                <String>[
+                  <String>[
+                    device.appName,
+                    device.appVersion,
+                  ].where((s) => s.isNotEmpty).join(' '),
+                  relativeTime(device.lastSeen, l10n),
+                ].where((s) => s.isNotEmpty).join(' · '),
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline_rounded),
+                tooltip: l10n.adminForgetDevice,
+                onPressed: () => runAdminAction(
+                  context,
+                  ref,
+                  action: (admin) => admin.deleteDevice(device.id),
+                  success: l10n.adminDeviceForgotten,
+                  refresh: () =>
+                      ref.invalidate(adminUserDevicesProvider(userId)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    };
+  }
+}
+
+/// The Activity log tab: what the account has done lately.
+class _UserActivityLog extends ConsumerWidget {
+  const _UserActivityLog({required this.userId, required this.name});
 
   final String userId;
 
@@ -237,54 +301,26 @@ class _UserActivity extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final spacing = context.spacing;
-    final devices = ref.watch(adminUserDevicesProvider(userId));
     final accountName = name;
     final entries = accountName == null
         ? const AsyncLoading<List<ActivityEntry>>()
         : ref.watch(adminUserActivityProvider((id: userId, name: accountName)));
 
-    return AdminList(
-      children: <Widget>[
-        SectionHeader(title: l10n.adminDevices),
-        ...switch (devices) {
-          AsyncData(:final value) when value.isNotEmpty => <Widget>[
-            for (final AdminDevice device in value)
-              ListTile(
-                leading: const Icon(Icons.devices_rounded),
-                title: Text(device.name.isEmpty ? device.appName : device.name),
-                subtitle: Text(
-                  <String>[
-                    <String>[
-                      device.appName,
-                      device.appVersion,
-                    ].where((s) => s.isNotEmpty).join(' '),
-                    relativeTime(device.lastSeen, l10n),
-                  ].where((s) => s.isNotEmpty).join(' · '),
-                ),
-              ),
-          ],
-          AsyncError(:final error) => <Widget>[AdminNote(text: '$error')],
-          AsyncLoading() => const <Widget>[
-            Center(child: CircularProgressIndicator()),
-          ],
-          _ => <Widget>[AdminNote(text: l10n.adminNoDevices)],
-        },
-        SizedBox(height: spacing.sectionGap),
-        SectionHeader(title: l10n.adminActivity),
-        ...switch (entries) {
-          AsyncData(:final value) when value.isNotEmpty => <Widget>[
-            for (final ActivityEntry entry in value)
-              ActivityEntryRow(entry: entry),
-          ],
-          AsyncError(:final error) => <Widget>[AdminNote(text: '$error')],
-          AsyncLoading() => const <Widget>[
-            Center(child: CircularProgressIndicator()),
-          ],
-          _ => <Widget>[AdminNote(text: l10n.adminNoUserActivity)],
-        },
-      ],
-    );
+    return switch (entries) {
+      AsyncError(:final error) => AdminList(
+        emptyText: '$error',
+        children: const <Widget>[],
+      ),
+      _ => AdminList(
+        loading: entries.isLoading,
+        emptyText: l10n.adminNoUserActivity,
+        children: <Widget>[
+          for (final ActivityEntry entry
+              in entries.value ?? const <ActivityEntry>[])
+            ActivityEntryRow(entry: entry),
+        ],
+      ),
+    };
   }
 }
 
@@ -376,7 +412,7 @@ class _UserMenu extends ConsumerWidget {
       success: l10n.adminUserDeleted(name),
       refresh: () => ref
         ..invalidate(adminUsersProvider)
-        ..invalidate(adminDevicesProvider),
+        ..invalidate(adminUserDevicesProvider(detail.user.id)),
     );
 
     // There is nothing left to show here.

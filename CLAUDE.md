@@ -157,7 +157,9 @@ Also open:
 - **Downloads** lists the offline copies from `downloadsProvider`; see "Downloads".
 - **Settings** opens on `CurrentServerCard` (name, host, user, admin badge;
   Edit server / Switch server, or Add server with none), then App settings
-  and, for an administrator, Server settings linking straight to `/admin/*`.
+  and, for an administrator, one Server administration row into the `/admin`
+  dashboard (2026-11-10: the per-screen shortcuts beside it duplicated the
+  dashboard and had already drifted from it).
   A Quick Connect row approves another device's code
   (`POST /QuickConnect/Authorize`); its 401/403 means the feature is off, so it
   bypasses `_send`, which would read them as an expired session.
@@ -1228,8 +1230,8 @@ The chip row over the grid is Unwatched · the sort · a filter button carrying 
 `lib/servers/server_admin.dart` (types + interface), `jellyfin_admin_dto.dart` (pure
 parsing) and `jellyfin_admin.dart` (the client), behind five screens in
 `lib/features/admin/`: a dashboard with the sessions on it, and Libraries, Tasks,
-Users & devices, Activity and Plugins under it, plus an account editor and an item
-metadata editor.
+Users, Activity and Plugins under it, plus an account editor and an item metadata
+editor. The dashboard is the **only** list of these screens; Settings has one row into it.
 
 **It is a separate client from `JellyfinSource`, and the reason is 403.** For the
 catalogue, every rejection means the session is gone and the answer is to sign in again.
@@ -1299,9 +1301,11 @@ new account straight away.
   not in the list is still shown as chosen.
 - `confirmAdminAction` styles its button from the **dialog's** context: Delete pops the
   editor while the dialog is still animating out, and the caller's context is gone.
-- **Two tabs, Profile and Activity** (2026-11-09). Profile is the editor, and the Save
-  bar shows only there. Activity is the account's devices (`/Devices?userId=`) and its
-  log: `/System/ActivityLog/Entries` filters by `username` from 10.11 only, so entries
+- **Three tabs: Profile, Devices, Activity log** (2026-11-10). Profile is the editor,
+  and the Save bar shows only there. Devices is the account's devices
+  (`/Devices?userId=`), each with Forget; the users list itself shows accounts only,
+  and no server-wide device list remains. Activity log is the account's log:
+  `/System/ActivityLog/Entries` filters by `username` from 10.11 only, so entries
   are also kept to the account's id client-side (ids compared without dashes). On an
   older server that means "this account's among the newest 100", not all of them.
   `AdminScaffold.tabs` puts a `TabBar` under the title, behind the guard. Tests that

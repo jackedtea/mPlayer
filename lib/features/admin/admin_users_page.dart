@@ -10,26 +10,22 @@ import 'package:go_router/go_router.dart';
 import '../../app/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../servers/server_admin.dart';
-import '../../widgets/section_header.dart';
 import 'admin_providers.dart';
 import 'admin_user_page.dart' show showCreateUserDialog;
 import 'admin_widgets.dart';
 
 /// Accounts and the devices they have signed in from.
 ///
-/// One screen rather than two, because the two questions are asked together:
-/// an administrator wondering about an account is usually wondering what it
-/// has been signing in from.
+/// The server's accounts. A row opens that account, whose Devices tab is
+/// where what it signs in from is listed and forgotten.
 class AdminUsersPage extends ConsumerWidget {
   const AdminUsersPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final spacing = context.spacing;
 
     final users = ref.watch(adminUsersProvider);
-    final devices = ref.watch(adminDevicesProvider);
 
     return AdminScaffold(
       title: l10n.adminUsers,
@@ -40,33 +36,15 @@ class AdminUsersPage extends ConsumerWidget {
         label: Text(l10n.adminAddUser),
       ),
       onRefresh: () async {
-        ref
-          ..invalidate(adminUsersProvider)
-          ..invalidate(adminDevicesProvider);
+        ref.invalidate(adminUsersProvider);
         await ref.read(adminUsersProvider.future);
       },
       child: AdminList(
-        loading: users.isLoading && devices.isLoading,
+        loading: users.isLoading,
+        emptyText: l10n.adminNoUsers,
         children: <Widget>[
-          SectionHeader(title: l10n.adminUsers),
-          if (users.value?.isEmpty ?? true)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: spacing.md),
-              child: AdminNote(text: l10n.adminNoUsers),
-            )
-          else
-            for (final AdminUser user in users.value!) _UserRow(user: user),
-
-          SizedBox(height: spacing.sectionGap),
-          SectionHeader(title: l10n.adminDevices),
-          if (devices.value?.isEmpty ?? true)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: spacing.md),
-              child: AdminNote(text: l10n.adminNoDevices),
-            )
-          else
-            for (final AdminDevice device in devices.value!)
-              _DeviceRow(device: device),
+          for (final AdminUser user in users.value ?? const <AdminUser>[])
+            _UserRow(user: user),
         ],
       ),
     );
@@ -160,47 +138,6 @@ class _UserRow extends ConsumerWidget {
                 user.isDisabled ? l10n.adminUserEnable : l10n.adminUserDisable,
               ),
             ),
-    );
-  }
-}
-
-class _DeviceRow extends ConsumerWidget {
-  const _DeviceRow({required this.device});
-
-  final AdminDevice device;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-
-    final detail = <String>[
-      <String>[
-        device.appName,
-        device.appVersion,
-      ].where((s) => s.isNotEmpty).join(' '),
-      device.username,
-      relativeTime(device.lastSeen, l10n),
-    ].where((s) => s.isNotEmpty).join(' · ');
-
-    return ListTile(
-      leading: const Icon(Icons.devices_rounded),
-      title: Text(
-        device.name.isEmpty ? device.appName : device.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: detail.isEmpty ? null : Text(detail),
-      trailing: IconButton(
-        icon: const Icon(Icons.delete_outline_rounded),
-        tooltip: l10n.adminForgetDevice,
-        onPressed: () => runAdminAction(
-          context,
-          ref,
-          action: (admin) => admin.deleteDevice(device.id),
-          success: l10n.adminDeviceForgotten,
-          refresh: () => ref.invalidate(adminDevicesProvider),
-        ),
-      ),
     );
   }
 }
