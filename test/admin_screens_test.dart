@@ -14,6 +14,8 @@ import 'package:mplayer/features/admin/admin_providers.dart';
 import 'package:mplayer/features/admin/admin_user_page.dart';
 import 'package:mplayer/servers/media_library_source.dart'
     show ServerException;
+import 'package:mplayer/servers/jellyfin_admin_dto.dart'
+    show mergeConfiguration;
 import 'package:mplayer/servers/server_admin.dart';
 
 /// A server that answers every administration question.
@@ -422,6 +424,71 @@ class FakeAdmin implements ServerAdmin {
   Future<void> removeLibraryPath(String name, String path) async =>
       calls.add('removePath:$name:$path');
 
+  /// The configuration objects, by key ('' for the main one).
+  final Map<String, Map<String, dynamic>> configs =
+      <String, Map<String, dynamic>>{
+    '': <String, dynamic>{
+      'EnableFolderView': false,
+      'MinResumePct': 5,
+      'PreferredMetadataLanguage': 'en',
+      'RemoteClientBitrateLimit': 0,
+      'TrickplayOptions': <String, dynamic>{'Interval': 10000, 'TileWidth': 10},
+    },
+    'metadata': <String, dynamic>{'UseFileCreationTimeForDateAdded': true},
+    'encoding': <String, dynamic>{
+      'HardwareAccelerationType': 'none',
+      'HardwareDecodingCodecs': <String>['h264'],
+    },
+    'network': <String, dynamic>{'InternalHttpPort': 8096},
+    'xbmcmetadata': <String, dynamic>{'UserId': null},
+    'livetv': <String, dynamic>{
+      'TunerHosts': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'Id': 't1',
+          'Type': 'hdhomerun',
+          'FriendlyName': 'Attic tuner',
+          'Url': 'http://192.168.1.50',
+        },
+      ],
+      'ListingProviders': <Map<String, dynamic>>[],
+    },
+  };
+
+  /// What each save sent, as (key, changes).
+  final List<(String?, Map<String, dynamic>)> configWrites =
+      <(String?, Map<String, dynamic>)>[];
+
+  @override
+  Future<Map<String, dynamic>> configuration([String? key]) async =>
+      Map<String, dynamic>.of(configs[key ?? ''] ?? <String, dynamic>{});
+
+  @override
+  Future<void> updateConfiguration(
+    Map<String, dynamic> changes, [
+    String? key,
+  ]) async {
+    configWrites.add((key, changes));
+    configs[key ?? ''] =
+        mergeConfiguration(configs[key ?? ''] ?? <String, dynamic>{}, changes);
+  }
+
+  @override
+  Future<List<ConfigOption>> cultures() async => const <ConfigOption>[
+        ConfigOption(value: 'en', label: 'English'),
+        ConfigOption(value: 'vi', label: 'Vietnamese'),
+      ];
+
+  @override
+  Future<List<ConfigOption>> countries() async =>
+      const <ConfigOption>[ConfigOption(value: 'VN', label: 'Vietnam')];
+
+  @override
+  Future<void> deleteTuner(String id) async => calls.add('deleteTuner:$id');
+
+  @override
+  Future<void> deleteGuideProvider(String id) async =>
+      calls.add('deleteGuide:$id');
+
   @override
   Future<void> dispose() async {}
 }
@@ -433,7 +500,8 @@ Future<FakeAdmin?> pumpAdmin(
   String route, {
   FakeAdmin? admin,
   bool isAdministrator = true,
-  Size size = const Size(900, 900),
+  // Tall enough for the whole dashboard: its sections, then the sessions.
+  Size size = const Size(900, 2400),
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
@@ -959,7 +1027,10 @@ void main() {
     testWidgets('the dashboard leads to them', (tester) async {
       await pumpAdmin(tester, '/admin');
 
+      // A group, as in the web dashboard's menu: it opens in place.
       await tester.tap(find.text('Libraries'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Libraries').last);
       await tester.pumpAndSettle();
 
       expect(find.text('Films'), findsOneWidget);
@@ -1387,6 +1458,182 @@ void main() {
       // A folder the library already reads is not added twice; another is.
       await pickFilms(tester, deep: false);
       expect(admin.calls.last, 'addPath:Films:/media');
+    });
+  });
+
+  group('the dashboard, in the web dashboard sections', () {
+    testWidgets('server, devices, live TV, plugins, advanced', (tester) async {
+      await pumpAdmin(tester, '/admin', size: const Size(900, 2400));
+
+      for (final String header in <String>[
+        'Server',
+        'Devices',
+        'Live TV',
+        'Plugins',
+        'Advanced',
+      ]) {
+        expect(find.text(header), findsWidgets, reason: header);
+      }
+      // Under Advanced, the screens the web keeps there.
+      expect(find.text('Networking'), findsOneWidget);
+      expect(find.text('API keys'), findsOneWidget);
+    });
+
+    testWidgets('Playback opens onto its four pages', (tester) async {
+      await pumpAdmin(tester, '/admin', size: const Size(900, 2400));
+
+      // Closed until opened. ("Transcoding" is also a session's play method,
+      // so a page only this group holds is the one checked.)
+      expect(find.text('Trickplay'), findsNothing);
+      await tester.tap(find.text('Playback'));
+      await tester.pumpAndSettle();
+      expect(find.text('Transcoding'), findsNWidgets(2));
+      for (final String page in <String>[
+        'Resume',
+        'Streaming',
+        'Trickplay',
+      ]) {
+        expect(find.text(page), findsOneWidget, reason: page);
+      }
+
+      await tester.tap(find.text('Resume'));
+      await tester.pumpAndSettle();
+      expect(find.text('Started after'), findsWidgets);
+    });
+  });
+
+  group('settings pages', () {
+    testWidgets('only what was changed is written, nested where it lives',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/settings/trickplay');
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      expect(tester.widget<FilledButton>(save).onPressed, isNull);
+
+      await tester.tap(find.text('One picture every'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '5000');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.configWrites, hasLength(1));
+      final (key, changes) = admin.configWrites.single;
+      expect(key, isNull);
+      expect(changes, <String, dynamic>{
+        'TrickplayOptions': <String, dynamic>{'Interval': 5000},
+      });
+      // The field beside it survives the merge.
+      expect(
+        (admin.configs['']!['TrickplayOptions'] as Map)['TileWidth'],
+        10,
+      );
+    });
+
+    testWidgets('one page can save to two configuration objects',
+        (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/settings/display');
+
+      await tester.tap(find.text('Show a Folders view'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Date added from the file'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      final writes = admin!.configWrites;
+      expect(writes.map((w) => w.$1), <String?>[null, 'metadata']);
+      expect(writes[0].$2, <String, dynamic>{'EnableFolderView': true});
+      expect(
+        writes[1].$2,
+        <String, dynamic>{'UseFileCreationTimeForDateAdded': false},
+      );
+    });
+
+    testWidgets('a number out of range cannot be saved', (tester) async {
+      await pumpAdmin(tester, '/admin/settings/resume');
+
+      await tester.tap(find.text('Started after').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '150');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Between 0 and 100.'), findsOneWidget);
+      final save = find.widgetWithText(FilledButton, 'Save').last;
+      expect(tester.widget<FilledButton>(save).onPressed, isNull);
+    });
+
+    testWidgets('a language is picked from the server list', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/settings/metadata');
+
+      expect(find.textContaining('English'), findsOneWidget);
+      await tester.tap(find.text('Language'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Vietnamese'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(admin!.configWrites.single.$2, <String, dynamic>{
+        'PreferredMetadataLanguage': 'vi',
+      });
+    });
+
+    testWidgets('decoders are ticked from a list', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/settings/transcoding');
+
+      await tester.tap(find.text('Decode in hardware'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(CheckboxListTile, 'HEVC'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      final (key, changes) = admin!.configWrites.single;
+      expect(key, 'encoding');
+      expect(changes, <String, dynamic>{
+        'HardwareDecodingCodecs': <String>['h264', 'hevc'],
+      });
+    });
+
+    testWidgets('networking warns before anything is touched',
+        (tester) async {
+      await pumpAdmin(tester, '/admin/settings/networking');
+      expect(find.textContaining('unreachable'), findsOneWidget);
+      expect(find.text('8096'), findsOneWidget);
+    });
+
+    testWidgets('an unknown page falls back to the dashboard', (tester) async {
+      await pumpAdmin(tester, '/admin/settings/nope');
+      expect(find.text('Server'), findsWidgets);
+    });
+  });
+
+  group('devices and live TV', () {
+    testWidgets('every device is listed, and forgettable', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/devices');
+
+      expect(find.text('Living room TV'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+      await tester.pumpAndSettle();
+      expect(admin!.calls, <String>['forget:d1']);
+    });
+
+    testWidgets('a tuner is listed and removed after asking', (tester) async {
+      final admin = await pumpAdmin(tester, '/admin/livetv');
+
+      expect(find.text('Attic tuner'), findsOneWidget);
+      expect(find.text('No guide data provider is set up.'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+      await tester.pumpAndSettle();
+      expect(admin!.calls, <String>['deleteTuner:t1']);
     });
   });
 }

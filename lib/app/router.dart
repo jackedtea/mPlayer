@@ -11,10 +11,13 @@ import '../features/admin/admin_activity_page.dart';
 import '../features/admin/admin_add_library_page.dart';
 import '../features/admin/admin_api_keys_page.dart';
 import '../features/admin/admin_dashboard_page.dart';
+import '../features/admin/admin_devices_page.dart';
 import '../features/admin/admin_item_page.dart';
 import '../features/admin/admin_libraries_page.dart';
+import '../features/admin/admin_live_tv_page.dart';
 import '../features/admin/admin_logs_page.dart';
 import '../features/admin/admin_plugins_page.dart';
+import '../features/admin/admin_settings_pages.dart';
 import '../features/admin/admin_storage_page.dart';
 import '../features/admin/admin_tasks_page.dart';
 import '../features/admin/admin_user_page.dart';
@@ -201,6 +204,27 @@ GoRouter buildRouter() {
           GoRoute(
             path: 'storage',
             builder: (context, state) => const AdminStoragePage(),
+          ),
+          GoRoute(
+            path: 'devices',
+            builder: (context, state) => const AdminDevicesPage(),
+          ),
+          GoRoute(
+            path: 'livetv',
+            builder: (context, state) => const AdminLiveTvPage(),
+          ),
+          // The settings pages under Libraries, Playback, Live TV and
+          // Advanced; an unknown name falls back to the dashboard.
+          GoRoute(
+            path: 'settings/:page',
+            builder: (context, state) {
+              final page = AdminSettingsPage.fromPath(
+                state.pathParameters['page'] ?? '',
+              );
+              return page == null
+                  ? const AdminDashboardPage()
+                  : AdminSettingsRoute(page: page);
+            },
           ),
           GoRoute(
             path: 'logs',

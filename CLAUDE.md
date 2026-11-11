@@ -1248,9 +1248,12 @@ The chip row over the grid is Unwatched · the sort · a filter button carrying 
 
 `lib/servers/server_admin.dart` (types + interface), `jellyfin_admin_dto.dart` (pure
 parsing) and `jellyfin_admin.dart` (the client), behind five screens in
-`lib/features/admin/`: a dashboard with the sessions on it, and Libraries, Tasks,
-Users, Activity and Plugins under it, plus an account editor and an item metadata
-editor. The dashboard is the **only** list of these screens; Settings has one row into it.
+`lib/features/admin/`. The dashboard is the **only** list of these screens (Settings
+has one row into it) and groups them as the web dashboard does (2026-11-11):
+**Server** — Users, Libraries ▸ (Libraries, Display, Metadata, NFO settings), Playback ▸
+(Transcoding, Resume, Streaming, Trickplay), Storage; **Devices** — Devices, Activity;
+**Live TV** — Live TV, DVR; **Plugins**; **Advanced** — Networking, API keys, Logs,
+Scheduled tasks. The ▸ groups are `ExpansionTile`s that open in place. Sessions follow.
 
 **It is a separate client from `JellyfinSource`, and the reason is 403.** For the
 catalogue, every rejection means the session is gone and the answer is to sign in again.
@@ -1412,10 +1415,34 @@ new account straight away.
   03:00 · When the server starts", "Only when run by hand". The weekly day comes in
   English and is put in the reader's language with `DateFormat.EEEE`.
 
+### Settings pages (2026-11-11)
+
+- **One form for all of them** (`admin_config_form.dart`): a page is a list of
+  `ConfigField`s — switch, number (min/max), choice (fixed, or loaded: languages,
+  countries, accounts), multi-choice, text / comma lists, a folder picked on the server —
+  each at a `ConfigPath` (a named configuration `key`, null for the main one, plus the
+  keys down to it). The pages themselves are declarations in `admin_settings_pages.dart`,
+  routed at `/admin/settings/<name>`.
+- **Only what changed is written**: the draft is grouped per key (`changesByKey`) and
+  `updateConfiguration` reads that object **at save time** and lays the changes over it
+  with `mergeConfiguration`, which merges nested maps — a change to
+  `TrickplayOptions.Interval` keeps the rest of `TrickplayOptions`. The routes
+  (`/System/Configuration`, `/System/Configuration/{encoding,metadata,xbmcmetadata,
+  livetv,network}`) replace what they are sent. One page may write two objects
+  (Display: the main one and `metadata`).
+- **Curated, not complete**: the fields set by hand and safe from a phone. Networking
+  says up front that a wrong port or address can leave the server unreachable.
+  Changed fields are drawn in the primary colour until saved; Back with changes asks.
+- **Devices** (`/admin/devices`) is the server-wide list again, as its own page; each
+  account still has its own Devices tab. **Live TV** (`/admin/livetv`) lists tuners
+  and guide providers from the `livetv` configuration and removes them
+  (`DELETE /LiveTv/TunerHosts|ListingProviders?id=`); adding either stays on the web,
+  where each kind has its own form.
+
 Deliberately **not** built: installing plugins from a repository (browsing remote packages
-and checking versions against the server's ABI is a job for the machine it runs on), and
-the rest of `/System/Configuration` beyond the server name — Jellyfin's configuration is
-some eighty fields, and a small screen is where a setup gets broken rather than fixed.
+and checking versions against the server's ABI is a job for the machine it runs on), a
+plugin's own settings page (each plugin draws its own web page), and the rest of the
+configuration beyond the curated pages above.
 
 `AppSemanticColors.warning` was added for this: M3 has `error` and nothing between it and
 normal, and a plugin waiting on a restart is not broken.

@@ -636,6 +636,480 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminDiscard => 'Bỏ';
 
   @override
+  String get adminSectionServer => 'Máy chủ';
+
+  @override
+  String get adminSectionDevices => 'Thiết bị';
+
+  @override
+  String get adminSectionAdvanced => 'Nâng cao';
+
+  @override
+  String get adminPlayback => 'Phát';
+
+  @override
+  String get adminLiveTv => 'Truyền hình trực tiếp';
+
+  @override
+  String get adminDvr => 'Ghi hình (DVR)';
+
+  @override
+  String get adminSettingsSaved => 'Đã lưu cài đặt.';
+
+  @override
+  String get adminNoneSelected => 'Không chọn';
+
+  @override
+  String get adminFolderDefault => 'Mặc định của máy chủ';
+
+  @override
+  String get adminNotANumber => 'Không phải là số.';
+
+  @override
+  String adminNumberRange(int min, int max) {
+    return 'Trong khoảng $min đến $max.';
+  }
+
+  @override
+  String get adminNone => 'Không';
+
+  @override
+  String get adminAuto => 'Tự động';
+
+  @override
+  String get adminDisplay => 'Hiển thị';
+
+  @override
+  String get adminFolderView => 'Hiện chế độ xem Thư mục';
+
+  @override
+  String get adminFolderViewHelp =>
+      'Thư mục thuần cạnh các thư viện, cho media mà thư viện không phân loại.';
+
+  @override
+  String get adminSpecialsInSeasons =>
+      'Hiện tập đặc biệt trong mùa mà nó được phát';
+
+  @override
+  String get adminGroupMovies => 'Gộp phim vào bộ sưu tập';
+
+  @override
+  String get adminGroupHelp =>
+      'Một bộ sưu tập hiện thành một ô trong danh sách phim.';
+
+  @override
+  String get adminGroupShows => 'Gộp phim bộ vào bộ sưu tập';
+
+  @override
+  String get adminExternalSuggestions => 'Đưa nội dung bên ngoài vào gợi ý';
+
+  @override
+  String get adminDateAddedFromFile => 'Ngày thêm lấy từ file';
+
+  @override
+  String get adminDateAddedFromFileHelp =>
+      'Dùng ngày tạo file thay vì ngày máy chủ thấy nó lần đầu.';
+
+  @override
+  String get adminMetadataSettings => 'Metadata';
+
+  @override
+  String get adminMetadataIntro =>
+      'Mặc định cho mọi thư viện; từng thư viện có thể đặt riêng trên bảng điều khiển web.';
+
+  @override
+  String get adminPreferredMetadata => 'Metadata ưu tiên';
+
+  @override
+  String get adminMetadataLanguage => 'Ngôn ngữ';
+
+  @override
+  String get adminMetadataCountry => 'Quốc gia';
+
+  @override
+  String get adminChapters => 'Chương';
+
+  @override
+  String get adminDummyChapters => 'Độ dài chương khi file không có chương';
+
+  @override
+  String get adminDummyChaptersHelp => '0 là không tạo chương.';
+
+  @override
+  String get adminChapterImageSize => 'Độ phân giải ảnh chương';
+
+  @override
+  String get adminMatchSource => 'Theo nguồn';
+
+  @override
+  String get adminNfo => 'Cài đặt NFO';
+
+  @override
+  String get adminNfoIntro =>
+      'Cách máy chủ ghi file .nfo cạnh media, cho Kodi và các trình đọc khác.';
+
+  @override
+  String get adminNfoUser => 'Dữ liệu xem của';
+
+  @override
+  String get adminNfoUserHelp =>
+      'Trạng thái đã xem và đánh giá của ai được ghi vào file.';
+
+  @override
+  String get adminNfoDateFormat => 'Định dạng ngày phát hành';
+
+  @override
+  String get adminNfoImagePaths => 'Lưu đường dẫn ảnh trong file';
+
+  @override
+  String get adminNfoPathSubstitution => 'Áp dụng thay thế đường dẫn';
+
+  @override
+  String get adminNfoExtraThumbs => 'Sao chép fanart thêm vào extrathumbs';
+
+  @override
+  String get adminTranscodingSettings => 'Chuyển mã';
+
+  @override
+  String get adminHardware => 'Phần cứng';
+
+  @override
+  String get adminHwAcceleration => 'Tăng tốc phần cứng';
+
+  @override
+  String get adminHwDecoding => 'Giải mã bằng phần cứng';
+
+  @override
+  String get adminHwDecodingHelp =>
+      'Chỉ các codec mà phần cứng của máy chủ giải mã được.';
+
+  @override
+  String get adminHevc10 => 'HEVC 10-bit';
+
+  @override
+  String get adminVp910 => 'VP9 10-bit';
+
+  @override
+  String get adminHwEncoding => 'Mã hoá bằng phần cứng';
+
+  @override
+  String get adminHwDecodingShort => 'Giải mã phần cứng';
+
+  @override
+  String get adminHwEncodingShort => 'Mã hoá phần cứng';
+
+  @override
+  String get adminEncoding => 'Mã hoá';
+
+  @override
+  String get adminAllowHevc => 'Cho phép mã hoá sang HEVC';
+
+  @override
+  String get adminAllowAv1 => 'Cho phép mã hoá sang AV1';
+
+  @override
+  String get adminTonemapping => 'Tone mapping';
+
+  @override
+  String get adminTonemappingHelp =>
+      'HDR sang SDR, cho màn hình không hiển thị được HDR.';
+
+  @override
+  String get adminEncoderPreset => 'Preset mã hoá';
+
+  @override
+  String get adminEncoderPresetHelp =>
+      'Chậm hơn thì file nhỏ hơn ở cùng chất lượng, nhưng nặng máy chủ hơn.';
+
+  @override
+  String get adminH264Crf => 'Chất lượng H.264 (CRF)';
+
+  @override
+  String get adminH265Crf => 'Chất lượng HEVC (CRF)';
+
+  @override
+  String get adminCrfHelp =>
+      'Thấp hơn là chất lượng tốt hơn và nặng hơn. Thường là 23.';
+
+  @override
+  String get adminThreads => 'Số luồng';
+
+  @override
+  String get adminThreadsHelp => '-1 là tự động, 0 là bằng số nhân.';
+
+  @override
+  String get adminTranscodeFiles => 'File chuyển mã';
+
+  @override
+  String get adminTranscodePath => 'Thư mục chuyển mã';
+
+  @override
+  String get adminThrottle => 'Điều tiết chuyển mã';
+
+  @override
+  String get adminThrottleHelp =>
+      'Chỉ chạy trước người xem một chút để đỡ tải máy chủ.';
+
+  @override
+  String get adminDeleteSegments => 'Xoá phân đoạn khi đã phát';
+
+  @override
+  String get adminDeleteSegmentsHelp => 'Giữ thư mục chuyển mã gọn nhẹ.';
+
+  @override
+  String get adminResume => 'Tiếp tục xem';
+
+  @override
+  String get adminResumeIntro =>
+      'Khi nào một mục được coi là đã bắt đầu, và khi nào là đã xem xong.';
+
+  @override
+  String get adminVideo => 'Video';
+
+  @override
+  String get adminMinResumePct => 'Coi là đã bắt đầu sau';
+
+  @override
+  String get adminMinResumePctHelp =>
+      'Dừng trước mốc này thì lần sau phát lại từ đầu.';
+
+  @override
+  String get adminMaxResumePct => 'Coi là đã xem sau';
+
+  @override
+  String get adminMaxResumePctHelp =>
+      'Dừng sau mốc này thì được đánh dấu đã xem.';
+
+  @override
+  String get adminMinResumeDuration => 'Thời lượng tối thiểu để tiếp tục xem';
+
+  @override
+  String get adminMinResumeDurationHelp => 'Ngắn hơn thì luôn phát từ đầu.';
+
+  @override
+  String get adminAudiobooks => 'Sách nói';
+
+  @override
+  String get adminMinAudiobookResume => 'Coi là đã bắt đầu sau';
+
+  @override
+  String get adminMaxAudiobookResume => 'Coi là nghe xong khi còn lại';
+
+  @override
+  String get adminStreaming => 'Truyền phát';
+
+  @override
+  String get adminRemoteBitrate => 'Giới hạn bitrate ngoài mạng nội bộ';
+
+  @override
+  String get adminRemoteBitrateHelp =>
+      'Áp dụng cho mọi tài khoản; từng tài khoản có thể đặt thấp hơn.';
+
+  @override
+  String get adminTrickplay => 'Trickplay';
+
+  @override
+  String get adminTrickplayIntro => 'Ảnh xem trước hiện khi tua.';
+
+  @override
+  String get adminKeyframesOnly => 'Chỉ lấy keyframe';
+
+  @override
+  String get adminKeyframesOnlyHelp =>
+      'Tạo nhanh hơn nhiều, kém chính xác về thời điểm.';
+
+  @override
+  String get adminTrickplayImages => 'Hình ảnh';
+
+  @override
+  String get adminScanBehavior => 'Trong lúc quét thư viện';
+
+  @override
+  String get adminNonBlocking => 'Tạo sau';
+
+  @override
+  String get adminBlocking => 'Tạo ngay khi thêm mục';
+
+  @override
+  String get adminProcessPriority => 'Độ ưu tiên tiến trình';
+
+  @override
+  String get adminTrickplayInterval => 'Một ảnh mỗi';
+
+  @override
+  String get adminTrickplayIntervalHelp =>
+      '10 000 ms là mỗi mười giây một ảnh.';
+
+  @override
+  String get adminTrickplayWidths => 'Chiều rộng';
+
+  @override
+  String get adminTrickplayWidthsHelp =>
+      'Tính bằng pixel, phân cách bằng dấu phẩy: 320, 640.';
+
+  @override
+  String get adminTileWidth => 'Số ảnh theo chiều ngang';
+
+  @override
+  String get adminTileHeight => 'Số ảnh theo chiều dọc';
+
+  @override
+  String get adminJpegQuality => 'Chất lượng JPEG';
+
+  @override
+  String get adminRecordings => 'Bản ghi';
+
+  @override
+  String get adminRecordingPath => 'Thư mục ghi';
+
+  @override
+  String get adminMovieRecordingPath => 'Thư mục ghi phim';
+
+  @override
+  String get adminSeriesRecordingPath => 'Thư mục ghi phim bộ';
+
+  @override
+  String get adminRecordingSubfolders => 'Xếp bản ghi vào thư mục con';
+
+  @override
+  String get adminPrePadding => 'Bắt đầu sớm';
+
+  @override
+  String get adminPostPadding => 'Kết thúc trễ';
+
+  @override
+  String get adminSaveRecordingNfo => 'Lưu file .nfo cùng bản ghi';
+
+  @override
+  String get adminSaveRecordingImages => 'Lưu ảnh cùng bản ghi';
+
+  @override
+  String get adminGuide => 'Lịch phát sóng';
+
+  @override
+  String get adminGuideDays => 'Số ngày lịch phát sóng';
+
+  @override
+  String get adminPostProcessing => 'Sau khi ghi';
+
+  @override
+  String get adminPostProcessor => 'Chạy chương trình';
+
+  @override
+  String get adminPostProcessorArgs => 'Với tham số';
+
+  @override
+  String get adminTuners => 'Bộ thu';
+
+  @override
+  String get adminNoTuners => 'Chưa thiết lập bộ thu nào.';
+
+  @override
+  String get adminGuideProviders => 'Nguồn lịch phát sóng';
+
+  @override
+  String get adminNoGuideProviders =>
+      'Chưa thiết lập nguồn lịch phát sóng nào.';
+
+  @override
+  String get adminLiveTvAddOnWeb =>
+      'Bộ thu và nguồn lịch phát sóng được thêm trên bảng điều khiển web, nơi mỗi loại có biểu mẫu riêng.';
+
+  @override
+  String get adminRemove => 'Gỡ';
+
+  @override
+  String adminRemoveQuestion(String name) {
+    return 'Gỡ $name?';
+  }
+
+  @override
+  String get adminRemoveLiveTvBody =>
+      'Truyền hình trực tiếp sẽ ngừng dùng nó. Có thể thêm lại trên bảng điều khiển web.';
+
+  @override
+  String adminRemoved(String name) {
+    return 'Đã gỡ $name.';
+  }
+
+  @override
+  String get adminNetworking => 'Mạng';
+
+  @override
+  String get adminNetworkingIntro =>
+      'Cẩn thận: đây là cách ứng dụng này kết nối tới máy chủ. Cổng hoặc địa chỉ sai có thể khiến không kết nối được cho tới khi sửa trực tiếp trên máy. Phần lớn thay đổi cần khởi động lại.';
+
+  @override
+  String get adminServerAccess => 'Truy cập';
+
+  @override
+  String get adminRemoteAccess => 'Cho phép kết nối từ xa';
+
+  @override
+  String get adminRemoteAccessHelp => 'Tắt thì chỉ mạng nội bộ kết nối được.';
+
+  @override
+  String get adminLanNetworks => 'Mạng LAN';
+
+  @override
+  String get adminLanNetworksHelp =>
+      'Phân cách bằng dấu phẩy, ví dụ 192.168.1.0/24. Để trống thì dùng của máy chủ.';
+
+  @override
+  String get adminKnownProxies => 'Proxy đã biết';
+
+  @override
+  String get adminListHelp => 'Phân cách bằng dấu phẩy.';
+
+  @override
+  String get adminPublishedUris => 'URI máy chủ công bố';
+
+  @override
+  String get adminPublishedUrisHelp =>
+      'Phân cách bằng dấu phẩy, ví dụ all=https://media.example.com.';
+
+  @override
+  String get adminAutoDiscovery => 'Cho client trong mạng tự tìm máy chủ';
+
+  @override
+  String get adminPorts => 'Cổng và HTTPS';
+
+  @override
+  String get adminHttpPort => 'Cổng HTTP';
+
+  @override
+  String get adminHttpsPort => 'Cổng HTTPS';
+
+  @override
+  String get adminPublicHttpPort => 'Cổng HTTP công khai';
+
+  @override
+  String get adminPublicHttpsPort => 'Cổng HTTPS công khai';
+
+  @override
+  String get adminEnableHttps => 'Bật HTTPS';
+
+  @override
+  String get adminRequireHttps => 'Bắt buộc HTTPS';
+
+  @override
+  String get adminRequireHttpsHelp =>
+      'Kết nối từ xa qua HTTP thường sẽ bị từ chối.';
+
+  @override
+  String get adminIpFilter => 'Lọc IP từ xa';
+
+  @override
+  String get adminRemoteIpFilter => 'Địa chỉ';
+
+  @override
+  String get adminIpFilterBlocklist => 'Chặn các địa chỉ này';
+
+  @override
+  String get adminIpFilterBlocklistHelp =>
+      'Tắt thì chỉ các địa chỉ này được kết nối từ bên ngoài.';
+
+  @override
   String get adminAddLibrary => 'Thêm thư viện';
 
   @override

@@ -1208,6 +1208,888 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get adminDiscard;
 
+  /// No description provided for @adminSectionServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get adminSectionServer;
+
+  /// No description provided for @adminSectionDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get adminSectionDevices;
+
+  /// No description provided for @adminSectionAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get adminSectionAdvanced;
+
+  /// No description provided for @adminPlayback.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback'**
+  String get adminPlayback;
+
+  /// No description provided for @adminLiveTv.
+  ///
+  /// In en, this message translates to:
+  /// **'Live TV'**
+  String get adminLiveTv;
+
+  /// No description provided for @adminDvr.
+  ///
+  /// In en, this message translates to:
+  /// **'DVR'**
+  String get adminDvr;
+
+  /// No description provided for @adminSettingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings saved.'**
+  String get adminSettingsSaved;
+
+  /// No description provided for @adminNoneSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get adminNoneSelected;
+
+  /// No description provided for @adminFolderDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Server default'**
+  String get adminFolderDefault;
+
+  /// No description provided for @adminNotANumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a number.'**
+  String get adminNotANumber;
+
+  /// No description provided for @adminNumberRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Between {min} and {max}.'**
+  String adminNumberRange(int min, int max);
+
+  /// No description provided for @adminNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get adminNone;
+
+  /// No description provided for @adminAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get adminAuto;
+
+  /// No description provided for @adminDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get adminDisplay;
+
+  /// No description provided for @adminFolderView.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a Folders view'**
+  String get adminFolderView;
+
+  /// No description provided for @adminFolderViewHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain folders beside the libraries, for media the libraries do not sort.'**
+  String get adminFolderViewHelp;
+
+  /// No description provided for @adminSpecialsInSeasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Show specials within the seasons they aired in'**
+  String get adminSpecialsInSeasons;
+
+  /// No description provided for @adminGroupMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Group movies into collections'**
+  String get adminGroupMovies;
+
+  /// No description provided for @adminGroupHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'A collection shows as one tile in the movie list.'**
+  String get adminGroupHelp;
+
+  /// No description provided for @adminGroupShows.
+  ///
+  /// In en, this message translates to:
+  /// **'Group shows into collections'**
+  String get adminGroupShows;
+
+  /// No description provided for @adminExternalSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Include external content in suggestions'**
+  String get adminExternalSuggestions;
+
+  /// No description provided for @adminDateAddedFromFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Date added from the file'**
+  String get adminDateAddedFromFile;
+
+  /// No description provided for @adminDateAddedFromFileHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Use when the file was created, rather than when the server first saw it.'**
+  String get adminDateAddedFromFileHelp;
+
+  /// No description provided for @adminMetadataSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Metadata'**
+  String get adminMetadataSettings;
+
+  /// No description provided for @adminMetadataIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The defaults for every library; a library can set its own from the web dashboard.'**
+  String get adminMetadataIntro;
+
+  /// No description provided for @adminPreferredMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred metadata'**
+  String get adminPreferredMetadata;
+
+  /// No description provided for @adminMetadataLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get adminMetadataLanguage;
+
+  /// No description provided for @adminMetadataCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get adminMetadataCountry;
+
+  /// No description provided for @adminChapters.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters'**
+  String get adminChapters;
+
+  /// No description provided for @adminDummyChapters.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter length when the file has none'**
+  String get adminDummyChapters;
+
+  /// No description provided for @adminDummyChaptersHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'0 makes none.'**
+  String get adminDummyChaptersHelp;
+
+  /// No description provided for @adminChapterImageSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter image resolution'**
+  String get adminChapterImageSize;
+
+  /// No description provided for @adminMatchSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Match the source'**
+  String get adminMatchSource;
+
+  /// No description provided for @adminNfo.
+  ///
+  /// In en, this message translates to:
+  /// **'NFO settings'**
+  String get adminNfo;
+
+  /// No description provided for @adminNfoIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'How the server writes .nfo files beside the media, for Kodi and other readers.'**
+  String get adminNfoIntro;
+
+  /// No description provided for @adminNfoUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch data from'**
+  String get adminNfoUser;
+
+  /// No description provided for @adminNfoUserHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Whose watched state and ratings go into the files.'**
+  String get adminNfoUserHelp;
+
+  /// No description provided for @adminNfoDateFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Release date format'**
+  String get adminNfoDateFormat;
+
+  /// No description provided for @adminNfoImagePaths.
+  ///
+  /// In en, this message translates to:
+  /// **'Save image paths in the files'**
+  String get adminNfoImagePaths;
+
+  /// No description provided for @adminNfoPathSubstitution.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply path substitution'**
+  String get adminNfoPathSubstitution;
+
+  /// No description provided for @adminNfoExtraThumbs.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy extra fanart into extrathumbs'**
+  String get adminNfoExtraThumbs;
+
+  /// No description provided for @adminTranscodingSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcoding'**
+  String get adminTranscodingSettings;
+
+  /// No description provided for @adminHardware.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware'**
+  String get adminHardware;
+
+  /// No description provided for @adminHwAcceleration.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware acceleration'**
+  String get adminHwAcceleration;
+
+  /// No description provided for @adminHwDecoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Decode in hardware'**
+  String get adminHwDecoding;
+
+  /// No description provided for @adminHwDecodingHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the codecs this server\'s hardware can decode.'**
+  String get adminHwDecodingHelp;
+
+  /// No description provided for @adminHevc10.
+  ///
+  /// In en, this message translates to:
+  /// **'10-bit HEVC'**
+  String get adminHevc10;
+
+  /// No description provided for @adminVp910.
+  ///
+  /// In en, this message translates to:
+  /// **'10-bit VP9'**
+  String get adminVp910;
+
+  /// No description provided for @adminHwEncoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Encode in hardware'**
+  String get adminHwEncoding;
+
+  /// No description provided for @adminHwDecodingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware decoding'**
+  String get adminHwDecodingShort;
+
+  /// No description provided for @adminHwEncodingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware encoding'**
+  String get adminHwEncodingShort;
+
+  /// No description provided for @adminEncoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding'**
+  String get adminEncoding;
+
+  /// No description provided for @adminAllowHevc.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow encoding to HEVC'**
+  String get adminAllowHevc;
+
+  /// No description provided for @adminAllowAv1.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow encoding to AV1'**
+  String get adminAllowAv1;
+
+  /// No description provided for @adminTonemapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Tone mapping'**
+  String get adminTonemapping;
+
+  /// No description provided for @adminTonemappingHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'HDR to SDR, for screens that cannot show HDR.'**
+  String get adminTonemappingHelp;
+
+  /// No description provided for @adminEncoderPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoder preset'**
+  String get adminEncoderPreset;
+
+  /// No description provided for @adminEncoderPresetHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Slower is smaller at the same quality, and harder on the server.'**
+  String get adminEncoderPresetHelp;
+
+  /// No description provided for @adminH264Crf.
+  ///
+  /// In en, this message translates to:
+  /// **'H.264 quality (CRF)'**
+  String get adminH264Crf;
+
+  /// No description provided for @adminH265Crf.
+  ///
+  /// In en, this message translates to:
+  /// **'HEVC quality (CRF)'**
+  String get adminH265Crf;
+
+  /// No description provided for @adminCrfHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower is better quality and bigger. 23 is the usual.'**
+  String get adminCrfHelp;
+
+  /// No description provided for @adminThreads.
+  ///
+  /// In en, this message translates to:
+  /// **'Threads'**
+  String get adminThreads;
+
+  /// No description provided for @adminThreadsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'-1 for automatic, 0 for as many as there are cores.'**
+  String get adminThreadsHelp;
+
+  /// No description provided for @adminTranscodeFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcode files'**
+  String get adminTranscodeFiles;
+
+  /// No description provided for @adminTranscodePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcode folder'**
+  String get adminTranscodePath;
+
+  /// No description provided for @adminThrottle.
+  ///
+  /// In en, this message translates to:
+  /// **'Throttle transcodes'**
+  String get adminThrottle;
+
+  /// No description provided for @adminThrottleHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay only a little ahead of the viewer, to spare the server.'**
+  String get adminThrottleHelp;
+
+  /// No description provided for @adminDeleteSegments.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete segments as they play'**
+  String get adminDeleteSegments;
+
+  /// No description provided for @adminDeleteSegmentsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps the transcode folder small.'**
+  String get adminDeleteSegmentsHelp;
+
+  /// No description provided for @adminResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get adminResume;
+
+  /// No description provided for @adminResumeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'When something counts as started, and when it counts as watched.'**
+  String get adminResumeIntro;
+
+  /// No description provided for @adminVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get adminVideo;
+
+  /// No description provided for @adminMinResumePct.
+  ///
+  /// In en, this message translates to:
+  /// **'Started after'**
+  String get adminMinResumePct;
+
+  /// No description provided for @adminMinResumePctHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped before this, it starts from the beginning next time.'**
+  String get adminMinResumePctHelp;
+
+  /// No description provided for @adminMaxResumePct.
+  ///
+  /// In en, this message translates to:
+  /// **'Watched after'**
+  String get adminMaxResumePct;
+
+  /// No description provided for @adminMaxResumePctHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped past this, it is marked watched.'**
+  String get adminMaxResumePctHelp;
+
+  /// No description provided for @adminMinResumeDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortest runtime to resume'**
+  String get adminMinResumeDuration;
+
+  /// No description provided for @adminMinResumeDurationHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything shorter always starts from the beginning.'**
+  String get adminMinResumeDurationHelp;
+
+  /// No description provided for @adminAudiobooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Audiobooks'**
+  String get adminAudiobooks;
+
+  /// No description provided for @adminMinAudiobookResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Started after'**
+  String get adminMinAudiobookResume;
+
+  /// No description provided for @adminMaxAudiobookResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished when this much is left'**
+  String get adminMaxAudiobookResume;
+
+  /// No description provided for @adminStreaming.
+  ///
+  /// In en, this message translates to:
+  /// **'Streaming'**
+  String get adminStreaming;
+
+  /// No description provided for @adminRemoteBitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'Bitrate limit outside the network'**
+  String get adminRemoteBitrate;
+
+  /// No description provided for @adminRemoteBitrateHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'For every account; one can be lower on the account itself.'**
+  String get adminRemoteBitrateHelp;
+
+  /// No description provided for @adminTrickplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Trickplay'**
+  String get adminTrickplay;
+
+  /// No description provided for @adminTrickplayIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'The preview pictures shown while scrubbing.'**
+  String get adminTrickplayIntro;
+
+  /// No description provided for @adminKeyframesOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyframes only'**
+  String get adminKeyframesOnly;
+
+  /// No description provided for @adminKeyframesOnlyHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Much faster to make, less exact in time.'**
+  String get adminKeyframesOnlyHelp;
+
+  /// No description provided for @adminTrickplayImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get adminTrickplayImages;
+
+  /// No description provided for @adminScanBehavior.
+  ///
+  /// In en, this message translates to:
+  /// **'During a library scan'**
+  String get adminScanBehavior;
+
+  /// No description provided for @adminNonBlocking.
+  ///
+  /// In en, this message translates to:
+  /// **'Make them afterwards'**
+  String get adminNonBlocking;
+
+  /// No description provided for @adminBlocking.
+  ///
+  /// In en, this message translates to:
+  /// **'Make them as items are added'**
+  String get adminBlocking;
+
+  /// No description provided for @adminProcessPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Process priority'**
+  String get adminProcessPriority;
+
+  /// No description provided for @adminTrickplayInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'One picture every'**
+  String get adminTrickplayInterval;
+
+  /// No description provided for @adminTrickplayIntervalHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'10 000 ms is one every ten seconds.'**
+  String get adminTrickplayIntervalHelp;
+
+  /// No description provided for @adminTrickplayWidths.
+  ///
+  /// In en, this message translates to:
+  /// **'Widths'**
+  String get adminTrickplayWidths;
+
+  /// No description provided for @adminTrickplayWidthsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'In pixels, comma-separated: 320, 640.'**
+  String get adminTrickplayWidthsHelp;
+
+  /// No description provided for @adminTileWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Pictures across a sheet'**
+  String get adminTileWidth;
+
+  /// No description provided for @adminTileHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Pictures down a sheet'**
+  String get adminTileHeight;
+
+  /// No description provided for @adminJpegQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'JPEG quality'**
+  String get adminJpegQuality;
+
+  /// No description provided for @adminRecordings.
+  ///
+  /// In en, this message translates to:
+  /// **'Recordings'**
+  String get adminRecordings;
+
+  /// No description provided for @adminRecordingPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording folder'**
+  String get adminRecordingPath;
+
+  /// No description provided for @adminMovieRecordingPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Movie recording folder'**
+  String get adminMovieRecordingPath;
+
+  /// No description provided for @adminSeriesRecordingPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Series recording folder'**
+  String get adminSeriesRecordingPath;
+
+  /// No description provided for @adminRecordingSubfolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort recordings into subfolders'**
+  String get adminRecordingSubfolders;
+
+  /// No description provided for @adminPrePadding.
+  ///
+  /// In en, this message translates to:
+  /// **'Start early by'**
+  String get adminPrePadding;
+
+  /// No description provided for @adminPostPadding.
+  ///
+  /// In en, this message translates to:
+  /// **'Run over by'**
+  String get adminPostPadding;
+
+  /// No description provided for @adminSaveRecordingNfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Save .nfo files with recordings'**
+  String get adminSaveRecordingNfo;
+
+  /// No description provided for @adminSaveRecordingImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Save images with recordings'**
+  String get adminSaveRecordingImages;
+
+  /// No description provided for @adminGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide'**
+  String get adminGuide;
+
+  /// No description provided for @adminGuideDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days of guide data'**
+  String get adminGuideDays;
+
+  /// No description provided for @adminPostProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'After recording'**
+  String get adminPostProcessing;
+
+  /// No description provided for @adminPostProcessor.
+  ///
+  /// In en, this message translates to:
+  /// **'Run this program'**
+  String get adminPostProcessor;
+
+  /// No description provided for @adminPostProcessorArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'With these arguments'**
+  String get adminPostProcessorArgs;
+
+  /// No description provided for @adminTuners.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuners'**
+  String get adminTuners;
+
+  /// No description provided for @adminNoTuners.
+  ///
+  /// In en, this message translates to:
+  /// **'No tuners are set up.'**
+  String get adminNoTuners;
+
+  /// No description provided for @adminGuideProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide data'**
+  String get adminGuideProviders;
+
+  /// No description provided for @adminNoGuideProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'No guide data provider is set up.'**
+  String get adminNoGuideProviders;
+
+  /// No description provided for @adminLiveTvAddOnWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuners and guide providers are added from the web dashboard, where each kind has its own form.'**
+  String get adminLiveTvAddOnWeb;
+
+  /// No description provided for @adminRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get adminRemove;
+
+  /// No description provided for @adminRemoveQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String adminRemoveQuestion(String name);
+
+  /// No description provided for @adminRemoveLiveTvBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Live TV stops using it. It can be added again from the web dashboard.'**
+  String get adminRemoveLiveTvBody;
+
+  /// No description provided for @adminRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} removed.'**
+  String adminRemoved(String name);
+
+  /// No description provided for @adminNetworking.
+  ///
+  /// In en, this message translates to:
+  /// **'Networking'**
+  String get adminNetworking;
+
+  /// No description provided for @adminNetworkingIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Careful: these are how this app reaches the server. A wrong port or address can leave it unreachable until it is fixed at the machine. Most changes need a restart.'**
+  String get adminNetworkingIntro;
+
+  /// No description provided for @adminServerAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Access'**
+  String get adminServerAccess;
+
+  /// No description provided for @adminRemoteAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow remote connections'**
+  String get adminRemoteAccess;
+
+  /// No description provided for @adminRemoteAccessHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Off, only the local network can connect.'**
+  String get adminRemoteAccessHelp;
+
+  /// No description provided for @adminLanNetworks.
+  ///
+  /// In en, this message translates to:
+  /// **'LAN networks'**
+  String get adminLanNetworks;
+
+  /// No description provided for @adminLanNetworksHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated, such as 192.168.1.0/24. Empty uses the server\'s own.'**
+  String get adminLanNetworksHelp;
+
+  /// No description provided for @adminKnownProxies.
+  ///
+  /// In en, this message translates to:
+  /// **'Known proxies'**
+  String get adminKnownProxies;
+
+  /// No description provided for @adminListHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated.'**
+  String get adminListHelp;
+
+  /// No description provided for @adminPublishedUris.
+  ///
+  /// In en, this message translates to:
+  /// **'Published server URIs'**
+  String get adminPublishedUris;
+
+  /// No description provided for @adminPublishedUrisHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated, such as all=https://media.example.com.'**
+  String get adminPublishedUrisHelp;
+
+  /// No description provided for @adminAutoDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Let clients on the network find the server'**
+  String get adminAutoDiscovery;
+
+  /// No description provided for @adminPorts.
+  ///
+  /// In en, this message translates to:
+  /// **'Ports and HTTPS'**
+  String get adminPorts;
+
+  /// No description provided for @adminHttpPort.
+  ///
+  /// In en, this message translates to:
+  /// **'HTTP port'**
+  String get adminHttpPort;
+
+  /// No description provided for @adminHttpsPort.
+  ///
+  /// In en, this message translates to:
+  /// **'HTTPS port'**
+  String get adminHttpsPort;
+
+  /// No description provided for @adminPublicHttpPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Public HTTP port'**
+  String get adminPublicHttpPort;
+
+  /// No description provided for @adminPublicHttpsPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Public HTTPS port'**
+  String get adminPublicHttpsPort;
+
+  /// No description provided for @adminEnableHttps.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable HTTPS'**
+  String get adminEnableHttps;
+
+  /// No description provided for @adminRequireHttps.
+  ///
+  /// In en, this message translates to:
+  /// **'Require HTTPS'**
+  String get adminRequireHttps;
+
+  /// No description provided for @adminRequireHttpsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote connections over plain HTTP are refused.'**
+  String get adminRequireHttpsHelp;
+
+  /// No description provided for @adminIpFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote IP filter'**
+  String get adminIpFilter;
+
+  /// No description provided for @adminRemoteIpFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Addresses'**
+  String get adminRemoteIpFilter;
+
+  /// No description provided for @adminIpFilterBlocklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Block these addresses'**
+  String get adminIpFilterBlocklist;
+
+  /// No description provided for @adminIpFilterBlocklistHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Off, only these addresses may connect from outside.'**
+  String get adminIpFilterBlocklistHelp;
+
   /// No description provided for @adminAddLibrary.
   ///
   /// In en, this message translates to:

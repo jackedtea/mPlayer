@@ -887,6 +887,67 @@ void main() {
     });
   });
 
+  group('server configuration', () {
+    test('a merge reaches into objects and keeps their other fields', () {
+      final merged = mergeConfiguration(
+        <String, dynamic>{
+          'A': 1,
+          'TrickplayOptions': <String, dynamic>{'Interval': 10000, 'Tile': 10},
+        },
+        <String, dynamic>{
+          'TrickplayOptions': <String, dynamic>{'Interval': 5000},
+        },
+      );
+      expect(merged['A'], 1);
+      expect(merged['TrickplayOptions'],
+          <String, dynamic>{'Interval': 5000, 'Tile': 10});
+    });
+
+    test('a named configuration is read fresh and written whole', () async {
+      final (admin, adapter) = adminWith((options) {
+        if (options.method == 'GET') {
+          return _json(<String, dynamic>{
+            'HardwareAccelerationType': 'none',
+            'EncoderPreset': 'auto',
+          });
+        }
+        return _json(<String, dynamic>{});
+      });
+
+      await admin.updateConfiguration(
+        <String, dynamic>{'HardwareAccelerationType': 'qsv'},
+        'encoding',
+      );
+
+      expect(adapter.requests.first.uri.path, '/System/Configuration/encoding');
+      final post = adapter.requests.last;
+      expect(post.method, 'POST');
+      expect(post.uri.path, '/System/Configuration/encoding');
+      expect(post.data, <String, dynamic>{
+        'HardwareAccelerationType': 'qsv',
+        'EncoderPreset': 'auto',
+      });
+    });
+
+    test('cultures: by two-letter code, one each, sorted by name', () {
+      final options = configOptionsFromJson(<Object?>[
+        <String, dynamic>{'DisplayName': 'Vietnamese', 'TwoLetterISOLanguageName': 'vi'},
+        <String, dynamic>{'DisplayName': 'English', 'TwoLetterISOLanguageName': 'en'},
+        <String, dynamic>{'DisplayName': 'English (UK)', 'TwoLetterISOLanguageName': 'en'},
+        <String, dynamic>{'DisplayName': 'Nothing'},
+      ], 'TwoLetterISOLanguageName');
+      expect(options.map((o) => o.value), <String>['en', 'vi']);
+    });
+
+    test('a tuner is removed by id in the query', () async {
+      final (admin, adapter) = adminWith((_) => _json(<String, dynamic>{}));
+      await admin.deleteTuner('t1');
+      expect(adapter.requests.single.method, 'DELETE');
+      expect(adapter.requests.single.uri.path, '/LiveTv/TunerHosts');
+      expect(adapter.requests.single.uri.queryParameters['id'], 't1');
+    });
+  });
+
   group('what a rejection means', () {
     test('403 says the account is not an administrator, not "sign in again"',
         () async {

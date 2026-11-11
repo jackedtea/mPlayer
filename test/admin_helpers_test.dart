@@ -6,6 +6,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mplayer/features/admin/admin_api_keys_page.dart';
+import 'package:mplayer/features/admin/admin_config_form.dart';
+import 'package:mplayer/features/admin/admin_live_tv_page.dart';
 import 'package:mplayer/features/admin/admin_logs_page.dart';
 import 'package:mplayer/features/admin/admin_session_sheet.dart';
 import 'package:mplayer/features/admin/admin_storage_page.dart';
@@ -44,5 +46,34 @@ void main() {
     expect(diskShareUsed(free: null, used: 25), isNull);
     expect(isLowSpace(5 * 1024 * 1024 * 1024), isTrue);
     expect(isLowSpace(50 * 1024 * 1024 * 1024), isFalse);
+  });
+
+  test('a draft becomes one nested change per configuration', () {
+    final changes = changesByKey(<ConfigPath, Object?>{
+      const ConfigPath(<String>['TrickplayOptions', 'Interval']): 5000,
+      const ConfigPath(<String>['TrickplayOptions', 'TileWidth']): 8,
+      const ConfigPath(<String>['EnableFolderView']): true,
+      const ConfigPath(<String>['UseFileCreationTimeForDateAdded'],
+          key: 'metadata'): false,
+    });
+    expect(changes[null], <String, dynamic>{
+      'TrickplayOptions': <String, dynamic>{'Interval': 5000, 'TileWidth': 8},
+      'EnableFolderView': true,
+    });
+    expect(changes['metadata'],
+        <String, dynamic>{'UseFileCreationTimeForDateAdded': false});
+  });
+
+  test('live TV rows: a name where there is one, the type where not', () {
+    final entries = liveTvEntries(<String, dynamic>{
+      'TunerHosts': <Map<String, dynamic>>[
+        <String, dynamic>{'Id': 'a', 'Type': 'm3u', 'Url': 'http://x/list.m3u'},
+        <String, dynamic>{'Id': 'b', 'Type': 'hdhomerun', 'FriendlyName': 'Attic'},
+        <String, dynamic>{'Type': 'no id'},
+      ],
+    }, 'TunerHosts');
+    expect(entries.map((e) => e.title), <String>['m3u', 'Attic']);
+    expect(entries.first.detail, 'http://x/list.m3u');
+    expect(entries.last.detail, 'hdhomerun');
   });
 }

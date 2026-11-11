@@ -51,47 +51,21 @@ class AdminDashboardPage extends ConsumerWidget {
             _RestartBanner(info: i),
           SizedBox(height: spacing.md),
 
-          // The screens this one is the way in to.
-          _NavRow(
-            icon: Icons.video_library_outlined,
-            label: l10n.adminLibraries,
-            onTap: () => context.push('/admin/libraries'),
-          ),
-          _NavRow(
-            icon: Icons.schedule_rounded,
-            label: l10n.adminTasks,
-            onTap: () => context.push('/admin/tasks'),
-          ),
-          _NavRow(
-            icon: Icons.people_outline_rounded,
-            label: l10n.adminUsers,
-            onTap: () => context.push('/admin/users'),
-          ),
-          _NavRow(
-            icon: Icons.receipt_long_rounded,
-            label: l10n.adminActivity,
-            onTap: () => context.push('/admin/activity'),
-          ),
-          _NavRow(
-            icon: Icons.extension_outlined,
-            label: l10n.adminPlugins,
-            onTap: () => context.push('/admin/plugins'),
-          ),
-          _NavRow(
-            icon: Icons.storage_rounded,
-            label: l10n.adminStorage,
-            onTap: () => context.push('/admin/storage'),
-          ),
-          _NavRow(
-            icon: Icons.description_outlined,
-            label: l10n.adminLogs,
-            onTap: () => context.push('/admin/logs'),
-          ),
-          _NavRow(
-            icon: Icons.key_outlined,
-            label: l10n.adminApiKeys,
-            onTap: () => context.push('/admin/keys'),
-          ),
+          // The screens this one is the way in to, grouped as the web
+          // dashboard groups them, so an administrator who knows one knows
+          // where to look in the other.
+          for (final _NavSection section in _navSections(l10n)) ...<Widget>[
+            SectionHeader(title: section.title),
+            for (final _NavEntry entry in section.entries)
+              if (entry.children.isEmpty)
+                _NavRow(
+                  icon: entry.icon,
+                  label: entry.label,
+                  onTap: () => context.push(entry.path!),
+                )
+              else
+                _NavGroup(entry: entry),
+          ],
 
           SizedBox(height: spacing.sectionGap),
           SectionHeader(title: l10n.adminSessions),
@@ -187,8 +161,9 @@ class _ServerCard extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.texts.bodyMedium?.copyWith(
-                        color: scheme.onSecondaryContainer
-                            .withValues(alpha: 0.8),
+                        color: scheme.onSecondaryContainer.withValues(
+                          alpha: 0.8,
+                        ),
                       ),
                     ),
                   ],
@@ -401,6 +376,145 @@ class _RestartBanner extends ConsumerWidget {
               : null,
         ),
       ),
+    );
+  }
+}
+
+/// One heading of the dashboard and the screens under it.
+class _NavSection {
+  const _NavSection(this.title, this.entries);
+  final String title;
+  final List<_NavEntry> entries;
+}
+
+/// A screen, or a group of them that opens in place like the web's.
+class _NavEntry {
+  const _NavEntry(this.icon, this.label, {this.path, this.children = const []});
+  final IconData icon;
+  final String label;
+  final String? path;
+  final List<_NavEntry> children;
+}
+
+List<_NavSection> _navSections(AppLocalizations l10n) => <_NavSection>[
+  _NavSection(l10n.adminSectionServer, <_NavEntry>[
+    _NavEntry(
+      Icons.people_outline_rounded,
+      l10n.adminUsers,
+      path: '/admin/users',
+    ),
+    _NavEntry(
+      Icons.video_library_outlined,
+      l10n.adminLibraries,
+      children: <_NavEntry>[
+        _NavEntry(
+          Icons.video_library_outlined,
+          l10n.adminLibraries,
+          path: '/admin/libraries',
+        ),
+        _NavEntry(
+          Icons.view_module_outlined,
+          l10n.adminDisplay,
+          path: '/admin/settings/display',
+        ),
+        _NavEntry(
+          Icons.travel_explore_rounded,
+          l10n.adminMetadataSettings,
+          path: '/admin/settings/metadata',
+        ),
+        _NavEntry(
+          Icons.description_outlined,
+          l10n.adminNfo,
+          path: '/admin/settings/nfo',
+        ),
+      ],
+    ),
+    _NavEntry(
+      Icons.play_circle_outline_rounded,
+      l10n.adminPlayback,
+      children: <_NavEntry>[
+        _NavEntry(
+          Icons.transform_rounded,
+          l10n.adminTranscodingSettings,
+          path: '/admin/settings/transcoding',
+        ),
+        _NavEntry(
+          Icons.history_rounded,
+          l10n.adminResume,
+          path: '/admin/settings/resume',
+        ),
+        _NavEntry(
+          Icons.wifi_tethering_rounded,
+          l10n.adminStreaming,
+          path: '/admin/settings/streaming',
+        ),
+        _NavEntry(
+          Icons.burst_mode_outlined,
+          l10n.adminTrickplay,
+          path: '/admin/settings/trickplay',
+        ),
+      ],
+    ),
+    _NavEntry(Icons.storage_rounded, l10n.adminStorage, path: '/admin/storage'),
+  ]),
+  _NavSection(l10n.adminSectionDevices, <_NavEntry>[
+    _NavEntry(Icons.devices_rounded, l10n.adminDevices, path: '/admin/devices'),
+    _NavEntry(
+      Icons.receipt_long_rounded,
+      l10n.adminActivity,
+      path: '/admin/activity',
+    ),
+  ]),
+  _NavSection(l10n.adminLiveTv, <_NavEntry>[
+    _NavEntry(Icons.live_tv_rounded, l10n.adminLiveTv, path: '/admin/livetv'),
+    _NavEntry(
+      Icons.fiber_dvr_outlined,
+      l10n.adminDvr,
+      path: '/admin/settings/dvr',
+    ),
+  ]),
+  _NavSection(l10n.adminPlugins, <_NavEntry>[
+    _NavEntry(
+      Icons.extension_outlined,
+      l10n.adminPlugins,
+      path: '/admin/plugins',
+    ),
+  ]),
+  _NavSection(l10n.adminSectionAdvanced, <_NavEntry>[
+    _NavEntry(
+      Icons.lan_outlined,
+      l10n.adminNetworking,
+      path: '/admin/settings/networking',
+    ),
+    _NavEntry(Icons.key_outlined, l10n.adminApiKeys, path: '/admin/keys'),
+    _NavEntry(Icons.description_outlined, l10n.adminLogs, path: '/admin/logs'),
+    _NavEntry(Icons.schedule_rounded, l10n.adminTasks, path: '/admin/tasks'),
+  ]),
+];
+
+/// A group of screens that opens in place, as Libraries and Playback do in
+/// the web dashboard's menu.
+class _NavGroup extends StatelessWidget {
+  const _NavGroup({required this.entry});
+
+  final _NavEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      leading: Icon(entry.icon, color: context.colors.primary),
+      title: Text(entry.label),
+      shape: const Border(),
+      collapsedShape: const Border(),
+      childrenPadding: EdgeInsetsDirectional.only(start: context.spacing.lg),
+      children: <Widget>[
+        for (final _NavEntry child in entry.children)
+          _NavRow(
+            icon: child.icon,
+            label: child.label,
+            onTap: () => context.push(child.path!),
+          ),
+      ],
     );
   }
 }

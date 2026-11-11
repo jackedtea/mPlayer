@@ -550,3 +550,44 @@ const List<String?> libraryKinds = <String?>[
   'books',
   null,
 ];
+
+/// [server] with [changes] laid over it. A map inside [changes] merges into
+/// the map at the same key rather than replacing it, so `{TrickplayOptions:
+/// {Interval: 5000}}` changes one field of that object and keeps the rest.
+Map<String, dynamic> mergeConfiguration(
+  Map<String, dynamic> server,
+  Map<String, dynamic> changes,
+) {
+  final merged = <String, dynamic>{...server};
+  for (final MapEntry<String, dynamic> change in changes.entries) {
+    final current = merged[change.key];
+    final next = change.value;
+    merged[change.key] = current is Map && next is Map
+        ? mergeConfiguration(
+            current.cast<String, dynamic>(),
+            next.cast<String, dynamic>(),
+          )
+        : next;
+  }
+  return merged;
+}
+
+/// `/Localization/Cultures` or `/Localization/Countries`, by [codeKey],
+/// sorted by name, one per code.
+List<ConfigOption> configOptionsFromJson(List<Object?> json, String codeKey) {
+  final seen = <String>{};
+  final options = <ConfigOption>[
+    for (final Object? entry in json)
+      if (entry is Map)
+        if (entry[codeKey] case final String code
+            when code.isNotEmpty && seen.add(code.toLowerCase()))
+          ConfigOption(
+            value: code,
+            label: (entry['DisplayName'] as String?)?.trim().isNotEmpty ?? false
+                ? (entry['DisplayName'] as String).trim()
+                : code,
+          ),
+  ];
+  options.sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+  return options;
+}

@@ -836,6 +836,15 @@ class ServerFolder {
   final String path;
 }
 
+/// One value a setting can take, and its name for people.
+@immutable
+class ConfigOption {
+  const ConfigOption({required this.value, required this.label});
+
+  final String value;
+  final String label;
+}
+
 /// Everything the administration screens can ask a server to do.
 abstract class ServerAdmin {
   /// What the server is and whether it can be restarted from here.
@@ -1027,6 +1036,32 @@ abstract class ServerAdmin {
 
   /// Revokes a key. Whatever signed in with it is signed out.
   Future<void> revokeApiKey(String token);
+
+  /// The server's configuration — the main one with no [key], or a named
+  /// part of it: `encoding`, `metadata`, `xbmcmetadata`.
+  Future<Map<String, dynamic>> configuration([String? key]);
+
+  /// Lays [changes] over the configuration and writes it back **whole**.
+  ///
+  /// Read fresh at save time and merged a level at a time, so a change to one
+  /// field of `TrickplayOptions` keeps the others: the routes replace what
+  /// they are sent, and anything left out is reset to its default.
+  Future<void> updateConfiguration(
+    Map<String, dynamic> changes, [
+    String? key,
+  ]);
+
+  /// Removes a Live TV tuner by its id in the `livetv` configuration.
+  Future<void> deleteTuner(String id);
+
+  /// Removes a guide data provider by its id in the `livetv` configuration.
+  Future<void> deleteGuideProvider(String id);
+
+  /// Languages metadata can be fetched in, by two-letter code.
+  Future<List<ConfigOption>> cultures();
+
+  /// Countries metadata can be fetched for, by two-letter code.
+  Future<List<ConfigOption>> countries();
 
   Future<void> dispose();
 }

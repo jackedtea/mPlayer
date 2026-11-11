@@ -657,6 +657,41 @@ class JellyfinAdmin implements ServerAdmin {
       _delete('/Plugins/$pluginId/$version');
 
   @override
+  Future<Map<String, dynamic>> configuration([String? key]) =>
+      _getMap(key == null ? '/System/Configuration' : '/System/Configuration/$key');
+
+  @override
+  Future<void> updateConfiguration(
+    Map<String, dynamic> changes, [
+    String? key,
+  ]) async {
+    final path =
+        key == null ? '/System/Configuration' : '/System/Configuration/$key';
+    final server = await _getMap(path);
+    await _post(path, mergeConfiguration(server, changes));
+  }
+
+  @override
+  Future<void> deleteTuner(String id) =>
+      _delete('/LiveTv/TunerHosts', <String, String>{'id': id});
+
+  @override
+  Future<void> deleteGuideProvider(String id) =>
+      _delete('/LiveTv/ListingProviders', <String, String>{'id': id});
+
+  @override
+  Future<List<ConfigOption>> cultures() async => configOptionsFromJson(
+        await _getList('/Localization/Cultures'),
+        'TwoLetterISOLanguageName',
+      );
+
+  @override
+  Future<List<ConfigOption>> countries() async => configOptionsFromJson(
+        await _getList('/Localization/Countries'),
+        'TwoLetterISORegionName',
+      );
+
+  @override
   Future<void> dispose() async => _dio.close(force: true);
 
   // ----------------------------------------------------------- plumbing

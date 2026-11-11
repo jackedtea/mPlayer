@@ -177,6 +177,38 @@ final serverLogTextProvider = FutureProvider.autoDispose.family<String, String>(
   (ref, name) => _withAdmin(ref, (a) => a.logText(name), ''),
 );
 
+/// One configuration object, '' for the main one. Asked again each time a
+/// page opens: these are exactly what another administrator may have changed.
+final adminConfigProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>?, String>(
+  (ref, key) => _withAdmin<Map<String, dynamic>?>(
+    ref,
+    (a) => a.configuration(key.isEmpty ? null : key),
+    null,
+  ),
+);
+
+final culturesProvider = FutureProvider.autoDispose<List<ConfigOption>>(
+  (ref) => _withAdmin(ref, (a) => a.cultures(), const <ConfigOption>[]),
+);
+
+final countriesProvider = FutureProvider.autoDispose<List<ConfigOption>>(
+  (ref) => _withAdmin(ref, (a) => a.countries(), const <ConfigOption>[]),
+);
+
+/// The accounts, as options — the NFO page's "whose watch data".
+final userOptionsProvider = FutureProvider.autoDispose<List<ConfigOption>>(
+  (ref) async => <ConfigOption>[
+    for (final AdminUser u in await ref.watch(adminUsersProvider.future))
+      ConfigOption(value: u.id, label: u.name),
+  ],
+);
+
+/// Every device signed in to the server, for the Devices page.
+final adminDevicesProvider = FutureProvider.autoDispose<List<AdminDevice>>(
+  (ref) => _withAdmin(ref, (a) => a.devices(), const <AdminDevice>[]),
+);
+
 final apiKeysProvider = FutureProvider.autoDispose<List<ServerApiKey>>(
   (ref) => _withAdmin(ref, (a) => a.apiKeys(), const <ServerApiKey>[]),
 );

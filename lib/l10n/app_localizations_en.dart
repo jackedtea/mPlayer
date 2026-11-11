@@ -634,6 +634,484 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminDiscard => 'Discard';
 
   @override
+  String get adminSectionServer => 'Server';
+
+  @override
+  String get adminSectionDevices => 'Devices';
+
+  @override
+  String get adminSectionAdvanced => 'Advanced';
+
+  @override
+  String get adminPlayback => 'Playback';
+
+  @override
+  String get adminLiveTv => 'Live TV';
+
+  @override
+  String get adminDvr => 'DVR';
+
+  @override
+  String get adminSettingsSaved => 'Settings saved.';
+
+  @override
+  String get adminNoneSelected => 'None';
+
+  @override
+  String get adminFolderDefault => 'Server default';
+
+  @override
+  String get adminNotANumber => 'Not a number.';
+
+  @override
+  String adminNumberRange(int min, int max) {
+    return 'Between $min and $max.';
+  }
+
+  @override
+  String get adminNone => 'None';
+
+  @override
+  String get adminAuto => 'Auto';
+
+  @override
+  String get adminDisplay => 'Display';
+
+  @override
+  String get adminFolderView => 'Show a Folders view';
+
+  @override
+  String get adminFolderViewHelp =>
+      'Plain folders beside the libraries, for media the libraries do not sort.';
+
+  @override
+  String get adminSpecialsInSeasons =>
+      'Show specials within the seasons they aired in';
+
+  @override
+  String get adminGroupMovies => 'Group movies into collections';
+
+  @override
+  String get adminGroupHelp =>
+      'A collection shows as one tile in the movie list.';
+
+  @override
+  String get adminGroupShows => 'Group shows into collections';
+
+  @override
+  String get adminExternalSuggestions =>
+      'Include external content in suggestions';
+
+  @override
+  String get adminDateAddedFromFile => 'Date added from the file';
+
+  @override
+  String get adminDateAddedFromFileHelp =>
+      'Use when the file was created, rather than when the server first saw it.';
+
+  @override
+  String get adminMetadataSettings => 'Metadata';
+
+  @override
+  String get adminMetadataIntro =>
+      'The defaults for every library; a library can set its own from the web dashboard.';
+
+  @override
+  String get adminPreferredMetadata => 'Preferred metadata';
+
+  @override
+  String get adminMetadataLanguage => 'Language';
+
+  @override
+  String get adminMetadataCountry => 'Country';
+
+  @override
+  String get adminChapters => 'Chapters';
+
+  @override
+  String get adminDummyChapters => 'Chapter length when the file has none';
+
+  @override
+  String get adminDummyChaptersHelp => '0 makes none.';
+
+  @override
+  String get adminChapterImageSize => 'Chapter image resolution';
+
+  @override
+  String get adminMatchSource => 'Match the source';
+
+  @override
+  String get adminNfo => 'NFO settings';
+
+  @override
+  String get adminNfoIntro =>
+      'How the server writes .nfo files beside the media, for Kodi and other readers.';
+
+  @override
+  String get adminNfoUser => 'Watch data from';
+
+  @override
+  String get adminNfoUserHelp =>
+      'Whose watched state and ratings go into the files.';
+
+  @override
+  String get adminNfoDateFormat => 'Release date format';
+
+  @override
+  String get adminNfoImagePaths => 'Save image paths in the files';
+
+  @override
+  String get adminNfoPathSubstitution => 'Apply path substitution';
+
+  @override
+  String get adminNfoExtraThumbs => 'Copy extra fanart into extrathumbs';
+
+  @override
+  String get adminTranscodingSettings => 'Transcoding';
+
+  @override
+  String get adminHardware => 'Hardware';
+
+  @override
+  String get adminHwAcceleration => 'Hardware acceleration';
+
+  @override
+  String get adminHwDecoding => 'Decode in hardware';
+
+  @override
+  String get adminHwDecodingHelp =>
+      'Only the codecs this server\'s hardware can decode.';
+
+  @override
+  String get adminHevc10 => '10-bit HEVC';
+
+  @override
+  String get adminVp910 => '10-bit VP9';
+
+  @override
+  String get adminHwEncoding => 'Encode in hardware';
+
+  @override
+  String get adminHwDecodingShort => 'Hardware decoding';
+
+  @override
+  String get adminHwEncodingShort => 'Hardware encoding';
+
+  @override
+  String get adminEncoding => 'Encoding';
+
+  @override
+  String get adminAllowHevc => 'Allow encoding to HEVC';
+
+  @override
+  String get adminAllowAv1 => 'Allow encoding to AV1';
+
+  @override
+  String get adminTonemapping => 'Tone mapping';
+
+  @override
+  String get adminTonemappingHelp =>
+      'HDR to SDR, for screens that cannot show HDR.';
+
+  @override
+  String get adminEncoderPreset => 'Encoder preset';
+
+  @override
+  String get adminEncoderPresetHelp =>
+      'Slower is smaller at the same quality, and harder on the server.';
+
+  @override
+  String get adminH264Crf => 'H.264 quality (CRF)';
+
+  @override
+  String get adminH265Crf => 'HEVC quality (CRF)';
+
+  @override
+  String get adminCrfHelp =>
+      'Lower is better quality and bigger. 23 is the usual.';
+
+  @override
+  String get adminThreads => 'Threads';
+
+  @override
+  String get adminThreadsHelp =>
+      '-1 for automatic, 0 for as many as there are cores.';
+
+  @override
+  String get adminTranscodeFiles => 'Transcode files';
+
+  @override
+  String get adminTranscodePath => 'Transcode folder';
+
+  @override
+  String get adminThrottle => 'Throttle transcodes';
+
+  @override
+  String get adminThrottleHelp =>
+      'Stay only a little ahead of the viewer, to spare the server.';
+
+  @override
+  String get adminDeleteSegments => 'Delete segments as they play';
+
+  @override
+  String get adminDeleteSegmentsHelp => 'Keeps the transcode folder small.';
+
+  @override
+  String get adminResume => 'Resume';
+
+  @override
+  String get adminResumeIntro =>
+      'When something counts as started, and when it counts as watched.';
+
+  @override
+  String get adminVideo => 'Video';
+
+  @override
+  String get adminMinResumePct => 'Started after';
+
+  @override
+  String get adminMinResumePctHelp =>
+      'Stopped before this, it starts from the beginning next time.';
+
+  @override
+  String get adminMaxResumePct => 'Watched after';
+
+  @override
+  String get adminMaxResumePctHelp =>
+      'Stopped past this, it is marked watched.';
+
+  @override
+  String get adminMinResumeDuration => 'Shortest runtime to resume';
+
+  @override
+  String get adminMinResumeDurationHelp =>
+      'Anything shorter always starts from the beginning.';
+
+  @override
+  String get adminAudiobooks => 'Audiobooks';
+
+  @override
+  String get adminMinAudiobookResume => 'Started after';
+
+  @override
+  String get adminMaxAudiobookResume => 'Finished when this much is left';
+
+  @override
+  String get adminStreaming => 'Streaming';
+
+  @override
+  String get adminRemoteBitrate => 'Bitrate limit outside the network';
+
+  @override
+  String get adminRemoteBitrateHelp =>
+      'For every account; one can be lower on the account itself.';
+
+  @override
+  String get adminTrickplay => 'Trickplay';
+
+  @override
+  String get adminTrickplayIntro =>
+      'The preview pictures shown while scrubbing.';
+
+  @override
+  String get adminKeyframesOnly => 'Keyframes only';
+
+  @override
+  String get adminKeyframesOnlyHelp =>
+      'Much faster to make, less exact in time.';
+
+  @override
+  String get adminTrickplayImages => 'Images';
+
+  @override
+  String get adminScanBehavior => 'During a library scan';
+
+  @override
+  String get adminNonBlocking => 'Make them afterwards';
+
+  @override
+  String get adminBlocking => 'Make them as items are added';
+
+  @override
+  String get adminProcessPriority => 'Process priority';
+
+  @override
+  String get adminTrickplayInterval => 'One picture every';
+
+  @override
+  String get adminTrickplayIntervalHelp =>
+      '10 000 ms is one every ten seconds.';
+
+  @override
+  String get adminTrickplayWidths => 'Widths';
+
+  @override
+  String get adminTrickplayWidthsHelp =>
+      'In pixels, comma-separated: 320, 640.';
+
+  @override
+  String get adminTileWidth => 'Pictures across a sheet';
+
+  @override
+  String get adminTileHeight => 'Pictures down a sheet';
+
+  @override
+  String get adminJpegQuality => 'JPEG quality';
+
+  @override
+  String get adminRecordings => 'Recordings';
+
+  @override
+  String get adminRecordingPath => 'Recording folder';
+
+  @override
+  String get adminMovieRecordingPath => 'Movie recording folder';
+
+  @override
+  String get adminSeriesRecordingPath => 'Series recording folder';
+
+  @override
+  String get adminRecordingSubfolders => 'Sort recordings into subfolders';
+
+  @override
+  String get adminPrePadding => 'Start early by';
+
+  @override
+  String get adminPostPadding => 'Run over by';
+
+  @override
+  String get adminSaveRecordingNfo => 'Save .nfo files with recordings';
+
+  @override
+  String get adminSaveRecordingImages => 'Save images with recordings';
+
+  @override
+  String get adminGuide => 'Guide';
+
+  @override
+  String get adminGuideDays => 'Days of guide data';
+
+  @override
+  String get adminPostProcessing => 'After recording';
+
+  @override
+  String get adminPostProcessor => 'Run this program';
+
+  @override
+  String get adminPostProcessorArgs => 'With these arguments';
+
+  @override
+  String get adminTuners => 'Tuners';
+
+  @override
+  String get adminNoTuners => 'No tuners are set up.';
+
+  @override
+  String get adminGuideProviders => 'Guide data';
+
+  @override
+  String get adminNoGuideProviders => 'No guide data provider is set up.';
+
+  @override
+  String get adminLiveTvAddOnWeb =>
+      'Tuners and guide providers are added from the web dashboard, where each kind has its own form.';
+
+  @override
+  String get adminRemove => 'Remove';
+
+  @override
+  String adminRemoveQuestion(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String get adminRemoveLiveTvBody =>
+      'Live TV stops using it. It can be added again from the web dashboard.';
+
+  @override
+  String adminRemoved(String name) {
+    return '$name removed.';
+  }
+
+  @override
+  String get adminNetworking => 'Networking';
+
+  @override
+  String get adminNetworkingIntro =>
+      'Careful: these are how this app reaches the server. A wrong port or address can leave it unreachable until it is fixed at the machine. Most changes need a restart.';
+
+  @override
+  String get adminServerAccess => 'Access';
+
+  @override
+  String get adminRemoteAccess => 'Allow remote connections';
+
+  @override
+  String get adminRemoteAccessHelp =>
+      'Off, only the local network can connect.';
+
+  @override
+  String get adminLanNetworks => 'LAN networks';
+
+  @override
+  String get adminLanNetworksHelp =>
+      'Comma-separated, such as 192.168.1.0/24. Empty uses the server\'s own.';
+
+  @override
+  String get adminKnownProxies => 'Known proxies';
+
+  @override
+  String get adminListHelp => 'Comma-separated.';
+
+  @override
+  String get adminPublishedUris => 'Published server URIs';
+
+  @override
+  String get adminPublishedUrisHelp =>
+      'Comma-separated, such as all=https://media.example.com.';
+
+  @override
+  String get adminAutoDiscovery => 'Let clients on the network find the server';
+
+  @override
+  String get adminPorts => 'Ports and HTTPS';
+
+  @override
+  String get adminHttpPort => 'HTTP port';
+
+  @override
+  String get adminHttpsPort => 'HTTPS port';
+
+  @override
+  String get adminPublicHttpPort => 'Public HTTP port';
+
+  @override
+  String get adminPublicHttpsPort => 'Public HTTPS port';
+
+  @override
+  String get adminEnableHttps => 'Enable HTTPS';
+
+  @override
+  String get adminRequireHttps => 'Require HTTPS';
+
+  @override
+  String get adminRequireHttpsHelp =>
+      'Remote connections over plain HTTP are refused.';
+
+  @override
+  String get adminIpFilter => 'Remote IP filter';
+
+  @override
+  String get adminRemoteIpFilter => 'Addresses';
+
+  @override
+  String get adminIpFilterBlocklist => 'Block these addresses';
+
+  @override
+  String get adminIpFilterBlocklistHelp =>
+      'Off, only these addresses may connect from outside.';
+
+  @override
   String get adminAddLibrary => 'Add library';
 
   @override
