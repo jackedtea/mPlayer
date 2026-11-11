@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See the LICENSE file at the app root for the full notice.
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -46,16 +48,25 @@ class AudioSettingsPage extends ConsumerWidget {
         // to decode the stream at the far end is silence, and the cause is
         // not obvious from inside a film.
         SettingsNote(l10n.passthroughNote),
-        SettingsSliderRow(
+        SettingsSwitchRow(
           title: l10n.volumeBoost,
-          valueLabel: '${settings.volumeBoost}%',
-          value: settings.volumeBoost.toDouble(),
-          min: 100,
-          max: 200,
-          divisions: 10,
-          onChanged: (v) => save(settings.copyWith(volumeBoost: v.round())),
+          subtitle: l10n.volumeBoostNote,
+          value: settings.volumeBoosted,
+          onChanged: (v) => save(
+            settings.copyWith(
+              volumeBoost: v ? PlayerSettings.boostedVolume : 100,
+            ),
+          ),
         ),
-        SettingsNote(l10n.volumeBoostNote),
+        // Android's media volume is the device's to give; a desktop's master
+        // volume is the whole machine's, and is left alone.
+        if (Platform.isAndroid)
+          SettingsSwitchRow(
+            title: l10n.syncDeviceVolume,
+            subtitle: l10n.syncDeviceVolumeSub,
+            value: settings.syncDeviceVolume,
+            onChanged: (v) => save(settings.copyWith(syncDeviceVolume: v)),
+          ),
         SettingsValueRow(
           title: l10n.gapless,
           value: _label(context, settings.gapless),

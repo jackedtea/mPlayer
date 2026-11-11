@@ -55,6 +55,7 @@ class GestureLayer extends StatefulWidget {
     required this.onSeekBy,
     required this.onSeekTo,
     required this.onVolume,
+    this.maxVolume = 100,
     this.skipBack = const Duration(seconds: 10),
     this.skipForward = const Duration(seconds: 30),
   });
@@ -72,8 +73,11 @@ class GestureLayer extends StatefulWidget {
   final ValueChanged<Duration> onSeekBy;
   final ValueChanged<Duration> onSeekTo;
 
-  /// 0–100, matching [PlaybackState.volume].
+  /// 0 to [maxVolume], matching [PlaybackState.volumeLevel].
   final ValueChanged<double> onVolume;
+
+  /// 100, or 200 with "Boost volume" on.
+  final double maxVolume;
 
   final Duration skipBack;
   final Duration skipForward;
@@ -181,7 +185,7 @@ class _GestureLayerState extends State<GestureLayer> {
           // The callback fires after onDoubleTapDown has recorded where.
           onDoubleTap: () {},
           onVerticalDragStart: (details) {
-            _dragStartVolume = widget.state.volume;
+            _dragStartVolume = widget.state.volumeLevel;
             _dragStartBrightness = _brightness;
             if (!_isLeftThird(details.localPosition, width) &&
                 !_isRightThird(details.localPosition, width)) {
@@ -240,9 +244,15 @@ class _GestureLayerState extends State<GestureLayer> {
       _show(_Indicator.brightness, next, '${(next * 100).round()}%');
     } else if (_isRightThird(details.localPosition, width) &&
         _dragStartVolume != null) {
-      final next = (widget.state.volume + delta * 100).clamp(0.0, 100.0);
+      // Kept here rather than read back from the state: a synced device
+      // volume lands in steps, and adding the swipe to a value rounded to
+      // one would leave small swipes going nowhere. A full-height swipe is
+      // 100% whatever the ceiling, so boosting does not halve its pace.
+      final next =
+          (_dragStartVolume! + delta * 100).clamp(0.0, widget.maxVolume);
+      _dragStartVolume = next;
       widget.onVolume(next);
-      _show(_Indicator.volume, next / 100, '${next.round()}%');
+      _show(_Indicator.volume, next / widget.maxVolume, '${next.round()}%');
     }
   }
 

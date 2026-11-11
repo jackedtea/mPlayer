@@ -2600,28 +2600,16 @@ abstract class AppLocalizations {
   /// **'Auto-play next episode'**
   String get autoPlayNext;
 
-  /// No description provided for @autoSkipIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto skip intro'**
-  String get autoSkipIntro;
-
-  /// No description provided for @autoSkipIntroSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Only where the server marks an intro chapter'**
-  String get autoSkipIntroSub;
-
   /// No description provided for @serverSegments.
   ///
   /// In en, this message translates to:
-  /// **'Server segments'**
+  /// **'Intros, credits and previews'**
   String get serverSegments;
 
   /// No description provided for @serverSegmentsSub.
   ///
   /// In en, this message translates to:
-  /// **'What to do when a Jellyfin server marks part of an episode'**
+  /// **'What to do when the server marks part of an episode, or a chapter is named OP, ED, Preview or Recap'**
   String get serverSegmentsSub;
 
   /// No description provided for @segmentIntro.
@@ -3695,14 +3683,26 @@ abstract class AppLocalizations {
   /// No description provided for @volumeBoost.
   ///
   /// In en, this message translates to:
-  /// **'Volume boost'**
+  /// **'Boost volume to 200%'**
   String get volumeBoost;
 
   /// No description provided for @volumeBoostNote.
   ///
   /// In en, this message translates to:
-  /// **'The ceiling for the volume gesture. Above 100% the sound is amplified, which rescues a quiet film and can clip a loud one.'**
+  /// **'Lets the volume gesture go past 100%. The extra is amplified, which rescues a quiet film and can clip a loud one.'**
   String get volumeBoostNote;
+
+  /// No description provided for @syncDeviceVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync volume with device'**
+  String get syncDeviceVolume;
+
+  /// No description provided for @syncDeviceVolumeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'The volume gesture moves the device\'s media volume, the same one its buttons change'**
+  String get syncDeviceVolumeSub;
 
   /// No description provided for @gapless.
   ///

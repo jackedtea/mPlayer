@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mplayer/features/settings/player_settings.dart';
+import 'package:mplayer/servers/media_library_source.dart';
 import 'package:mplayer/l10n/app_localizations.dart';
 import 'package:mplayer/l10n/app_localizations_en.dart';
 import 'package:mplayer/l10n/app_localizations_vi.dart';
@@ -26,7 +27,9 @@ void main() {
       expect(s.skipForward, const Duration(seconds: 30));
       expect(s.autoPlayNext, isTrue);
       // Opt-in, per the design: skipping ahead uninvited is worse than not.
-      expect(s.autoSkipIntro, isFalse);
+      expect(s.actionFor(MediaSegmentKind.intro), SegmentAction.askToSkip);
+      expect(s.volumeBoosted, isFalse);
+      expect(s.syncDeviceVolume, isFalse);
       expect(s.swipeGestures, isTrue);
       expect(s.hardwareDecoding, HardwareDecoding.auto);
     });
@@ -117,7 +120,8 @@ void main() {
       await container.read(playerSettingsProvider.notifier).update(
             const PlayerSettings(
               skipForward: Duration(seconds: 60),
-              autoSkipIntro: true,
+              syncDeviceVolume: true,
+              volumeBoost: PlayerSettings.boostedVolume,
               subtitleTextScale: 1.5,
             ),
           );
@@ -131,8 +135,25 @@ void main() {
 
       final restored = restarted.read(playerSettingsProvider);
       expect(restored.skipForward, const Duration(seconds: 60));
-      expect(restored.autoSkipIntro, isTrue);
+      expect(restored.syncDeviceVolume, isTrue);
+      expect(restored.volumeBoost, 200);
       expect(restored.subtitleTextScale, 1.5);
+    });
+
+    test('the old auto-skip-intro switch carries over to the intro action',
+        () {
+      final migrated = PlayerSettings.fromJson(<String, dynamic>{
+        'autoSkipIntro': true,
+        'segmentActions': <String, String>{'intro': 'askToSkip'},
+      });
+      expect(migrated.actionFor(MediaSegmentKind.intro), SegmentAction.skip);
+
+      // Someone who had since said intros should play keeps that.
+      final kept = PlayerSettings.fromJson(<String, dynamic>{
+        'autoSkipIntro': true,
+        'segmentActions': <String, String>{'intro': 'nothing'},
+      });
+      expect(kept.actionFor(MediaSegmentKind.intro), SegmentAction.nothing);
     });
 
     test('unreadable stored settings fall back to defaults', () async {

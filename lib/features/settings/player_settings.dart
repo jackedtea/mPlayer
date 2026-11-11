@@ -135,7 +135,6 @@ class PlayerSettings {
     this.skipBack = const Duration(seconds: 10),
     this.skipForward = const Duration(seconds: 30),
     this.autoPlayNext = true,
-    this.autoSkipIntro = false,
     this.segmentActions = defaultSegmentActions,
     this.swipeGestures = true,
     this.pipOnLeave = false,
@@ -149,6 +148,7 @@ class PlayerSettings {
     this.audioDelay = Duration.zero,
     this.audioPassthrough = false,
     this.volumeBoost = 100,
+    this.syncDeviceVolume = false,
     this.gapless = GaplessAudio.automatic,
   });
 
@@ -161,8 +161,10 @@ class PlayerSettings {
       skipBack: Duration(seconds: json['skipBackSeconds'] as int? ?? 10),
       skipForward: Duration(seconds: json['skipForwardSeconds'] as int? ?? 30),
       autoPlayNext: json['autoPlayNext'] as bool? ?? true,
-      autoSkipIntro: json['autoSkipIntro'] as bool? ?? false,
-      segmentActions: _segmentActionsFromJson(json['segmentActions']),
+      segmentActions: _segmentActionsFromJson(
+        json['segmentActions'],
+        autoSkipIntro: json['autoSkipIntro'] == true,
+      ),
       swipeGestures: json['swipeGestures'] as bool? ?? true,
       pipOnLeave: json['pipOnLeave'] as bool? ?? false,
       backgroundAudio: json['backgroundAudio'] as bool? ?? false,
@@ -178,6 +180,7 @@ class PlayerSettings {
       audioDelay: Duration(milliseconds: json['audioDelayMs'] as int? ?? 0),
       audioPassthrough: json['audioPassthrough'] as bool? ?? false,
       volumeBoost: json['volumeBoost'] as int? ?? 100,
+      syncDeviceVolume: json['syncDeviceVolume'] as bool? ?? false,
       gapless: GaplessAudio.values.firstWhere(
         (g) => g.name == json['gapless'],
         orElse: () => GaplessAudio.automatic,
@@ -189,14 +192,10 @@ class PlayerSettings {
   final Duration skipBack;
   final Duration skipForward;
   final bool autoPlayNext;
-  final bool autoSkipIntro;
 
-  /// What to do about each kind of server-supplied segment.
-  ///
-  /// Separate from [autoSkipIntro], which governs the *container* heuristic —
-  /// a chapter a rip happened to name "Opening". The two never both fire on
-  /// one file: a source that supplies segments supplies the authority with
-  /// them, and the heuristic stands down.
+  /// What to do about each kind of labelled stretch: the server's media
+  /// segments, or — where it has none — chapters titled "OP", "ED",
+  /// "Preview" and so on.
   final Map<MediaSegmentKind, SegmentAction> segmentActions;
 
   /// What to do with a segment of [kind], defaulting to leaving it alone.
@@ -249,9 +248,22 @@ class PlayerSettings {
   /// than a downmix nobody asked for.
   final bool audioPassthrough;
 
-  /// Ceiling for the volume slider, as a percentage. 100 is the recorded
+  /// Ceiling for the player's volume, as a percentage. 100 is the recorded
   /// level; above it mpv amplifies, which is what rescues a quiet film.
+  /// The setting is a switch between 100 and [boostedVolume]; anything in
+  /// between was written by the older slider and still means what it said.
   final int volumeBoost;
+
+  /// The "Boost volume" switch's on position.
+  static const boostedVolume = 200;
+
+  bool get volumeBoosted => volumeBoost > 100;
+
+  /// The volume gesture moves the device's own media volume, the one its
+  /// buttons move, instead of a level inside the player. Android only. With
+  /// [volumeBoosted] too, the gesture carries on past the device's maximum
+  /// into the player's amplification.
+  final bool syncDeviceVolume;
 
   final GaplessAudio gapless;
 
@@ -287,7 +299,6 @@ class PlayerSettings {
         'skipBackSeconds': skipBack.inSeconds,
         'skipForwardSeconds': skipForward.inSeconds,
         'autoPlayNext': autoPlayNext,
-        'autoSkipIntro': autoSkipIntro,
         'segmentActions': <String, String>{
           for (final MapEntry<MediaSegmentKind, SegmentAction> e
               in segmentActions.entries)
@@ -305,6 +316,7 @@ class PlayerSettings {
         'audioDelayMs': audioDelay.inMilliseconds,
         'audioPassthrough': audioPassthrough,
         'volumeBoost': volumeBoost,
+        'syncDeviceVolume': syncDeviceVolume,
         'gapless': gapless.name,
       };
 
@@ -313,7 +325,6 @@ class PlayerSettings {
     Duration? skipBack,
     Duration? skipForward,
     bool? autoPlayNext,
-    bool? autoSkipIntro,
     Map<MediaSegmentKind, SegmentAction>? segmentActions,
     bool? swipeGestures,
     bool? pipOnLeave,
@@ -328,6 +339,7 @@ class PlayerSettings {
     Duration? audioDelay,
     bool? audioPassthrough,
     int? volumeBoost,
+    bool? syncDeviceVolume,
     GaplessAudio? gapless,
   }) {
     return PlayerSettings(
@@ -335,7 +347,6 @@ class PlayerSettings {
       skipBack: skipBack ?? this.skipBack,
       skipForward: skipForward ?? this.skipForward,
       autoPlayNext: autoPlayNext ?? this.autoPlayNext,
-      autoSkipIntro: autoSkipIntro ?? this.autoSkipIntro,
       segmentActions: segmentActions ?? this.segmentActions,
       swipeGestures: swipeGestures ?? this.swipeGestures,
       pipOnLeave: pipOnLeave ?? this.pipOnLeave,
@@ -354,6 +365,7 @@ class PlayerSettings {
       audioDelay: audioDelay ?? this.audioDelay,
       audioPassthrough: audioPassthrough ?? this.audioPassthrough,
       volumeBoost: volumeBoost ?? this.volumeBoost,
+      syncDeviceVolume: syncDeviceVolume ?? this.syncDeviceVolume,
       gapless: gapless ?? this.gapless,
     );
   }
@@ -364,17 +376,30 @@ class PlayerSettings {
 /// A stored map written before a segment kind existed is missing that key,
 /// not corrupt — dropping the whole map for it would silently reset choices
 /// the user made about the other four.
-Map<MediaSegmentKind, SegmentAction> _segmentActionsFromJson(Object? raw) {
-  if (raw is! Map) return defaultSegmentActions;
+/// [autoSkipIntro] is the old "Auto skip intro" switch, which acted on
+/// chapters called "Intro" alone. Chapters now go through the intro action
+/// like a server's segments do, so a viewer who had it on keeps intros
+/// skipping — unless they had since said what an intro should do.
+Map<MediaSegmentKind, SegmentAction> _segmentActionsFromJson(
+  Object? raw, {
+  bool autoSkipIntro = false,
+}) {
+  final actions = raw is! Map
+      ? Map<MediaSegmentKind, SegmentAction>.of(defaultSegmentActions)
+      : <MediaSegmentKind, SegmentAction>{
+          for (final MediaSegmentKind kind in supportedSegmentKinds)
+            kind: SegmentAction.values.firstWhere(
+              (a) => a.name == raw[kind.name],
+              orElse: () =>
+                  defaultSegmentActions[kind] ?? SegmentAction.nothing,
+            ),
+        };
 
-  return <MediaSegmentKind, SegmentAction>{
-    for (final MediaSegmentKind kind in supportedSegmentKinds)
-      kind: SegmentAction.values.firstWhere(
-        (a) => a.name == raw[kind.name],
-        orElse: () =>
-            defaultSegmentActions[kind] ?? SegmentAction.nothing,
-      ),
-  };
+  if (autoSkipIntro &&
+      actions[MediaSegmentKind.intro] == SegmentAction.askToSkip) {
+    actions[MediaSegmentKind.intro] = SegmentAction.skip;
+  }
+  return actions;
 }
 
 final playerSettingsProvider =

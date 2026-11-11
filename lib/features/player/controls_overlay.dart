@@ -50,7 +50,6 @@ class ControlsOverlay extends StatelessWidget {
     this.onCast,
     this.skipBack = const Duration(seconds: 10),
     this.skipForward = const Duration(seconds: 30),
-    required this.onSkipIntro,
     this.skipSegment,
     required this.onSkipSegment,
     required this.notImplemented,
@@ -111,7 +110,6 @@ class ControlsOverlay extends StatelessWidget {
   /// Null while nothing can be cast to — the button would otherwise open a
   /// picker that can never fill.
   final VoidCallback? onCast;
-  final ValueChanged<MediaChapter> onSkipIntro;
 
   /// The stretch the viewer is being *offered* a way past, or null.
   ///
@@ -152,7 +150,6 @@ class ControlsOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final intro = state.currentIntro;
     final segment = skipSegment;
     final trickplay = media.trickplay;
 
@@ -213,23 +210,14 @@ class ControlsOverlay extends StatelessWidget {
                     onTap: onNext,
                   ),
                 )
-              // A segment the server labelled wins over a chapter the
-              // container merely named; `currentIntro` already stands down
-              // when there are segments, so at most one of these is non-null.
+              // The server's segments, or the chapters' own labels where it
+              // has none — `PlaybackState.segments` picks one of the two.
               else if (segment != null)
                 _PillSlot(
                   chromeVisible: chromeVisible,
                   child: _SkipPill(
                     label: _segmentLabel(context, segment.kind),
                     onTap: () => onSkipSegment(segment),
-                  ),
-                )
-              else if (intro != null)
-                _PillSlot(
-                  chromeVisible: chromeVisible,
-                  child: _SkipPill(
-                    label: AppLocalizations.of(context).skipIntro,
-                    onTap: () => onSkipIntro(intro),
                   ),
                 ),
               _CollapsingChrome(

@@ -486,10 +486,9 @@ void main() {
     });
 
     test('a server chapter never claims to be an intro on its own', () async {
-      // The title heuristic is for containers, where a name is the only
-      // signal there is. A server says so through its segments instead, and
-      // letting a chapter called "Opening" claim it too puts two pills on
-      // the screen.
+      // Reading "Opening" off a title is the player's job, done only where
+      // the server's segments came back empty; the source passes the chapter
+      // on as it is and does not invent a segment for it.
       final library = _FakeLibrary(
         item_: const ServerItem(
           id: 'a1',
@@ -509,7 +508,8 @@ void main() {
         const MediaRef(sourceId: 'p1', itemId: 'a1', title: ''),
       );
 
-      expect(media.chapters.single.isIntro, isFalse);
+      expect(media.chapters.single.title, 'Opening');
+      expect(media.segments, isEmpty);
     });
   });
 }

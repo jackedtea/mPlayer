@@ -9,7 +9,8 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Six channels: three for the player, one for installing updates, one for
+ * Seven channels: four for the player (the fourth is the device's media
+ * volume), one for installing updates, one for
  * the downloads' foreground service, and one that says whether this is a
  * television.
  *
@@ -29,6 +30,7 @@ class MainActivity : FlutterActivity() {
     private var nowPlaying: NowPlayingChannel? = null
     private var cast: CastChannel? = null
     private var downloads: DownloadChannel? = null
+    private var volume: VolumeChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -95,6 +97,20 @@ class MainActivity : FlutterActivity() {
             transfers.handle(call.method, call.arguments as? Map<*, *>, result)
         }
 
+        val media = VolumeChannel(this)
+        volume = media
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            VolumeChannel.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            media.handle(call.method, call.arguments as? Map<*, *>, result)
+        }
+
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            VolumeChannel.EVENTS,
+        ).setStreamHandler(media.streamHandler())
+
         // A fact, not a decision: Dart chooses what a television gets.
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -151,6 +167,8 @@ class MainActivity : FlutterActivity() {
         // claim progress nothing is making.
         downloads?.dispose()
         downloads = null
+        volume?.dispose()
+        volume = null
         super.onDestroy()
     }
 }

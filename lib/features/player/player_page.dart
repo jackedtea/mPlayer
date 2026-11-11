@@ -271,20 +271,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
 
     _syncSleepTimer(ui.sleepTimer);
 
-    // Auto skip intro, opt-in per the design. Driven off the position stream
-    // so it fires the moment playback enters the chapter, and only once —
-    // seeking back into the intro deliberately should not fight the user.
-    ref.listen(
-      playbackControllerProvider.select((s) => s.currentIntro?.title),
-      (previous, intro) {
-        if (intro == null || previous == intro) return;
-        if (!ref.read(playerSettingsProvider).autoSkipIntro) return;
-
-        final chapter = ref.read(playbackControllerProvider).currentIntro;
-        if (chapter != null) controller.seek(chapter.end);
-      },
-    );
-
     final pip = ref.watch(pipProvider);
 
     // Shape, buttons and — on Android 12+ — whether leaving the app should
@@ -400,7 +386,8 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                       onTap: _toggleChrome,
                       onSeekBy: controller.skip,
                       onSeekTo: controller.seek,
-                      onVolume: controller.setVolume,
+                      onVolume: controller.setVolumeLevel,
+                      maxVolume: settings.volumeBoost.toDouble(),
                       skipBack: settings.skipBack,
                       skipForward: settings.skipForward,
                     ),
@@ -528,8 +515,6 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           // to be fixed at 10 and 30 seconds regardless.
                           skipBack: settings.skipBack,
                           skipForward: settings.skipForward,
-                          onSkipIntro: (chapter) =>
-                              controller.seek(chapter.end),
                           // Only the segments the user asked to be asked
                           // about: one set to skip has already seeked
                           // itself, and one set to nothing wants none.

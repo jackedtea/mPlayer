@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mplayer/core/models/media_models.dart';
 import 'package:mplayer/features/player/playback_state.dart';
 import 'package:mplayer/features/player/player_ui_state.dart';
+import 'package:mplayer/servers/media_library_source.dart';
 import 'package:mplayer/sources/media_source.dart';
 
 PlayableMedia mediaWithChapters(List<MediaChapter> chapters) {
@@ -27,7 +28,6 @@ const _intro = MediaChapter(
   title: 'Intro',
   start: Duration(seconds: 30),
   end: Duration(seconds: 90),
-  isIntro: true,
 );
 const _body = MediaChapter(
   title: 'Part one',
@@ -56,19 +56,22 @@ void main() {
   });
 
   group('skip intro', () {
-    test('appears only inside a chapter marked as an intro', () {
+    test('a chapter titled Intro is an intro segment while inside it', () {
       final media = mediaWithChapters(<MediaChapter>[_intro, _body]);
 
       PlaybackState at(Duration p) => PlaybackState(media: media, position: p);
 
-      expect(at(const Duration(seconds: 10)).currentIntro, isNull);
-      expect(at(const Duration(seconds: 60)).currentIntro?.title, 'Intro');
+      expect(at(const Duration(seconds: 10)).currentSegment, isNull);
+      expect(
+        at(const Duration(seconds: 60)).currentSegment?.kind,
+        MediaSegmentKind.intro,
+      );
       // Inside a chapter, but not the intro one.
-      expect(at(const Duration(minutes: 5)).currentIntro, isNull);
+      expect(at(const Duration(minutes: 5)).currentSegment, isNull);
     });
 
     test('container chapters drive the pill when the source has none', () {
-      // A local MKV carries chapters even though its source supplies none.
+      // A direct-played MKV carries chapters even though its source has none.
       final media = mediaWithChapters(const <MediaChapter>[]);
       final state = PlaybackState(
         media: media,
@@ -77,7 +80,7 @@ void main() {
       );
 
       expect(state.chapters, hasLength(2));
-      expect(state.currentIntro?.title, 'Intro');
+      expect(state.currentSegment?.kind, MediaSegmentKind.intro);
     });
 
     test('no chapters anywhere means no pill', () {
@@ -85,7 +88,7 @@ void main() {
 
       expect(
         PlaybackState(media: media, position: const Duration(seconds: 60))
-            .currentIntro,
+            .currentSegment,
         isNull,
       );
       expect(PlaybackState(media: media).chapters, isEmpty);

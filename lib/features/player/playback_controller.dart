@@ -18,6 +18,7 @@ import '../../servers/media_library_source.dart';
 import '../../servers/server_registry.dart';
 import '../settings/player_settings.dart';
 import '../../sources/media_source.dart';
+import 'device_volume.dart';
 import 'playback_state.dart';
 import 'remembered_tracks.dart';
 import 'segment_skipper.dart';
@@ -49,6 +50,10 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// takes whatever the last read produced.
   String? _hwdec;
   final List<StreamSubscription<void>> _subs = <StreamSubscription<void>>[];
+
+  /// The device's media volume, heard while "Sync volume with device" is
+  /// on and nothing otherwise.
+  StreamSubscription<double>? _deviceVolumeSub;
 
   /// Guards against re-reading the chapter list on every duration tick.
   bool _chaptersLoaded = false;
@@ -235,6 +240,7 @@ class PlaybackController extends Notifier<PlaybackState> {
       now: now,
       actionFor: settings.actionFor,
       alreadySkipped: _skipped,
+      openedAt: state.media?.startPosition ?? Duration.zero,
     );
     if (segment == null) return;
 
@@ -478,10 +484,63 @@ class PlaybackController extends Notifier<PlaybackState> {
     state = state.copyWith(speed: speed);
   }
 
+  /// The player's own level, 0–100, or up to 200 with "Boost volume" on.
   Future<void> setVolume(double volume) async {
-    final clamped = volume.clamp(0.0, 100.0);
+    final ceiling = ref.read(playerSettingsProvider).volumeBoost.toDouble();
+    final clamped = volume.clamp(0.0, ceiling);
     await _player?.setVolume(clamped);
     state = state.copyWith(volume: clamped);
+  }
+
+  /// What the volume gesture moves: [PlaybackState.volumeLevel].
+  ///
+  /// Synced with the device, the first 100% is the device's own volume and
+  /// the rest the player's boost ([splitVolumeLevel]); otherwise it is the
+  /// player's level alone.
+  Future<void> setVolumeLevel(double level) async {
+    if (state.deviceVolume == null) return setVolume(level);
+
+    final ceiling = ref.read(playerSettingsProvider).volumeBoost.toDouble();
+    final split = splitVolumeLevel(level.clamp(0.0, ceiling));
+    // Drawn at once: the gesture reads the level back on its next frame, and
+    // a round trip through the platform would make it stutter.
+    state = state.copyWith(deviceVolume: split.device);
+    if (state.volume != split.player) await setVolume(split.player);
+    final settled = await DeviceVolume.set(split.device);
+    if (settled != null && level <= 100) {
+      state = state.copyWith(deviceVolume: settled);
+    }
+  }
+
+  /// Starts or stops following the device's media volume, and keeps the
+  /// player's own level inside what the settings now allow.
+  Future<void> _applyVolumeSettings(PlayerSettings settings) async {
+    if (state.volume > settings.volumeBoost) {
+      await setVolume(settings.volumeBoost.toDouble());
+    }
+
+    if (!settings.syncDeviceVolume || !DeviceVolume.available) {
+      await _deviceVolumeSub?.cancel();
+      _deviceVolumeSub = null;
+      if (state.deviceVolume != null) {
+        state = state.copyWith(clearDeviceVolume: true);
+      }
+      return;
+    }
+
+    _deviceVolumeSub ??= DeviceVolume.changes().listen((device) {
+      state = state.copyWith(deviceVolume: device);
+      // The buttons turned it down from the top: the boost above the
+      // device's maximum goes with it, or "quieter" would still be 180%.
+      if (device < 0.999 && state.volume > 100) unawaited(setVolume(100));
+    });
+
+    final device = await DeviceVolume.get();
+    if (device == null) return;
+    state = state.copyWith(deviceVolume: device);
+    // Synced, the device is the volume below 100%; a player left at 40%
+    // underneath it would make the device's maximum only 40%.
+    if (state.volume < 100) await setVolume(100);
   }
 
   /// Steps the loop control on to its next mode.
@@ -1071,6 +1130,8 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// overriding it would throw away the positioning and karaoke the file asks
   /// for.
   Future<void> applySettings(PlayerSettings settings) async {
+    await _applyVolumeSettings(settings);
+
     final platform = _player?.platform;
     if (platform is! NativePlayer) return;
 
@@ -1239,7 +1300,6 @@ class PlaybackController extends Notifier<PlaybackState> {
             start: starts[i],
             // A chapter runs until the next one begins.
             end: i + 1 < count ? starts[i + 1] : duration,
-            isIntro: _looksLikeIntro(titles[i]),
           ),
       ];
 
@@ -1248,24 +1308,6 @@ class PlaybackController extends Notifier<PlaybackState> {
       // The property is absent on some demuxers; no chapters is a valid
       // answer, not an error worth surfacing to the user.
     }
-  }
-
-  /// Title heuristic for container chapters.
-  ///
-  /// Only a server can say authoritatively that a segment is an intro, but
-  /// rips overwhelmingly name the chapter "Intro", "Opening" or "OP", and a
-  /// false positive costs the user nothing more than an extra pill they can
-  /// ignore. Source-provided chapters never go through this.
-  static bool _looksLikeIntro(String title) {
-    final t = title.toLowerCase().trim();
-    return t == 'intro' ||
-        t == 'opening' ||
-        t == 'op' ||
-        t == 'avant' ||
-        t == 'title sequence' ||
-        t == 'opening credits' ||
-        t.startsWith('intro ') ||
-        t.startsWith('opening ');
   }
 
   /// Flattens a backend track into the label the design's pills show.
@@ -1413,6 +1455,8 @@ class PlaybackController extends Notifier<PlaybackState> {
       await sub.cancel();
     }
     _subs.clear();
+    await _deviceVolumeSub?.cancel();
+    _deviceVolumeSub = null;
 
     final player = _player;
     _player = null;

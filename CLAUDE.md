@@ -750,11 +750,14 @@ Two independent sources, and the distinction matters:
   `SourceCapabilities.chapters` refers only to this. False there does **not** mean the
   media is chapterless.
 
-`PlaybackState.chapters` prefers the source list when it is non-empty. Container chapters
-fall back to a title heuristic (`_looksLikeIntro`) — a false positive costs the user one
-ignorable pill. **A server chapter never goes through that heuristic**: a server that
-knows what an intro is says so through media segments instead, and letting a chapter
-called "Opening" claim it too would put two pills on the screen.
+`PlaybackState.chapters` prefers the source list when it is non-empty. **Where the
+server has no media segments, chapter titles become segments** (`segmentsFromChapters`
+in `segment_skipper.dart`, 2026-11-11): "OP"/"Opening"/"Intro" → intro, "ED"/"Ending"/
+"Credits" → outro, plus Preview and Recap — server and container chapters alike, matched
+on the title's first word so "OP1" and "ED - Song" count and "Option" does not. They then
+go through the same per-kind actions as real segments. There used to be a separate
+intro-only chapter pill and an "Auto skip intro" switch; both are gone (an old `true`
+migrates to intro = skip). Server segments, when present, win outright — never both.
 
 ## Media segments, trickplay, external subtitles
 
@@ -782,9 +785,21 @@ settings: do nothing, offer to skip, skip automatically. Intro and outro default
   its user: a skip fires only when playback *runs into* a segment (a jump larger than
   `maximumPlaybackStep` is a scrubber, not a second of playback), only once per segment,
   and never for a stretch under a second — where the seek stalls the decoder for longer
-  than the thing being skipped lasted.
-- `PlaybackState.currentIntro` returns null the moment `segments` is non-empty. That is
-  what keeps the container heuristic and the server's own answer from both drawing a pill.
+  than the thing being skipped lasted. The first tick of a file counts as playback from
+  `openedAt` (the open's start position): without it an intro at 0:00 was never
+  crossed and never auto-skipped.
+- `PlaybackState.segments` returns the server's list when non-empty and the chapter-derived
+  one otherwise. That is what keeps the title heuristic and the server's own answer from
+  both drawing a pill.
+
+### Volume (2026-11-11)
+
+"Boost volume to 200%" is a switch writing `volumeBoost` 100/200 (`volume-max`, and the
+ceiling for `setVolume` and the gesture). "Sync volume with device" (Android only,
+`VolumeChannel.kt` / `device_volume.dart`) makes the gesture move the device's media
+volume; with boost on, the first 100% is the device and the rest mpv's amplification
+(`splitVolumeLevel`). The hardware buttons are heard through a `ContentObserver`; turning
+the device down from its maximum drops any boost back to 100. Unverified on a device.
 
 ### Trickplay
 

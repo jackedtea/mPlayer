@@ -88,7 +88,6 @@ Future<void> pumpControls(
           onFullscreen: () {},
           onMore: () {},
           onZoom: onZoom ?? () {},
-          onSkipIntro: (_) {},
           skipSegment: skipSegment,
           onSkipSegment: (_) {},
           notImplemented: (_) {},
@@ -424,10 +423,10 @@ void main() {
               title: 'Intro',
               start: Duration.zero,
               end: Duration(seconds: 90),
-              isIntro: true,
             ),
           ],
         ),
+        skipSegment: _chapterIntro,
       );
 
       final pill = find.text('Skip intro');
@@ -749,7 +748,6 @@ void main() {
             title: 'Opening',
             start: Duration.zero,
             end: Duration(seconds: 90),
-            isIntro: true,
           ),
         ],
       );
@@ -759,6 +757,7 @@ void main() {
         tester,
         const Size(900, 500),
         state: intro,
+        skipSegment: _chapterIntro,
         bottomInset: 56,
       );
       final shown = tester.getRect(find.text('Skip intro'));
@@ -768,6 +767,7 @@ void main() {
         tester,
         const Size(900, 500),
         state: intro,
+        skipSegment: _chapterIntro,
         bottomInset: 0,
       );
       final hidden = tester.getRect(find.text('Skip intro'));
@@ -828,37 +828,26 @@ void main() {
       expect(find.text('Skip intro'), findsNothing);
     });
 
-    testWidgets('the container heuristic stands down where segments exist',
-        (tester) async {
+    test('chapter titles stand down where the server has segments', () {
       // Two opinions about the same question would otherwise put two pills on
       // the screen.
-      await pumpControls(
-        tester,
-        const Size(900, 500),
-        state: PlaybackState(
-          media: media(
-            segments: const <MediaSegment>[
-              MediaSegment(
-                kind: MediaSegmentKind.intro,
-                start: Duration.zero,
-                end: Duration(seconds: 90),
-              ),
-            ],
+      const server = MediaSegment(
+        kind: MediaSegmentKind.intro,
+        start: Duration.zero,
+        end: Duration(seconds: 85),
+      );
+      final state = PlaybackState(
+        media: media(segments: const <MediaSegment>[server]),
+        containerChapters: const <MediaChapter>[
+          MediaChapter(
+            title: 'OP',
+            start: Duration.zero,
+            end: Duration(seconds: 90),
           ),
-          duration: const Duration(minutes: 24),
-          position: const Duration(seconds: 30),
-          containerChapters: const <MediaChapter>[
-            MediaChapter(
-              title: 'Intro',
-              start: Duration.zero,
-              end: Duration(seconds: 90),
-              isIntro: true,
-            ),
-          ],
-        ),
+        ],
       );
 
-      expect(find.text('Skip intro'), findsNothing);
+      expect(state.segments, const <MediaSegment>[server]);
     });
   });
 
@@ -913,3 +902,10 @@ void main() {
     });
   });
 }
+
+/// The intro a chapter called "Intro" or "Opening" becomes.
+const _chapterIntro = MediaSegment(
+  kind: MediaSegmentKind.intro,
+  start: Duration.zero,
+  end: Duration(seconds: 90),
+);

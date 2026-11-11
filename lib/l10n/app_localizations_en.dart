@@ -1424,17 +1424,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoPlayNext => 'Auto-play next episode';
 
   @override
-  String get autoSkipIntro => 'Auto skip intro';
-
-  @override
-  String get autoSkipIntroSub => 'Only where the server marks an intro chapter';
-
-  @override
-  String get serverSegments => 'Server segments';
+  String get serverSegments => 'Intros, credits and previews';
 
   @override
   String get serverSegmentsSub =>
-      'What to do when a Jellyfin server marks part of an episode';
+      'What to do when the server marks part of an episode, or a chapter is named OP, ED, Preview or Recap';
 
   @override
   String get segmentIntro => 'Opening titles';
@@ -2048,11 +2042,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Turn this on only if a receiver or soundbar is decoding for you. Without one, passthrough plays silence.';
 
   @override
-  String get volumeBoost => 'Volume boost';
+  String get volumeBoost => 'Boost volume to 200%';
 
   @override
   String get volumeBoostNote =>
-      'The ceiling for the volume gesture. Above 100% the sound is amplified, which rescues a quiet film and can clip a loud one.';
+      'Lets the volume gesture go past 100%. The extra is amplified, which rescues a quiet film and can clip a loud one.';
+
+  @override
+  String get syncDeviceVolume => 'Sync volume with device';
+
+  @override
+  String get syncDeviceVolumeSub =>
+      'The volume gesture moves the device\'s media volume, the same one its buttons change';
 
   @override
   String get gapless => 'Gapless playback';

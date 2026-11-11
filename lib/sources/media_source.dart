@@ -82,7 +82,6 @@ class MediaChapter {
     required this.title,
     required this.start,
     required this.end,
-    this.isIntro = false,
     this.imageUri,
   });
 
@@ -95,10 +94,6 @@ class MediaChapter {
   /// Only ever set on a server chapter — a container carries titles and
   /// timestamps and no pictures.
   final Uri? imageUri;
-
-  /// Drives the "Skip intro" pill, which appears only while playback is
-  /// inside this chapter.
-  final bool isIntro;
 
   bool contains(Duration position) => position >= start && position < end;
 }

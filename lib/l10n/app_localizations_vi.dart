@@ -1413,17 +1413,11 @@ class AppLocalizationsVi extends AppLocalizations {
   String get autoPlayNext => 'Tự phát tập tiếp theo';
 
   @override
-  String get autoSkipIntro => 'Tự bỏ qua intro';
-
-  @override
-  String get autoSkipIntroSub => 'Chỉ khi máy chủ đánh dấu chương intro';
-
-  @override
-  String get serverSegments => 'Phân đoạn từ máy chủ';
+  String get serverSegments => 'Intro, credit và preview';
 
   @override
   String get serverSegmentsSub =>
-      'Cần làm gì khi máy chủ Jellyfin đánh dấu một phần của tập phim';
+      'Cần làm gì khi máy chủ đánh dấu một phần của tập phim, hoặc chương có tên OP, ED, Preview hay Recap';
 
   @override
   String get segmentIntro => 'Nhạc mở đầu';
@@ -2034,11 +2028,18 @@ class AppLocalizationsVi extends AppLocalizations {
       'Chỉ bật nếu có receiver hoặc soundbar giải mã hộ. Không có thì truyền thẳng sẽ ra im lặng.';
 
   @override
-  String get volumeBoost => 'Tăng âm lượng';
+  String get volumeBoost => 'Tăng âm lượng lên 200%';
 
   @override
   String get volumeBoostNote =>
-      'Trần cho thao tác chỉnh âm lượng. Trên 100% tiếng được khuếch đại — cứu được phim nhỏ tiếng, nhưng phim to tiếng có thể bị rè.';
+      'Cho phép kéo âm lượng quá 100%. Phần vượt được khuếch đại — cứu được phim nhỏ tiếng, nhưng phim to tiếng có thể bị rè.';
+
+  @override
+  String get syncDeviceVolume => 'Đồng bộ âm lượng với thiết bị';
+
+  @override
+  String get syncDeviceVolumeSub =>
+      'Thao tác chỉnh âm lượng thay đổi âm lượng media của thiết bị, giống như các nút âm lượng';
 
   @override
   String get gapless => 'Phát liền mạch';

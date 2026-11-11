@@ -10,6 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../servers/media_library_source.dart';
 import '../../sources/media_source.dart';
+import 'device_volume.dart';
+import 'segment_skipper.dart';
 
 /// How many times each item's stop has reached its server, this launch.
 ///
@@ -387,6 +389,7 @@ class PlaybackState {
     this.buffering = false,
     this.completed = false,
     this.volume = 100,
+    this.deviceVolume,
     this.speed = 1.0,
     this.error,
     this.audioTracks = const <MediaTrack>[],
@@ -413,8 +416,20 @@ class PlaybackState {
   final bool buffering;
   final bool completed;
 
-  /// 0–100, matching what the backend and the volume gesture use.
+  /// The player's own level, in percent: 0–100, and up to 200 with
+  /// "Boost volume" on.
   final double volume;
+
+  /// The device's media volume (0–1) while "Sync volume with device" is on,
+  /// else null.
+  final double? deviceVolume;
+
+  /// What the volume gesture shows and moves: the player's level, or — when
+  /// synced — the device's level with the player's boost on top of it.
+  double get volumeLevel {
+    final device = deviceVolume;
+    return device == null ? volume : combinedVolumeLevel(device, volume);
+  }
 
   final double speed;
 
@@ -506,11 +521,24 @@ class PlaybackState {
     return null;
   }
 
-  /// What the source says about this file, stretch by stretch.
+  /// What the file holds, stretch by stretch.
   ///
-  /// Empty for a local file, an SMB share and any server that has never had a
-  /// segment plugin run over the item.
-  List<MediaSegment> get segments => media?.segments ?? const <MediaSegment>[];
+  /// The server's media segments when it has any. Otherwise read off the
+  /// chapter titles ([segmentsFromChapters]) — a release whose chapters are
+  /// called "OP" and "ED" says exactly where its opening and ending are, and
+  /// most servers never ran a segment plugin over it. Never both: a server
+  /// that labelled the file has answered the question, and two opinions on
+  /// it would put two pills on the screen.
+  List<MediaSegment> get segments {
+    final fromSource = media?.segments ?? const <MediaSegment>[];
+    if (fromSource.isNotEmpty) return fromSource;
+    final list = chapters;
+    if (list.isEmpty) return const <MediaSegment>[];
+    // Asked on every position tick; the chapter list changes once a file.
+    return _chapterSegments[list] ??= segmentsFromChapters(list);
+  }
+
+  static final _chapterSegments = Expando<List<MediaSegment>>();
 
   /// The labelled stretch playing right now, if any.
   MediaSegment? get currentSegment {
@@ -518,17 +546,6 @@ class PlaybackState {
       if (s.contains(position)) return s;
     }
     return null;
-  }
-
-  /// The intro chapter currently playing, if any — the skip pill's trigger.
-  ///
-  /// Stands down entirely once the source supplies segments. A title
-  /// heuristic and a server's own answer are two opinions about the same
-  /// question, and letting both speak puts two pills on the screen.
-  MediaChapter? get currentIntro {
-    if (segments.isNotEmpty) return null;
-    final chapter = chapterAt(position);
-    return chapter != null && chapter.isIntro ? chapter : null;
   }
 
   /// Guards against a zero duration while the file is still being probed.
@@ -574,6 +591,8 @@ class PlaybackState {
     bool? buffering,
     bool? completed,
     double? volume,
+    double? deviceVolume,
+    bool clearDeviceVolume = false,
     double? speed,
     String? error,
     List<MediaTrack>? audioTracks,
@@ -597,6 +616,8 @@ class PlaybackState {
       buffering: buffering ?? this.buffering,
       completed: completed ?? this.completed,
       volume: volume ?? this.volume,
+      deviceVolume:
+          clearDeviceVolume ? null : (deviceVolume ?? this.deviceVolume),
       speed: speed ?? this.speed,
       error: clearError ? null : (error ?? this.error),
       audioTracks: audioTracks ?? this.audioTracks,

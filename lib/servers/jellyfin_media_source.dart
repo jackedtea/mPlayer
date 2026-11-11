@@ -246,11 +246,9 @@ class JellyfinMediaSource
 
   /// The server's chapter list, with an end derived from the neighbour.
   ///
-  /// `isIntro` stays false on every one of them. The player's title
-  /// heuristic exists for containers, where a name is the only signal there
-  /// is; a server that knows what an intro is says so through
-  /// [MediaLibrarySource.segments] instead, and letting a chapter called
-  /// "Opening" claim to be one as well would put two pills on the screen.
+  /// What a chapter *is* is the player's question, not this one's: it reads
+  /// "OP" and "ED" off the titles only where [MediaLibrarySource.segments]
+  /// came back empty, so the server's own answer always wins.
   List<MediaChapter> _chaptersOf(ServerItem item) {
     final chapters = item.chapters;
     if (chapters.isEmpty) return const <MediaChapter>[];

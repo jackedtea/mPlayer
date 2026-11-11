@@ -85,13 +85,9 @@ class PlayerSettingsPage extends ConsumerWidget {
           value: settings.autoPlayNext,
           onChanged: (v) => save(settings.copyWith(autoPlayNext: v)),
         ),
-        SettingsSwitchRow(
-          title: AppLocalizations.of(context).autoSkipIntro,
-          subtitle: AppLocalizations.of(context).autoSkipIntroSub,
-          value: settings.autoSkipIntro,
-          onChanged: (v) => save(settings.copyWith(autoSkipIntro: v)),
-        ),
-        // Jellyfin 10.10 and later. Shown whatever is configured: a setting
+        // The server's media segments (Jellyfin 10.10 and later), or chapters
+        // titled OP, ED, Preview… where it has none. Shown whatever is
+        // configured: a setting
         // that appears only once a server happens to be signed in is a
         // setting nobody finds, and the rows are harmless with none.
         SettingsSection(title: AppLocalizations.of(context).serverSegments),

@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mplayer/features/player/segment_skipper.dart';
 import 'package:mplayer/features/settings/player_settings.dart';
 import 'package:mplayer/servers/media_library_source.dart';
+import 'package:mplayer/sources/media_source.dart';
 
 const _intro = MediaSegment(
   kind: MediaSegmentKind.intro,
@@ -30,6 +31,7 @@ MediaSegment? decide({
   required Duration now,
   SegmentAction Function(MediaSegmentKind) actionFor = _skipEverything,
   Set<MediaSegment> alreadySkipped = const <MediaSegment>{},
+  Duration? openedAt,
 }) {
   return segmentToSkip(
     segments: segments,
@@ -37,6 +39,7 @@ MediaSegment? decide({
     now: now,
     actionFor: actionFor,
     alreadySkipped: alreadySkipped,
+    openedAt: openedAt,
   );
 }
 
@@ -144,8 +147,8 @@ void main() {
     test('only the kind that was set to skip is skipped', () {
       SegmentAction outroOnly(MediaSegmentKind kind) =>
           kind == MediaSegmentKind.outro
-              ? SegmentAction.skip
-              : SegmentAction.nothing;
+          ? SegmentAction.skip
+          : SegmentAction.nothing;
 
       expect(
         decide(
@@ -205,6 +208,114 @@ void main() {
         ),
         isNull,
       );
+    });
+  });
+
+  group('the first tick of a file', () {
+    const opening = MediaSegment(
+      kind: MediaSegmentKind.intro,
+      start: Duration.zero,
+      end: Duration(seconds: 90),
+    );
+
+    test('an intro at 0:00 is skipped when the file opens at 0:00', () {
+      // The first report has nothing before it and every later one is
+      // already inside, so without the opening position this never fired.
+      expect(
+        decide(
+          segments: const <MediaSegment>[opening],
+          now: Duration.zero,
+          openedAt: Duration.zero,
+        ),
+        opening,
+      );
+    });
+
+    test('a resume inside a segment does not skip it', () {
+      expect(
+        decide(
+          segments: const <MediaSegment>[opening],
+          now: const Duration(seconds: 40),
+          openedAt: const Duration(seconds: 40),
+        ),
+        isNull,
+      );
+    });
+
+    test('a stale 0:00 before a resume seek lands is ignored', () {
+      expect(
+        decide(
+          segments: const <MediaSegment>[opening],
+          now: Duration.zero,
+          openedAt: const Duration(minutes: 12),
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('chapter titles', () {
+    test('OP, ED and their spellings are recognised', () {
+      expect(chapterKind('OP'), MediaSegmentKind.intro);
+      expect(chapterKind('op1'), MediaSegmentKind.intro);
+      expect(chapterKind('Opening'), MediaSegmentKind.intro);
+      expect(chapterKind('OP - Song Title'), MediaSegmentKind.intro);
+      expect(chapterKind('Intro'), MediaSegmentKind.intro);
+      expect(chapterKind('ED'), MediaSegmentKind.outro);
+      expect(chapterKind('ED 2'), MediaSegmentKind.outro);
+      expect(chapterKind('Ending: Artist'), MediaSegmentKind.outro);
+      expect(chapterKind('End Credits'), MediaSegmentKind.outro);
+      expect(chapterKind('Credits'), MediaSegmentKind.outro);
+      expect(chapterKind('Preview'), MediaSegmentKind.preview);
+      expect(chapterKind('Recap'), MediaSegmentKind.recap);
+    });
+
+    test('ordinary chapters are left alone', () {
+      expect(chapterKind('Chapter 1'), isNull);
+      expect(chapterKind('Part A'), isNull);
+      expect(chapterKind('Option'), isNull);
+      expect(chapterKind('Edward'), isNull);
+      expect(chapterKind('Introduction'), isNull);
+      expect(chapterKind('Avant'), isNull);
+      expect(chapterKind(''), isNull);
+    });
+
+    test('an anime episode becomes an intro and an outro', () {
+      const chapters = <MediaChapter>[
+        MediaChapter(
+          title: 'Avant',
+          start: Duration.zero,
+          end: Duration(minutes: 1),
+        ),
+        MediaChapter(
+          title: 'OP',
+          start: Duration(minutes: 1),
+          end: Duration(minutes: 2, seconds: 30),
+        ),
+        MediaChapter(
+          title: 'Part A',
+          start: Duration(minutes: 2, seconds: 30),
+          end: Duration(minutes: 21),
+        ),
+        MediaChapter(
+          title: 'ED',
+          start: Duration(minutes: 21),
+          end: Duration(minutes: 22, seconds: 30),
+        ),
+      ];
+
+      expect(segmentsFromChapters(chapters), const <MediaSegment>[
+        MediaSegment(
+          kind: MediaSegmentKind.intro,
+          start: Duration(minutes: 1),
+          end: Duration(minutes: 2, seconds: 30),
+        ),
+        MediaSegment(
+          kind: MediaSegmentKind.outro,
+          start: Duration(minutes: 21),
+          end: Duration(minutes: 22, seconds: 30),
+        ),
+      ]);
     });
   });
 }
